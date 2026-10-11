@@ -47,6 +47,27 @@ describe("evaluateOperationsAlerts", () => {
     expect(alerts[1].message).toMatch(/loaded version is from/);
   });
 
+  it("flags a dataset left 'importing' whose import is gone or has stopped moving, not one that is running", () => {
+    const row = (over: object) => ({ import_type: "x", source_title: "Dataset X", status: "importing", catalog_modified: daysAgo(1), imported_modified: null, imported_at: null, updated_date: hoursAgo(10), batch_status: "failed", batch_updated: hoursAgo(9), ...over });
+    const alerts = (datasets: object[]) => evaluateOperationsAlerts({ ...healthy, datasets: datasets as any }, now);
+    // The batch ended (failed, cancelled, completed) or can't be found: nothing will ever mark the dataset finished.
+    expect(alerts([row({})])).toMatchObject([{ kind: "dataset_stuck", key: "dataset_stuck:x", severity: "warning", subject: "Dataset X" }]);
+    expect(alerts([row({ batch_status: "cancelled" })])).toHaveLength(1);
+    expect(alerts([row({ batch_status: null, batch_updated: null })])[0].message).toMatch(/can't be found/);
+    // Still working, or only just started: not stuck.
+    expect(alerts([row({ batch_status: "processing", batch_updated: hoursAgo(0.2) })])).toEqual([]);
+    expect(alerts([row({ updated_date: hoursAgo(2), batch_status: "failed" })])).toEqual([]);
+    // 'Processing' but silent for longer than the threshold is stuck too.
+    const silent = alerts([row({ batch_status: "processing", batch_updated: hoursAgo(9) })]);
+    expect(silent).toHaveLength(1);
+    expect(silent[0].message).toMatch(/is processing and has made no progress/);
+    // A day on, it is critical; and rows without a timestamp (unknown age) are left alone.
+    expect(alerts([row({ updated_date: hoursAgo(30) })])[0].severity).toBe("critical");
+    expect(alerts([row({ updated_date: null })])).toEqual([]);
+    // A dataset that isn't importing never raises it.
+    expect(alerts([row({ status: "failed" })])).toEqual([]);
+  });
+
   it("flags active schedules with repeated failures only", () => {
     const snap: OperationsSnapshot = {
       ...healthy,
@@ -89,6 +110,17 @@ describe("evaluateOperationsAlerts", () => {
     expect(alerts.find((a) => a.key === "rollup_stale:stale")!.message).toContain("3 days ago");
   });
 
+  it("gives the weekly lead scoring refresh a weekly cadence instead of the two-day line", () => {
+    const snap = (days: number): OperationsSnapshot => ({ ...healthy, rollups: [{ job: "lead_scores", status: "idle", last_success_at: daysAgo(days), error: null }, { job: "county_market_profile", status: "idle", last_success_at: daysAgo(days), error: null }] });
+    // Five days after a weekly run is normal for scores, but a daily rollup is long overdue.
+    expect(evaluateOperationsAlerts(snap(5), now).map((a) => a.key)).toEqual(["rollup_stale:county_market_profile"]);
+    // A missed week (nine days and over) is overdue for both.
+    expect(evaluateOperationsAlerts(snap(10), now).map((a) => a.key).sort()).toEqual(["rollup_stale:county_market_profile", "rollup_stale:lead_scores"]);
+    // A job that never succeeded and failed is flagged whatever its cadence.
+    expect(evaluateOperationsAlerts({ ...healthy, rollups: [{ job: "lead_scores", status: "failed", last_success_at: null, error: "boom" }] }, now)).toMatchObject([{ key: "rollup_stale:lead_scores" }]);
+    expect(DEFAULT_THRESHOLDS.rollupStaleByJobMs.lead_scores).toBeGreaterThan(7 * 24 * 60 * 60 * 1000);
+  });
+
   it("orders critical first and formats a digest with a link to the Health tab", () => {
     const alerts = evaluateOperationsAlerts({ ...healthy, heartbeat: null, rollups: [{ job: "stale", status: "idle", last_success_at: daysAgo(3), error: null }] }, now);
     expect(alerts.map((a) => a.severity)).toEqual(["critical", "warning"]);
@@ -120,8 +152,28 @@ describe("loadOperationsSnapshot", () => {
   });
 });
 
+describe("loadOperationsSnapshot and the import behind each dataset", () => {
+  it("joins each dataset to the batch it points at, so a vanished batch can be told from a running one", async () => {
+    const seen: string[] = [];
+    const pool = {
+      async query(sql: string) {
+        seen.push(sql);
+        return { rows: [] };
+      },
+    };
+    await loadOperationsSnapshot(pool);
+    const datasets = seen.find((q) => q.includes("FROM dataset_versions"))!;
+    expect(datasets).toMatch(/LEFT JOIN import_batches b ON b\.id = d\.imported_batch_id/);
+    expect(datasets).toMatch(/b\.status AS batch_status/);
+    expect(datasets).toMatch(/d\.updated_date/);
+  });
+});
+
 describe("maintenance fan-out", () => {
-  it("runs the operations alerts worker", () => {
-    expect(FANOUT_WORKERS.map((w) => w.name)).toContain("operationsAlerts");
+  it("runs the operations alerts worker, last, after the weekly scoring refresh it judges", () => {
+    const names = FANOUT_WORKERS.map((w) => w.name);
+    expect(names).toContain("operationsAlerts");
+    expect(names).toContain("refreshLeadScores");
+    expect(names.at(-1)).toBe("operationsAlerts");
   });
 });

@@ -223,10 +223,15 @@ export function importDataYear(input: {
   return !newerThanLoaded && input.loadedYear ? String(input.loadedYear) : null;
 }
 
+// A dry run reads a dataset and writes nothing, so it must not change what the registry says is loaded (it
+// would flip a current dataset to "failed", or leave it "importing"). The guard sits here, on the batch's own
+// flag, so no importer's call site can forget it.
+const NOT_A_DRY_RUN = (batchParam: number) => `NOT EXISTS (SELECT 1 FROM import_batches WHERE id = $${batchParam} AND dry_run IS TRUE)`;
+
 export async function markImportStarted(importType: string, batchId: number, source: string, now = new Date()): Promise<void> {
   await pool.query(
     `INSERT INTO dataset_versions (import_type, source, status, imported_batch_id, updated_date)
-     VALUES ($1, $2, 'importing', $3, $4)
+     SELECT $1::text, $2::text, 'importing', $3::int, $4::timestamp WHERE ${NOT_A_DRY_RUN(3)}
      ON CONFLICT (import_type) DO UPDATE SET status = 'importing', imported_batch_id = EXCLUDED.imported_batch_id, updated_date = EXCLUDED.updated_date`,
     [importType, source, batchId, now],
   );
@@ -241,12 +246,12 @@ export async function markImportFinished(
     await pool.query(
       `UPDATE dataset_versions SET status = 'current', imported_at = $2, imported_modified = catalog_modified,
          imported_batch_id = $3, row_count = $4, data_year = COALESCE($5, data_year), notes = $6, updated_date = $2
-       WHERE import_type = $1`,
+       WHERE import_type = $1 AND ${NOT_A_DRY_RUN(3)}`,
       [importType, now, opts.batchId, opts.rowCount ?? null, opts.dataYear != null ? String(opts.dataYear) : null, opts.note ?? null],
     );
   } else {
     await pool.query(
-      `UPDATE dataset_versions SET status = 'failed', imported_batch_id = $2, notes = $3, updated_date = $4 WHERE import_type = $1`,
+      `UPDATE dataset_versions SET status = 'failed', imported_batch_id = $2, notes = $3, updated_date = $4 WHERE import_type = $1 AND ${NOT_A_DRY_RUN(2)}`,
       [importType, opts.batchId, opts.note ?? null, now],
     );
   }

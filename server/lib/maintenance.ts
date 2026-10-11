@@ -13,6 +13,7 @@
 import { db } from "../db";
 import { importBatches, auditEvents } from "../db/schema";
 import { eq, sql } from "drizzle-orm";
+import { endedWithoutFinishing } from "./importProgress";
 import {
   MAX_AUTO_RESUMES,
   MAX_AUTO_RETRY_ATTEMPTS,
@@ -263,6 +264,9 @@ export async function runCancelStalledImports(): Promise<WorkerResult> {
         updated_date: new Date(),
       }).where(eq(importBatches.id, batch.id));
       cancelledBatches.push({ id: batch.id, type: batch.import_type });
+      // The dataset registry (and the schedule that started it) learn of it now: left "importing", the dataset
+      // would hide newer releases of itself until someone noticed.
+      if (batch.import_type) await endedWithoutFinishing(batch.import_type, batch.id, "failed", `stalled over ${mins} minutes`);
     }
 
     return {
@@ -513,27 +517,34 @@ export async function runOperationsAlerts(): Promise<WorkerResult> {
     }
     const { getMailerStatus, sendMail } = await import("./mailer");
     const { appBaseUrl } = await import("./accounts");
-    const admins = await pool.query("SELECT email FROM users WHERE is_platform_admin = true AND status = 'active' ORDER BY id");
+    // Platform admins: the admin role or the flag (one thing, see server/lib/roles.ts).
+    const admins = await pool.query("SELECT email FROM users WHERE (is_platform_admin = true OR role = 'admin') AND status = 'active' ORDER BY id");
     const extra = (process.env.OPERATIONS_ALERT_EMAILS || "").split(",").map((s) => s.trim()).filter(Boolean);
     const recipients = [...new Set([...admins.rows.map((r: any) => String(r.email)), ...extra])];
+    const open = { alerts: alerts.length, recipients: recipients.length };
+    // Nothing is recorded as sent unless somebody got it: a digest nobody received must not silence the next
+    // day's attempts.
+    if (!getMailerStatus().configured) return { worker: "operationsAlerts", ok: true, durationMs: Date.now() - started, details: { ...open, emailed: false, reason: "email isn't configured" } };
+    if (recipients.length === 0) return { worker: "operationsAlerts", ok: true, durationMs: Date.now() - started, details: { ...open, emailed: false, reason: "no platform admin to email" } };
     const digest = formatAlertDigest(alerts, appBaseUrl());
     let emailed = 0;
-    if (getMailerStatus().configured) {
-      for (const to of recipients) {
-        try {
-          await sendMail({ to, subject: digest.subject, text: digest.text });
-          emailed += 1;
-        } catch (e) {
-          console.warn(`[operationsAlerts] email to ${to} failed:`, (e as { message?: string })?.message);
-        }
+    let lastError = "";
+    for (const to of recipients) {
+      try {
+        await sendMail({ to, subject: digest.subject, text: digest.text });
+        emailed += 1;
+      } catch (e) {
+        lastError = (e as { message?: string })?.message || String(e);
+        console.warn(`[operationsAlerts] email to ${to} failed:`, lastError);
       }
     }
+    if (emailed === 0) return { worker: "operationsAlerts", ok: false, durationMs: Date.now() - started, details: { ...open, emailed: false }, error: truncErr(`the digest couldn't be emailed to anyone: ${lastError}`) };
     await db.insert(auditEvents).values({
       event_type: "operations_alert",
       user_email: "system",
       details: { alerts: alerts.map((a) => ({ key: a.key, severity: a.severity, subject: a.subject, message: a.message })), recipients, emailed },
     });
-    return { worker: "operationsAlerts", ok: true, durationMs: Date.now() - started, details: { alerts: alerts.length, emailed: emailed > 0, recipients: recipients.length } };
+    return { worker: "operationsAlerts", ok: true, durationMs: Date.now() - started, details: { ...open, emailed: true } };
   } catch (e) {
     return { worker: "operationsAlerts", ok: false, durationMs: Date.now() - started, error: truncErr(e) };
   }

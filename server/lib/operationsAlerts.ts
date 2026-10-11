@@ -1,10 +1,12 @@
 // Operations alerts (plan phase 5): what an operator must look at so the
-// data keeps refreshing. Four conditions, each read from tables the
+// data keeps refreshing. Five conditions, each read from tables the
 // maintenance workers already keep:
 //   - a dataset whose newer release has not been imported within a week
+//   - a dataset marked "importing" whose import is no longer running
 //   - an import schedule that keeps failing
 //   - no maintenance heartbeat for a while (the cron isn't ticking)
-//   - an analytics rollup whose last success is too old
+//   - an analytics rollup whose last success is too old (each job has its own
+//     cadence: the lead scoring refresh is weekly, the rest daily)
 // `evaluateOperationsAlerts` is pure so it can be unit-tested; the worker in
 // maintenance.ts loads a snapshot, evaluates it and emails platform admins at
 // most once a day while anything is open.
@@ -12,7 +14,7 @@
 export type AlertSeverity = "warning" | "critical";
 
 export interface OperationsAlert {
-  kind: "dataset_behind" | "schedule_failing" | "heartbeat_stale" | "rollup_stale";
+  kind: "dataset_behind" | "dataset_stuck" | "schedule_failing" | "heartbeat_stale" | "rollup_stale";
   severity: AlertSeverity;
   /** Stable id for de-duplication across digests (kind + subject). */
   key: string;
@@ -22,7 +24,11 @@ export interface OperationsAlert {
 }
 
 export interface OperationsSnapshot {
-  datasets: Array<{ import_type: string; source_title: string | null; status: string; catalog_modified: Date | string | null; imported_modified: Date | string | null; imported_at: Date | string | null }>;
+  datasets: Array<{
+    import_type: string; source_title: string | null; status: string; catalog_modified: Date | string | null; imported_modified: Date | string | null; imported_at: Date | string | null;
+    /** When the registry row last changed, and the state of the import batch it points at (null when that batch is gone). */
+    updated_date?: Date | string | null; batch_status?: string | null; batch_updated?: Date | string | null;
+  }>;
   schedules: Array<{ id: number; label: string | null; import_type: string | null; is_active: boolean | null; last_run_status: string | null; last_run_at: Date | string | null; consecutive_failures: number | null; last_run_summary: string | null }>;
   /** When the last maintenance fan-out heartbeat was written, and how many workers failed in it. */
   heartbeat: { at: Date | string | null; failed: string[] } | null;
@@ -31,16 +37,25 @@ export interface OperationsSnapshot {
 
 export interface AlertThresholds {
   datasetBehindMs: number;
+  /** How long a dataset may say "importing" without its import making progress (the stall sweep acts after two hours). */
+  importingStuckMs: number;
   scheduleFailures: number;
   heartbeatStaleMs: number;
+  /** A rollup without a success for this long is stale, unless its job has a cadence of its own below. */
   rollupStaleMs: number;
+  rollupStaleByJobMs: Record<string, number>;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export const DEFAULT_THRESHOLDS: AlertThresholds = {
-  datasetBehindMs: 7 * 24 * 60 * 60 * 1000,
+  datasetBehindMs: 7 * DAY_MS,
+  importingStuckMs: 6 * 60 * 60 * 1000,
   scheduleFailures: 3,
   heartbeatStaleMs: 2 * 60 * 60 * 1000,
-  rollupStaleMs: 2 * 24 * 60 * 60 * 1000,
+  rollupStaleMs: 2 * DAY_MS,
+  // Scores are refreshed weekly: a week and two days of slack before it is overdue.
+  rollupStaleByJobMs: { lead_scores: 9 * DAY_MS },
 };
 
 /** Digests go out at most this often while alerts stay open. */
@@ -82,6 +97,25 @@ export function evaluateOperationsAlerts(snapshot: OperationsSnapshot, now: Date
     });
   }
 
+  // Datasets marked "importing" whose import is gone or has stopped moving: nothing will ever mark them
+  // finished, and until then newer releases of that dataset are not looked for.
+  for (const d of snapshot.datasets) {
+    if (d.status !== "importing") continue;
+    const sinceMs = toMs(d.updated_date);
+    if (sinceMs === null || nowMs - sinceMs < t.importingStuckMs) continue;
+    const running = (d.batch_status === "processing" || d.batch_status === "validating") && nowMs - (toMs(d.batch_updated) ?? 0) < t.importingStuckMs;
+    if (running) continue;
+    const hours = Math.round((nowMs - sinceMs) / 3_600_000);
+    alerts.push({
+      kind: "dataset_stuck",
+      severity: nowMs - sinceMs >= 4 * t.importingStuckMs ? "critical" : "warning",
+      key: `dataset_stuck:${d.import_type}`,
+      subject: d.source_title || d.import_type,
+      message: `Marked importing for ${hours} hours, but its import ${d.batch_status ? `is ${d.batch_status} and has made no progress` : "can't be found"}. Newer releases aren't picked up until it is run again.`,
+      since: new Date(sinceMs).toISOString(),
+    });
+  }
+
   for (const s of snapshot.schedules) {
     if (s.is_active === false) continue;
     const failures = s.consecutive_failures ?? 0;
@@ -111,7 +145,8 @@ export function evaluateOperationsAlerts(snapshot: OperationsSnapshot, now: Date
   for (const r of snapshot.rollups) {
     const lastMs = toMs(r.last_success_at);
     if (r.status === "running") continue;
-    if (lastMs !== null && nowMs - lastMs < t.rollupStaleMs) continue;
+    const staleAfter = t.rollupStaleByJobMs[r.job] ?? t.rollupStaleMs;
+    if (lastMs !== null && nowMs - lastMs < staleAfter) continue;
     if (lastMs === null && r.status !== "failed") continue; // never run yet: the next tick will start it
     alerts.push({
       kind: "rollup_stale",
@@ -130,7 +165,11 @@ export function evaluateOperationsAlerts(snapshot: OperationsSnapshot, now: Date
 /** Reads everything the evaluation needs from the database. */
 export async function loadOperationsSnapshot(pool: { query(sql: string, params?: unknown[]): Promise<{ rows: any[] }> }): Promise<OperationsSnapshot> {
   const [datasets, schedules, heartbeat, rollups] = await Promise.all([
-    pool.query("SELECT import_type, source_title, status, catalog_modified, imported_modified, imported_at FROM dataset_versions").catch(() => ({ rows: [] })),
+    pool.query(
+      `SELECT d.import_type, d.source_title, d.status, d.catalog_modified, d.imported_modified, d.imported_at, d.updated_date,
+              b.status AS batch_status, b.updated_date AS batch_updated
+         FROM dataset_versions d LEFT JOIN import_batches b ON b.id = d.imported_batch_id`,
+    ).catch(() => ({ rows: [] })),
     pool.query("SELECT id, label, import_type, is_active, last_run_status, last_run_at, consecutive_failures, last_run_summary FROM import_schedule_configs").catch(() => ({ rows: [] })),
     pool.query("SELECT created_date, details FROM audit_events WHERE event_type = 'maintenance_fanout' ORDER BY created_date DESC LIMIT 1").catch(() => ({ rows: [] })),
     pool.query("SELECT job, status, last_success_at, error FROM rollup_runs").catch(() => ({ rows: [] })),
