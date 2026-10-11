@@ -70,7 +70,7 @@ export default function NodeDetailPanel({ node, edges = [], nodes = [], onClose,
         <div className="flex flex-col gap-2">
           {onFocus && (
             <Button variant="outline" size="sm" onClick={() => onFocus(node)} className="w-full text-xs gap-1.5 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">
-              <Target className="w-3 h-3" aria-hidden="true" /> Show all of this provider's partners
+              <Target className="w-3 h-3" aria-hidden="true" /> Focus on this provider's partners
             </Button>
           )}
           <Button asChild variant="outline" size="sm" className="w-full text-xs gap-1.5 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">
