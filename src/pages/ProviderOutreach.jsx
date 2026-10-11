@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,7 +15,10 @@ import CampaignOutcomesPanel from '../components/outreach/CampaignOutcomesPanel'
 import PageHeader from '../components/shared/PageHeader';
 
 export default function ProviderOutreach() {
-  const [tab, setTab] = useState('campaigns');
+  // "Start campaign" on a lead list links here with ?leadList=<id>.
+  const [searchParams] = useSearchParams();
+  const initialLeadListId = searchParams.get('leadList') || '';
+  const [tab, setTab] = useState(initialLeadListId ? 'new' : 'campaigns');
   const [searchCampaign, setSearchCampaign] = useState('');
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const queryClient = useQueryClient();
@@ -181,6 +185,7 @@ export default function ProviderOutreach() {
             </CardHeader>
             <CardContent>
               <CampaignBuilder
+                initialLeadListId={initialLeadListId}
                 onCampaignCreated={(campaign) => {
                   queryClient.invalidateQueries({ queryKey: ['campaigns'] });
                   setSelectedCampaign(campaign);

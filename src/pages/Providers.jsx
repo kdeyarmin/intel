@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Save, Download, Users } from 'lucide-react';
+import { Save, Download, Users, ListPlus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import TypeAheadSearch from '../components/search/TypeAheadSearch';
 import ProviderAdvancedFilters from '../components/filters/ProviderAdvancedFilters';
@@ -24,6 +24,8 @@ import DateRangeFilterInline, { applyDateRangeFilter } from '../components/filte
 import FilterPresets from '../components/filters/FilterPresets';
 import ProviderComparison from '../components/providers/ProviderComparison';
 import AddToLeadListDialog from '../components/leadlists/AddToLeadListDialog';
+import QueryErrorState from '../components/shared/QueryErrorState';
+import { useUrlState } from '@/hooks/useUrlState';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Copy, Globe, List, PieChart as PieChartIcon, Map as MapIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -38,44 +40,120 @@ const SORT_OPTIONS = [
   { value: 'updated', label: 'Last Updated' },
 ];
 
+// Search, filters, sort and tab live in the URL so Back from a provider
+// restores the list and a filtered view can be shared as a link.
+const SEARCH_LIMIT = 300;
+
+const URL_DEFAULTS = {
+  q: '',
+  type: 'all',
+  status: 'all',
+  credential: 'all',
+  enrichment: 'all',
+  email: 'all',
+  state: 'all',
+  specialty: 'all',
+  sort: 'default',
+  dir: 'asc',
+  tab: 'directory',
+  // Date range on created_date, and text-match filters (JSON).
+  range: 'all',
+  from: '',
+  to: '',
+  tf: '',
+};
+
+function parseTextFilters(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+const FILTER_KEYS = {
+  entityTypeFilter: 'type',
+  statusFilter: 'status',
+  credentialFilter: 'credential',
+  enrichmentFilter: 'enrichment',
+  emailFilter: 'email',
+  stateFilter: 'state',
+  specialtyFilter: 'specialty',
+};
+
+const filtersFromUrl = (url) =>
+  Object.fromEntries(Object.entries(FILTER_KEYS).map(([filterKey, urlKey]) => [filterKey, url[urlKey]]));
+
+const urlFromFilters = (filters) =>
+  Object.fromEntries(Object.entries(FILTER_KEYS).map(([filterKey, urlKey]) => [urlKey, filters[filterKey] ?? 'all']));
+
+// Names are nullable on incomplete records; the NPI always identifies the row.
+const selectLabelName = (provider) => {
+  const name = provider.entity_type === 'Individual'
+    ? [provider.first_name, provider.last_name].filter(Boolean).join(' ')
+    : provider.organization_name;
+  return name?.trim() || `NPI ${provider.npi}`;
+};
+
 export default function Providers() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({
-    entityTypeFilter: 'all',
-    statusFilter: 'all',
-    credentialFilter: 'all',
-    enrichmentFilter: 'all',
-    emailFilter: 'all',
-    stateFilter: 'all',
-    specialtyFilter: 'all',
-  });
-  const [sortField, setSortField] = useState('default');
-  const [sortDir, setSortDir] = useState('asc');
+  const [url, setUrl] = useUrlState(URL_DEFAULTS);
+  const [searchTerm, setSearchTerm] = useState(url.q);
+  const filters = useMemo(() => filtersFromUrl(url), [url]);
+  const setFilters = useCallback((update) => {
+    setUrl((current) => urlFromFilters(typeof update === 'function' ? update(filtersFromUrl(current)) : update));
+  }, [setUrl]);
+  const sortField = url.sort;
+  const sortDir = url.dir;
+  const activeTab = url.tab;
+  const setActiveTab = useCallback((tab) => setUrl({ tab }), [setUrl]);
   const [selectedNpis, setSelectedNpis] = useState(new Set());
   const [saveListOpen, setSaveListOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('directory');
-  const [textFilters, setTextFilters] = useState([]);
-  const [dateRange, setDateRange] = useState({ preset: 'all', startDate: '', endDate: '' });
+  // Set when a single row's "add to list" button opened the dialog.
+  const [listDialogNpis, setListDialogNpis] = useState(null);
+  const textFilters = useMemo(() => parseTextFilters(url.tf), [url.tf]);
+  const setTextFilters = useCallback((next) => {
+    setUrl({ tf: next?.length ? JSON.stringify(next) : '' });
+  }, [setUrl]);
+  const dateRange = useMemo(
+    () => ({ preset: url.range, startDate: url.from, endDate: url.to }),
+    [url.range, url.from, url.to],
+  );
+  const setDateRange = useCallback((next) => {
+    setUrl({ range: next?.preset || 'all', from: next?.startDate || '', to: next?.endDate || '' });
+  }, [setUrl]);
   const [activePresetId, setActivePresetId] = useState(null);
 
   const queryClient = useQueryClient();
 
-  // Debounce the search term so we don't fire a request per keystroke.
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  // Debounce the search term so we don't fire a request per keystroke, and
+  // write it to the URL when it settles. Writing it from its own effect re-ran
+  // on every navigation and put the old search back over a link's or Back's
+  // ?q=; here the sync below resets the timer instead.
+  const [debouncedSearch, setDebouncedSearch] = useState(url.q.trim());
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 350);
+    const t = setTimeout(() => {
+      const q = searchTerm.trim();
+      setDebouncedSearch(q);
+      if (q !== url.q) setUrl({ q });
+    }, 350);
     return () => clearTimeout(t);
-  }, [searchTerm]);
+  }, [searchTerm, url.q, setUrl]);
+  // Keep the box in sync when the URL changes underneath us (links, Back/Forward).
+  useEffect(() => {
+    setSearchTerm((current) => (current.trim() === url.q ? current : url.q));
+  }, [url.q]);
 
   // When searching, query the full providers table server-side (the previous
   // behavior only ever loaded the newest 100 rows and filtered client-side, so
   // search silently missed almost everything). With no search term we still show
   // the most recent providers as the default directory view.
-  const { data: providers = [], isLoading } = useQuery({
+  const { data: providers = [], isLoading, isError, error: providersError, refetch: refetchProviders, isPlaceholderData } = useQuery({
     queryKey: ['providersPage', debouncedSearch],
     queryFn: async () => {
       if (debouncedSearch.length >= 2) {
-        const res = await base44.functions.invoke('searchProviders', { q: debouncedSearch, limit: 300 });
+        const res = await base44.functions.invoke('searchProviders', { q: debouncedSearch, limit: SEARCH_LIMIT });
         return res.data?.providers || [];
       }
       return base44.entities.Provider.list('-created_date', 100);
@@ -108,16 +186,27 @@ export default function Providers() {
     },
   });
 
+  // Locations and specialties for the providers on screen (indexed by NPI).
+  // Previously these were the newest 500 rows of the whole table, so search
+  // results showed "—" for state/specialty and those filters matched nothing.
   const { data: locations = [] } = useQuery({
-    queryKey: ['providersPageLocations'],
-    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
+    queryKey: ['providersPageLocations', npiKey],
+    enabled: providers.length > 0,
     staleTime: 120000,
+    placeholderData: keepPreviousData,
+    queryFn: () => base44.entities.ProviderLocation.filter(
+      { npi: { $in: providers.map(p => p.npi).filter(Boolean) } }, undefined, 2000,
+    ),
   });
 
   const { data: taxonomies = [] } = useQuery({
-    queryKey: ['providersPageTaxonomies'],
-    queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 500),
+    queryKey: ['providersPageTaxonomies', npiKey],
+    enabled: providers.length > 0,
     staleTime: 120000,
+    placeholderData: keepPreviousData,
+    queryFn: () => base44.entities.ProviderTaxonomy.filter(
+      { npi: { $in: providers.map(p => p.npi).filter(Boolean) } }, undefined, 2000,
+    ),
   });
 
   const { data: savedFilters = [] } = useQuery({
@@ -126,7 +215,9 @@ export default function Providers() {
     staleTime: 30000,
   });
 
-  const defaultApplied = useRef(false);
+  // A saved "default" filter applies only when the URL doesn't already say
+  // what to show (e.g. coming back from a provider, or opening a shared link).
+  const defaultApplied = useRef(Object.keys(URL_DEFAULTS).some(k => k !== 'tab' && url[k] !== URL_DEFAULTS[k]));
   useEffect(() => {
     if (defaultApplied.current) return;
     const def = savedFilters.find(f => f.is_default);
@@ -151,14 +242,7 @@ export default function Providers() {
 
   const resetFilters = () => {
     setSearchTerm('');
-    setFilters({
-      entityTypeFilter: 'all', statusFilter: 'all', credentialFilter: 'all',
-      enrichmentFilter: 'all', emailFilter: 'all', stateFilter: 'all', specialtyFilter: 'all',
-    });
-    setSortField('default');
-    setSortDir('asc');
-    setTextFilters([]);
-    setDateRange({ preset: 'all', startDate: '', endDate: '' });
+    setUrl({ ...urlFromFilters({}), sort: 'default', dir: 'asc', tf: '', range: 'all', from: '', to: '' });
     setActivePresetId(null);
   };
 
@@ -174,8 +258,7 @@ export default function Providers() {
       ...preset.filters,
     }));
     if (preset.sortOverride) {
-      setSortField(preset.sortOverride.field);
-      setSortDir(preset.sortOverride.dir);
+      setUrl({ sort: preset.sortOverride.field, dir: preset.sortOverride.dir });
     }
   };
 
@@ -450,7 +533,13 @@ export default function Providers() {
     <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Providers"
-        subtitle={`${providers.length} total providers`}
+        subtitle={
+          isPlaceholderData
+            ? 'Searching…'
+            : debouncedSearch.length >= 2
+            ? `${providers.length.toLocaleString()}${providers.length >= SEARCH_LIMIT ? '+' : ''} match${providers.length === 1 ? '' : 'es'} for "${debouncedSearch}"`
+            : `Showing the ${providers.length.toLocaleString()} most recently added providers — search by name or NPI to find anyone else`
+        }
         icon={Users}
         breadcrumbs={[{ label: 'Providers' }]}
         actions={
@@ -511,7 +600,7 @@ export default function Providers() {
             }}
           />
           <Button
-            onClick={() => setSaveListOpen(true)}
+            onClick={() => { setListDialogNpis(null); setSaveListOpen(true); }}
             disabled={saveListNpis.length === 0}
             className="bg-cyan-600 hover:bg-cyan-700"
           >
@@ -681,7 +770,7 @@ export default function Providers() {
             <SortControl
               sortField={sortField}
               sortDir={sortDir}
-              onSortChange={(f, d) => { setSortField(f); setSortDir(d); }}
+              onSortChange={(f, d) => setUrl({ sort: f, dir: d })}
               sortOptions={SORT_OPTIONS}
             />
           </div>
@@ -724,6 +813,7 @@ export default function Providers() {
                 <TableRow>
                   <TableHead className="w-10">
                     <input type="checkbox"
+                      aria-label="Select all providers"
                       checked={sortedProviders.length > 0 && selectedNpis.size === sortedProviders.length}
                       onChange={toggleSelectAll}
                       className="rounded border-slate-600 bg-slate-800"
@@ -754,10 +844,22 @@ export default function Providers() {
                       <TableCell><Skeleton className="h-8 w-16" /></TableCell>
                     </TableRow>
                   ))
+                ) : isError ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-6">
+                      <QueryErrorState
+                        title="Couldn't load providers"
+                        error={providersError}
+                        onRetry={refetchProviders}
+                      />
+                    </TableCell>
+                  </TableRow>
                 ) : sortedProviders.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-8 text-slate-500">
-                      No providers found
+                      {debouncedSearch.length >= 2
+                        ? `No providers match "${debouncedSearch}" with the current filters.`
+                        : 'No providers match the current filters.'}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -769,6 +871,7 @@ export default function Providers() {
                       <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-900/5' : ''}>
                         <TableCell>
                           <input type="checkbox"
+                            aria-label={`Select ${selectLabelName(provider)}`}
                             checked={selectedNpis.has(provider.npi)}
                             onChange={() => toggleSelect(provider.npi)}
                             className="rounded border-slate-600 bg-slate-800"
@@ -830,6 +933,16 @@ export default function Providers() {
                             <Link to={createPageUrl(`ProviderDetail?npi=${provider.npi}`)}>
                               <Button variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">View</Button>
                             </Link>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              aria-label="Add to lead list"
+                              title="Add to lead list"
+                              onClick={() => { setListDialogNpis([provider.npi]); setSaveListOpen(true); }}
+                              className="h-7 w-7 p-0 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+                            >
+                              <ListPlus className="w-3.5 h-3.5" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -848,10 +961,10 @@ export default function Providers() {
       <AddToLeadListDialog
         open={saveListOpen}
         onOpenChange={setSaveListOpen}
-        npis={saveListNpis}
-        defaultName={debouncedSearch ? `Providers: ${debouncedSearch}` : ''}
-        filterCriteria={{ search: debouncedSearch || null, ...filters }}
-        onSaved={() => setSelectedNpis(new Set())}
+        npis={listDialogNpis || saveListNpis}
+        defaultName={!listDialogNpis && debouncedSearch ? `Providers: ${debouncedSearch}` : ''}
+        filterCriteria={listDialogNpis ? null : { search: debouncedSearch || null, ...filters }}
+        onSaved={() => { if (!listDialogNpis) setSelectedNpis(new Set()); }}
       />
     </div>
   );

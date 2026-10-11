@@ -19,6 +19,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import ComplianceDisclaimer from '../compliance/ComplianceDisclaimer';
+import { toast } from 'sonner';
 
 export default function SingleProviderPathway() {
   const [searchNPI, setSearchNPI] = useState('');
@@ -60,7 +61,7 @@ export default function SingleProviderPathway() {
 
   const handleAnalyze = async () => {
     if (!searchNPI) {
-      alert('Please enter a provider NPI');
+      toast.error('Please enter a provider NPI');
       return;
     }
     setSelectedNPI(searchNPI);

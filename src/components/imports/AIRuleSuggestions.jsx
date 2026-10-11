@@ -152,7 +152,7 @@ export default function AIRuleSuggestions({ importType }) {
       queryClient.invalidateQueries({ queryKey: ['existingRulesForSuggestion'] });
       queryClient.invalidateQueries({ queryKey: ['validationRulesForBatch'] });
     },
-    onError: (err) => alert(`Failed to create rule: ${err.message}`),
+    meta: { errorMessage: 'Failed to create rule' },
   });
 
   const handleCustomize = (suggestion) => {

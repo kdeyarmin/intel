@@ -3,6 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { MapPin, Phone, Printer } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { telHref } from './ProviderHeader';
 
 export default function LocationsTable({ locations = [] }) {
   if (!locations.length) return null;
@@ -34,7 +37,9 @@ export default function LocationsTable({ locations = [] }) {
                 <TableRow key={loc.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {loc.address_1 || '-'}
+                      <Link to={createPageUrl(`LocationDetail?id=${loc.id}`)} className="hover:text-cyan-400 hover:underline">
+                        {loc.address_1 || '-'}
+                      </Link>
                       {loc.is_primary && <Badge className="bg-blue-900/30 text-blue-400 text-[10px]">Primary</Badge>}
                     </div>
                   </TableCell>
@@ -43,7 +48,11 @@ export default function LocationsTable({ locations = [] }) {
                   <TableCell className="font-mono text-xs">{loc.zip || '-'}</TableCell>
                   <TableCell>
                     <div className="space-y-0.5">
-                      {loc.phone && <div className="flex items-center gap-1 text-xs"><Phone className="w-3 h-3 text-slate-400" />{loc.phone}</div>}
+                      {loc.phone && (
+                        <a href={telHref(loc.phone)} className="flex items-center gap-1 text-xs hover:text-cyan-400 hover:underline">
+                          <Phone className="w-3 h-3 text-slate-400" />{loc.phone}
+                        </a>
+                      )}
                       {loc.fax && <div className="flex items-center gap-1 text-xs text-slate-400"><Printer className="w-3 h-3" />{loc.fax}</div>}
                       {!loc.phone && !loc.fax && '-'}
                     </div>

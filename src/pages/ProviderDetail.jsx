@@ -46,6 +46,8 @@ import ProviderCMSDataCard from '../components/providers/ProviderCMSDataCard';
 import ReferralPartnersCard from '../components/providers/ReferralPartnersCard';
 import OrgAffiliatedProvidersCard from '../components/providers/OrgAffiliatedProvidersCard';
 import ComprehensiveReport from '../components/reports/ComprehensiveReport';
+import ProviderHeader from '../components/providers/ProviderHeader';
+import QueryErrorState from '../components/shared/QueryErrorState';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -53,7 +55,7 @@ export default function ProviderDetail() {
   const npi = searchParams.get('npi');
   const _fromPage = searchParams.get('from');
 
-  const { data: providers = [], isLoading: loadingProvider } = useQuery({
+  const { data: providers = [], isLoading: loadingProvider, isError: providerError, error: providerLoadError, refetch: refetchProvider } = useQuery({
     queryKey: ['provider', npi],
     queryFn: () => base44.entities.Provider.filter({ npi }),
     enabled: !!npi,
@@ -92,12 +94,6 @@ export default function ProviderDetail() {
     enabled: !!npi,
   });
 
-  const { data: _serviceUtil = [] } = useQuery({
-    queryKey: ['providerServiceUtil', npi],
-    queryFn: () => base44.entities.ProviderServiceUtilization.filter({ npi }),
-    enabled: !!npi,
-  });
-
   // Data for AI Related Providers
   const { data: allProviders = [] } = useQuery({
     queryKey: ['allProvsForAI'],
@@ -132,7 +128,10 @@ export default function ProviderDetail() {
   });
 
   const queryClient = useQueryClient();
-  const loading = loadingProvider || loadingScore || loadingLocations || loadingUtil || loadingRef || loadingTaxonomies;
+  // Render once the profile itself is in; utilization, referrals and the score
+  // fill in as they arrive instead of holding the whole page.
+  const loading = loadingProvider || loadingLocations || loadingTaxonomies;
+  const _loadingSecondary = loadingScore || loadingUtil || loadingRef;
 
   if (loading) {
     return (
@@ -159,10 +158,18 @@ export default function ProviderDetail() {
   const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
   const latestRef = [...referrals].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
 
+  if (providerError) {
+    return (
+      <div className="p-8 max-w-xl mx-auto">
+        <QueryErrorState title="Couldn't load this provider" error={providerLoadError} onRetry={refetchProvider} />
+      </div>
+    );
+  }
+
   if (!provider) {
     return (
       <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
-        <p className="text-slate-400 text-lg mb-4">Provider not found</p>
+        <p className="text-slate-400 text-lg mb-4">{npi ? `No provider with NPI ${npi} was found.` : 'No provider selected.'}</p>
         <Button variant="outline" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Go Back
         </Button>
@@ -182,6 +189,12 @@ export default function ProviderDetail() {
           </Button>
         </Link>
       </div>
+
+      <ProviderHeader
+        provider={provider}
+        specialty={(taxonomies.find(t => t.is_primary) || taxonomies[0])?.taxonomy_description}
+        location={primaryLocation}
+      />
 
       <div className="mb-4">
         <ComplianceDisclaimer />

@@ -3,10 +3,10 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Plus, Trash2, Eye, BarChart3 } from 'lucide-react';
+import { Plus, Trash2, Eye, BarChart3, Megaphone } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -18,14 +18,36 @@ import { listMembers } from '../components/leadlists/leadListService';
 import PageHeader from '../components/shared/PageHeader';
 import { ListCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/lib/AuthContext';
+import { toast } from 'sonner';
+import { useUrlState } from '@/hooks/useUrlState';
+import QueryErrorState from '../components/shared/QueryErrorState';
+
+// ?list=<id> opens that list, so a list can be linked to directly.
+const URL_DEFAULTS = { list: '' };
+import { useConfirm } from '@/components/shared/ConfirmDialog';
 
 export default function LeadLists() {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  // Campaigns (and sending) are admin-only.
+  const canStartCampaign = user?.role === 'admin';
+  const [url, setUrl] = useUrlState(URL_DEFAULTS);
 
-  const { data: lists = [], isLoading } = useQuery({
+  const { data: lists = [], isLoading, isError, error: loadError, refetch } = useQuery({
     queryKey: ['leadLists'],
     queryFn: () => base44.entities.LeadList.list('-created_date', 500),
   });
+
+  // A linked list older than the 500 loaded above is fetched on its own.
+  const listedOpen = url.list ? lists.find(l => String(l.id) === url.list) : null;
+  const { data: fetchedOpen = null } = useQuery({
+    queryKey: ['leadLists', 'one', url.list],
+    queryFn: async () => (await base44.entities.LeadList.filter({ id: Number(url.list) }, undefined, 1))[0] || null,
+    enabled: !!url.list && /^\d+$/.test(url.list) && !isLoading && !listedOpen,
+  });
+  const openList = listedOpen || fetchedOpen;
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.LeadList.delete(id),
@@ -33,7 +55,14 @@ export default function LeadLists() {
   });
 
   const handleDelete = async (listId) => {
-    if (!confirm('Delete this lead list?')) return;
+    const list = lists.find(l => l.id === listId);
+    const ok = await confirm({
+      title: `Delete "${list?.name || 'this lead list'}"?`,
+      description: `This removes the list and its ${(list?.member_count || 0).toLocaleString()} member entries. The providers themselves are not affected.`,
+      confirmLabel: 'Delete list',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       // The server removes the list's members together with the list.
       await deleteMutation.mutateAsync(listId);
@@ -68,6 +97,8 @@ export default function LeadLists() {
             <div className="space-y-3">
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-16" />)}
             </div>
+          ) : isError ? (
+            <QueryErrorState title="Couldn't load lead lists" error={loadError} onRetry={refetch} />
           ) : lists.length === 0 ? (
             <p className="text-slate-500 text-center py-8">No lead lists yet. Create one to get started!</p>
           ) : (
@@ -85,29 +116,32 @@ export default function LeadLists() {
                 <TableBody>
                   {lists.map(list => (
                     <TableRow key={list.id}>
-                      <TableCell className="font-medium text-slate-200">{list.name}</TableCell>
+                      <TableCell className="font-medium text-slate-200">
+                        <button type="button" onClick={() => setUrl({ list: String(list.id) })} className="text-left hover:text-cyan-400 hover:underline">
+                          {list.name}
+                        </button>
+                      </TableCell>
                       <TableCell className="text-sm text-slate-400">{list.description || '-'}</TableCell>
                       <TableCell className="text-slate-300">{list.member_count}</TableCell>
                       <TableCell className="text-slate-400">{new Date(list.created_date).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div className="flex gap-2 flex-wrap">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button size="sm" variant="outline">
-                                <Eye className="w-4 h-4 mr-1" />
-                                <span className="hidden sm:inline">View</span>
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto">
-                              <DialogHeader>
-                                <DialogTitle>{list.name}</DialogTitle>
-                              </DialogHeader>
-                              <ViewListDialog listId={list.id} listName={list.name} />
-                            </DialogContent>
-                          </Dialog>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button size="sm" variant="outline" onClick={() => setUrl({ list: String(list.id) })}>
+                            <Eye className="w-4 h-4 mr-1" />
+                            <span className="hidden sm:inline">View</span>
+                          </Button>
+                          {canStartCampaign && (
+                            <Button asChild size="sm" variant="outline" title="Start a campaign for this list">
+                              <Link to={`${createPageUrl('ProviderOutreach')}?leadList=${list.id}`}>
+                                <Megaphone className="w-4 h-4 mr-1" />
+                                <span className="hidden sm:inline">Start campaign</span>
+                              </Link>
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            aria-label={`Delete ${list.name}`}
                             onClick={() => handleDelete(list.id)}
                           >
                             <Trash2 className="w-4 h-4" />
@@ -122,6 +156,15 @@ export default function LeadLists() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!openList} onOpenChange={(open) => { if (!open) setUrl({ list: '' }); }}>
+        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{openList?.name}</DialogTitle>
+          </DialogHeader>
+          {openList && <ViewListDialog listId={openList.id} listName={openList.name} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -151,6 +194,7 @@ function firstByNpi(rows, prefer) {
 
 function ViewListDialog({ listId, listName }) {
   const [leads, setLeads] = useState([]);
+  const [loadError, setLoadError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -160,6 +204,7 @@ function ViewListDialog({ listId, listName }) {
 
   const loadLeads = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       // Every member, newest first: a list can outgrow any single page.
       const members = (await listMembers(listId)).reverse();
@@ -188,7 +233,7 @@ function ViewListDialog({ listId, listName }) {
 
       setLeads(enriched);
     } catch (err) {
-      console.error('[LeadLists] Failed to load leads:', err);
+      setLoadError(err);
       setLeads([]);
     } finally {
       setLoading(false);
@@ -202,7 +247,7 @@ function ViewListDialog({ listId, listName }) {
         l.member.id === memberId ? { ...l, member: { ...l.member, status } } : l
       ));
     } catch (err) {
-      console.error('Failed to update status:', err);
+      toast.error(`Couldn't update status: ${err.message}`);
     }
   };
 
@@ -213,7 +258,7 @@ function ViewListDialog({ listId, listName }) {
         l.member.id === memberId ? { ...l, member: { ...l.member, notes } } : l
       ));
     } catch (err) {
-      console.error('Failed to update notes:', err);
+      toast.error(`Couldn't save notes: ${err.message}`);
     }
   };
 
@@ -226,7 +271,7 @@ function ViewListDialog({ listId, listName }) {
         await base44.entities.LeadList.update(listId, { member_count: Math.max((list[0].member_count || 0) - 1, 0) });
       }
     } catch (err) {
-      console.error('Failed to remove provider:', err);
+      toast.error(`Couldn't remove provider: ${err.message}`);
     }
   };
 
@@ -236,6 +281,10 @@ function ViewListDialog({ listId, listName }) {
 
   if (loading) {
     return <div className="p-6"><Skeleton className="h-64" /></div>;
+  }
+
+  if (loadError) {
+    return <QueryErrorState title="Couldn't load this list" error={loadError} onRetry={loadLeads} />;
   }
 
   return (

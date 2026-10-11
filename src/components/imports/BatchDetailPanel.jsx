@@ -19,6 +19,7 @@ import { getAutoRetryState, MAX_AUTO_RETRY_ATTEMPTS } from './retryStatus';
 import AIFailureAnalysis from './AIFailureAnalysis';
 import AIDatasetAnalysis from './AIDatasetAnalysis';
 import { buildImportTypeLabels } from '@/lib/cmsImportTypes';
+import { toast } from 'sonner';
 
 const IMPORT_TYPE_LABELS = buildImportTypeLabels({
   provider_service_utilization: 'Provider Service Utilization',
@@ -172,7 +173,7 @@ function AutoRetryBanner({ batch, onUpdated }) {
       onUpdated?.();
     } catch (error) {
       console.error('Failed to update auto-retry setting for import batch', error);
-      window.alert('Unable to update the auto-retry setting right now. Please try again.');
+      toast.error('Unable to update the auto-retry setting right now. Please try again.');
     } finally {
       setBusy(false);
     }

@@ -54,7 +54,7 @@ export default function DataQuality() {
       queryClient.invalidateQueries({ queryKey: ['dqScans'] });
       queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
     },
-    onError: (err) => alert(`Scan failed: ${err.message}`),
+    meta: { errorMessage: 'Scan failed' },
   });
 
   const latestScan = scans[0];

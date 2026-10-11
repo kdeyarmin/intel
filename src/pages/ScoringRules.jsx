@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Calculator, Save, AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import PageHeader from '../components/shared/PageHeader';
+import { useConfirm } from '@/components/shared/ConfirmDialog';
+import { toast } from 'sonner';
 
 // rule_type identifies which scoring signal a rule weights (see the score
 // calculation below). Only weights are editable: each signal's cutoffs are
@@ -24,6 +26,7 @@ const DEFAULT_RULES = [
 ];
 
 export default function ScoringRules() {
+  const confirm = useConfirm();
   const [user, setUser] = useState(null);
   const [editingRule, setEditingRule] = useState(null);
   const [calculating, setCalculating] = useState(false);
@@ -79,7 +82,12 @@ export default function ScoringRules() {
   };
 
   const handleRecalculate = async () => {
-    if (!confirm('Recalculate CareMetric Referral Propensity Scores for the 100 most recently added providers? This may take a minute.')) return;
+    const ok = await confirm({
+      title: 'Recalculate referral propensity scores?',
+      description: 'Scores are recalculated for the 100 most recently added providers. This may take a minute.',
+      confirmLabel: 'Recalculate',
+    });
+    if (!ok) return;
     
     setCalculating(true);
     try {
@@ -93,7 +101,7 @@ export default function ScoringRules() {
       // Validate total weight
       const totalWeight = currentRules.reduce((sum, r) => sum + r.weight, 0);
       if (Math.abs(totalWeight - 100) > 1) {
-        alert(`Warning: Total weights = ${totalWeight}%. Recommended: 100%`);
+        toast.warning(`Rule weights add up to ${totalWeight}%. Scores are most meaningful when they total 100%.`);
       }
 
       const batch = providers.slice(0, 100);
@@ -195,10 +203,10 @@ export default function ScoringRules() {
         },
       });
 
-      alert(`Scoring complete for ${batch.length} providers (latest 100).`);
+      toast.success(`Scores updated for ${batch.length} providers.`);
       queryClient.invalidateQueries();
     } catch (error) {
-      alert('Scoring failed: ' + error.message);
+      toast.error('Scoring failed: ' + error.message);
     } finally {
       setCalculating(false);
     }

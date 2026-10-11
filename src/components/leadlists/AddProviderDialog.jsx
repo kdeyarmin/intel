@@ -48,7 +48,7 @@ export default function AddProviderDialog({ listId, existingNpis = [], onAdded }
   const handleAdd = async (npi) => {
     setAdding(npi);
     try {
-      // Goes through the list service so the list's member_count stays right.
+      // Shared path: skips duplicates and keeps the list's member_count right.
       await saveProvidersToLeadList({ listId, npis: [npi] });
       queryClient.invalidateQueries({ queryKey: ['leadLists'] });
       setAdded(prev => new Set([...prev, npi]));

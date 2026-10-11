@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Search, MapPin, Star, ChevronRight, Building2, Filter } from 'lucide-react';
+import { Search, MapPin, Star, ChevronRight, Building2, Filter, Loader2 } from 'lucide-react';
+import QueryErrorState from '@/components/shared/QueryErrorState';
+import { useUrlState } from '@/hooks/useUrlState';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,23 +22,26 @@ function formatCurrency(val) {
   return `$${num.toLocaleString()}`;
 }
 
+// Search, state and page live in the URL so Back from a facility restores them.
+const URL_DEFAULTS = { q: '', state: '', page: 1 };
+
 export default function FacilityListPage({ facilityGroup, title, icon: Icon, color, iconCls, detailPage = 'FacilityDetail' }) {
   const resolvedIconCls = iconCls || "text-cyan-400";
-  const navigate = useNavigate();
-  const [search, setSearch] = useState('');
-  const [selectedState, setSelectedState] = useState('');
-  const [page, setPage] = useState(1);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [url, setUrl] = useUrlState(URL_DEFAULTS);
+  const { q: debouncedSearch, state: selectedState, page } = url;
+  const [search, setSearch] = useState(debouncedSearch);
+  const setPage = (update) => setUrl((cur) => ({ page: typeof update === 'function' ? update(cur.page) : update }));
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
+      setUrl((cur) => (cur.q === search ? {} : { q: search, page: 1 }));
     }, 400);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, setUrl]);
+  // Keep the box in sync when Back/Forward changes the URL.
+  React.useEffect(() => { setSearch((cur) => (cur === debouncedSearch ? cur : debouncedSearch)); }, [debouncedSearch]);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching, isPlaceholderData, isError, error, refetch } = useQuery({
     queryKey: ['facilityList', facilityGroup, selectedState, debouncedSearch, page],
     queryFn: () => base44.functions.invoke('listFacilities', {
       facility_group: facilityGroup,
@@ -61,6 +66,12 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
           <Icon className={`w-6 h-6 ${resolvedIconCls}`} />
           <h1 className="text-xl sm:text-2xl font-bold text-slate-100">{title}</h1>
           <Badge className="bg-slate-700/50 text-slate-400">{total.toLocaleString()} facilities</Badge>
+          {/* Previous results stay on screen while the next page/search loads. */}
+          {isFetching && isPlaceholderData && (
+            <span className="flex items-center gap-1 text-xs text-slate-400" role="status">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Updating…
+            </span>
+          )}
         </div>
       </div>
 
@@ -68,14 +79,15 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
+            aria-label={`Search ${title.toLowerCase()}`}
             placeholder={`Search ${title.toLowerCase()}...`}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-10 bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-400"
           />
         </div>
-        <Select value={selectedState} onValueChange={v => { setSelectedState(v === 'all' ? '' : v); setPage(1); }}>
-          <SelectTrigger className="w-full sm:w-[180px] bg-slate-800/50 border-slate-700/50 text-slate-200">
+        <Select value={selectedState || 'all'} onValueChange={v => setUrl({ state: v === 'all' ? '' : v, page: 1 })}>
+          <SelectTrigger aria-label="Filter by state" className="w-full sm:w-[180px] bg-slate-800/50 border-slate-700/50 text-slate-200">
             <Filter className="w-3.5 h-3.5 mr-2 text-slate-400" />
             <SelectValue placeholder="All States" />
           </SelectTrigger>
@@ -92,6 +104,8 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
         <div className="space-y-2">
           {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 bg-slate-800" />)}
         </div>
+      ) : isError ? (
+        <QueryErrorState title={`Couldn't load ${title.toLowerCase()}`} error={error} onRetry={refetch} />
       ) : facilities.length === 0 ? (
         <Card className="bg-slate-800/50 border-slate-700/50">
           <CardContent className="py-12 text-center">
@@ -110,10 +124,10 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
             <div className="col-span-2 text-right">Payments</div>
           </div>
           {facilities.map((f, i) => (
-            <div
+            <Link
               key={f.provider_id || i}
-              className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/30 rounded-lg px-4 py-3 cursor-pointer transition-colors items-center"
-              onClick={() => navigate(createPageUrl(detailPage) + `?id=${f.provider_id}&group=${facilityGroup}`)}
+              to={createPageUrl(detailPage) + `?id=${f.provider_id}&group=${facilityGroup}`}
+              className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 bg-slate-800/30 hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 border border-slate-700/30 rounded-lg px-4 py-3 transition-colors items-center"
             >
               <div className="md:col-span-4 flex items-center gap-3 min-w-0">
                 <Building2 className={`w-4 h-4 ${resolvedIconCls} flex-shrink-0`} />
@@ -142,7 +156,7 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
                 <span className="text-sm text-slate-300">{formatCurrency(f.total_payments)}</span>
                 <ChevronRight className="w-4 h-4 text-slate-400" />
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

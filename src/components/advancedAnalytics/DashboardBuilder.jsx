@@ -12,6 +12,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Plus, Star, Trash2, LayoutDashboard, GripVertical } from 'lucide-react';
+import { useConfirm } from '@/components/shared/ConfirmDialog';
 
 const WIDGET_TYPES = [
   { type: 'trend', label: 'Trend Analysis', desc: 'Multi-year trends with YoY growth' },
@@ -20,6 +21,7 @@ const WIDGET_TYPES = [
 ];
 
 export default function DashboardBuilder({ dashboards = [], activeId, onSelect, onWidgetsChange }) {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [saveOpen, setSaveOpen] = useState(false);
   const [dashName, setDashName] = useState('');
@@ -34,7 +36,7 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
       setDashDesc('');
       onSelect(d.id);
     },
-    onError: (err) => alert(`Failed to create dashboard: ${err.message}`),
+    meta: { errorMessage: 'Failed to create dashboard' },
   });
 
   const deleteMutation = useMutation({
@@ -43,13 +45,13 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
       queryClient.invalidateQueries({ queryKey: ['analyticsDashboards'] });
       onSelect(null);
     },
-    onError: (err) => alert(`Failed to delete dashboard: ${err.message}`),
+    meta: { errorMessage: 'Failed to delete dashboard' },
   });
 
   const favMutation = useMutation({
     mutationFn: (db) => base44.entities.AnalyticsDashboard.update(db.id, { is_favorite: !db.is_favorite }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['analyticsDashboards'] }),
-    onError: (err) => alert(`Failed to update favorite: ${err.message}`),
+    meta: { errorMessage: 'Failed to update favorite' },
   });
 
   const defaultMutation = useMutation({
@@ -60,7 +62,7 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
       await base44.entities.AnalyticsDashboard.update(db.id, { is_default: !db.is_default });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['analyticsDashboards'] }),
-    onError: (err) => alert(`Failed to update default dashboard: ${err.message}`),
+    meta: { errorMessage: 'Failed to update default dashboard' },
   });
 
   const activeDashboard = dashboards.find(d => d.id === activeId);
@@ -125,7 +127,16 @@ export default function DashboardBuilder({ dashboards = [], activeId, onSelect, 
                 <button onClick={(e) => { e.stopPropagation(); defaultMutation.mutate(db); }} className="p-1 hover:text-violet-500 text-slate-300 transition-colors" title="Set default">
                   <LayoutDashboard className={`w-3.5 h-3.5 ${db.is_default ? 'text-violet-500' : ''}`} />
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(db.id); }} className="p-1 hover:text-red-500 text-slate-300 transition-colors">
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (await confirm({ title: `Delete dashboard "${db.name}"?`, confirmLabel: 'Delete', destructive: true })) {
+                      deleteMutation.mutate(db.id);
+                    }
+                  }}
+                  aria-label={`Delete dashboard ${db.name}`}
+                  className="p-1 hover:text-red-500 text-slate-300 transition-colors"
+                >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

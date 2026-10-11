@@ -1,13 +1,14 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Download, Building2 } from 'lucide-react';
+import { Download, Building2, Save, ListPlus } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import TypeAheadSearch from '../components/search/TypeAheadSearch';
 import SortControl from '../components/filters/SortControl';
@@ -21,6 +22,9 @@ import AINPIFinder from '../components/providers/AINPIFinder';
 import AIProfileAugmenter from '../components/providers/AIProfileAugmenter';
 import AIDuplicateDetector from '../components/providers/AIDuplicateDetector';
 import PageHeader from '../components/shared/PageHeader';
+import QueryErrorState from '../components/shared/QueryErrorState';
+import AddToLeadListDialog from '../components/leadlists/AddToLeadListDialog';
+import { useUrlState } from '@/hooks/useUrlState';
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -30,29 +34,70 @@ const SORT_OPTIONS = [
   { value: 'updated', label: 'Last Updated' },
 ];
 
+const SEARCH_LIMIT = 300;
+const RECENT_LIMIT = 200;
+
+// Search, filters, sort and tab live in the URL (Back restores them; links are shareable).
+const URL_DEFAULTS = { q: '', status: 'all', email: 'all', state: 'all', sort: 'default', dir: 'asc', tab: 'directory' };
+
+const filtersFromUrl = (url) => ({
+  statusFilter: url.status,
+  enrichmentFilter: 'all',
+  emailFilter: url.email,
+  stateFilter: url.state,
+  specialtyFilter: 'all',
+});
+
 export default function Organizations() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({
-    statusFilter: 'all',
-    enrichmentFilter: 'all',
-    emailFilter: 'all',
-    stateFilter: 'all',
-    specialtyFilter: 'all',
-  });
-  const [sortField, setSortField] = useState('default');
-  const [sortDir, setSortDir] = useState('asc');
+  const [url, setUrl] = useUrlState(URL_DEFAULTS);
+  const [searchTerm, setSearchTerm] = useState(url.q);
+  const filters = useMemo(() => filtersFromUrl(url), [url]);
+  const setFilters = useCallback((f) => setUrl({
+    status: f.statusFilter || 'all',
+    email: f.emailFilter || 'all',
+    state: f.stateFilter || 'all',
+  }), [setUrl]);
+  const sortField = url.sort;
+  const sortDir = url.dir;
+  const activeTab = url.tab;
+  const setActiveTab = useCallback((tab) => setUrl({ tab }), [setUrl]);
   const [selectedNpis, setSelectedNpis] = useState(new Set());
-  const [activeTab, setActiveTab] = useState('directory');
+  const [listDialogNpis, setListDialogNpis] = useState(null);
 
   const queryClient = useQueryClient();
 
-  // Fetch only Organization type providers if possible via filter, or fetch all and filter client side
-  // Since list() doesn't support complex filtering in one go easily without checking backend capabilities,
-  // we'll fetch all and filter client-side as done in Providers.js, but optimized would be filtering at API level.
-  // base44.entities.Provider.filter({ entity_type: 'Organization' }) is better if supported.
-  const { data: providers = [], isLoading } = useQuery({
-    queryKey: ['organizationsPage'],
-    queryFn: () => base44.entities.Provider.filter({ entity_type: 'Organization' }, '-created_date', 500),
+  const [debouncedSearch, setDebouncedSearch] = useState(url.q.trim());
+  // The typed search reaches the URL when it settles. Writing it from its own
+  // effect re-ran on every navigation and put the old search back over a
+  // link's or Back's ?q=; here the sync below resets the timer instead.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const q = searchTerm.trim();
+      setDebouncedSearch(q);
+      if (q !== url.q) setUrl({ q });
+    }, 350);
+    return () => clearTimeout(t);
+  }, [searchTerm, url.q, setUrl]);
+  useEffect(() => {
+    setSearchTerm((current) => (current.trim() === url.q ? current : url.q));
+  }, [url.q]);
+
+  // Search runs on the server across every organization (it used to filter
+  // only the newest 500 loaded in the browser). With no search, show the
+  // newest organizations.
+  const isSearching = debouncedSearch.length >= 2;
+  const { data: providers = [], isLoading, isError, error: loadError, refetch, isPlaceholderData } = useQuery({
+    queryKey: ['organizationsPage', debouncedSearch],
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      if (isSearching) {
+        const res = await base44.functions.invoke('searchProviders', {
+          q: debouncedSearch, entity_type: 'Organization', limit: SEARCH_LIMIT,
+        });
+        return res.data?.providers || [];
+      }
+      return base44.entities.Provider.filter({ entity_type: 'Organization' }, '-created_date', RECENT_LIMIT);
+    },
   });
 
   // Stable key of displayed NPIs so the scoped score fetch refetches with the list.
@@ -78,16 +123,26 @@ export default function Organizations() {
     },
   });
 
+  // Locations/specialties for the organizations on screen (was: the newest
+  // 1000 rows of the whole table, which rarely matched the listed orgs).
   const { data: locations = [] } = useQuery({
-    queryKey: ['organizationsPageLocations'],
-    queryFn: () => base44.entities.ProviderLocation.list('-created_date', 1000),
+    queryKey: ['organizationsPageLocations', npiKey],
+    enabled: providers.length > 0,
     staleTime: 120000,
+    placeholderData: keepPreviousData,
+    queryFn: () => base44.entities.ProviderLocation.filter(
+      { npi: { $in: providers.map(p => p.npi).filter(Boolean) } }, undefined, 2000,
+    ),
   });
 
   const { data: taxonomies = [] } = useQuery({
-    queryKey: ['organizationsPageTaxonomies'],
-    queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 1000),
+    queryKey: ['organizationsPageTaxonomies', npiKey],
+    enabled: providers.length > 0,
     staleTime: 120000,
+    placeholderData: keepPreviousData,
+    queryFn: () => base44.entities.ProviderTaxonomy.filter(
+      { npi: { $in: providers.map(p => p.npi).filter(Boolean) } }, undefined, 2000,
+    ),
   });
 
   const { data: savedFilters = [] } = useQuery({
@@ -96,7 +151,7 @@ export default function Organizations() {
     staleTime: 30000,
   });
 
-  const defaultApplied = useRef(false);
+  const defaultApplied = useRef(Object.keys(URL_DEFAULTS).some(k => k !== 'tab' && url[k] !== URL_DEFAULTS[k]));
   useEffect(() => {
     if (defaultApplied.current) return;
     const def = savedFilters.find(f => f.is_default);
@@ -117,14 +172,16 @@ export default function Organizations() {
     });
   };
 
-  const _resetFilters = () => {
+  const resetFilters = () => {
     setSearchTerm('');
-    setFilters({
-      statusFilter: 'all', enrichmentFilter: 'all', emailFilter: 'all', stateFilter: 'all', specialtyFilter: 'all',
-    });
-    setSortField('default');
-    setSortDir('asc');
+    setUrl({ q: '', status: 'all', email: 'all', state: 'all', sort: 'default', dir: 'asc' });
   };
+  const hasActiveFilters = filters.statusFilter !== 'all' || filters.emailFilter !== 'all' || filters.stateFilter !== 'all';
+
+  const stateOptions = useMemo(
+    () => [...new Set(locations.map(l => l.state).filter(Boolean))].sort(),
+    [locations],
+  );
 
   const currentFilters = { searchTerm, ...filters };
 
@@ -187,12 +244,6 @@ export default function Organizations() {
       // Basic type check just in case, though query should filter it
       if (p.entity_type !== 'Organization') return false;
 
-      if (searchTerm) {
-        const q = searchTerm.toLowerCase();
-        const match = (p.npi || '').includes(q) ||
-          (p.organization_name || '').toLowerCase().includes(q);
-        if (!match) return false;
-      }
       if (filters.statusFilter !== 'all' && p.status !== filters.statusFilter) return false;
       if (filters.enrichmentFilter !== 'all') {
         if (filters.enrichmentFilter === 'yes' && !p.needs_nppes_enrichment) return false;
@@ -208,7 +259,7 @@ export default function Organizations() {
       }
       return true;
     });
-  }, [providers, searchTerm, filters, locationByNpi]);
+  }, [providers, filters, locationByNpi]);
 
   const sortedProviders = useMemo(() => {
     if (sortField === 'default') return filteredProviders;
@@ -258,7 +309,13 @@ export default function Organizations() {
     <div className="p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Organizations"
-        subtitle={`${providers.length} organizations found`}
+        subtitle={
+          isPlaceholderData
+            ? 'Searching…'
+            : isSearching
+            ? `${providers.length.toLocaleString()}${providers.length >= SEARCH_LIMIT ? '+' : ''} organization${providers.length === 1 ? '' : 's'} matching "${debouncedSearch}"`
+            : `Showing the ${providers.length.toLocaleString()} most recently added organizations — search by name or NPI to find others`
+        }
         icon={Building2}
         breadcrumbs={[{ label: 'Providers', page: 'Providers' }, { label: 'Organizations' }]}
       />
@@ -266,12 +323,32 @@ export default function Organizations() {
         <div />
         <div className="flex flex-wrap gap-2">
           <ExportDialog
-            data={sortedProviders}
+            data={sortedProviders.map(p => {
+              const loc = (locationByNpi[p.npi] || []).find(l => l.is_primary) || (locationByNpi[p.npi] || [])[0];
+              return {
+                npi: p.npi,
+                organization_name: p.organization_name || '',
+                status: p.status || '',
+                email: p.email || '',
+                phone: loc?.phone || p.phone || '',
+                address: loc?.address_1 || '',
+                city: loc?.city || '',
+                state: loc?.state || '',
+                zip: loc?.zip || '',
+                score: getScore(p.npi)?.toFixed(0) || '',
+              };
+            })}
             fields={[
               { key: 'npi', label: 'NPI' },
               { key: 'organization_name', label: 'Organization Name' },
               { key: 'status', label: 'Status' },
               { key: 'email', label: 'Email' },
+              { key: 'phone', label: 'Phone' },
+              { key: 'address', label: 'Address' },
+              { key: 'city', label: 'City' },
+              { key: 'state', label: 'State' },
+              { key: 'zip', label: 'ZIP' },
+              { key: 'score', label: 'Score' },
             ]}
             fileName="organizations"
             title="Organizations"
@@ -283,6 +360,14 @@ export default function Organizations() {
             taxonomies={taxonomies}
             onComplete={() => queryClient.invalidateQueries({ queryKey: ['organizationsPage'] })}
           />
+          <Button
+            onClick={() => setListDialogNpis(selectedNpis.size > 0 ? Array.from(selectedNpis) : sortedProviders.map(p => p.npi))}
+            disabled={sortedProviders.length === 0}
+            className="bg-cyan-600 hover:bg-cyan-700"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            {selectedNpis.size > 0 ? `Add ${selectedNpis.size} to Lead List` : 'Save as Lead List'}
+          </Button>
         </div>
       </div>
 
@@ -327,11 +412,36 @@ export default function Organizations() {
                 onSuggestionSelect={handleSuggestionSelect}
                 className="flex-1"
               />
-              <div className="flex items-start justify-end gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <FilterSelect
+                    label="Status"
+                    value={filters.statusFilter}
+                    onChange={(v) => setFilters({ ...filters, statusFilter: v })}
+                    options={[{ value: 'Active', label: 'Active' }, { value: 'Deactivated', label: 'Deactivated' }]}
+                  />
+                  <FilterSelect
+                    label="Email"
+                    value={filters.emailFilter}
+                    onChange={(v) => setFilters({ ...filters, emailFilter: v })}
+                    options={[{ value: 'has_email', label: 'Has email' }, { value: 'no_email', label: 'No email' }]}
+                  />
+                  <FilterSelect
+                    label="State"
+                    value={filters.stateFilter}
+                    onChange={(v) => setFilters({ ...filters, stateFilter: v })}
+                    options={stateOptions.map(st => ({ value: st, label: st }))}
+                  />
+                  {(hasActiveFilters || searchTerm) && (
+                    <Button variant="ghost" size="sm" onClick={resetFilters} className="text-xs text-slate-400 hover:text-slate-200">
+                      Clear all
+                    </Button>
+                  )}
+                </div>
                 <SortControl
                   sortField={sortField}
                   sortDir={sortDir}
-                  onSortChange={(f, d) => { setSortField(f); setSortDir(d); }}
+                  onSortChange={(f, d) => setUrl({ sort: f, dir: d })}
                   sortOptions={SORT_OPTIONS}
                 />
               </div>
@@ -357,6 +467,7 @@ export default function Organizations() {
                     <TableRow>
                       <TableHead className="w-10">
                         <input type="checkbox"
+                          aria-label="Select all organizations"
                           checked={sortedProviders.length > 0 && selectedNpis.size === sortedProviders.length}
                           onChange={toggleSelectAll}
                           className="rounded border-slate-600 bg-slate-800"
@@ -385,10 +496,18 @@ export default function Organizations() {
                           <TableCell><Skeleton className="h-8 w-16" /></TableCell>
                         </TableRow>
                       ))
+                    ) : isError ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="py-6">
+                          <QueryErrorState title="Couldn't load organizations" error={loadError} onRetry={refetch} />
+                        </TableCell>
+                      </TableRow>
                     ) : sortedProviders.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-8 text-slate-500">
-                          No organizations found
+                          {isSearching
+                            ? `No organizations match "${debouncedSearch}" with the current filters.`
+                            : 'No organizations match the current filters.'}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -399,6 +518,7 @@ export default function Organizations() {
                           <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-900/5' : ''}>
                             <TableCell>
                               <input type="checkbox"
+                                aria-label={`Select ${provider.organization_name || provider.npi}`}
                                 checked={selectedNpis.has(provider.npi)}
                                 onChange={() => toggleSelect(provider.npi)}
                                 className="rounded border-slate-600 bg-slate-800"
@@ -444,9 +564,21 @@ export default function Organizations() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Link to={createPageUrl(`OrganizationDetail?npi=${provider.npi}`)}>
-                                <Button variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">View Details</Button>
-                              </Link>
+                              <div className="flex gap-1">
+                                <Link to={createPageUrl(`OrganizationDetail?npi=${provider.npi}`)}>
+                                  <Button variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">View Details</Button>
+                                </Link>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  aria-label="Add to lead list"
+                                  title="Add to lead list"
+                                  onClick={() => setListDialogNpis([provider.npi])}
+                                  className="h-7 w-7 p-0 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+                                >
+                                  <ListPlus className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
@@ -460,6 +592,28 @@ export default function Organizations() {
           <DataSourcesFooter />
         </TabsContent>
       </Tabs>
+
+      <AddToLeadListDialog
+        open={!!listDialogNpis}
+        onOpenChange={(open) => { if (!open) setListDialogNpis(null); }}
+        npis={listDialogNpis || []}
+        defaultName={isSearching ? `Organizations: ${debouncedSearch}` : ''}
+        onSaved={() => setSelectedNpis(new Set())}
+      />
     </div>
+  );
+}
+
+function FilterSelect({ label, value, onChange, options }) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-8 w-auto min-w-[120px] text-xs bg-slate-800/50 border-slate-700 text-slate-300" aria-label={`${label} filter`}>
+        <SelectValue placeholder={label} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{label}: All</SelectItem>
+        {options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+      </SelectContent>
+    </Select>
   );
 }

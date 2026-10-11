@@ -11,8 +11,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Bookmark, Plus, Trash2, Star, ChevronDown } from 'lucide-react';
+import { useConfirm } from '@/components/shared/ConfirmDialog';
 
 export default function SavedFilterBar({ page, currentFilters, onApplyFilter }) {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [saveOpen, setSaveOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -30,13 +32,13 @@ export default function SavedFilterBar({ page, currentFilters, onApplyFilter }) 
       setSaveOpen(false);
       setNewName('');
     },
-    onError: (err) => alert(`Failed to save filter: ${err.message}`),
+    meta: { errorMessage: 'Failed to save filter' },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.SavedFilter.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['savedFilters', page] }),
-    onError: (err) => alert(`Failed to delete filter: ${err.message}`),
+    meta: { errorMessage: 'Failed to delete filter' },
   });
 
   const toggleDefaultMutation = useMutation({
@@ -48,7 +50,7 @@ export default function SavedFilterBar({ page, currentFilters, onApplyFilter }) 
       await base44.entities.SavedFilter.update(filter.id, { is_default: !filter.is_default });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['savedFilters', page] }),
-    onError: (err) => alert(`Failed to update default filter: ${err.message}`),
+    meta: { errorMessage: 'Failed to update default filter' },
   });
 
   const handleSave = () => {
@@ -89,7 +91,13 @@ export default function SavedFilterBar({ page, currentFilters, onApplyFilter }) 
                     <Star className={`w-3 h-3 ${sf.is_default ? 'text-amber-500 fill-amber-500' : ''}`} />
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(sf.id); }}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (await confirm({ title: `Delete saved filter "${sf.name}"?`, confirmLabel: 'Delete', destructive: true })) {
+                        deleteMutation.mutate(sf.id);
+                      }
+                    }}
+                    aria-label={`Delete saved filter ${sf.name}`}
                     className="p-0.5 hover:text-red-500 text-slate-400 transition-colors"
                   >
                     <Trash2 className="w-3 h-3" />

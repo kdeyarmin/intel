@@ -12,6 +12,7 @@ import LeadListFilters from '../components/leadlists/LeadListFilters';
 import LeadResultsTable from '../components/leadlists/LeadResultsTable';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import PageHeader from '../components/shared/PageHeader';
+import { toast } from 'sonner';
 
 const MAX_LIST_MEMBERS = 1000;
 
@@ -83,7 +84,7 @@ export default function LeadListBuilder() {
       setCurrentListId(newList.id);
       queryClient.invalidateQueries({ queryKey: ['leadLists'] });
     },
-    onError: (err) => alert(`Failed to create list: ${err.message}`),
+    meta: { errorMessage: 'Failed to create list' },
   });
 
   const updateMemberMutation = useMutation({
@@ -91,7 +92,7 @@ export default function LeadListBuilder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['listMembers'] });
     },
-    onError: (err) => alert(`Failed to update member: ${err.message}`),
+    meta: { errorMessage: 'Failed to update member' },
   });
 
   const isLoading = loadingProviders || loadingScores || loadingLocations || loadingTaxonomies || loadingUtil;
@@ -167,24 +168,29 @@ export default function LeadListBuilder() {
 
   const handleSaveList = async () => {
     if (!listName.trim()) {
-      alert('Please enter a list name');
+      toast.error('Please enter a list name');
       return;
     }
 
-    try {
-      // Create list members in bulk (capped so one save can't flood the table).
-      const memberBatch = filteredResults.slice(0, MAX_LIST_MEMBERS).map(result => ({
-        npi: result.provider.npi,
-        status: 'New',
-      }));
+    // Create list members in bulk (capped so one save can't flood the table).
+    const memberBatch = filteredResults.slice(0, MAX_LIST_MEMBERS).map(result => ({
+      npi: result.provider.npi,
+      status: 'New',
+    }));
 
-      const newList = await createListMutation.mutateAsync({
+    let newList;
+    try {
+      newList = await createListMutation.mutateAsync({
         name: listName,
         description: listDescription,
         filter_criteria: filters,
         member_count: memberBatch.length,
       });
+    } catch {
+      return; // the mutation's global error handler has already said why
+    }
 
+    try {
       for (let i = 0; i < memberBatch.length; i += 500) {
         await base44.entities.LeadListMember.bulkCreate(
           memberBatch.slice(i, i + 500).map(m => ({ ...m, list_id: newList.id })),
@@ -194,12 +200,12 @@ export default function LeadListBuilder() {
       const truncated = filteredResults.length > memberBatch.length
         ? ` (first ${memberBatch.length.toLocaleString()} of ${filteredResults.length.toLocaleString()} matches)`
         : '';
-      alert(`List "${listName}" saved with ${memberBatch.length.toLocaleString()} providers${truncated}`);
+      toast.success(`List "${listName}" saved with ${memberBatch.length.toLocaleString()} providers${truncated}`);
       setSaveDialogOpen(false);
       setListName('');
       setListDescription('');
     } catch (error) {
-      alert(`Failed to save list: ${error.message}`);
+      toast.error(`Failed to save list: ${error.message}`);
     }
   };
 
@@ -258,7 +264,7 @@ export default function LeadListBuilder() {
 
   const handleStatusChange = async (npi, newStatus) => {
     if (!currentListId) {
-      alert('Please save this list first to track status');
+      toast.info('Save this list first to track each provider\'s status.');
       return;
     }
 
