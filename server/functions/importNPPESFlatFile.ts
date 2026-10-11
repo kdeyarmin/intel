@@ -2,6 +2,7 @@ import { db } from "../db";
 import { importBatches, providers, nppesCrawlerConfigs } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
+import { parseCSVLine } from "../lib/csv";
 
 const MAX_EXEC_MS = 50000;
 const BULK_INSERT_SIZE = 1000;
@@ -22,29 +23,6 @@ async function safeFlatFileQuery<T>(fn: () => Promise<T>, fallback: T, label: st
   return fallback;
 }
 
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === "," && !inQuotes) {
-      result.push(current.trim());
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  result.push(current.trim());
-  return result;
-}
 
 export async function handleImportNPPESFlatFile(payload: any) {
   const { batch_id, file_url, byte_offset = 0, headers = null, total_rows = 0 } = payload;

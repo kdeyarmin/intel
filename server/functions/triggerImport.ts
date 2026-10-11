@@ -6,6 +6,8 @@ import { CMS_NATURAL_KEYS, partition, distinctValues } from "./cmsUpsert";
 import { settleBatchCompletion } from "../lib/importCompletion";
 import { markImportFinished, markImportStarted, resolveImportVersion } from "../lib/datasetRegistry";
 import { sourceForUrl } from "../lib/cmsCatalog";
+import { csvSourceRecords, isLocalUpload, sourceKindFor } from "../lib/importSources";
+import { pageRecords } from "../lib/csv";
 import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
 
 const LOOKUP_PRIMARY_BATCH_SIZE = 100;
@@ -136,6 +138,27 @@ const ALLOWED_URL_DOMAINS = [
   "download.cms.gov",
   "npiregistry.cms.hhs.gov",
 ];
+
+// Import types whose rows may come from a file: an admin upload
+// (/api/storage/<name>, see server/lib/importSources.ts) or any https CSV
+// link (fetched through the SSRF guard). Everything else must come from a
+// CMS endpoint. These datasets aren't on the CMS APIs at all.
+export const UPLOAD_CAPABLE_TYPES: ReadonlySet<string> = new Set(["physician_shared_patient_patterns", "licensed_facilities"]);
+
+/** Pure: why a file_url can't be used for an import type, or null when it can. */
+export function fileUrlProblem(importType: string, fileUrl: string | null | undefined, year: unknown): string | null {
+  if (!fileUrl) return null;
+  const uploadable = UPLOAD_CAPABLE_TYPES.has(importType);
+  if (isLocalUpload(fileUrl)) {
+    if (!uploadable) return `Uploaded files are only accepted for ${[...UPLOAD_CAPABLE_TYPES].join(", ")}; other datasets are imported from CMS directly.`;
+  } else if (!isAllowedUrl(fileUrl) && !(uploadable && /^https:\/\//i.test(fileUrl))) {
+    return "file_url must be an https:// link on a CMS government domain (data.cms.gov, download.cms.gov)";
+  }
+  if (uploadable && (isLocalUpload(fileUrl) || sourceKindFor(fileUrl) === "remote_csv") && !(Number.isInteger(Number(year)) && Number(year) >= 2000)) {
+    return "year is required for file imports: the data year the file describes (it is shown with the data)";
+  }
+  return null;
+}
 
 // The import itself downloads through safeFetchStream (the SSRF guard), which
 // also only takes https.
@@ -327,17 +350,18 @@ export async function handleTriggerImport(payload: any, user: any) {
     throw { status: 403, message: "Forbidden: Admin access required" };
   }
 
-  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter } = payload;
+  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter, headers } = payload;
 
   if (!raw_import_type) {
     throw { status: 400, message: "Missing required field: import_type" };
   }
 
-  if (file_url && !isAllowedUrl(file_url)) {
-    throw { status: 400, message: "file_url must be an https:// link on a CMS government domain (data.cms.gov, download.cms.gov)" };
-  }
-
   const import_type = IMPORT_TYPE_ALIASES[raw_import_type] || raw_import_type;
+
+  const urlProblem = fileUrlProblem(import_type, file_url, year);
+  if (urlProblem) {
+    throw { status: 400, message: urlProblem };
+  }
 
   const activeImports = await db.select().from(importBatches)
     .where(and(eq(importBatches.import_type, import_type), inArray(importBatches.status, ["validating", "processing"])));
@@ -451,7 +475,7 @@ export async function handleTriggerImport(payload: any, user: any) {
   } else {
     const { batch, conflict } = await insertBatchAtomically(import_type, {
       import_type,
-      file_name: `cms_${import_type}_${resolvedYear}`,
+      file_name: isLocalUpload(resolvedUrl) ? resolvedUrl.split("/").pop() : `cms_${import_type}_${resolvedYear}`,
       status: "processing",
       dry_run: !!dry_run,
       total_rows: 0,
@@ -475,6 +499,8 @@ export async function handleTriggerImport(payload: any, user: any) {
       npi_filter: effNpiFilter,
       state_filter: effStateFilter,
       as_of: version?.temporalEnd || null,
+      // Column names for a headerless CSV upload (e.g. the FOIA shared-patient files).
+      headers: Array.isArray(headers) && headers.length ? headers.map(String) : undefined,
     }).catch((e) => console.error(`[triggerImport] CMS import error:`, e.message));
   }, 100);
 
@@ -1241,11 +1267,98 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
   return { inserted, skipped, filtered: filteredCount };
 }
 
+// A CSV file (an upload, or an https link) through the same page/insert/
+// progress/completion path as the CMS APIs. resume_offset counts data rows.
+async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | null) {
+  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, headers, as_of = null } = params;
+  const PAGE_SIZE = 1000;
+  const PAUSE_CHECK_INTERVAL = 5;
+  const PROGRESS_UPDATE_INTERVAL = 5;
+  let totalFetched = Number(resume_offset) || 0;
+  let totalInserted = Number(total_inserted) || 0;
+  let totalSkipped = Number(total_skipped) || 0;
+  const errors: any[] = [];
+  let pages = 0;
+
+  const saveProgress = (extra: Record<string, unknown> = {}) => safeImportQuery(
+    () => db.update(importBatches).set({
+      ...extra,
+      imported_rows: totalInserted,
+      skipped_rows: totalSkipped,
+      total_rows: totalFetched,
+      retry_params: { ...params, resume_offset: totalFetched, total_inserted: totalInserted, total_skipped: totalSkipped },
+      updated_date: new Date(),
+    }).where(eq(importBatches.id, batch_id)),
+    undefined, `progress ${import_type}`,
+  );
+
+  try {
+    const records = csvSourceRecords(file_url, { headers: Array.isArray(headers) && headers.length ? headers : null });
+    for await (const page of pageRecords(records, PAGE_SIZE, Number(resume_offset) || 0)) {
+      pages++;
+      if (pages % PAUSE_CHECK_INTERVAL === 0) {
+        const [current] = await safeImportQuery(
+          () => db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1),
+          [] as any[], `pause check ${import_type}`,
+        );
+        if (current && (current.status === "paused" || current.status === "cancelled")) {
+          console.log(`[CsvImport] Import ${import_type} ${current.status} by user at row ${totalFetched}`);
+          await saveProgress();
+          return;
+        }
+      }
+      let rows = page.rows;
+      if (rowFilter) {
+        const before = rows.length;
+        rows = rows.filter(rowFilter);
+        totalSkipped += before - rows.length;
+      }
+      if (!dry_run && rows.length > 0) {
+        try {
+          const result = await insertCMSRows(import_type, rows, year, batch_id, { asOf: as_of });
+          totalInserted += result.inserted;
+          totalSkipped += result.skipped + result.filtered;
+        } catch (e: any) {
+          console.error(`[CsvImport] Insert error at row ${page.offset}: ${e.message}`);
+          errors.push({ offset: page.offset, message: `Insert error: ${e.message}` });
+          totalSkipped += rows.length;
+        }
+      }
+      totalFetched = page.nextOffset;
+      if (pages % PROGRESS_UPDATE_INTERVAL === 0) await saveProgress();
+    }
+
+    await safeImportQuery(
+      () => db.update(importBatches).set({
+        status: "completed",
+        completed_at: new Date(),
+        imported_rows: totalInserted,
+        skipped_rows: totalSkipped,
+        total_rows: totalFetched,
+        error_samples: errors.length > 0 ? errors.slice(-5) : null,
+        updated_date: new Date(),
+      }).where(eq(importBatches.id, batch_id)),
+      undefined, `complete ${import_type}`,
+    );
+    console.log(`[CsvImport] Completed ${import_type}: rows=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
+    await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: totalFetched, dataYear: year, note: dry_run ? "dry run" : `file ${String(file_url).split("/").pop()}` }).catch(() => {});
+  } catch (e: any) {
+    console.error(`[CsvImport] Fatal error:`, e.message);
+    await saveProgress({ status: "failed", error_samples: [{ message: e.message, phase: "csv_import" }] });
+    await markImportFinished(import_type, { batchId: batch_id, ok: false, note: String(e.message || e).slice(0, 200) }).catch(() => {});
+  }
+  await settleBatchCompletion(batch_id);
+}
+
 export async function handleAutoImportCMSData(params: any) {
   const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, npi_filter, state_filter, as_of = null } = params;
   // Optional row-level filters from the import dialog. Built once; null when no
   // filter is configured so the common path stays allocation-free.
   const rowFilter = buildImportRowFilter(npi_filter, state_filter);
+  const sourceKind = sourceKindFor(file_url);
+  if (sourceKind === "local_csv" || sourceKind === "remote_csv") {
+    return importFromCsv(params, rowFilter);
+  }
   const PAGE_SIZE = 1000;
   const PAUSE_CHECK_INTERVAL = 5;
   const PROGRESS_UPDATE_INTERVAL = 5;
