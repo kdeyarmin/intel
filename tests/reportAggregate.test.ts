@@ -138,6 +138,17 @@ describe("partitionRecipients", () => {
     expect(blocked).toEqual(["stranger@gmail.com"]);
   });
 
+  it("blocks a pending or disabled account even on an allowed domain", () => {
+    const { allowed, blocked } = partitionRecipients(
+      ["gone@caremetric.ai", "new@caremetric.ai"],
+      new Set(),
+      ["caremetric.ai"],
+      new Set(["gone@caremetric.ai"]),
+    );
+    expect(allowed).toEqual(["new@caremetric.ai"]);
+    expect(blocked).toEqual(["gone@caremetric.ai"]);
+  });
+
   it("returns allowed addresses beyond the cap instead of dropping them", () => {
     const many = Array.from({ length: 27 }, (_, i) => `u${i}@caremetric.ai`);
     const { allowed, overflow } = partitionRecipients(many, new Set(), ["caremetric.ai"]);

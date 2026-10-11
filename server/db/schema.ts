@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, timestamp, jsonb, doublePrecision, serial, varchar, uuid, index } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, timestamp, jsonb, doublePrecision, serial, varchar, uuid, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
@@ -8,9 +8,49 @@ export const users = pgTable("users", {
   full_name: varchar("full_name", { length: 255 }),
   role: varchar("role", { length: 50 }).default("user"),
   avatar_url: text("avatar_url"),
+  // pending (signed up, awaiting approval) | invited (no password yet) | active | disabled.
+  // The column default is "active" so existing accounts keep working; signup
+  // inserts "pending" explicitly.
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  // Bumped to end every session for the account (password change, disable, revoke).
+  token_version: integer("token_version").notNull().default(0),
+  last_login_at: timestamp("last_login_at"),
+  approved_at: timestamp("approved_at"),
+  approved_by: varchar("approved_by", { length: 255 }),
+  disabled_at: timestamp("disabled_at"),
+  disabled_reason: text("disabled_reason"),
+  password_changed_at: timestamp("password_changed_at"),
   created_date: timestamp("created_date").defaultNow(),
   updated_date: timestamp("updated_date").defaultNow(),
-});
+}, (table) => [
+  // Emails are matched case-insensitively (migration 0008 skips this if
+  // existing rows differ only by case).
+  uniqueIndex("users_email_lower_uq").on(sql`lower(${table.email})`),
+]);
+
+// Single-use password reset and invite links. Only a sha256 of the token is stored.
+export const authTokens = pgTable("auth_tokens", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  purpose: varchar("purpose", { length: 20 }).notNull(),
+  token_hash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  expires_at: timestamp("expires_at").notNull(),
+  used_at: timestamp("used_at"),
+  created_by: varchar("created_by", { length: 255 }),
+  created_date: timestamp("created_date").defaultNow(),
+}, (table) => [
+  index("auth_tokens_user_idx").on(table.user_id),
+]);
+
+// Sign-in attempts per email in the current lockout window, shared by every
+// server instance (UserRepo.countLoginAttempt). Ended windows are deleted.
+export const loginAttempts = pgTable("login_attempts", {
+  email: varchar("email", { length: 255 }).primaryKey(),
+  attempts: integer("attempts").notNull().default(0),
+  window_ends_at: timestamp("window_ends_at", { withTimezone: true }).notNull(),
+}, (table) => [
+  index("login_attempts_window_ends_idx").on(table.window_ends_at),
+]);
 
 export const providers = pgTable("providers", {
   id: serial("id").primaryKey(),

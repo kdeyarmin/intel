@@ -1,16 +1,32 @@
 const API_BASE = "/api";
 
 export const AUTH_EXPIRED_EVENT = "auth:expired";
+// Fired when the server says the account is awaiting approval or disabled, so
+// the auth layer can re-check and route accordingly.
+export const ACCOUNT_STATUS_EVENT = "auth:account-status";
 
 // Endpoints whose 401s are expected and handled by the auth layer itself
-// (bad credentials, logout). The startup session probe opts out per call
-// instead (base44.auth.me({ probe: true })).
-const AUTH_ENDPOINTS = ["/auth/login", "/auth/signup", "/auth/logout"];
+// (bad credentials, logout, reset links). Exact paths: /auth/logout-all and
+// /auth/change-password need a session, so their 401 means it expired. The
+// startup session probe opts out per call (base44.auth.me({ probe: true })).
+const AUTH_ENDPOINTS = new Set([
+  "/auth/options", "/auth/login", "/auth/signup", "/auth/logout",
+  "/auth/forgot-password", "/auth/token-info", "/auth/reset-password",
+]);
+const isAuthEndpoint = (url) => AUTH_ENDPOINTS.has(url.split("?")[0]);
+
+// The session lives in an httpOnly cookie. Older builds also kept the token in
+// localStorage, where any script on the page could read it; drop that copy.
+try {
+  if (typeof localStorage !== "undefined") localStorage.removeItem("auth_token");
+} catch {
+  /* storage unavailable */
+}
 
 let authExpiredHandled = false;
 // Bumped whenever a new session starts. A request remembers the generation it
 // was sent under, so a 401 for the old session that arrives after signing in
-// again can't clear the new token.
+// again (or changing the password) can't sign the user out of the new one.
 let authGeneration = 0;
 
 export function resetAuthExpired() {
@@ -18,18 +34,28 @@ export function resetAuthExpired() {
   authGeneration += 1;
 }
 
-// A 401 from any other request means the session expired mid-use. Clear the
-// stale token and tell the app once (many queries can fail at the same time),
-// so it can send the user to the login page instead of rendering empty tables.
+// A 401 from any other request means the session expired mid-use. Tell the
+// app once (many queries can fail at the same time), so it can send the user
+// to the login page instead of rendering empty tables.
 export function handleUnauthorized(url, { generation = authGeneration, expected = false } = {}) {
-  if (expected || AUTH_ENDPOINTS.some((p) => url.startsWith(p))) return;
+  if (expected || isAuthEndpoint(url)) return;
   if (generation !== authGeneration) return;
   if (authExpiredHandled) return;
   if (typeof window === "undefined") return;
   if (window.location.pathname.startsWith("/login")) return;
   authExpiredHandled = true;
-  localStorage.removeItem("auth_token");
   window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+}
+
+const ACCOUNT_STATUS_CODES = new Set(["account_pending", "account_disabled"]);
+
+// `expected`: the session probe, whose caller handles the status itself.
+// Announcing it would make the listener probe again, and again, forever.
+export function handleAccountStatus(url, data, { expected = false } = {}) {
+  if (!ACCOUNT_STATUS_CODES.has(data?.code)) return;
+  if (expected || isAuthEndpoint(url)) return;
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(ACCOUNT_STATUS_EVENT, { detail: { code: data.code } }));
 }
 
 // Server errors carry a short `message` (or `error`) plus an optional
@@ -45,6 +71,7 @@ export function buildErrorMessage(data, status) {
 async function toApiError(res, url, auth) {
   const data = await res.json().catch(() => ({ message: res.statusText }));
   if (res.status === 401) handleUnauthorized(url, auth);
+  if (res.status === 403) handleAccountStatus(url, data, auth);
   const err = new Error(buildErrorMessage(data, res.status));
   err.name = "ApiError";
   err.status = res.status;
@@ -52,13 +79,12 @@ async function toApiError(res, url, auth) {
   return err;
 }
 
-// `expectUnauthorized`: a 401 is an answer for the caller, not an expired session.
-async function request(url, options = {}, { expectUnauthorized = false } = {}) {
+// `sessionProbe`: the caller is checking the session itself, so a 401 or an
+// account-status 403 is its answer, not news for the rest of the app.
+async function request(url, options = {}, { sessionProbe = false } = {}) {
   const generation = authGeneration;
-  const token = localStorage.getItem("auth_token");
   const headers = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers || {}),
   };
 
@@ -68,7 +94,7 @@ async function request(url, options = {}, { expectUnauthorized = false } = {}) {
     credentials: "include",
   });
 
-  if (!res.ok) throw await toApiError(res, url, { generation, expected: expectUnauthorized });
+  if (!res.ok) throw await toApiError(res, url, { generation, expected: sessionProbe });
 
   return res.json();
 }
@@ -158,10 +184,16 @@ export const base44 = {
   entities: new Proxy({}, entityHandler),
 
   auth: {
-    // `probe`: checking whether there is a session at all (app startup), so a
-    // 401 just means "signed out". Everywhere else it means the session expired.
+    // `probe`: checking whether there is a session at all (app startup, or
+    // re-checking after an account-status answer), so a 401 just means
+    // "signed out" and a pending/disabled answer goes to the caller only.
+    // Everywhere else a 401 means the session expired.
     async me({ probe = false } = {}) {
-      return request("/auth/me", {}, { expectUnauthorized: probe });
+      return request("/auth/me", {}, { sessionProbe: probe });
+    },
+
+    async options() {
+      return request("/auth/options");
     },
 
     async login(email, password) {
@@ -169,9 +201,6 @@ export const base44 = {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-      if (result.token) {
-        localStorage.setItem("auth_token", result.token);
-      }
       resetAuthExpired();
       return result;
     },
@@ -181,20 +210,78 @@ export const base44 = {
         method: "POST",
         body: JSON.stringify({ email, password, full_name }),
       });
-      if (result.token) {
-        localStorage.setItem("auth_token", result.token);
-      }
       resetAuthExpired();
       return result;
     },
 
     async logout() {
-      localStorage.removeItem("auth_token");
       await request("/auth/logout", { method: "POST" }).catch(() => {});
+    },
+
+    async logoutEverywhere() {
+      await request("/auth/logout-all", { method: "POST" });
+    },
+
+    async changePassword(current_password, new_password) {
+      const result = await request("/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({ current_password, new_password }),
+      });
+      resetAuthExpired(); // a fresh session; the old one's requests may still 401
+      return result;
+    },
+
+    async forgotPassword(email) {
+      return request("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+    },
+
+    async tokenInfo(token) {
+      return request(`/auth/token-info?token=${encodeURIComponent(token)}`);
+    },
+
+    async resetPassword(token, password, full_name) {
+      const result = await request("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ token, password, full_name }),
+      });
+      resetAuthExpired();
+      return result;
     },
 
     redirectToLogin(returnUrl) {
       window.location.href = `/login?returnUrl=${encodeURIComponent(returnUrl || window.location.href)}`;
+    },
+  },
+
+  // Admin user management (server/routes/adminUsers.ts).
+  admin: {
+    users: {
+      list: () => request("/admin/users"),
+      pendingCount: () => request("/admin/users/pending-count"),
+      activity: (limit = 50) => request(`/admin/users/activity?limit=${limit}`),
+      invite: (data) => request("/admin/users/invite", { method: "POST", body: JSON.stringify(data) }),
+      update: (id, data) => request(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+      approve: (id) => request(`/admin/users/${id}/approve`, { method: "POST" }),
+      disable: (id, reason) => request(`/admin/users/${id}/disable`, { method: "POST", body: JSON.stringify({ reason }) }),
+      enable: (id) => request(`/admin/users/${id}/enable`, { method: "POST" }),
+      resetLink: (id) => request(`/admin/users/${id}/reset-link`, { method: "POST" }),
+      revokeSessions: (id) => request(`/admin/users/${id}/revoke-sessions`, { method: "POST" }),
+      remove: (id) => request(`/admin/users/${id}`, { method: "DELETE" }),
+    },
+  },
+
+  // Best-effort audit trail for the user's own actions (exports, imports,
+  // scoring runs). The server records who and from where; failures are ignored.
+  audit: {
+    async record(event_type, details = {}) {
+      try {
+        await request("/audit", { method: "POST", body: JSON.stringify({ event_type, details }) });
+      } catch (e) {
+        console.warn("Audit logging failed:", e?.message || e);
+      }
     },
   },
 
@@ -218,12 +305,10 @@ export const base44 = {
         const actualFile = fileOrObj?.file || fileOrObj;
         const formData = new FormData();
         formData.append("file", actualFile);
-        const token = localStorage.getItem("auth_token");
         // Like request(): a 401 only ends the session this upload was sent under.
         const generation = authGeneration;
         const res = await fetch(`${API_BASE}/integrations/file/upload`, {
           method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: "include",
           body: formData,
         });

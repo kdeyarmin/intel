@@ -3,9 +3,14 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { eq, inArray } from "drizzle-orm";
-import { db } from "./db";
+import { db, pool as dbPool } from "./db";
 import { importBatches } from "./db/schema";
-import authRoutes from "./routes/auth";
+import { createAuthRouter } from "./routes/auth";
+import { createAdminUsersRouter } from "./routes/adminUsers";
+import { createAuditRouter } from "./routes/audit";
+import { defaultAccountDeps } from "./lib/accountDeps";
+import { parseTrustProxy } from "./lib/trustProxy";
+import { authMiddleware } from "./middleware/auth";
 import entityRoutes from "./routes/entities";
 import integrationRoutes from "./routes/integrations";
 import functionRoutes from "./routes/functions";
@@ -14,6 +19,10 @@ import webhookRoutes from "./routes/webhooks";
 import publicRoutes from "./routes/public";
 
 const app = express();
+
+// Which X-Forwarded-For hops to believe when working out a client's address
+// (rate limits, audit IPs). See TRUST_PROXY in .env.example.
+app.set("trust proxy", parseTrustProxy(process.env.TRUST_PROXY));
 
 // In production the SPA is served same-origin, so cross-origin requests should be
 // limited to an explicit allowlist (ALLOWED_ORIGINS, comma-separated). In dev we
@@ -45,8 +54,12 @@ app.use("/api/webhooks", webhookRoutes);
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 
-app.use("/api/storage", express.static(path.resolve("uploads")));
-app.use("/api/auth", authRoutes);
+// Uploaded files are only for signed-in users (the SPA fetches them same-origin).
+app.use("/api/storage", authMiddleware, express.static(path.resolve("uploads")));
+const accountDeps = defaultAccountDeps(dbPool);
+app.use("/api/auth", createAuthRouter(accountDeps));
+app.use("/api/admin/users", createAdminUsersRouter(accountDeps));
+app.use("/api/audit", createAuditRouter());
 app.use("/api/entities", entityRoutes);
 app.use("/api/integrations", integrationRoutes);
 app.use("/api/functions", functionRoutes);
@@ -86,6 +99,14 @@ app.listen(PORT, "0.0.0.0", async () => {
     console.warn(`[CareMetric API] WARNING: ALLOWED_ORIGINS is not configured in production — cross-origin requests will be rejected. Set ALLOWED_ORIGINS to enable access from your frontend domain.`);
   }
 
+  // Session changes (disable, role, sign out everywhere) reach this instance
+  // from the others at once (see server/lib/sessionUsers.ts).
+  {
+    const { startSessionUserListener } = await import("./lib/sessionUsers");
+    const pg = (await import("pg")).default;
+    startSessionUserListener(() => new pg.Client({ connectionString: process.env.DATABASE_URL }));
+  }
+
   async function safeStartupQuery<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
@@ -102,38 +123,24 @@ app.listen(PORT, "0.0.0.0", async () => {
   }
 
   try {
-    const { users } = await import("./db/schema");
-    const bcryptLib = await import("bcryptjs");
-
-    const adminEmail = process.env.ADMIN_EMAIL || "admin@caremetric.local";
-    // No real credential is committed to source. Production requires ADMIN_PASSWORD;
-    // dev falls back to a clearly non-secret placeholder that should be changed.
-    const adminPassword = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === "production" ? null : "changeme-dev-only");
-    const adminFullName = process.env.ADMIN_FULL_NAME || "CareMetric Admin";
-
-    const [existingAdmin] = await safeStartupQuery(
-      () => db.select().from(users).where(eq(users.email, adminEmail)).limit(1),
-      [] as any[], "check admin"
+    const { seedAdmin } = await import("./lib/adminSeed");
+    const seed = await safeStartupQuery(
+      () => seedAdmin(accountDeps.repo, { hashPassword: accountDeps.hashPassword, verifyPassword: accountDeps.verifyPassword }),
+      null, "seed admin"
     );
-    if (!existingAdmin) {
-      if (!adminPassword) {
-        console.warn(`[CareMetric API] No admin user exists and ADMIN_PASSWORD is not set in production — skipping admin seed. Set ADMIN_EMAIL and ADMIN_PASSWORD secrets to seed the first admin.`);
-      } else {
-        const hash = await bcryptLib.default.hash(adminPassword, 10);
-        await safeStartupQuery(
-          () => db.insert(users).values({
-            email: adminEmail,
-            password_hash: hash,
-            role: "admin",
-            full_name: adminFullName,
-          }),
-          undefined, "seed admin"
-        );
-        console.log(`[CareMetric API] Admin user seeded (${adminEmail})`);
-        if (!process.env.ADMIN_PASSWORD) {
-          console.warn("[CareMetric API] ADMIN_PASSWORD not set — used built-in dev default. Do not deploy without setting ADMIN_PASSWORD.");
-        }
+    if (seed?.outcome === "seeded") {
+      console.log(`[CareMetric API] Admin user seeded (${seed.email})`);
+      if (!process.env.ADMIN_PASSWORD) {
+        console.warn("[CareMetric API] ADMIN_PASSWORD not set — used built-in dev default. Do not deploy without setting ADMIN_PASSWORD.");
       }
+    } else if (seed?.outcome === "restored") {
+      console.warn(`[CareMetric API] No active admin existed; restored admin access for ${seed.email} (password matched ADMIN_PASSWORD).`);
+    } else if (seed?.outcome === "skipped_no_password") {
+      console.warn(`[CareMetric API] No admin user exists and ADMIN_PASSWORD is not set in production — skipping admin seed. Set ADMIN_EMAIL and ADMIN_PASSWORD secrets to seed the first admin.`);
+    } else if (seed?.outcome === "left_alone") {
+      console.warn(`[CareMetric API] ${seed.email} exists but isn't an active admin; left unchanged. Use scripts/admin-recover.ts if you're locked out.`);
+    } else if (seed?.outcome === "invalid_email") {
+      console.warn("[CareMetric API] ADMIN_EMAIL isn't a valid email address; skipping admin seed.");
     }
     const { and } = await import("drizzle-orm");
 
@@ -275,7 +282,6 @@ app.listen(PORT, "0.0.0.0", async () => {
 
     // Large-table indexes build in the background (see server/lib/bootIndexes.ts).
     (async () => {
-      const { pool: dbPool } = await import("./db");
       const { runBootIndexes } = await import("./lib/bootIndexes");
       await runBootIndexes(dbPool);
     })();

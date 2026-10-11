@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { AUTH_EXPIRED_EVENT } from '@/api/client';
+import { ACCOUNT_STATUS_EVENT, AUTH_EXPIRED_EVENT } from '@/api/client';
 import { queryClientInstance } from '@/lib/query-client';
 
 const AuthContext = createContext();
@@ -33,6 +33,14 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
   }, []);
 
+  // A request was refused because the account is awaiting approval or was
+  // disabled mid-session: re-read the account so the routes can react.
+  useEffect(() => {
+    const onStatus = () => { checkAuth(); };
+    window.addEventListener(ACCOUNT_STATUS_EVENT, onStatus);
+    return () => window.removeEventListener(ACCOUNT_STATUS_EVENT, onStatus);
+  }, []);
+
   const checkAuth = async () => {
     try {
       setIsLoadingAuth(true);
@@ -41,6 +49,19 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser);
       setIsAuthenticated(true);
     } catch (error) {
+      const signedOut = error.status === 401 || error.data?.code === 'account_disabled';
+      if (!signedOut) {
+        // The server couldn't check the session (503 while the database is
+        // unreachable, or no connection at all). That isn't "signed out":
+        // keep any session already loaded and let the person retry.
+        setAuthError({
+          type: 'unavailable',
+          message: error.status === 503
+            ? error.data?.detail || "Couldn't check your session. Try again shortly."
+            : "Couldn't reach the server. Check your connection and try again.",
+        });
+        return;
+      }
       setIsAuthenticated(false);
       setUser(null);
       if (error.status === 401) {
@@ -48,6 +69,9 @@ export const AuthProvider = ({ children }) => {
           type: 'auth_required',
           message: 'Authentication required'
         });
+      } else if (error.data?.code === 'account_disabled') {
+        queryClientInstance.clear();
+        setAuthError({ type: 'account_disabled', message: error.data.detail || 'This account has been disabled.' });
       }
     } finally {
       setIsLoadingAuth(false);
@@ -75,8 +99,26 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     setUser(null);
     setIsAuthenticated(false);
+    queryClientInstance.clear();
     await base44.auth.logout();
     window.location.href = '/login';
+  };
+
+  // Ends the account's sessions on every device, including this one.
+  const logoutEverywhere = async () => {
+    await base44.auth.logoutEverywhere();
+    setUser(null);
+    setIsAuthenticated(false);
+    queryClientInstance.clear();
+    window.location.href = '/login';
+  };
+
+  // After a reset or invite link the server has already started a session.
+  const adoptSession = (sessionUser) => {
+    setUser(sessionUser);
+    setIsAuthenticated(true);
+    setAuthError(null);
+    setSessionExpired(false);
   };
 
   const navigateToLogin = () => {
@@ -94,9 +136,12 @@ export const AuthProvider = ({ children }) => {
       authError,
       sessionExpired,
       appPublicSettings,
+      isPending: user?.status === 'pending',
       login,
       signup,
       logout,
+      logoutEverywhere,
+      adoptSession,
       navigateToLogin,
       checkAppState
     }}>

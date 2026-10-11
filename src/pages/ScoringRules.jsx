@@ -191,16 +191,12 @@ export default function ScoringRules() {
         }
       }
 
-      // Log audit event
-      await base44.entities.AuditEvent.create({
-        event_type: 'scoring_run',
-        user_email: user?.email || 'system',
-        details: {
-          action: 'Recalculate Scores',
-          entity: 'LeadScore',
-          row_count: batch.length,
-          message: 'Scores recalculated (latest 100 providers)',
-        },
+      // Log audit event (best-effort; never throws).
+      await base44.audit.record('scoring_run', {
+        action: 'Recalculate Scores',
+        entity: 'LeadScore',
+        row_count: batch.length,
+        message: 'Scores recalculated (latest 100 providers)',
       });
 
       toast.success(`Scores updated for ${batch.length} providers.`);

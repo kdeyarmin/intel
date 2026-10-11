@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { useAuth } from '@/lib/AuthContext';
 import { pagesConfig } from '@/pages.config.js';
-import { LogOut, Search, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LogOut, Search, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import NotificationBell from '../shared/NotificationBell';
+import AccountDialog from '../auth/AccountDialog';
 import { getNavPageFor, getVisibleNavSections } from './navConfig';
 
 const loadGlobalSearchDialog = () => import('../search/GlobalSearchDialog');
@@ -27,6 +28,7 @@ export default function AppLayout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarState);
   const [collapsedSections, setCollapsedSections] = useState({});
   const [searchOpen, setSearchOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const mainRef = React.useRef(null);
   const asideRef = React.useRef(null);
 
@@ -186,16 +188,28 @@ export default function AppLayout({ children, currentPageName }) {
             </div>
             <NotificationBell />
           </div>
-          <Button
-            variant="ghost"
-            onClick={logout}
-            className="w-full text-slate-500 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="ml-2">Sign Out</span>
-          </Button>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              onClick={() => setAccountOpen(true)}
+              className="flex-1 text-slate-500 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
+            >
+              <UserCog className="w-4 h-4" aria-hidden="true" />
+              <span className="ml-2">Account</span>
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={logout}
+              className="flex-1 text-slate-500 hover:text-slate-200 hover:bg-slate-800/50 justify-start h-8 text-xs"
+            >
+              <LogOut className="w-4 h-4" aria-hidden="true" />
+              <span className="ml-2">Sign Out</span>
+            </Button>
+          </div>
         </div>
       </aside>
+
+      <AccountDialog open={accountOpen} onOpenChange={setAccountOpen} />
 
       {searchOpen && (
         <Suspense fallback={<SearchDialogFallback />}>

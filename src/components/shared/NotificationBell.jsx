@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, AlertTriangle, CheckCircle2, XCircle, X } from 'lucide-react';
+import { Bell, AlertTriangle, CheckCircle2, XCircle, X, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { usePageAccess } from '@/hooks/usePageAccess';
@@ -25,6 +25,14 @@ export default function NotificationBell() {
     queryFn: () => base44.entities.ImportBatch.list('-created_date', 10),
     staleTime: 30000,
     // Import batches are admin-only; regular users would just get a 403.
+    enabled: isAdmin,
+  });
+
+  const { data: pendingAccounts } = useQuery({
+    queryKey: ['pendingAccounts'],
+    queryFn: () => base44.admin.users.pendingCount(),
+    staleTime: 60000,
+    refetchInterval: 120000,
     enabled: isAdmin,
   });
 
@@ -64,9 +72,29 @@ export default function NotificationBell() {
       page: 'DataQuality',
     }));
 
-  const allNotifs = [...alertNotifs, ...batchNotifs]
-    .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0))
-    .slice(0, 8);
+  // Keyed by the newest pending account: dismissing hides it until someone
+  // newer signs up (approving one of the waiting accounts doesn't bring it back).
+  const pendingCount = pendingAccounts?.count || 0;
+  const latestPending = pendingAccounts?.latest_id ?? 0;
+  const seenPending = Math.max(0, ...dismissed
+    .filter(id => id.startsWith('accounts:pending:'))
+    .map(id => Number(id.slice('accounts:pending:'.length)) || 0));
+  const accountNotifs = pendingCount > 0 && latestPending > seenPending
+    ? [{
+        id: `accounts:pending:${latestPending}`,
+        type: 'warning',
+        icon: UserPlus,
+        title: `${pendingCount} account${pendingCount === 1 ? '' : 's'} awaiting approval`,
+        desc: 'Review them in Admin Settings → Users',
+        time: null,
+        page: 'AdminSettings',
+      }]
+    : [];
+
+  const allNotifs = [
+    ...accountNotifs,
+    ...[...alertNotifs, ...batchNotifs].sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0)),
+  ].slice(0, 8);
 
   const unreadCount = allNotifs.length;
 

@@ -8,6 +8,10 @@ import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'r
 import PageNotFound from './lib/PageNotFound.jsx';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import Login from '@/pages/Login';
+import PendingApproval from '@/components/auth/PendingApproval';
+import SessionUnavailable from '@/components/auth/SessionUnavailable';
+import ForgotPassword from '@/components/auth/ForgotPassword';
+import ResetPassword from '@/components/auth/ResetPassword';
 import { ConfirmProvider } from '@/components/shared/ConfirmDialog';
 import PageErrorBoundary from '@/components/shared/PageErrorBoundary';
 import { buildLoginUrl } from '@/lib/returnUrl';
@@ -70,7 +74,7 @@ const LayoutWrapper = ({ children, currentPageName }) => {
 };
 
 const ProtectedRoute = ({ children, pageName }) => {
-  const { isAuthenticated, isLoadingAuth, sessionExpired, user } = useAuth();
+  const { isAuthenticated, isLoadingAuth, sessionExpired, user, authError, checkAppState } = useAuth();
   const location = useLocation();
 
   if (isLoadingAuth) {
@@ -81,8 +85,17 @@ const ProtectedRoute = ({ children, pageName }) => {
     );
   }
 
+  if (!isAuthenticated && authError?.type === 'unavailable') {
+    return <SessionUnavailable message={authError.message} onRetry={checkAppState} />;
+  }
+
   if (!isAuthenticated) {
     return <Navigate to={buildLoginUrl(location, { reason: sessionExpired ? 'expired' : undefined })} replace />;
+  }
+
+  // Signed in, but an admin hasn't approved the account yet.
+  if (user?.status === 'pending') {
+    return <Navigate to="/pending" replace />;
   }
 
   if (pageName && !canAccessPage(pageName, user?.role)) {
@@ -105,6 +118,9 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/pending" element={<PendingApproval />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/" element={
         <ProtectedRoute pageName={mainPageKey}>
           <LayoutWrapper currentPageName={mainPageKey}>

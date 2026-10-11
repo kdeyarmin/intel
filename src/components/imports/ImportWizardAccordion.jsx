@@ -212,7 +212,6 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
     setProcessingStatus('Creating batch...');
 
     try {
-      const user = await base44.auth.me();
       const batch = await base44.entities.ImportBatch.create({
         import_type: selectedType.id,
         file_name: file.name,
@@ -241,11 +240,7 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
         toast.error('Import failed: ' + err.message);
       });
 
-      await base44.entities.AuditEvent.create({
-        event_type: 'import',
-        user_email: user.email,
-        details: { action: dryRun ? 'Dry Run' : 'Import', entity: selectedType.id, file_name: file.name },
-      });
+      await base44.audit.record('import', { action: dryRun ? 'Dry Run' : 'Import', entity: selectedType.id, file_name: file.name });
 
       setProcessingStatus('Processing in background — you can navigate away');
     } catch (error) {

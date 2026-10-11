@@ -210,23 +210,14 @@ export default function LeadListBuilder() {
   };
 
   const handleExportCSV = async () => {
-    // Log export to audit trail
-    try {
-      const user = await base44.auth.me();
-      await base44.entities.AuditEvent.create({
-        event_type: 'export',
-        user_email: user.email,
-        details: {
-          action: 'csv_export',
-          entity: 'lead_list',
-          row_count: filteredResults.length,
-          file_name: `lead-list-${new Date().toISOString().split('T')[0]}.csv`,
-          filters: filters,
-        },
-      });
-    } catch (e) {
-      console.error('Audit logging failed:', e);
-    }
+    // Log export to audit trail (best-effort; never throws).
+    await base44.audit.record('export', {
+      action: 'csv_export',
+      entity: 'lead_list',
+      row_count: filteredResults.length,
+      file_name: `lead-list-${new Date().toISOString().split('T')[0]}.csv`,
+      filters,
+    });
 
     const headers = ['NPI', 'Name', 'Specialty', 'City', 'State', 'ZIP', 'Phone', 'Score', 'Patient Fingerprint'];
     const rows = filteredResults.map(result => {

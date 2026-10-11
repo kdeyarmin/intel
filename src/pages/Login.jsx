@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { useSearchParams, useNavigate, Navigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Navigate, Link } from 'react-router-dom';
 import { safeReturnUrl } from '@/lib/returnUrl';
 
 export default function Login() {
-  const { login, signup, isAuthenticated, isLoadingAuth } = useAuth();
+  const { login, signup, isAuthenticated, isLoadingAuth, user, authError } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const sessionExpired = searchParams.get('reason') === 'expired';
+  const accountDisabled = authError?.type === 'account_disabled';
   const [isSignup, setIsSignup] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,10 +21,10 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      if (isSignup) {
-        await signup(email, password, fullName);
-      } else {
-        await login(email, password);
+      const account = isSignup ? await signup(email, password, fullName) : await login(email, password);
+      if (account?.status === 'pending') {
+        navigate('/pending', { replace: true });
+        return;
       }
       navigate(safeReturnUrl(searchParams.get('returnUrl')), { replace: true });
     } catch (err) {
@@ -35,6 +36,7 @@ export default function Login() {
 
   // Hooks above must run unconditionally; only bail out once they have.
   if (!isLoadingAuth && isAuthenticated && !loading) {
+    if (user?.status === 'pending') return <Navigate to="/pending" replace />;
     return <Navigate to={safeReturnUrl(searchParams.get('returnUrl'))} replace />;
   }
 
@@ -46,10 +48,22 @@ export default function Login() {
           <p className="text-slate-400">Healthcare Provider Intelligence Platform</p>
         </div>
 
-        <div className="bg-slate-800 rounded-xl border border-slate-700 p-8">
+        <main className="bg-slate-800 rounded-xl border border-slate-700 p-8">
           <h2 className="text-xl font-semibold text-white mb-6">
             {isSignup ? 'Create Account' : 'Sign In'}
           </h2>
+
+          {accountDisabled && !error && (
+            <div className="mb-4 p-3 bg-red-900/30 border border-red-500/30 rounded-lg text-red-400 text-sm" role="alert">
+              {authError.message}
+            </div>
+          )}
+
+          {isSignup && !error && (
+            <div className="mb-4 p-3 bg-cyan-900/30 border border-cyan-500/30 rounded-lg text-cyan-300 text-sm" role="status">
+              New accounts need an administrator's approval before they can see any data.
+            </div>
+          )}
 
           {sessionExpired && !error && (
             <div className="mb-4 p-3 bg-amber-900/30 border border-amber-500/30 rounded-lg text-amber-400 text-sm" role="status">
@@ -102,11 +116,17 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 placeholder="Enter your password"
               />
             </div>
+
+            {!isSignup && (
+              <div className="text-right -mt-2">
+                <Link to="/forgot-password" className="text-xs text-cyan-400 hover:text-cyan-300">Forgot password?</Link>
+              </div>
+            )}
 
             <button
               type="submit"
@@ -126,13 +146,14 @@ export default function Login() {
 
           <div className="mt-6 text-center">
             <button
+              type="button"
               onClick={() => { setIsSignup(!isSignup); setError(''); }}
               className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
             >
               {isSignup ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
             </button>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

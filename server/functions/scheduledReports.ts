@@ -118,16 +118,20 @@ async function buildReport(row: any) {
   return { cfg, rows, metrics, groupLabel, summary, email, csv: cfg.include_csv === false ? null : buildReportCsv({ groupLabel, metrics, rows }), sourceRowCount: source.length };
 }
 
-// Why a recipient was skipped: reports go to app users, plus any address on a
-// REPORT_RECIPIENT_DOMAINS domain.
-const BLOCKED_REASON = () => (process.env.REPORT_RECIPIENT_DOMAINS ? "not app users or on an approved domain" : "not app users");
+// Why a recipient was skipped: reports go to active app users, plus any
+// address on a REPORT_RECIPIENT_DOMAINS domain.
+const BLOCKED_REASON = () => (process.env.REPORT_RECIPIENT_DOMAINS ? "not active app users or on an approved domain" : "not active app users");
 const OVERFLOW_REASON = `a report goes to at most ${MAX_REPORT_RECIPIENTS} recipients`;
 
 async function allowedRecipients(recipients: unknown) {
   const list = (Array.isArray(recipients) ? recipients : []).map((e) => String(e).trim().toLowerCase());
-  const { rows } = await pool.query("SELECT lower(email) AS email FROM users WHERE lower(email) = ANY($1)", [list]);
+  // Only active accounts: not someone awaiting approval, or a disabled account
+  // (who stays blocked even on an allowed domain).
+  const { rows } = await pool.query("SELECT lower(email) AS email, status FROM users WHERE lower(email) = ANY($1)", [list]);
   const domains = (process.env.REPORT_RECIPIENT_DOMAINS || "").split(",").map((d) => d.trim().toLowerCase()).filter(Boolean);
-  return partitionRecipients(recipients, new Set(rows.map((r: any) => r.email)), domains);
+  const active = new Set<string>(rows.filter((r: any) => r.status === "active").map((r: any) => r.email));
+  const inactive = new Set<string>(rows.filter((r: any) => r.status !== "active").map((r: any) => r.email));
+  return partitionRecipients(recipients, active, domains, inactive);
 }
 
 async function saveRunState(id: number, patch: Record<string, unknown>) {

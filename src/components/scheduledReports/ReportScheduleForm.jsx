@@ -202,7 +202,7 @@ export default function ReportScheduleForm({ initialData, onSave, onCancel, savi
           {/* Recipients */}
           <div className="border-t pt-3 space-y-2">
             <Label className="text-xs font-semibold text-slate-300">Recipients *</Label>
-            <p className="text-[11px] text-slate-400">Reports are only emailed to people who have an account in this app, or whose address is on a domain an administrator has approved.</p>
+            <p className="text-[11px] text-slate-400">Reports are only emailed to people with an active account in this app, or whose address is on a domain an administrator has approved.</p>
             <div className="flex gap-2">
               <Input
                 placeholder="email@example.com"
