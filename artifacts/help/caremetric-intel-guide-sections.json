@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "5133a6dcd4b41be24f60e602594e9dd4a66a0415",
+    "ref": "89dddbdfb582f8b6bf00b07032588fddbc41a79f",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 36,
-    "text_character_count": 18144,
-    "canonical_sha256": "ed56a70b571ad9dc7e4a4bc33fc0d678ee27a5322be7bfff9353bc67797702ab"
+    "text_character_count": 17689,
+    "canonical_sha256": "70c57f8dd2c4975321e7d54f7e4a5b0ced686bb5d843a3503e233b16bad7048e"
   },
   "sections": [
     {
@@ -43,8 +43,8 @@
         },
         {
           "heading": "Your account",
-          "text": "New accounts need approval: after signing up you'll see a waiting screen until an administrator approves you. Owners approve and invite the people in their own organization, by link.\n\nThere are three roles:\n• **Member** — the directory, facilities, analytics, territory, AI Assistant, reports and lead lists.\n• **Owner** — a member who also manages the organization: its people, plan and billing, security audit and campaigns.\n• **Platform admin** (CareMetric staff) — everything, plus data imports, the NPPES crawler, provider intelligence, scoring rules and every organization's accounts.\n\nForgot your password? Use **Forgot password** on the sign-in page (when email is set up) or ask an owner for a reset link. **Account** at the bottom of the sidebar changes your password or signs you out on every device.",
-          "sha256": "007e5fc604a7a8ab6c029b02f747083867bd9d6611ecd56f205068e9f51f9b76"
+          "text": "New accounts need approval: after signing up you'll see a waiting screen until an administrator approves you. Owners invite the people in their own organization, by link.\n\nThere are three roles:\n• **Member** — the directory, facilities, analytics, territory, AI Assistant, reports and lead lists.\n• **Owner** — a member who also manages the organization: its people, plan and billing, security audit and campaigns.\n• **Platform admin** (CareMetric staff) — everything, plus data imports, the NPPES crawler, provider intelligence, scoring rules and every organization's accounts.\n\nForgot your password? Use **Forgot password** on the sign-in page (when email is set up) or ask an owner for a reset link. **Account** at the bottom of the sidebar changes your password or signs you out on every device.",
+          "sha256": "ad4c590ea7fea11046ff711b3a364e70c516e800299fba36da619886f8864940"
         },
         {
           "heading": "What data is this and how fresh is it?",
@@ -204,8 +204,8 @@
         },
         {
           "heading": "Import monitor",
-          "text": "Tracks every import with live progress, history, validation rules, alerts, performance and schedules (tabs at the top). Imports that fail for temporary reasons, such as a network error or rate limit, are retried automatically; the **Health** tab shows success rates, top errors and the retry pipeline, and warns when scheduled maintenance has stopped running. Its **Needs attention** list (platform admins) names datasets whose newer release hasn't been imported within a week, datasets marked importing whose import has ended or stopped moving, schedules failing three times in a row, a maintenance run that is overdue or had failing workers, and analytics rollups that are overdue (two days, or nine for the weekly lead scoring refresh); platform admins also get that list by email at most once a day while anything is open.",
-          "sha256": "7a0e820cbf10b695aec7fb21b03ff7c8021d8b29ff4b4b36fe0e1e791b8f34e2"
+          "text": "Tracks every import with live progress, history, validation rules, alerts, performance and schedules (tabs at the top). Imports that fail for temporary reasons, such as a network error or rate limit, are retried automatically; the **Health** tab shows success rates, top errors and the retry pipeline, and warns when scheduled maintenance has stopped running.",
+          "sha256": "d793709d7fb1a348e8829abc5339cdc9e44a09719a3c5e53994686761817feb9"
         },
         {
           "heading": "Dataset catalog",
@@ -236,8 +236,8 @@
       "topics": [
         {
           "heading": "Users and your organization",
-          "text": "Every account belongs to an organization: the one created when its first owner signed up. Under **Admin Settings → Users** an owner sees their organization's people: approve or remove people waiting for approval, invite people by link (up to the plan's seat limit), make someone an owner or a member, disable or re-enable accounts, create password reset links and sign someone out everywhere. Owners manage people, billing and campaigns; members use everything else. You can't change your own account here. Account activity is recorded.\n\nPlatform admins (CareMetric staff) see every organization, run imports and maintenance, and are the only ones who can make other platform admins.",
-          "sha256": "607f720b795f84fcbaabd255576435a05a9b0e02d5902744b67f6a32bd3301d1"
+          "text": "Every account belongs to an organization: the one created when its first owner signed up. Under **Admin Settings → Users** an owner sees their organization's people: invite people by link (up to the plan's seat limit), make someone an owner or a member, disable or re-enable accounts, create password reset links and sign someone out everywhere. Owners manage people, billing and campaigns; members use everything else. You can't change your own account here. Account activity is recorded.\n\nPlatform admins (CareMetric staff) see every organization, approve new sign-ups (one that subscribes is approved by its payment), run imports and maintenance, and are the only ones who can make other platform admins.",
+          "sha256": "1d845913fc9619be9dcc2bfb64590580ad98be3f2a6877cf1c3ebfc2e152f0ae"
         },
         {
           "heading": "Plan, billing and territory",

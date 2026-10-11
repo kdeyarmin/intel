@@ -57,6 +57,22 @@ describe('UserManagement', () => {
     confirmMock.mockClear();
   });
 
+  it('tells a platform admin that they approve new sign-ups (or payment does), not an owner', async () => {
+    // A self-serve sign-up starts its own organization, so no owner can see it: the wrong approver in this line left it waiting.
+    renderIt();
+    await screen.findByRole('table');
+    expect(screen.getByText(/New sign-ups wait here until you approve them or they subscribe/)).toBeInTheDocument();
+    expect(screen.queryByText(/until an owner approves/)).toBeNull();
+  });
+
+  it('tells an owner nothing about approving sign-ups: their organization\'s people are invited, not approved', async () => {
+    api.list.mockImplementationOnce(() => Promise.resolve({ users: USERS, email_enabled: true, platform_admin: false, organization: { name: 'Acme Homes', seats: { used: 2, limit: 5 } } }));
+    renderIt();
+    await screen.findByRole('table');
+    expect(screen.getByText(/People in Acme Homes\./)).toBeInTheDocument();
+    expect(screen.queryByText(/approves them|you approve them/)).toBeNull();
+  });
+
   it('opens on the people waiting for approval, and approves one', async () => {
     renderIt();
     const table = await screen.findByRole('table');

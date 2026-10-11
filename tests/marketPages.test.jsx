@@ -54,7 +54,7 @@ const ROLLUPS = { county_market_profile: { status: 'success', refreshed_at: '202
 const MARKET = {
   state: 'PA', county: COUNTY.county,
   profile: { available: true, benes: 310000, original_medicare: 118000, ma_benes: 192000, ma_penetration: 0.62, benes_85_plus: 21000, dual: 40000, enrollment_period: '2026-06', hospitals_serving: 23, top_hospital_share: 0.31, hsa_year: '2025', hha_providers: 60, hha_users: 24000, hha_users_pct: 11.05, std_per_capita_hha: 612, hha_agencies: 40, hospice_providers: 30, hospice_users: 9000, hospice_users_pct: 3.2, std_per_capita_hospice: 410, hospice_agencies: 25, snf_providers: 70, snf_users: 12000, snf_users_pct: 5.1, std_per_capita_snf: 1100, snf_facilities: 68, std_per_capita_total: 12400, variation_year: '2024', readmission_rate: 0.152, er_visits_per_1000: 640, avg_hcc_score: 1.12 },
-  hospital_sources: { data_year: '2025', rows: [
+  hospital_sources: { data_year: '2025', total: 23, rows: [
     { ccn: '390001', name: 'UPMC PRESBYTERIAN', city: 'Pittsburgh', state: 'PA', cases: 12000, days: 60000, share: 0.31, rank: 1, discharge_mix: { data_year: '2024', pct_snf: 12.5, pct_hha: 8.1, pct_hospice: 1.2 } },
     { ccn: '390002', name: 'ALLEGHENY GENERAL', city: 'Pittsburgh', state: 'PA', cases: 8000, days: 40000, share: 0.2, rank: 2, discharge_mix: null },
   ] },
@@ -97,6 +97,8 @@ describe('CountyIntelligence market tabs', () => {
     expect(within(other).getAllByText('—').length).toBeGreaterThanOrEqual(3);
     expect(screen.getByRole('note')).toHaveTextContent(/Hospital sources show where/);
     expect(screen.getByText(/Computed /)).toBeInTheDocument();
+    // The table holds the top two of the county's 23 hospitals, and says so: their shares can't add up to 100%.
+    expect(screen.getByText(/Showing the top 2 of 23 hospitals/)).toBeInTheDocument();
   });
 
   it('switches to the market profile through the tab strip, keeping the tab in the URL', async () => {
@@ -119,7 +121,8 @@ describe('CountyIntelligence market tabs', () => {
     renderAt('/CountyIntelligence?state=PA&county=42003&tab=competitors', CountyIntelligence, '/CountyIntelligence');
     const link = await screen.findByRole('link', { name: 'KANE REGIONAL' });
     expect(link).toHaveAttribute('href', '/FacilityDetail?id=395001&group=snf');
-    expect(screen.getByRole('button', { name: 'Skilled nursing (1)', pressed: true })).toBeInTheDocument();
+    // The button counts the county's providers (70), not the rows listed (1).
+    expect(screen.getByRole('button', { name: 'Skilled nursing (70)', pressed: true })).toBeInTheDocument();
     expect(screen.getByText('Showing the top 1 of 70 providers.')).toBeInTheDocument();
     expect(screen.getByTestId('chart')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Hospice' }));
@@ -140,6 +143,22 @@ describe('CountyIntelligence market tabs', () => {
     expect(within(screen.getByRole('link', { name: 'Bo Hart' }).closest('tr')).getByText('Unscored')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Add these 2 to a lead list/ }));
     expect(screen.getByTestId('list-dialog')).toHaveTextContent('2 NPIs');
+  });
+});
+
+describe('referral sources list', () => {
+  it('says when the ranked list goes on past the rows shown', async () => {
+    invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(fn === 'getReferralSources' ? { ...SOURCES, truncated: true, searched: 25 } : countyAnswers(fn, payload)));
+    renderAt('/CountyIntelligence?state=PA&county=42003&tab=referrals', CountyIntelligence, '/CountyIntelligence');
+    await screen.findByRole('link', { name: 'Ada Lovelace, MD' });
+    expect(screen.getByText('More clinicians are ranked below these; raise the limit to see them.')).toBeInTheDocument();
+  });
+
+  it('stays quiet when the list is complete', async () => {
+    invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(countyAnswers(fn, payload)));
+    renderAt('/CountyIntelligence?state=PA&county=42003&tab=referrals', CountyIntelligence, '/CountyIntelligence');
+    await screen.findByRole('link', { name: 'Ada Lovelace, MD' });
+    expect(screen.queryByText(/ranked below these/)).toBeNull();
   });
 });
 
@@ -171,6 +190,42 @@ describe('MarketIntelligence', () => {
     expect(screen.queryByRole('button', { name: /Hospitals serving residents/ })).toBeNull();
   });
 
+  it('keeps "no metric columns" in the URL when the last column is removed, instead of bringing the defaults back', async () => {
+    invoke.mockReset().mockResolvedValue(LAYER);
+    renderAt('/MarketIntelligence?cols=benes', MarketIntelligence, '/MarketIntelligence');
+    await screen.findByRole('link', { name: 'Allegheny County' });
+    expect(screen.getAllByRole('columnheader')).toHaveLength(2); // County and one metric
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Medicare beneficiaries column' }));
+    expect(screen.getByTestId('url')).toHaveTextContent('cols=none');
+    expect(screen.getAllByRole('columnheader')).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /Remove .* column/ })).toBeNull();
+  });
+
+  it('opens with no metric columns when the URL says none, and lets one be added back', async () => {
+    invoke.mockReset().mockResolvedValue(LAYER);
+    renderAt('/MarketIntelligence?cols=none', MarketIntelligence, '/MarketIntelligence');
+    await screen.findByRole('link', { name: 'Allegheny County' });
+    expect(screen.getAllByRole('columnheader')).toHaveLength(1);
+  });
+
+  it('puts the "Add a column" picker back to its placeholder after a pick', async () => {
+    // jsdom has no pointer capture or scrolling, which Radix's select uses when it opens.
+    window.HTMLElement.prototype.hasPointerCapture = () => false;
+    window.HTMLElement.prototype.releasePointerCapture = () => {};
+    window.HTMLElement.prototype.scrollIntoView = () => {};
+    invoke.mockReset().mockResolvedValue(LAYER);
+    renderAt('/MarketIntelligence?cols=benes', MarketIntelligence, '/MarketIntelligence');
+    await screen.findByRole('link', { name: 'Allegheny County' });
+    const picker = screen.getByRole('combobox', { name: 'Add a column' });
+    expect(picker).toHaveTextContent('Pick a metric');
+    fireEvent.pointerDown(picker, { button: 0, ctrlKey: false, pointerType: 'mouse' });
+    fireEvent.click(await screen.findByRole('option', { name: 'Hospitals serving residents' }));
+    expect(screen.getByTestId('url')).toHaveTextContent('cols=benes%2Chospitals_serving');
+    expect(screen.getAllByRole('columnheader')).toHaveLength(3);
+    // Not blank, and not showing the metric that has just become a column.
+    expect(screen.getByRole('combobox', { name: 'Add a column' })).toHaveTextContent('Pick a metric');
+  });
+
   it('says when a state has no profiles yet', async () => {
     invoke.mockReset().mockResolvedValue({ ...LAYER, state: 'OH', counties: [] });
     renderAt('/MarketIntelligence?state=OH', MarketIntelligence, '/MarketIntelligence');
@@ -190,6 +245,31 @@ describe('TerritoryIntelligence county layer', () => {
     expect(link).toHaveTextContent('62.0%');
     expect(screen.queryByRole('link', { name: /Butler County/ })).toBeNull();
     expect(screen.getByText(/Medicare Advantage share by county in PA/)).toBeInTheDocument();
+  });
+});
+
+describe('TerritoryIntelligence county layer with all states', () => {
+  it('shows provider density and says a state is needed, instead of accepting a metric it cannot map', async () => {
+    invoke.mockReset().mockImplementation((fn) => Promise.resolve(fn === 'getCountyMarketLayer'
+      ? { state: 'PA', counties: [], rollups: ROLLUPS }
+      : { providers: [], availableStates: [], scope: { state: 'ALL', label: '0 providers', sample_size: 0 }, counties: [], geography: { loaded: true, vintage: '2020' } }));
+    renderAt('/TerritoryIntelligence?tab=density&state=ALL&layer=benes', TerritoryIntelligence, '/TerritoryIntelligence');
+    const picker = await screen.findByRole('combobox', { name: 'County layer' });
+    expect(picker).toBeDisabled();
+    expect(picker).toHaveTextContent('Provider density');
+    expect(screen.getByText('Pick a state to map market metrics by county.')).toBeInTheDocument();
+    expect(invoke).not.toHaveBeenCalledWith('getCountyMarketLayer', expect.anything());
+  });
+
+  it('lets a state pick its layer', async () => {
+    invoke.mockReset().mockImplementation((fn) => Promise.resolve(fn === 'getCountyMarketLayer'
+      ? { state: 'PA', metric: 'benes', label: 'Medicare beneficiaries', format: 'count', counties: [], rollups: ROLLUPS }
+      : { providers: [], availableStates: [], scope: { state: 'PA', label: '0 providers', sample_size: 0 }, counties: [], geography: { loaded: true, vintage: '2020' } }));
+    renderAt('/TerritoryIntelligence?tab=density&state=PA&layer=benes', TerritoryIntelligence, '/TerritoryIntelligence');
+    const picker = await screen.findByRole('combobox', { name: 'County layer' });
+    expect(picker).toBeEnabled();
+    expect(picker).toHaveTextContent('Medicare beneficiaries');
+    expect(screen.queryByText('Pick a state to map market metrics by county.')).toBeNull();
   });
 });
 

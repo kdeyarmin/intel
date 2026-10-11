@@ -5,7 +5,7 @@ import { normalizeTerritory, orgNameFor, slugify } from "../server/lib/orgs";
 import { assertTerritory, entitledCounties, inTerritory, isUnrestricted, needsTerritoryChoice, SubscriptionError, TerritoryError } from "../server/lib/entitlements";
 import { DEFAULT_QUOTAS, quotaLimit } from "../server/lib/orgQuota";
 import { isFunctionAllowedFor, OWNER_FUNCTIONS, PLATFORM_FUNCTIONS, PUBLIC_FUNCTIONS } from "../server/lib/functionAcl";
-import { applyStripeEvent, billingView, buildCheckoutParams, mapSubscriptionStatus, periodEnd, planForPrice, priceIdFor, territoryForPlan } from "../server/lib/billing";
+import { applyStripeEvent, billingAuditEntries, billingView, buildCheckoutParams, mapSubscriptionStatus, periodEnd, planForPrice, priceIdFor, territoryForPlan } from "../server/lib/billing";
 
 describe("organization names and territories", () => {
   it("prefers the typed name, then a company domain, then the person", () => {
@@ -133,7 +133,7 @@ describe("billing", () => {
     { code: "national", stripe_price_id: "price_nat", seat_limit: 25, territory_scope: "national", max_counties: null },
   ];
 
-  function fakeDb(orgs: Record<number, any>, opts: { staleByTime?: boolean } = {}) {
+  function fakeDb(orgs: Record<number, any>, opts: { staleByTime?: boolean; approvedOwners?: Array<{ id: number; email: string }> } = {}) {
     const queries: { sql: string; params: unknown[] }[] = [];
     const row = (o: any) => ({ id: o.id, stripe_subscription_id: o.stripe_subscription_id ?? null, territory: o.territory ?? { states: [], county_fips: [] } });
     return {
@@ -149,6 +149,7 @@ describe("billing", () => {
         if (sql.startsWith("SELECT code, stripe_price_id")) return { rows: PLANS };
         // An UPDATE that the event-time guard turns away matches no row.
         if (sql.startsWith("UPDATE organizations")) return { rows: opts.staleByTime ? [] : [{ id: params[0] }] };
+        if (sql.startsWith("UPDATE users SET status = 'active'")) return { rows: opts.approvedOwners ?? [] };
         return { rows: [] };
       },
     };
@@ -164,6 +165,57 @@ describe("billing", () => {
     // org, customer, subscription, plan, seats, territory (a state plan keeps exactly one state), terms version, event time
     expect(update.params).toEqual([7, "cus_1", "sub_1", "state", 10, JSON.stringify({ states: ["PA"], county_fips: [] }), "2026-10", new Date(1_790_000_000 * 1000)]);
     expect(db.queries.some((q) => q.sql.includes("UPDATE users SET status = 'active'") && q.params[0] === 7)).toBe(true);
+  });
+
+  it("does not take the organization from client_reference_id, which a payer can set on a Payment Link", async () => {
+    // Org 7 has no Stripe customer yet; a stranger's checkout names it in client_reference_id only.
+    const db = fakeDb({ 7: { id: 7 } });
+    const r = await applyStripeEvent({ type: "checkout.session.completed", data: { object: { customer: "cus_stranger", subscription: "sub_x", client_reference_id: "7" } } }, db, quiet);
+    expect(r).toEqual({ handled: false });
+    expect(updates(db)).toHaveLength(0);
+    expect(db.queries.some((q) => q.sql.startsWith("UPDATE users"))).toBe(false);
+    // The metadata our own Checkout sets still identifies it.
+    const ok = await applyStripeEvent({ type: "checkout.session.completed", data: { object: { customer: "cus_7", subscription: "sub_7", client_reference_id: "7", metadata: { org_id: "7" } } } }, fakeDb({ 7: { id: 7 } }), quiet);
+    expect(ok).toMatchObject({ handled: true, org_id: 7 });
+  });
+
+  describe("audit trail", () => {
+    const sink = () => {
+      const entries: any[] = [];
+      return { entries, audit: async (e: any) => { entries.push(e); } };
+    };
+
+    it("records the subscription and each owner a payment approved, under the organization", async () => {
+      const db = fakeDb({ 7: { id: 7 } }, { approvedOwners: [{ id: 21, email: "owner@homes.example" }] });
+      const { entries, audit } = sink();
+      const r = await applyStripeEvent({ id: "evt_1", type: "checkout.session.completed", data: { object: { customer: "cus_1", subscription: "sub_1", metadata: { org_id: "7", plan_code: "state" } } } }, db, quiet, { audit });
+      expect(r).toMatchObject({ handled: true, org_id: 7, status: "active", approved: [{ id: 21, email: "owner@homes.example" }] });
+      expect(entries).toEqual([
+        { event_type: "billing", action: "subscribed", user_email: "stripe", entity_type: "Organization", entity_id: 7, details: { status: "active", event: "checkout.session.completed", event_id: "evt_1" }, org_id: 7 },
+        { event_type: "account", action: "approve", user_email: "stripe", entity_type: "User", entity_id: 21, details: { target_email: "owner@homes.example", by: "payment", event_id: "evt_1" }, org_id: 7 },
+      ]);
+    });
+
+    it("records a cancellation and a failed payment, and nothing for events it ignored", async () => {
+      const db = fakeDb({ 3: { id: 3, stripe_customer_id: "cus_9", stripe_subscription_id: "sub_9" } });
+      const { entries, audit } = sink();
+      await applyStripeEvent({ id: "evt_2", type: "invoice.payment_failed", data: { object: { customer: "cus_9", subscription: "sub_9" } } }, db, quiet, { audit });
+      await applyStripeEvent({ id: "evt_3", type: "customer.subscription.deleted", data: { object: { customer: "cus_9", id: "sub_9" } } }, db, quiet, { audit });
+      expect(entries.map((e) => [e.action, e.details.status, e.org_id])).toEqual([["payment_failed", "past_due", 3], ["canceled", "canceled", 3]]);
+      // An old subscription's event, an unknown customer and an event we don't handle leave no trace.
+      entries.length = 0;
+      await applyStripeEvent({ type: "customer.subscription.deleted", data: { object: { customer: "cus_9", id: "sub_old" } } }, db, quiet, { audit });
+      await applyStripeEvent({ type: "invoice.paid", data: { object: { customer: "cus_unknown" } } }, db, quiet, { audit });
+      await applyStripeEvent({ type: "charge.refunded", data: { object: { customer: "cus_9" } } }, db, quiet, { audit });
+      expect(entries).toEqual([]);
+    });
+
+    it("builds entries only for the events that change an organization", () => {
+      expect(billingAuditEntries({ type: "charge.refunded", data: { object: {} } }, { handled: true, org_id: 1 })).toEqual([]);
+      expect(billingAuditEntries({ type: "invoice.paid", data: { object: {} } }, { handled: false })).toEqual([]);
+      expect(billingAuditEntries({ type: "invoice.paid", id: "evt_9", data: { object: {} } }, { handled: true, org_id: 4, status: "active" })[0])
+        .toMatchObject({ action: "payment_received", org_id: 4, details: { status: "active", event_id: "evt_9" } });
+    });
   });
 
   it("finds the organization by customer id, and ignores unknown ones", async () => {

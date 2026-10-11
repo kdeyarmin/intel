@@ -60,6 +60,7 @@ export default function HospitalSourcesTable({ sources, rollups, countyName }) {
                 ))}
               </tbody>
             </table>
+            {sources?.total > rows.length ? <p className="text-[11px] text-slate-400 mt-1">Showing the top {rows.length} of {sources.total} hospitals; shares are of all of the county's cases, so these rows add up to less than 100%.</p> : null}
           </div>
         )}
         <div className="mt-3"><MarketFreshness rollups={rollups} jobs={['county_hospital_sources', 'hospital_discharge_mix']} /></div>

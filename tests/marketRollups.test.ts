@@ -86,6 +86,14 @@ describe("market rollup jobs", () => {
     expect(sql).toContain("'pac_utilization_by_setting', py.by_setting");
   });
 
+  it("count only residential-care licenses as licensed personal care / assisted living supply", () => {
+    // Nursing homes are counted from the CMS files (snf_facilities), and an adult day center or an unrecognized
+    // license type is not a bed of residential care: all of them would inflate the metric's label.
+    const sql = jobByName("county_market_profile")!.sql;
+    expect(sql).toContain("license_type IN ('personal_care_home', 'assisted_living', 'memory_care', 'domiciliary_care')");
+    expect(sql).not.toMatch(/nursing_home|adult_day/);
+  });
+
   it("run as one INSERT … SELECT inside the swap transaction under the results timeout", async () => {
     const statements: string[] = [];
     const client = {

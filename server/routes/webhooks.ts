@@ -27,14 +27,16 @@ router.post(
       return res.status(400).json({ message: `Invalid Stripe signature: ${String(e?.message || e).slice(0, 120)}` });
     }
     try {
-      const { applyStripeEvent } = await import("../lib/billing");
-      const result = await applyStripeEvent(event, pool);
+      const [{ applyStripeEvent }, { recordAudit }] = await Promise.all([import("../lib/billing"), import("../lib/audit")]);
+      const result = await applyStripeEvent(event, pool, console, { audit: recordAudit });
       if (result.handled && result.org_id) {
         const { publishSessionUserChange } = await import("../lib/sessionUsers");
         const { rows } = await pool.query("SELECT user_id FROM organization_members WHERE org_id = $1", [result.org_id]);
         for (const r of rows) publishSessionUserChange(Number(r.user_id));
       }
-      res.json({ received: true, ...result });
+      // Who was approved is for the audit trail, not for Stripe's copy of the response.
+      const { approved: _approved, ...outcome } = result;
+      res.json({ received: true, ...outcome });
     } catch (e: any) {
       console.error("[stripe webhook] failed:", e?.message || e);
       res.status(500).json({ message: "Failed to apply the event" });

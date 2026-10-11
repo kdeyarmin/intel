@@ -227,6 +227,7 @@ export const rollupPacMarketShare = pgTable("rollup_pac_market_share", {
 }, (table) => [
   primaryKey({ columns: [table.setting, table.data_year, table.geo_level, table.geo_code, table.ccn] }),
   index("idx_rollup_pac_share_ccn").on(table.ccn, table.setting, table.data_year),
+  index("idx_rollup_pac_share_geo").on(table.geo_level, table.geo_code, table.setting, table.data_year),
 ]);
 
 export const rollupAgencyCoverage = pgTable("rollup_agency_coverage", {
@@ -239,6 +240,7 @@ export const rollupAgencyCoverage = pgTable("rollup_agency_coverage", {
 }, (table) => [
   primaryKey({ columns: [table.setting, table.county_fips, table.ccn] }),
   index("idx_rollup_agency_cov_ccn").on(table.setting, table.ccn),
+  index("idx_rollup_agency_cov_county").on(table.county_fips, table.setting),
 ]);
 
 export const rollupReferralSources = pgTable("rollup_referral_sources", {

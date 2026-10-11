@@ -58,7 +58,7 @@ export default function ReferralSummaryCard({ referrals = [], orderReferring = n
                 </div>
                 <div>
                   <p className="text-lg font-bold text-slate-200">{volume.benes.toLocaleString()}</p>
-                  <p className="text-[10px] text-slate-400">beneficiaries</p>
+                  <p className="text-[10px] text-slate-400">beneficiaries, summed across partners</p>
                 </div>
               </div>
             </div>

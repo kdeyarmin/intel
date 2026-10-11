@@ -157,9 +157,11 @@ an overdue heartbeat.
 Provider records come from the NPPES dissemination files (import types
 `nppes_weekly_incremental` and `nppes_monthly_full`). A weekly schedule keeps
 them current: the importer downloads the current zip from CMS into
-`uploads/nppes/`, streams the CSV out of it, updates every provider in the
-file, replaces its locations and taxonomies, and marks deactivated NPIs. The
-monthly full file is about 1.1 GB zipped and needs the uploads volume.
+`downloads/nppes/` (set `NPPES_DOWNLOAD_DIR` to use a volume; it must be outside
+`uploads/`, which is served to signed-in users), streams the CSV out of it,
+updates every provider in the file, replaces its locations and taxonomies, and
+marks deactivated NPIs. The monthly full file is about 1.1 GB zipped and needs
+room for it.
 
 ### Central CareMetric support
 

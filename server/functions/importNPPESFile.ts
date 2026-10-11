@@ -1,6 +1,7 @@
 // NPPES V.2 dissemination files: the weekly incremental and the monthly full
 // replacement zips from download.cms.gov. The zip is downloaded to
-// uploads/nppes/, the npidata_pfile CSV inside it is streamed, and each
+// downloads/nppes/ (not uploads/, which /api/storage serves to every signed-in
+// user), the npidata_pfile CSV inside it is streamed, and each
 // page of rows is written through server/lib/nppesWrite.ts (upserts;
 // locations and taxonomies replaced per NPI; deactivations applied).
 import fs from "fs";
@@ -27,16 +28,29 @@ export const NPPES_FILE_TYPES: Record<string, NppesFileKind> = {
   nppes_monthly_full: "monthly",
 };
 
-const NPPES_DIR = path.join(UPLOAD_DIR, "nppes");
+/**
+ * Where the zips are kept: NPPES_DOWNLOAD_DIR, else downloads/nppes. Never inside uploads/:
+ * /api/storage serves that folder to every signed-in user, which would make a 1.1 GB
+ * file a repeatable download for any member of any organization.
+ */
+export function resolveNppesDir(configured: string | undefined = process.env.NPPES_DOWNLOAD_DIR, uploadDir: string = UPLOAD_DIR): string {
+  const dir = path.resolve(configured || path.join("downloads", "nppes"));
+  const rel = path.relative(uploadDir, dir);
+  if (rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel))) {
+    throw new Error(`NPPES_DOWNLOAD_DIR (${dir}) is inside the uploads folder, which is served to signed-in users. Choose a folder outside it.`);
+  }
+  return dir;
+}
 const PAGE_SIZE = 500;
 const PAUSE_CHECK_INTERVAL = 5;
 const PROGRESS_UPDATE_INTERVAL = 5;
 const NPIDATA_RE = /^npidata_pfile_\d{8}-\d{8}\.csv$/i;
 
-/** Download a CMS file to uploads/nppes/ (reused when already present and non-empty). */
+/** Download a CMS file to the NPPES download folder (reused when already present and non-empty). */
 export async function downloadNppesZip(fileUrl: string): Promise<string> {
-  await fs.promises.mkdir(NPPES_DIR, { recursive: true });
-  const dest = path.join(NPPES_DIR, path.basename(new URL(fileUrl).pathname));
+  const dir = resolveNppesDir();
+  await fs.promises.mkdir(dir, { recursive: true });
+  const dest = path.join(dir, path.basename(new URL(fileUrl).pathname));
   const existing = await fs.promises.stat(dest).catch(() => null);
   if (existing && existing.size > 0) return dest;
   const res = await safeFetchStream(fileUrl);

@@ -33,6 +33,8 @@ export interface LeadScoringResult {
   territory: Territory;
   candidates: number;
   scored: number;
+  /** Older scores a complete run removed (providers outside the territory now, or no longer scorable). */
+  removed?: number;
   duration_ms: number;
   error?: string;
 }
@@ -146,6 +148,28 @@ async function writeScores(client: any, scores: ReturnType<typeof scoreProvider>
   }
 }
 
+const STALE_DELETE_BATCH = 20_000;
+
+/**
+ * After a complete run, drops the scores it didn't rewrite: providers the territory no
+ * longer covers, ones no longer scorable (deactivated, now an organization), and scores
+ * the old in-browser calculation left behind. Without this they stay in lead_scores and
+ * keep ranking as scored leads while the pages say providers outside the territory are
+ * Unscored. In batches, so no one statement holds locks for long.
+ */
+export async function removeStaleScores(client: any, runStart: Date, batch = STALE_DELETE_BATCH): Promise<number> {
+  let removed = 0;
+  for (;;) {
+    const res = await client.query(
+      "DELETE FROM lead_scores WHERE id IN (SELECT id FROM lead_scores WHERE last_calculated IS NULL OR last_calculated < $1 LIMIT $2)",
+      [runStart, batch],
+    );
+    const n = Number(res?.rowCount ?? 0);
+    removed += n;
+    if (n < batch) return removed;
+  }
+}
+
 /**
  * One full scoring pass. `rules` are scoring_rules rows; a run with no
  * configured state fails rather than scoring the whole registry.
@@ -179,6 +203,8 @@ export async function runLeadScoring(
     locked = !!lock?.ok;
     if (!locked) return { status: "skipped", ...base, duration_ms: Date.now() - started, error: "already running on another instance" };
     await runRow(client, "running", { phase: "locations", territory });
+    // Every score this run writes is stamped at or after this; anything older is left over.
+    const runStart = now();
 
     const geo = await getGeoIndex(pool).catch(() => null);
     const locs = await collectCandidates(client, territory.states, (p) =>
@@ -196,6 +222,8 @@ export async function runLeadScoring(
           [LEAD_SCORING_JOB, JSON.stringify({ phase: "scoring", done: Math.min(i + BATCH, npis.length), candidates: npis.length, scored, territory })]).catch(() => {});
       }
     }
+    // Reached only when every batch was written (a failed batch ends the run in the catch below).
+    const removed = await removeStaleScores(client, runStart);
     const duration = Date.now() - started;
     await client.query(
       `UPDATE rollup_runs SET status = 'success', finished_at = now(), last_success_at = now(), rows_scanned = $2,
@@ -207,10 +235,10 @@ export async function runLeadScoring(
       user_email: opts.userEmail ?? "system@maintenance",
       action: "Recalculate Scores",
       entity_type: "LeadScore",
-      details: { scored, candidates: npis.length, states: territory.states, counties: territory.counties.length, total_weight: totalWeight(rules), duration_ms: duration },
+      details: { scored, removed, candidates: npis.length, states: territory.states, counties: territory.counties.length, total_weight: totalWeight(rules), duration_ms: duration },
     });
-    log.log(`[leadScoring] Scored ${scored.toLocaleString("en-US")} of ${npis.length.toLocaleString("en-US")} providers in ${territory.states.join(", ")} in ${Math.round(duration / 1000)}s`);
-    return { status: "success", territory, candidates: npis.length, scored, duration_ms: duration };
+    log.log(`[leadScoring] Scored ${scored.toLocaleString("en-US")} of ${npis.length.toLocaleString("en-US")} providers in ${territory.states.join(", ")} in ${Math.round(duration / 1000)}s${removed ? `; removed ${removed.toLocaleString("en-US")} older scores` : ""}`);
+    return { status: "success", territory, candidates: npis.length, scored, removed, duration_ms: duration };
   } catch (e: any) {
     await client.query("ROLLBACK").catch(() => {});
     await client.query("RESET statement_timeout").catch(() => {});

@@ -4,6 +4,7 @@
 // mappers are unit-tested on rows captured from the live APIs
 // (tests/fixtures/cms/rows/<import_type>.json).
 import crypto from "crypto";
+import { stateCodeOf } from "../lib/stateNames";
 import {
   cmsDmeByReferring,
   cmsFacilityAffiliation,
@@ -423,6 +424,18 @@ export function normalizeLicenseType(value: unknown): string {
 }
 
 /**
+ * The date of a licensing snapshot whose file states only its year: the end of that year, but never
+ * a day that hasn't happened (an export taken this October is not "as of" December 31).
+ */
+export function licensedSnapshotDate(year: number | string | null | undefined, today: Date = new Date()): string | null {
+  const y = Number(year);
+  if (!Number.isInteger(y) || y < 2000) return null;
+  const endOfYear = `${y}-12-31`;
+  const now = today.toISOString().slice(0, 10);
+  return endOfYear > now ? now : endOfYear;
+}
+
+/**
  * A row of a state licensing export (Pennsylvania DHS personal care homes,
  * assisted living residences, other states' ALF directories). Column names
  * vary by state, so each field takes its first present alias; the state and
@@ -433,14 +446,14 @@ export function mapLicensedFacility(row: any, ctx: MapContext) {
   const params = ctx.params ?? {};
   const name = str(pick(row, ["name", "facility_name", "facility", "home_name", "provider_name", "legal_name", "dba", "licensee_name"]), 500);
   if (!name) return null;
-  const stateRaw = String(pick(row, ["state", "st", "state_code"]) ?? params.state_filter ?? "").trim().toUpperCase();
-  const state = /^[A-Z]{2}$/.test(stateRaw) ? stateRaw : null;
+  // The file's own state ("PA" or "Pennsylvania"); the import's state_filter stands in when the file has none (or none we can read).
+  const state = stateCodeOf(pick(row, ["state", "st", "state_code"])) ?? stateCodeOf(params.state_filter);
   if (!state) return null;
   const license_type = normalizeLicenseType(pick(row, ["license_type", "licence_type", "facility_type", "type", "category", "program", "service_type"]) ?? params.license_type);
   const license_number = str(pick(row, ["license_number", "licence_number", "license_no", "license", "license_id", "licensenumber", "certificate_number", "certificate_no", "facility_id", "id"]), 60);
   const zip = zip5(pick(row, ["zip5", "zip", "zip_code", "zipcode", "postal_code", "postal"]));
   const facility_key = license_number ?? crypto.createHash("md5").update(`${name.toLowerCase()}|${zip ?? ""}`).digest("hex");
-  const asOf = ctx.asOf ?? (typeof params.as_of === "string" ? params.as_of : null) ?? (ctx.year ? `${ctx.year}-12-31` : null);
+  const asOf = ctx.asOf ?? (typeof params.as_of === "string" ? params.as_of : null) ?? licensedSnapshotDate(ctx.year);
   return {
     state, license_type, facility_key, license_number, name,
     address: str(pick(row, ["address", "address_1", "address1", "street", "street_address", "addr"]), 500),

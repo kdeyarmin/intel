@@ -108,3 +108,17 @@ export function describeVintages(vintages) {
     .map(([label, value]) => `${label} ${value}`);
   return parts.length ? `Data: ${parts.join('; ')}.` : null;
 }
+
+/**
+ * What to tell the reader about a referral-source list that isn't the whole ranked list, or null
+ * when it is. With a specialty only the top `searched` clinicians were looked at, so a short (or
+ * empty) list can still leave matches further down.
+ */
+export function referralListNote({ rowCount = 0, truncated = false, searched = 0, specialty = false } = {}) {
+  if (!truncated) return null;
+  if (!specialty) return 'More clinicians are ranked below these; raise the limit to see them.';
+  const top = `the top ${Number(searched || 0).toLocaleString('en-US')} ranked clinicians`;
+  return rowCount === 0
+    ? `None of ${top} here are in this specialty. Raise the limit to search further.`
+    : `Searched ${top} for this specialty; raise the limit to search further.`;
+}
