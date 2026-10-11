@@ -292,8 +292,9 @@ export const base44 = {
     renameConversation: (id, title) => request(`/assistant/conversations/${id}`, { method: "PATCH", body: JSON.stringify({ title }) }),
     async deleteConversation(id) {
       const url = `/assistant/conversations/${id}`;
+      const generation = authGeneration;
       const res = await fetch(`${API_BASE}${url}`, { method: "DELETE", credentials: "include" });
-      if (!res.ok) throw await toApiError(res, url);
+      if (!res.ok) throw await toApiError(res, url, { generation });
     },
     confirmAction: (id) => request(`/assistant/actions/${id}/confirm`, { method: "POST" }),
     cancelAction: (id) => request(`/assistant/actions/${id}/cancel`, { method: "POST" }),
@@ -303,6 +304,7 @@ export const base44 = {
      */
     async streamMessage(conversationId, text, { signal, onEvent }) {
       const url = `/assistant/conversations/${conversationId}/messages`;
+      const generation = authGeneration;
       const res = await fetch(`${API_BASE}${url}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
@@ -310,7 +312,7 @@ export const base44 = {
         credentials: "include",
         signal,
       });
-      if (!res.ok) throw await toApiError(res, url);
+      if (!res.ok) throw await toApiError(res, url, { generation });
       const parser = createSseParser(({ event, data }) => {
         let parsed;
         try {
