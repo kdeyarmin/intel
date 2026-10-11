@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "6eb5b803983938035840111a266fc97eadfee4a1",
+    "ref": "fe54500d28ef24731ae03eaba85b0643dc6d5ef9",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -27,9 +27,9 @@
   },
   "summary": {
     "section_count": 9,
-    "topic_count": 34,
-    "text_character_count": 15644,
-    "canonical_sha256": "fc1263c717774158b462f80e56695f5aa779002f173f98d089e01566d174e169"
+    "topic_count": 36,
+    "text_character_count": 17297,
+    "canonical_sha256": "b4a794bac5f371d610e1b648cb0c61ac92391067995c05b91d25aa1b630e214f"
   },
   "sections": [
     {
@@ -235,9 +235,14 @@
       "title": "Administration",
       "topics": [
         {
-          "heading": "Users",
-          "text": "Under **Admin Settings → Users**: approve or remove people waiting for approval, invite people by link, change roles, disable or re-enable accounts, create password reset links and sign someone out everywhere. You can't change your own account here, and the last active admin can't be removed. Account activity is recorded.",
-          "sha256": "721df89a2784ec717644a10eedabf3b70d001646982923ee99de368907347b12"
+          "heading": "Users and your organization",
+          "text": "Every account belongs to an organization: the one created when its first owner signed up. Under **Admin Settings → Users** an owner sees their organization's people: approve or remove people waiting for approval, invite people by link (up to the plan's seat limit), make someone an owner or a member, disable or re-enable accounts, create password reset links and sign someone out everywhere. Owners manage people, billing and campaigns; members use everything else. You can't change your own account here. Account activity is recorded.\n\nPlatform admins (CareMetric staff) see every organization, run imports and maintenance, and are the only ones who can make other platform admins.",
+          "sha256": "607f720b795f84fcbaabd255576435a05a9b0e02d5902744b67f6a32bd3301d1"
+        },
+        {
+          "heading": "Plan, billing and territory",
+          "text": "Under **Admin Settings → Billing** an owner sees the organization's plan and status, the trial or billing period, seats used, and today's usage against the plan's quotas (AI requests, exports and outreach emails per day). Choose or change a plan with secure checkout, or open the billing portal for payment methods and invoices. A county pack covers a chosen set of counties and a state plan one state: pick them here, and the County, Market, Territory and referral-source views answer only for that territory (anything else says it is outside the plan). New organizations start with a free trial; a failed payment shows as payment due until it is fixed.",
+          "sha256": "b09f3529c8c503bded3ca30c04fe8d071608667411eaacd3c64db62d45ebe6d6"
         },
         {
           "heading": "Scoring rules",
@@ -251,8 +256,13 @@
         },
         {
           "heading": "Security audit",
-          "text": "Under **Admin Settings → Security audit**: sign-ins, account changes, exports and other recorded actions, with filters.",
-          "sha256": "565e0715d93acaa17bf086da6e67b7f994280f2470c8b8ae300cbf22cd1466a1"
+          "text": "Under **Admin Settings → Security audit**: sign-ins, account changes, exports and other recorded actions for your organization, with filters.",
+          "sha256": "7aec237e2b6dbe341e9f2f842e6833aec55ab805dafc3be111cd49356f8f1a04"
+        },
+        {
+          "heading": "Terms, privacy and data use",
+          "text": "Signing up accepts the Terms of Service and Privacy Policy, linked from the sign-in page (/terms, /privacy). The data-use page (/data-use) lists every source behind the app and what the figures are: CareMetric analytics derived from public CMS, NPPES and Census files (never presented as CMS data), Medicare fee-for-service only unless noted, counts under 11 suppressed, no patient-level data, and shared-patient patterns that are not confirmed referrals. Every export carries that source line. Use the data for your own organization's research and outreach within your plan's territory; don't resell or republish it.",
+          "sha256": "1b5c52086b9aa92f258eb3dccd54a2f30faa0c67144b473269074d4f12b1b22c"
         }
       ]
     }
