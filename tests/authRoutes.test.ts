@@ -79,6 +79,53 @@ describe("login", () => {
     expect(locked.status).toBe(429);
   });
 
+  it("keeps the lockout across server instances and restarts", async () => {
+    await h.seed({ email: "rep@example.com" });
+    // A second instance on the same database.
+    const other = await startHarness({ repo: h.repo });
+    try {
+      for (let i = 0; i < 10; i += 1) {
+        const instance = i % 2 ? other : h;
+        expect((await instance.client().call("POST", "/api/auth/login", { email: "rep@example.com", password: `bad-${i}-xx` })).status).toBe(401);
+      }
+      expect((await h.client().call("POST", "/api/auth/login", { email: "rep@example.com", password: "password123" })).status).toBe(429);
+    } finally {
+      await other.close();
+    }
+    // A restarted instance still sees it.
+    const restarted = await startHarness({ repo: h.repo });
+    try {
+      const r = await restarted.client().call("POST", "/api/auth/login", { email: "rep@example.com", password: "password123" });
+      expect(r.status).toBe(429);
+    } finally {
+      await restarted.close();
+    }
+  });
+
+  it("lets only the allowed number of a parallel burst of guesses through", async () => {
+    await h.seed({ email: "rep@example.com" });
+    // A slow hash, as with bcrypt: every guess is in flight before any has failed.
+    const verify = h.deps.verifyPassword;
+    h.deps.verifyPassword = async (pw, hash) => {
+      await new Promise((r) => setTimeout(r, 30));
+      return verify(pw, hash);
+    };
+    const statuses = await Promise.all(
+      Array.from({ length: 20 }, (_, i) => h.client().call("POST", "/api/auth/login", { email: "rep@example.com", password: `bad-${i}-xx` }).then((r) => r.status)),
+    );
+    expect(statuses.filter((s) => s === 401)).toHaveLength(10);
+    expect(statuses.filter((s) => s === 429)).toHaveLength(10);
+  });
+
+  it("clears the count after a correct password", async () => {
+    await h.seed({ email: "rep@example.com" });
+    for (let i = 0; i < 9; i += 1) await h.client().call("POST", "/api/auth/login", { email: "rep@example.com", password: `bad-${i}-xx` });
+    expect((await h.client().call("POST", "/api/auth/login", { email: "rep@example.com", password: "password123" })).status).toBe(200);
+    for (let i = 0; i < 9; i += 1) {
+      expect((await h.client().call("POST", "/api/auth/login", { email: "rep@example.com", password: `bad-${i}-yy` })).status).toBe(401);
+    }
+  });
+
   it("throttles one address across emails", async () => {
     const c = h.client("10.9.9.9");
     const statuses: number[] = [];
@@ -188,6 +235,45 @@ describe("password reset by email", () => {
     h.repo.users[0].status = "disabled";
     expect((await h.client().call("POST", "/api/auth/reset-password", { token, password: "fresh-pass-1" })).status).toBe(400);
     expect((await h.client().call("POST", "/api/auth/reset-password", { token: "../../etc", password: "fresh-pass-1" })).status).toBe(400);
+  });
+
+  // Hashing the new password is the slow step, after the link was first
+  // checked; an admin acting on the account meanwhile must still win.
+  // (Distinct emails: forgot-password sends at most 3 links per address an hour.)
+  async function changeWhileHashing(email: string, change: () => void) {
+    h = await startHarness();
+    await h.seed({ email });
+    await h.client().call("POST", "/api/auth/forgot-password", { email });
+    await vi_waitFor(() => h.mail.length === 1);
+    const hash = h.deps.hashPassword;
+    h.deps.hashPassword = async (pw) => {
+      change();
+      return hash(pw);
+    };
+    return linkToken(h.mail[0].text)!;
+  }
+
+  it("refuses the link when the account is disabled while it is being used", async () => {
+    const before = { hash: "", version: 0 };
+    const token = await changeWhileHashing("disabled-meanwhile@example.com", () => {
+      const row = h.repo.users[0];
+      row.status = "disabled";
+      before.hash = row.password_hash;
+      before.version = row.token_version;
+    });
+    const r = await h.client().call("POST", "/api/auth/reset-password", { token, password: "fresh-pass-1" });
+    expect(r.status).toBe(400);
+    expect(r.setCookie).toBeNull();
+    expect(h.repo.users[0]).toMatchObject({ password_hash: before.hash, token_version: before.version });
+  });
+
+  it("answers an invalid link, not an error, when the account is deleted while it is being used", async () => {
+    const token = await changeWhileHashing("deleted-meanwhile@example.com", () => {
+      void h.repo.delete(h.repo.users[0].id);
+    });
+    const r = await h.client().call("POST", "/api/auth/reset-password", { token, password: "fresh-pass-1" });
+    expect(r.status).toBe(400);
+    expect(r.body.message).toMatch(/invalid or has expired/);
   });
 });
 

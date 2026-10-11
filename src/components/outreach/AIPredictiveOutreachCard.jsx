@@ -18,7 +18,10 @@ const COMPONENT_LABELS = {
 export default function AIPredictiveOutreachCard({ provider, onUpdate }) {
   const [loading, setLoading] = useState(false);
   // The latest calculation, shown immediately (the provider prop refreshes via onUpdate).
-  const [result, setResult] = useState(null);
+  const [lastResult, setResult] = useState(null);
+  // Only for this provider: the card stays mounted when the profile switches to
+  // another NPI, and a response can arrive after that.
+  const result = lastResult?.npi === provider.npi ? lastResult : null;
 
   const stored = provider.ai_engagement_factors;
   const score = result?.score ?? provider.ai_outreach_score;

@@ -30,6 +30,7 @@ export default function AppLayout({ children, currentPageName }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const mainRef = React.useRef(null);
+  const asideRef = React.useRef(null);
 
   const toggleSidebar = useCallback(() => {
     setSidebarOpen(prev => {
@@ -43,6 +44,12 @@ export default function AppLayout({ children, currentPageName }) {
     mainRef.current?.scrollTo({ top: 0, left: 0 });
     window.scrollTo(0, 0);
   }, [currentPageName]);
+
+  // A closed sidebar is still in the DOM (it animates to zero width): keep its
+  // links out of the tab order and away from screen readers.
+  React.useEffect(() => {
+    asideRef.current?.toggleAttribute('inert', !sidebarOpen);
+  }, [sidebarOpen]);
 
   const toggleSection = useCallback((label) => {
     setCollapsedSections(prev => ({ ...prev, [label]: !prev[label] }));
@@ -90,7 +97,7 @@ export default function AppLayout({ children, currentPageName }) {
       )}
 
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-56 fixed lg:relative z-40' : 'w-0 overflow-hidden'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full flex-shrink-0`}>
+      <aside ref={asideRef} aria-label="Sidebar" className={`${sidebarOpen ? 'w-56 fixed lg:relative z-40' : 'w-0 overflow-hidden'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full flex-shrink-0`}>
         {/* Logo */}
         <div className="p-4 flex items-center justify-between border-b border-slate-800/60 min-w-[14rem]">
           <div className="flex items-center gap-3">

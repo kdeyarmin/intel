@@ -17,11 +17,14 @@ import { sendQuietly, type AccountDeps } from "../lib/accountDeps";
 import { ACCOUNT_EVENT } from "../lib/audit";
 import { resetEmail, signupPendingEmail } from "../lib/accountEmails";
 import { authAllowPending, authMiddleware, cookieOptions, generateToken, AuthRequest } from "../middleware/auth";
-import { clientIp, consumeToken, createFailureCounter, ipRateLimit } from "../middleware/rateLimit";
+import { clientIp, consumeToken, ipRateLimit } from "../middleware/rateLimit";
 
 
 const INVALID_LINK = "This link is invalid or has expired. Ask for a new one.";
 const BAD_LOGIN = "Invalid email or password";
+// Failed sign-ins allowed per email in each window, before it is locked.
+const MAX_LOGIN_ATTEMPTS = 10;
+const LOGIN_WINDOW_MS = 15 * 60_000;
 
 function isProd() {
   return process.env.NODE_ENV === "production";
@@ -46,10 +49,18 @@ export function createAuthRouter(deps: AccountDeps) {
   const { repo } = deps;
 
   // Per-IP throttle to blunt credential stuffing / brute force / signup abuse,
-  // plus a per-email limit on failed logins that address rotation can't dodge.
+  // plus a per-email limit on sign-in attempts that address rotation can't dodge.
   const authThrottle = ipRateLimit("auth", 10, 60_000);
   const linkThrottle = ipRateLimit("auth_links", 20, 60_000);
-  const loginFailures = createFailureCounter(10, 15 * 60_000);
+
+  // The per-email count lives in the database, so it holds across server
+  // instances and restarts. Each attempt is counted before its password is
+  // checked, so a burst of parallel guesses can't all get in under the limit;
+  // a correct password clears the count. Returns how long to wait, or 0.
+  const attemptLockedFor = async (email: string) => {
+    const { count, retryMs } = await repo.countLoginAttempt(email, LOGIN_WINDOW_MS);
+    return count > MAX_LOGIN_ATTEMPTS ? Math.max(retryMs, 1000) : 0;
+  };
 
   // Compared against when no account matches, so a login for an unknown
   // email takes as long as one with a wrong password.
@@ -122,7 +133,7 @@ export function createAuthRouter(deps: AccountDeps) {
       if (!email || typeof password !== "string" || !password) {
         return res.status(400).json({ message: "Email and password are required" });
       }
-      const wait = loginFailures.lockedFor(email);
+      const wait = await attemptLockedFor(email);
       if (wait > 0) {
         res.setHeader("Retry-After", Math.ceil(wait / 1000));
         return res.status(429).json({ message: "Too many failed sign-ins", detail: "Wait a few minutes, or reset your password." });
@@ -138,15 +149,14 @@ export function createAuthRouter(deps: AccountDeps) {
       }
       if (candidates.length === 0) await deps.verifyPassword(password, await timingDummy());
       if (!user) {
-        loginFailures.fail(email);
         await audit(req, "login_failed", email, candidates[0] ?? null, { reason: candidates.length ? "bad_password" : "unknown_email" });
         return res.status(401).json({ message: BAD_LOGIN });
       }
+      await repo.clearLoginAttempts(email);
       if (user.status === "disabled") {
         await audit(req, "login_blocked", email, user, { reason: "disabled" });
         return res.status(403).json({ message: "Account disabled", code: "account_disabled", detail: "This account has been disabled. Contact an administrator." });
       }
-      loginFailures.clear(email);
       const updated = (await repo.update(user.id, { last_login_at: new Date() })) || user;
       await audit(req, "login", user.email, user);
       setSessionCookie(res, updated);
@@ -182,12 +192,12 @@ export function createAuthRouter(deps: AccountDeps) {
     try {
       const user = await repo.findById(req.user!.id);
       if (!user) return res.status(401).json({ message: "Your session has ended. Please log in again." });
-      const wait = loginFailures.lockedFor(user.email);
+      const wait = await attemptLockedFor(user.email);
       if (wait > 0) return res.status(429).json({ message: "Too many failed attempts", detail: "Wait a few minutes and try again." });
       if (typeof req.body?.current_password !== "string" || !(await passwordMatches(req.body.current_password, user.password_hash))) {
-        loginFailures.fail(user.email);
         return res.status(400).json({ message: "Your current password is incorrect" });
       }
+      await repo.clearLoginAttempts(user.email);
       const problem = passwordProblem(req.body?.new_password);
       if (problem) return res.status(400).json({ message: problem });
       const updated = await repo.update(
@@ -261,34 +271,33 @@ export function createAuthRouter(deps: AccountDeps) {
       const problem = passwordProblem(req.body?.password);
       if (problem) return res.status(400).json({ message: problem });
       const tokenHash = hashToken(raw);
-      const peek = await repo.peekToken(tokenHash);
-      const user = peek ? await repo.findById(peek.user_id) : null;
-      if (!peek || !user || user.status === "disabled") return res.status(400).json({ message: INVALID_LINK });
+      // A cheap check before paying for the hash; redeemToken checks again.
+      if (!(await repo.peekToken(tokenHash))) return res.status(400).json({ message: INVALID_LINK });
 
       const passwordHash = await deps.hashPassword(req.body.password);
-      const token = await repo.consumeToken(tokenHash);
-      if (!token) return res.status(400).json({ message: INVALID_LINK });
-
       const now = new Date();
-      const invite = token.purpose === "invite";
-      const updated = await repo.update(
-        user.id,
-        {
+      // Consumes the link, re-reads the locked account and updates it in one
+      // transaction, so an account disabled or deleted meanwhile gets an
+      // invalid link with nothing changed rather than a half-applied reset.
+      const redeemed = await repo.redeemToken(tokenHash, (token, user) => {
+        if (user.status === "disabled") return null;
+        return {
           password_hash: passwordHash,
           password_changed_at: now,
           // The link signs them in.
           last_login_at: now,
-          ...(invite
+          ...(token.purpose === "invite"
             ? { status: "active", approved_at: now, approved_by: token.created_by, full_name: user.full_name || cleanName(req.body?.full_name) }
             : {}),
-        },
-        { endSessions: true },
-      );
-      await repo.revokeTokens(user.id);
+        };
+      });
+      if (!redeemed) return res.status(400).json({ message: INVALID_LINK });
+
+      const { token, user } = redeemed;
       deps.onUserChanged(user.id);
-      await audit(req, invite ? "invite_accepted" : "password_reset", user.email, user, { link_created_by: token.created_by });
-      setSessionCookie(res, updated!);
-      res.json(publicUser(updated!));
+      await audit(req, token.purpose === "invite" ? "invite_accepted" : "password_reset", user.email, user, { link_created_by: token.created_by });
+      setSessionCookie(res, user);
+      res.json(publicUser(user));
     } catch (e: any) {
       serverError(res, e, "Password reset");
     }

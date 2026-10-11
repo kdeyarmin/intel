@@ -117,6 +117,7 @@ describe('401 handling', () => {
   it.each([
     ['deleting a conversation', () => base44.assistant.deleteConversation(5)],
     ['asking the assistant', () => base44.assistant.streamMessage(5, 'Hi', { onEvent: () => {} })],
+    ['uploading a file', () => base44.integrations.Core.UploadFile(new Blob(['x']))],
   ])("ignores an old session's 401 from %s that arrives after signing in again", async (_, call) => {
     let finishOld;
     vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => {

@@ -51,9 +51,11 @@ export function handleUnauthorized(url, { generation = authGeneration, expected 
 
 const ACCOUNT_STATUS_CODES = new Set(["account_pending", "account_disabled"]);
 
-export function handleAccountStatus(url, data) {
+// `expected`: the session probe, whose caller handles the status itself.
+// Announcing it would make the listener probe again, and again, forever.
+export function handleAccountStatus(url, data, { expected = false } = {}) {
   if (!ACCOUNT_STATUS_CODES.has(data?.code)) return;
-  if (isAuthEndpoint(url)) return;
+  if (expected || isAuthEndpoint(url)) return;
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(ACCOUNT_STATUS_EVENT, { detail: { code: data.code } }));
 }
@@ -71,7 +73,7 @@ export function buildErrorMessage(data, status) {
 async function toApiError(res, url, auth) {
   const data = await res.json().catch(() => ({ message: res.statusText }));
   if (res.status === 401) handleUnauthorized(url, auth);
-  if (res.status === 403) handleAccountStatus(url, data);
+  if (res.status === 403) handleAccountStatus(url, data, auth);
   const err = new Error(buildErrorMessage(data, res.status));
   err.name = "ApiError";
   err.status = res.status;
@@ -79,8 +81,9 @@ async function toApiError(res, url, auth) {
   return err;
 }
 
-// `expectUnauthorized`: a 401 is an answer for the caller, not an expired session.
-async function request(url, options = {}, { expectUnauthorized = false } = {}) {
+// `sessionProbe`: the caller is checking the session itself, so a 401 or an
+// account-status 403 is its answer, not news for the rest of the app.
+async function request(url, options = {}, { sessionProbe = false } = {}) {
   const generation = authGeneration;
   const headers = {
     "Content-Type": "application/json",
@@ -93,7 +96,7 @@ async function request(url, options = {}, { expectUnauthorized = false } = {}) {
     credentials: "include",
   });
 
-  if (!res.ok) throw await toApiError(res, url, { generation, expected: expectUnauthorized });
+  if (!res.ok) throw await toApiError(res, url, { generation, expected: sessionProbe });
 
   return res.json();
 }
@@ -183,10 +186,12 @@ export const base44 = {
   entities: new Proxy({}, entityHandler),
 
   auth: {
-    // `probe`: checking whether there is a session at all (app startup), so a
-    // 401 just means "signed out". Everywhere else it means the session expired.
+    // `probe`: checking whether there is a session at all (app startup, or
+    // re-checking after an account-status answer), so a 401 just means
+    // "signed out" and a pending/disabled answer goes to the caller only.
+    // Everywhere else a 401 means the session expired.
     async me({ probe = false } = {}) {
-      return request("/auth/me", {}, { expectUnauthorized: probe });
+      return request("/auth/me", {}, { sessionProbe: probe });
     },
 
     async options() {
@@ -354,6 +359,7 @@ export const base44 = {
         const actualFile = fileOrObj?.file || fileOrObj;
         const formData = new FormData();
         formData.append("file", actualFile);
+        // Like request(): a 401 only ends the session this upload was sent under.
         const generation = authGeneration;
         const res = await fetch(`${API_BASE}/integrations/file/upload`, {
           method: "POST",

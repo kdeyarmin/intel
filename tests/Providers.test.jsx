@@ -5,12 +5,12 @@
  * leaving only the "View" button (link to ProviderDetail) for all providers.
  */
 import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 
 afterEach(cleanup);
 
-const applied = vi.hoisted(() => ({ textFilters: null, dateRange: null }));
+const applied = vi.hoisted(() => ({ textFilters: null, dateRange: null, stateOptions: null }));
 
 // ─── Module mocks ────────────────────────────────────────────────────────────
 
@@ -25,8 +25,12 @@ vi.mock('@tanstack/react-query', () => ({
 }));
 
 // Stub complex child components.
-vi.mock('../src/components/search/TypeAheadSearch', () => ({ default: () => null }));
-vi.mock('../src/components/filters/ProviderAdvancedFilters', () => ({ default: () => null }));
+vi.mock('../src/components/search/TypeAheadSearch', () => ({
+  default: ({ value, onChange }) => <input aria-label="Search" value={value} onChange={(e) => onChange(e.target.value)} />,
+}));
+vi.mock('../src/components/filters/ProviderAdvancedFilters', () => ({
+  default: ({ stateOptions }) => { applied.stateOptions = stateOptions; return null; },
+}));
 vi.mock('../src/components/filters/SortControl', () => ({ default: () => null }));
 vi.mock('../src/components/exports/ExportDialog', () => ({ default: () => null }));
 vi.mock('../src/components/filters/SavedFilterBar', () => ({ default: () => null }));
@@ -49,6 +53,7 @@ vi.mock('../src/components/territory/InteractiveProviderMap', () => ({ default: 
 
 import { useQuery } from '@tanstack/react-query';
 import Providers from '../src/pages/Providers';
+import { US_STATES } from '../src/lib/usStates';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -214,6 +219,59 @@ describe('Providers page – filters kept in the URL', () => {
   });
 });
 
+function UrlProbe() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  return (
+    <div>
+      <span data-testid="url-search">{location.search}</span>
+      <button onClick={() => navigate(`${location.pathname}?q=ortho`)}>open ortho link</button>
+      <button onClick={() => navigate(-1)}>go back</button>
+    </div>
+  );
+}
+
+const settleDebounce = () => act(() => new Promise((resolve) => setTimeout(resolve, 400)));
+
+describe('Providers page – search kept in the URL', () => {
+  function renderWithProbe(entries, index = entries.length - 1) {
+    setupMocks({ providers: [] });
+    return render(
+      <MemoryRouter initialEntries={entries} initialIndex={index}>
+        <Providers />
+        <UrlProbe />
+      </MemoryRouter>,
+    );
+  }
+  const urlSearch = () => screen.getByTestId('url-search').textContent;
+
+  it('takes the search from a same-page link instead of writing the old one back', async () => {
+    renderWithProbe(['/Providers?q=cardio']);
+    fireEvent.click(screen.getByRole('button', { name: 'open ortho link' }));
+    expect(urlSearch()).toBe('?q=ortho');
+    await settleDebounce();
+    expect(urlSearch()).toBe('?q=ortho');
+    expect(screen.getByRole('textbox', { name: 'Search' })).toHaveValue('ortho');
+  });
+
+  it('takes the search from Back', async () => {
+    renderWithProbe(['/Providers?q=cardio', '/Providers?q=ortho']);
+    fireEvent.click(screen.getByRole('button', { name: 'go back' }));
+    expect(urlSearch()).toBe('?q=cardio');
+    await settleDebounce();
+    expect(urlSearch()).toBe('?q=cardio');
+    expect(screen.getByRole('textbox', { name: 'Search' })).toHaveValue('cardio');
+  });
+
+  it('writes a typed search to the URL once typing settles', async () => {
+    renderWithProbe(['/Providers']);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search' }), { target: { value: ' neuro ' } });
+    expect(urlSearch()).toBe('');
+    await settleDebounce();
+    expect(urlSearch()).toBe('?q=neuro');
+  });
+});
+
 describe('Providers page – row selection labels', () => {
   it('names each checkbox after the provider, or its NPI when the name is missing', () => {
     setupMocks({
@@ -237,5 +295,19 @@ describe('Providers page – server search results', () => {
     setupMocks({ providers: [makeIndividual('6666666666', 'John', 'Smith')], locations: [] });
     renderProviders('/Providers?q=john%20smith&state=PA');
     expect(screen.getByText('Smith, John')).toBeInTheDocument();
+  });
+
+  it('offers every state while searching, not just those among the loaded locations', () => {
+    const locations = [{ npi: '6666666666', state: 'PA', location_type: 'Practice' }];
+    setupMocks({ providers: [makeIndividual('6666666666', 'John', 'Smith')], locations });
+    renderProviders('/Providers?q=smith');
+    const searching = applied.stateOptions.map((o) => o.value);
+    expect(searching).toContain('WY');
+    expect(searching).toHaveLength(US_STATES.length);
+    cleanup();
+
+    // The newest-providers view filters the loaded rows, so it offers their states.
+    renderProviders('/Providers');
+    expect(applied.stateOptions).toEqual([{ value: 'PA', label: 'PA' }]);
   });
 });

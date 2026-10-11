@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { invokeOrThrow } from '@/api/functionResult';
 import { base44 } from '@/api/base44Client';
 import { useUrlState } from '@/hooks/useUrlState';
+import { US_STATES } from '@/lib/usStates';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Network, Crown, ArrowRightLeft, MapPin, AlertTriangle, Sparkles, Target, Database } from 'lucide-react';
@@ -27,6 +28,7 @@ import PageHeader from '../components/shared/PageHeader';
 
 // Scope and filters live in the URL so a network view can be shared.
 const URL_DEFAULTS = { tab: 'graph', state: '', list: '', npi: '', q: '', type: 'all', group: 'all', min: 0 };
+const TABS = ['graph', 'hubs', 'flows', 'geographic', 'gaps', 'insights', 'influencers', 'single'];
 const GRAPH_NODES = 60;
 const GRAPH_EDGES = 200;
 
@@ -61,10 +63,14 @@ export default function ReferralNetworkIntelligence() {
   const [hubSortDir, setHubSortDir] = useState('desc');
 
   // Same rules as the server: a positive whole-number list id and a 10-digit
-  // NPI. Anything else in a shared URL is ignored rather than shown as a scope.
+  // NPI, and a state the scope bar offers (any case). Anything else in a
+  // shared URL is ignored rather than shown as a scope.
   const leadListId = /^[1-9]\d{0,9}$/.test(url.list) ? Number(url.list) : null;
   const focusNpi = /^\d{10}$/.test(url.npi) ? url.npi : null;
-  const scope = { state: url.state || null, lead_list_id: leadListId, npi: focusNpi };
+  const urlState = String(url.state).trim().toUpperCase();
+  const state = US_STATES.includes(urlState) ? urlState : null;
+  const tab = TABS.includes(url.tab) ? url.tab : 'graph';
+  const scope = { state, lead_list_id: leadListId, npi: focusNpi };
 
   const { data: leadLists = [] } = useQuery({
     queryKey: ['leadListsForNetwork'],
@@ -181,7 +187,7 @@ export default function ReferralNetworkIntelligence() {
               onReset={resetFilters} totalNodes={nodes.length} filteredNodes={filteredNodes.length}
             />
 
-            <Tabs value={url.tab} onValueChange={(tab) => setUrl({ tab })}>
+            <Tabs value={tab} onValueChange={(next) => setUrl({ tab: next })}>
               <TabsList className="bg-slate-800/50 h-auto flex flex-wrap justify-start gap-1 p-1">
                 <TabsTrigger value="graph" className="gap-1.5 text-xs"><Network className="w-3.5 h-3.5" aria-hidden="true" /> Network graph</TabsTrigger>
                 <TabsTrigger value="hubs" className="gap-1.5 text-xs"><Crown className="w-3.5 h-3.5" aria-hidden="true" /> Hubs</TabsTrigger>
@@ -274,7 +280,7 @@ export default function ReferralNetworkIntelligence() {
         icon={Network}
         breadcrumbs={[{ label: 'Analytics', page: 'AdvancedAnalytics' }, { label: 'Network' }]}
       />
-      <NetworkScopeBar state={url.state} leadListId={leadListId} focus={focusNode} leadLists={leadLists} onChange={changeScope} />
+      <NetworkScopeBar state={state} leadListId={leadListId} focus={focusNode} leadLists={leadLists} onChange={changeScope} />
       {body}
       <DataSourcesFooter />
     </div>

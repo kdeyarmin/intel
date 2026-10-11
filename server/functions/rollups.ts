@@ -1,12 +1,13 @@
 // getRollupStatus (public, read-only) and refreshRollups (admin).
 import { pool } from "../db";
-import { jobByName, rollupStatus, startDueRollups } from "../lib/rollups/runner";
+import { runRefreshRollupsWorker, writeMaintenanceHeartbeat } from "../lib/maintenance";
+import { jobByName, rollupStatus } from "../lib/rollups/runner";
 
 export async function handleGetRollupStatus() {
   return { jobs: await rollupStatus(pool) };
 }
 
-export async function handleRefreshRollups(payload: any) {
+export async function handleRefreshRollups(payload: any, user?: { email?: string | null } | null) {
   let jobs: string[] | undefined;
   if (payload?.jobs !== undefined) {
     // Named jobs must all exist: a typo must not fall through to "every job"
@@ -18,6 +19,11 @@ export async function handleRefreshRollups(payload: any) {
     }
     jobs = list;
   }
-  const result = await startDueRollups(pool, { jobs, force: payload?.force !== false });
-  return { success: true, ...result, jobs: await rollupStatus(pool) };
+  // Queued through the maintenance worker and recorded in the
+  // maintenance_fanout heartbeat, like the other maintenance tasks. A request
+  // rejected above never ran, so it isn't recorded.
+  const worker = await runRefreshRollupsWorker({ jobs, force: payload?.force !== false });
+  await writeMaintenanceHeartbeat([worker], "admin_ui", { userEmail: user?.email ?? undefined });
+  if (!worker.ok) throw Object.assign(new Error(`Couldn't queue the rollups: ${worker.error}`), { status: 500 });
+  return { success: true, ...worker.details, worker, jobs: await rollupStatus(pool) };
 }

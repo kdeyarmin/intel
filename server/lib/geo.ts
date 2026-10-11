@@ -91,18 +91,31 @@ export function buildGeoIndex(rows: {
 const STAMP_SQL = "SELECT vintage, loaded_at::text AS stamp FROM geo_meta WHERE key = 'census'";
 
 async function loadIndex(pool: any): Promise<{ index: GeoIndex; stamp: string | null }> {
-  // The stamp is read first: if the data changes mid-load, the next check
-  // sees a newer stamp and loads again.
-  const meta = await pool.query(STAMP_SQL);
-  const [counties, zctas, rels] = await Promise.all([
-    pool.query("SELECT fips, state, name, lat, lng FROM geo_counties"),
-    pool.query("SELECT zcta, lat, lng, primary_county_fips, state FROM geo_zctas"),
-    pool.query("SELECT zcta, county_fips, land_share FROM geo_zcta_counties"),
-  ]);
-  return {
-    index: buildGeoIndex({ counties: counties.rows, zctas: zctas.rows, zctaCounties: rels.rows, vintage: meta.rows[0]?.vintage ?? null }),
-    stamp: meta.rows[0]?.stamp ?? null,
-  };
+  // The stamp and all three tables come from one snapshot, so a reload that
+  // commits mid-read (another instance, `npm run geo:load`) can't mix two
+  // datasets. The loader TRUNCATEs, which isn't MVCC-safe: a snapshot taken
+  // before it commits would see the tables empty. So the tables are locked
+  // first (in the loader's TRUNCATE order, so neither side can deadlock), and
+  // the snapshot is only taken by the first SELECT, after any reload commits.
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+    await client.query("LOCK TABLE geo_zcta_counties, geo_zctas, geo_counties IN ACCESS SHARE MODE");
+    const meta = await client.query(STAMP_SQL);
+    const counties = await client.query("SELECT fips, state, name, lat, lng FROM geo_counties");
+    const zctas = await client.query("SELECT zcta, lat, lng, primary_county_fips, state FROM geo_zctas");
+    const rels = await client.query("SELECT zcta, county_fips, land_share FROM geo_zcta_counties");
+    await client.query("COMMIT");
+    return {
+      index: buildGeoIndex({ counties: counties.rows, zctas: zctas.rows, zctaCounties: rels.rows, vintage: meta.rows[0]?.vintage ?? null }),
+      stamp: meta.rows[0]?.stamp ?? null,
+    };
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
 /** The in-memory geography, loaded on first use. Empty (not an error) before the data is loaded. */
