@@ -165,6 +165,9 @@ export const MARKET_JOBS: MarketJob[] = [
                array_remove(array_agg(DISTINCT facility_ccn) FILTER (WHERE facility_type ILIKE 'hospital%' AND facility_ccn <> ''), NULL) AS hospital_ccns,
                count(*)::int AS affiliations
           FROM cms_facility_affiliation GROUP BY npi),
+      /* affiliations stays NULL (unknown) until the Facility Affiliation file has been imported: "no hospital listed"
+         is a statement about the file, and without it every clinician would read 0. */
+      aff_loaded AS (SELECT EXISTS (SELECT 1 FROM cms_facility_affiliation) AS loaded),
       scored AS (
         SELECT p.npi, p.data_year, z.primary_county_fips AS county_fips, p.state, p.zip5, p.provider_type, p.benes, p.services,
                p.avg_risk_score,
@@ -175,7 +178,7 @@ export const MARKET_JOBS: MarketJob[] = [
                ${cc(["Bene_CC_PH_CKD_V2_Pct", "Bene_CC_CKD_Pct"])} AS cc_ckd_pct,
                ${cc(["Bene_CC_PH_Diabetes_V2_Pct", "Bene_CC_Diab_Pct"])} AS cc_diabetes_pct,
                COALESCE(o.hha, false) AS hha_eligible, COALESCE(o.hospice, false) AS hospice_eligible, COALESCE(o.dme, false) AS dme_eligible,
-               d.dme_benes, a.hospital_ccns, COALESCE(a.affiliations, 0) AS affiliations,
+               d.dme_benes, a.hospital_ccns, CASE WHEN (SELECT loaded FROM aff_loaded) THEN COALESCE(a.affiliations, 0) END AS affiliations,
                round(50 * least(p.benes / 500.0, 1) + 25 * least(COALESCE(p.avg_risk_score, 0) / 2.5, 1)
                      + 25 * ((COALESCE(o.hha, false)::int + COALESCE(o.hospice, false)::int) / 2.0))::int AS referral_index
           FROM phys p

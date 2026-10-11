@@ -79,6 +79,13 @@ describe("market rollup jobs", () => {
     }
   });
 
+  it("leave a clinician's hospital affiliations unknown (NULL), not 0, until the Facility Affiliation file is imported", () => {
+    // "No affiliations listed" is a statement about the file; with no file loaded every clinician would read 0.
+    const sql = jobByName("referral_sources")!.sql;
+    expect(sql).toMatch(/aff_loaded AS \(SELECT EXISTS \(SELECT 1 FROM cms_facility_affiliation\) AS loaded\)/);
+    expect(sql).toMatch(/CASE WHEN \(SELECT loaded FROM aff_loaded\) THEN COALESCE\(a\.affiliations, 0\) END AS affiliations/);
+  });
+
   it("count the county's post-acute providers at each setting's own latest year", () => {
     const sql = jobByName("county_market_profile")!.sql;
     expect(sql).toMatch(/latest_pac AS \(SELECT setting, max\(data_year\) AS year FROM rollup_pac_market_share WHERE geo_level = 'county' GROUP BY setting\)/);

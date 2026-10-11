@@ -69,8 +69,8 @@ const SOURCES = {
   state: 'PA', county: COUNTY.county, data_year: '2024', truncated: false, limit: 25, rollups: { referral_sources: ROLLUPS.county_market_profile },
   index_note: 'Referral index (0–100): 50 points for volume.',
   rows: [
-    { npi: '1000000001', name: 'Ada Lovelace, MD', specialty: 'Internal Medicine', specialty_group: 'internal_medicine', specialty_group_label: 'Internal Medicine', benes: 620, avg_risk_score: 2.1, chronic: { alzheimer: 0.12, chf: 0.2 }, eligible: { hha: true, hospice: true, dme: false }, hospital_ccns: ['390001'], referral_index: 96, rank_in_county: 1, lead_score: 88 },
-    { npi: '1000000002', name: 'Bo Hart', specialty: 'Cardiology', specialty_group: 'cardiology', specialty_group_label: 'Cardiology', benes: 500, avg_risk_score: 1.9, chronic: {}, eligible: { hha: false, hospice: false, dme: false }, hospital_ccns: [], referral_index: 69, rank_in_county: 2, lead_score: null },
+    { npi: '1000000001', name: 'Ada Lovelace, MD', specialty: 'Internal Medicine', specialty_group: 'internal_medicine', specialty_group_label: 'Internal Medicine', benes: 620, avg_risk_score: 2.1, chronic: { alzheimer: 0.12, chf: 0.2 }, eligible: { hha: true, hospice: true, dme: false }, hospital_ccns: ['390001'], affiliations: 2, referral_index: 96, rank_in_county: 1, lead_score: 88 },
+    { npi: '1000000002', name: 'Bo Hart', specialty: 'Cardiology', specialty_group: 'cardiology', specialty_group_label: 'Cardiology', benes: 500, avg_risk_score: 1.9, chronic: {}, eligible: { hha: false, hospice: false, dme: false }, hospital_ccns: [], affiliations: 0, referral_index: 69, rank_in_county: 2, lead_score: null },
   ],
 };
 
@@ -147,6 +147,32 @@ describe('CountyIntelligence market tabs', () => {
 });
 
 describe('referral sources list', () => {
+  // The cell of the "Hospitals" column in a clinician's row.
+  const hospitalsCell = (name) => {
+    const col = screen.getAllByRole('columnheader').findIndex((h) => h.textContent === 'Hospitals');
+    return within(screen.getByRole('link', { name }).closest('tr')).getAllByRole('cell')[col];
+  };
+
+  it('counts hospital affiliations once the file is imported, a clinician with none included, without the note', async () => {
+    invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(countyAnswers(fn, payload)));
+    renderAt('/CountyIntelligence?state=PA&county=42003&tab=referrals', CountyIntelligence, '/CountyIntelligence');
+    await screen.findByRole('link', { name: 'Ada Lovelace, MD' });
+    expect(hospitalsCell('Ada Lovelace, MD')).toHaveTextContent(/^1$/);
+    expect(hospitalsCell('Bo Hart')).toHaveTextContent(/^0$/);
+    expect(screen.queryByText(/Facility Affiliation file/)).toBeNull();
+  });
+
+  it('shows a dash, and says why, while the Facility Affiliation file has not been imported (never 0)', async () => {
+    invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(fn === 'getReferralSources'
+      ? { ...SOURCES, rows: SOURCES.rows.map((r) => ({ ...r, hospital_ccns: [], affiliations: null })) }
+      : countyAnswers(fn, payload)));
+    renderAt('/CountyIntelligence?state=PA&county=42003&tab=referrals', CountyIntelligence, '/CountyIntelligence');
+    await screen.findByRole('link', { name: 'Ada Lovelace, MD' });
+    expect(hospitalsCell('Ada Lovelace, MD')).toHaveTextContent(/^—$/);
+    expect(hospitalsCell('Bo Hart')).toHaveTextContent(/^—$/);
+    expect(screen.getByText(/A dash under Hospitals means the Facility Affiliation file has not been imported yet/)).toBeInTheDocument();
+  });
+
   it('says when the ranked list goes on past the rows shown', async () => {
     invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(fn === 'getReferralSources' ? { ...SOURCES, truncated: true, searched: 25 } : countyAnswers(fn, payload)));
     renderAt('/CountyIntelligence?state=PA&county=42003&tab=referrals', CountyIntelligence, '/CountyIntelligence');
@@ -354,12 +380,24 @@ describe('cards', () => {
   it('renders a clinician’s referral potential, and nothing without data', () => {
     const { container } = render(<ReferralPotentialCard potential={null} />);
     expect(container).toBeEmptyDOMElement();
-    render(<ReferralPotentialCard potential={{ data_year: '2024', referral_index: 96, rank_in_county: 1, county_name: 'Allegheny County', benes: 620, services: 8000, avg_risk_score: 2.1, dual_pct: 0.3, hospital_ccns: ['390001'], dme_benes: 40, hha_eligible: true, hospice_eligible: true, dme_eligible: false, cc_alzheimer_pct: 0.12, cc_chf_pct: 0.2 }} />);
+    render(<ReferralPotentialCard potential={{ data_year: '2024', referral_index: 96, rank_in_county: 1, county_name: 'Allegheny County', benes: 620, services: 8000, avg_risk_score: 2.1, dual_pct: 0.3, hospital_ccns: ['390001'], affiliations: 2, dme_benes: 40, hha_eligible: true, hospice_eligible: true, dme_eligible: false, cc_alzheimer_pct: 0.12, cc_chf_pct: 0.2 }} />);
     expect(screen.getByText('96')).toBeInTheDocument();
     expect(screen.getByText('1st in Allegheny County')).toBeInTheDocument();
     expect(screen.getByText('Home health eligible')).toBeInTheDocument();
     expect(screen.getByText('DME not eligible')).toBeInTheDocument();
     expect(screen.getByText('Alzheimer’s / dementia')).toBeInTheDocument();
+  });
+
+  it('shows "Not loaded" rather than 0 hospital affiliations while the Facility Affiliation file has not been imported', () => {
+    const base = { data_year: '2024', referral_index: 96, rank_in_county: 1, county_name: 'Allegheny County', benes: 620, hospital_ccns: [], affiliations: null };
+    const hospitals = () => screen.getByText('Hospital affiliations').nextElementSibling;
+    const { rerender } = render(<ReferralPotentialCard potential={base} />);
+    expect(hospitals()).toHaveTextContent('Not loaded');
+    rerender(<ReferralPotentialCard potential={{ ...base, affiliations: 0 }} />);
+    expect(hospitals()).toHaveTextContent(/^0$/);
+    // Three affiliations on file, two of them hospitals.
+    rerender(<ReferralPotentialCard potential={{ ...base, hospital_ccns: ['390001', '390002'], affiliations: 3 }} />);
+    expect(hospitals()).toHaveTextContent(/^2$/);
   });
 
   it('renders the compliance note', () => {

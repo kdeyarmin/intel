@@ -125,7 +125,7 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
                           {!r.eligible?.hha && !r.eligible?.hospice && !r.eligible?.dme ? <span className="text-slate-400">—</span> : null}
                         </span>
                       </td>
-                      <td className="py-1.5 pr-2 text-right text-slate-300">{r.hospital_ccns?.length || 0}</td>
+                      <td className="py-1.5 pr-2 text-right text-slate-300">{r.affiliations == null ? '—' : r.hospital_ccns?.length || 0}</td>
                       <td className="py-1.5 text-right">
                         <Badge className={`text-[10px] ${r.lead_score == null ? 'bg-slate-700 text-slate-300' : 'bg-teal-900/30 text-teal-400'}`}>{r.lead_score == null ? 'Unscored' : Math.round(r.lead_score)}</Badge>
                       </td>
@@ -134,6 +134,9 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
                 </tbody>
               </table>
               {listNote ? <p className="text-[11px] text-slate-400 mt-1">{listNote}</p> : null}
+              {rows.some((r) => r.affiliations == null) ? (
+                <p className="text-[11px] text-slate-400 mt-1">A dash under Hospitals means the Facility Affiliation file has not been imported yet, so affiliations are unknown (not zero).</p>
+              ) : null}
             </div>
           )}
         <div className="mt-3"><MarketFreshness rollups={data?.rollups} jobs={['referral_sources']} /></div>

@@ -183,9 +183,12 @@ const TOOL_SPECS = [
         referral_potential: potential
           ? {
             index: num(potential.referral_index), rank_in_county: num(potential.rank_in_county), county: potential.county_name ?? potential.county_fips ?? null,
-            medicare_beneficiaries: num(potential.benes), avg_risk_score: num(potential.avg_risk_score), hospital_affiliations: Array.isArray(potential.hospital_ccns) ? potential.hospital_ccns.length : 0,
+            medicare_beneficiaries: num(potential.benes), avg_risk_score: num(potential.avg_risk_score),
+            // null = unknown: the rollup was built before the Facility Affiliation file was imported.
+            hospital_affiliations: potential.affiliations == null ? null : Array.isArray(potential.hospital_ccns) ? potential.hospital_ccns.length : 0,
             year: potential.data_year ?? null,
-            note: "Index: 50 points for Medicare beneficiaries served (full at 500), 25 for patient risk (full at 2.5), 25 for home health and hospice ordering eligibility. Not confirmed referrals.",
+            note: "Index: 50 points for Medicare beneficiaries served (full at 500), 25 for patient risk (full at 2.5), 25 for home health and hospice ordering eligibility. Not confirmed referrals."
+              + (potential.affiliations == null ? " hospital_affiliations is null because the Facility Affiliation file has not been imported yet; it does not mean none." : ""),
           }
           : null,
         lead_score: r.leadScore ? { score: num(r.leadScore.score), outreach_potential: num(r.leadScore.outreach_potential), referral_likelihood: num(r.leadScore.referral_likelihood) } : null,

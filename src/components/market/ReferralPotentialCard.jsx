@@ -36,7 +36,9 @@ export default function ReferralPotentialCard({ potential }) {
             <dt className="text-slate-400">Services</dt><dd className="text-slate-200">{fmtCount(p.services)}</dd>
             <dt className="text-slate-400">Average risk score</dt><dd className="text-slate-200">{fmtRate(p.avg_risk_score, 2)}</dd>
             <dt className="text-slate-400">Dual-eligible</dt><dd className="text-slate-200">{fmtShare(p.dual_pct)}</dd>
-            <dt className="text-slate-400">Hospital affiliations</dt><dd className="text-slate-200">{p.hospital_ccns?.length || 0}</dd>
+            <dt className="text-slate-400">Hospital affiliations</dt>
+            {/* affiliations is null until the Facility Affiliation file is imported: "none listed" would be a claim about a file we don't have. */}
+            <dd className="text-slate-200">{p.affiliations == null ? 'Not loaded' : p.hospital_ccns?.length || 0}</dd>
             <dt className="text-slate-400">DME patients</dt><dd className="text-slate-200">{fmtCount(p.dme_benes)}</dd>
           </dl>
         </div>
