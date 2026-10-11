@@ -26,11 +26,11 @@ export default function EmailHealthBar({ emailStats, totalProviders }) {
             <Mail className="w-4 h-4 text-cyan-400" />
             <span className="text-sm font-semibold text-white">Email Health</span>
           </div>
-          <Link to={createPageUrl('ProviderIntelligence')}>
-            <Button variant="ghost" size="sm" className="text-xs h-6 text-cyan-500 hover:text-cyan-400 gap-1">
+          <Button asChild variant="ghost" size="sm" className="text-xs h-6 text-cyan-500 hover:text-cyan-400 gap-1">
+            <Link to={createPageUrl('ProviderIntelligence')}>
               <Search className="w-3 h-3" /> Manage
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

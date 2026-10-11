@@ -65,9 +65,9 @@ export default function OrgAffiliatedProvidersCard({ npi, locations = [], allPro
                   <TableCell>{p.credential || '-'}</TableCell>
                   <TableCell><Badge className={p.status === 'Active' ? 'bg-emerald-900/20 text-emerald-400' : 'bg-red-900/20 text-red-400'}>{p.status}</Badge></TableCell>
                   <TableCell>
-                    <Link to={createPageUrl(`ProviderDetail?npi=${p.npi}`)}>
-                      <Button variant="outline" size="sm" className="text-xs h-7">View</Button>
-                    </Link>
+                    <Button asChild variant="outline" size="sm" className="text-xs h-7">
+                      <Link to={createPageUrl(`ProviderDetail?npi=${p.npi}`)}>View</Link>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
