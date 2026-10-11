@@ -23,7 +23,8 @@ export function verifySendgridSignature(
 }
 
 export interface EventUpdate {
-  messageId: number;
+  /** Our outreach_messages id (campaign sends only); null for direct sends. */
+  messageId: number | null;
   status: "delivered" | "opened" | "clicked" | "bounced" | null;
   /** outreach_messages timestamp column to set (first occurrence wins). */
   timestampColumn: "opened_at" | "clicked_at" | "bounced_at" | null;
@@ -34,8 +35,17 @@ export interface EventUpdate {
 }
 
 export function mapSendgridEvent(event: Record<string, any>): EventUpdate | null {
-  const messageId = Number(event?.message_id);
-  if (!Number.isInteger(messageId) || messageId <= 0) return null;
+  const update = mapEvent(event);
+  // Without our message id (a direct send, not a campaign) there's no message
+  // to update, but a bounce, spam report or unsubscribe still suppresses the address.
+  if (!update || (update.messageId === null && !(update.suppressReason && update.email))) return null;
+  return update;
+}
+
+function mapEvent(event: Record<string, any>): EventUpdate | null {
+  if (!event || typeof event !== "object") return null;
+  const id = Number(event.message_id);
+  const messageId = Number.isInteger(id) && id > 0 ? id : null;
   const at = event.timestamp ? new Date(Number(event.timestamp) * 1000) : new Date();
   const email = typeof event.email === "string" ? event.email : null;
   const base = { messageId, at, email, status: null, timestampColumn: null, suppressReason: null, error: null } as EventUpdate;

@@ -147,6 +147,16 @@ describe("dueJobs", () => {
     const due = dueJobs([{ job: "facility_types", status: "running", started_at: ago(5), last_success_at: null }], now, [jobByName("facility_types")!]);
     expect(due.map((j) => j.name)).toEqual(["facility_types"]);
   });
+
+  it("reruns a dead run even when the previous success is recent", () => {
+    // A forced refresh started 4h ago, an hour after a success, and died.
+    const due = dueJobs([
+      { job: "facility_types", status: "running", started_at: ago(4), last_success_at: ago(5) },
+      { job: "cms_top_referred", status: "running", started_at: null, last_success_at: ago(1) },
+      { job: "cms_service_types", status: "running", started_at: ago(1), last_success_at: ago(2) },
+    ], now, ["facility_types", "cms_top_referred", "cms_service_types"].map((n) => jobByName(n)!)).map((j) => j.name);
+    expect(due).toEqual(["facility_types", "cms_top_referred"]);
+  });
 });
 
 function fakeDb(sourceRows: any[], opts: { failOn?: RegExp } = {}) {

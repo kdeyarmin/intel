@@ -35,9 +35,11 @@ export interface ProviderSearchPlan {
   term: string;
 }
 
+// The Providers and Organizations pages filter and sort these rows like entity
+// rows: "Not searched" reads email_searched_at, "Last updated" updated_date.
 export const COLUMNS = `id, npi, entity_type, first_name, last_name, organization_name,
        credential, status, email, email_confidence, email_validation_status,
-       email_source, phone, created_date`;
+       email_source, email_searched_at, phone, created_date, updated_date`;
 
 const MAX_LIMIT = 500;
 const ORG_CONTAINS_CANDIDATES = 200;
@@ -87,12 +89,13 @@ export function buildProviderSearchPlan(rawQuery: string, options: ProviderSearc
   // With a state filter, fetch more candidates so filtering still leaves enough.
   const cap = options.state ? Math.max(limit, STATE_CANDIDATES) : limit;
   const queries: SearchQuery[] = [];
+  // The entity filter applies to every query, so a cap isn't spent on the
+  // other kind (nothing guarantees an organization row has no last name).
+  const entityWhere = (n: number) => (entity ? ` AND entity_type = $${n}` : "");
+  const entityValue = entity ? [entity] : [];
 
   const compact = q.replace(/[\s-]/g, "");
   if (/^\d{2,10}$/.test(compact)) {
-    // The entity filter applies here too, so a prefix's cap isn't spent on the other kind.
-    const entityWhere = (n: number) => (entity ? ` AND entity_type = $${n}` : "");
-    const entityValue = entity ? [entity] : [];
     if (compact.length === 10) {
       queries.push({ kind: "npi", cap: 1, text: `SELECT ${COLUMNS} FROM providers WHERE npi = $1${entityWhere(2)} LIMIT 1`, values: [compact, ...entityValue] });
     } else {
@@ -112,8 +115,8 @@ export function buildProviderSearchPlan(rawQuery: string, options: ProviderSearc
     const person = (where: string, values: unknown[]) => queries.push({
       kind: "person",
       cap,
-      text: `SELECT ${COLUMNS} FROM providers WHERE last_name IS NOT NULL AND ${where} ORDER BY ${E.lastName} LIMIT $${values.length + 1}`,
-      values: [...values, cap],
+      text: `SELECT ${COLUMNS} FROM providers WHERE last_name IS NOT NULL AND ${where}${entityWhere(values.length + 1)} ORDER BY ${E.lastName} LIMIT $${values.length + entityValue.length + 1}`,
+      values: [...values, ...entityValue, cap],
     });
     // The whole query as a last-name prefix ("smith", "de la cruz").
     person(`${E.lastName} LIKE $1`, [`${escapeLike(lower.replace(/,/g, ""))}%`]);
@@ -134,8 +137,8 @@ export function buildProviderSearchPlan(rawQuery: string, options: ProviderSearc
     queries.push({
       kind: "org",
       cap,
-      text: `SELECT ${COLUMNS} FROM providers WHERE organization_name IS NOT NULL AND ${E.orgName} LIKE $1 ORDER BY ${E.orgName} LIMIT $2`,
-      values: [`${escapeLike(lower)}%`, cap],
+      text: `SELECT ${COLUMNS} FROM providers WHERE organization_name IS NOT NULL AND ${E.orgName} LIKE $1${entityWhere(2)} ORDER BY ${E.orgName} LIMIT $${entityValue.length + 2}`,
+      values: [`${escapeLike(lower)}%`, ...entityValue, cap],
     });
     if (!caps.orgPrefix) degraded = true;
     if (caps.trigram && lower.length >= 3) {
@@ -145,9 +148,13 @@ export function buildProviderSearchPlan(rawQuery: string, options: ProviderSearc
       queries.push({
         kind: "org",
         cap: n,
-        text: `SELECT ${COLUMNS} FROM providers WHERE organization_name IS NOT NULL AND ${E.orgName} LIKE $1 LIMIT $2`,
-        values: [`%${escapeLike(lower)}%`, n],
+        text: `SELECT ${COLUMNS} FROM providers WHERE organization_name IS NOT NULL AND ${E.orgName} LIKE $1${entityWhere(2)} LIMIT $${entityValue.length + 2}`,
+        values: [`%${escapeLike(lower)}%`, ...entityValue, n],
       });
+    } else if (caps.trigramPending && lower.length >= 3) {
+      // pg_trgm is installed but its index isn't ready, so "contains" matches
+      // are skipped for now. (Without pg_trgm, prefix matching is the design.)
+      degraded = true;
     }
   }
 

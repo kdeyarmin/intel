@@ -24,7 +24,8 @@ export function migrationHash(migrationsFolder: string, tag: string): string {
  * Migrations that are NOT safe to run twice, and the table whose presence
  * proves each one is already applied. Every later migration is written to be
  * idempotent (IF NOT EXISTS), so these are the only ones a database that was
- * built with `drizzle-kit push` must have recorded before migrating.
+ * built with `drizzle-kit push` must have recorded before migrating. 0000 also
+ * needs every other table it creates (see planBaseline).
  *
  * Baselining 0002 records it without its data backfill (db:push creates the
  * side table empty). Readers fall back to medicare_facilities.raw_data, and
@@ -35,6 +36,25 @@ export const NON_IDEMPOTENT_MARKERS: Record<string, string> = {
   "0000_cute_nemesis": "users",
   "0002_medicare_facilities_raw": "medicare_facilities_raw",
 };
+
+export const INITIAL_MIGRATION = "0000_cute_nemesis";
+
+/**
+ * Tables 0000 creates that schema.ts no longer defines, so a database pushed
+ * since then doesn't have them. Nothing reads them.
+ */
+export const RETIRED_INITIAL_TABLES = ["campaigns"];
+
+/** Tables a migration's SQL creates. */
+export function tablesCreatedBy(sql: string): string[] {
+  return [...sql.matchAll(/CREATE TABLE (?:IF NOT EXISTS )?"(\w+)"/gi)].map((m) => m[1]);
+}
+
+/** Tables a pushed database must have before 0000 can be recorded as applied. */
+export function initialTables(migrationsFolder: string): string[] {
+  const sql = fs.readFileSync(path.join(migrationsFolder, `${INITIAL_MIGRATION}.sql`), "utf8");
+  return tablesCreatedBy(sql).filter((t) => !RETIRED_INITIAL_TABLES.includes(t));
+}
 
 export interface BaselineRow {
   tag: string;
@@ -50,16 +70,27 @@ export interface BaselineRow {
  * run and fill any gaps.
  *
  * Returns [] for a database that already has history, or for an empty
- * database (where every migration should run).
+ * database (where every migration should run). Throws for a database with
+ * only part of 0000's tables (an interrupted push): recording 0000 would
+ * mean its missing tables are never created.
  */
 export function planBaseline(input: {
   historyCount: number;
   existingTables: Set<string>;
+  initialTables: string[];
   journal: JournalEntry[];
   hashOf: (tag: string) => string;
 }): BaselineRow[] {
   if (input.historyCount > 0) return [];
-  if (!input.existingTables.has("users")) return [];
+  const missing = input.initialTables.filter((t) => !input.existingTables.has(t));
+  if (missing.length === input.initialTables.length) return [];
+  if (missing.length) {
+    throw new Error(
+      `Incomplete schema: the database has some of ${INITIAL_MIGRATION}'s tables but no migration history, ` +
+        `and is missing ${missing.join(", ")}. It looks like an interrupted drizzle-kit push, so ${INITIAL_MIGRATION} ` +
+        `can't be recorded as applied. Create the missing tables (drizzle/${INITIAL_MIGRATION}.sql only uses IF NOT EXISTS) and migrate again.`,
+    );
+  }
   const rows: BaselineRow[] = [];
   for (const entry of [...input.journal].sort((a, b) => a.when - b.when)) {
     const marker = NON_IDEMPOTENT_MARKERS[entry.tag];

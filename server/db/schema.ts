@@ -130,6 +130,16 @@ export const authTokens = pgTable("auth_tokens", {
   index("auth_tokens_user_idx").on(table.user_id),
 ]);
 
+// Sign-in attempts per email in the current lockout window, shared by every
+// server instance (UserRepo.countLoginAttempt). Ended windows are deleted.
+export const loginAttempts = pgTable("login_attempts", {
+  email: varchar("email", { length: 255 }).primaryKey(),
+  attempts: integer("attempts").notNull().default(0),
+  window_ends_at: timestamp("window_ends_at", { withTimezone: true }).notNull(),
+}, (table) => [
+  index("login_attempts_window_ends_idx").on(table.window_ends_at),
+]);
+
 export const providers = pgTable("providers", {
   id: serial("id").primaryKey(),
   npi: varchar("npi", { length: 20 }).unique(),
@@ -816,7 +826,7 @@ export const scheduledExports = pgTable("scheduled_exports", {
   format: varchar("format", { length: 20 }),
   recipients: jsonb("recipients"),
   // Form settings without a dedicated column (dataset, columns, frequency,
-  // schedule_day/time, include_summary...) — see JSONB_OVERFLOW in routes/entities.ts.
+  // schedule_day/time, include_summary...) — see JSONB_OVERFLOW in lib/entityFields.ts.
   config: jsonb("config"),
   last_run: timestamp("last_run"),
   status: varchar("status", { length: 50 }).default("active"),

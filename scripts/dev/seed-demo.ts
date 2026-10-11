@@ -2,7 +2,8 @@
 // practice locations and specialties in PA/OH/WV, referral edges, Medicare
 // utilization, lead scores, facilities and a lead list. Rows are tagged
 // 'demo-seed' (source / import_batch_id / created_by, or via their provider's
-// NPI) and re-running replaces them.
+// NPI) and re-running replaces them. Demo NPIs that other providers use are
+// skipped; rows for a demo NPI with no provider row stop the seed.
 //
 // Refuses to run against anything but a local database.
 // Usage: npm run db:seed-demo
@@ -85,8 +86,32 @@ async function insertRows(client: any, table: string, cols: string[], rows: unkn
   }
 }
 
+/**
+ * Demo child rows are found by their provider's NPI. Rows for a pool NPI with
+ * no provider row may not be demo data, and the seed could take that NPI for
+ * a demo provider and delete them on its next run, so stop before changing anything.
+ */
+async function assertNoOrphanRowsInPool() {
+  const npiPool = Array.from({ length: DEMO_NPI_POOL }, (_, k) => npiFrom(DEMO_NPI_BASE + k));
+  const { rows } = await pool.query("SELECT npi FROM providers WHERE npi = ANY($1)", [npiPool]);
+  const withProvider = new Set(rows.map((r: any) => r.npi));
+  const bare = npiPool.filter((n) => !withProvider.has(n));
+  const found: string[] = [];
+  for (const t of ["lead_scores", "provider_taxonomies", "provider_locations", "provider_service_utilization"]) {
+    const { rows: hits } = await pool.query(`SELECT npi FROM ${t} WHERE npi = ANY($1) LIMIT 5`, [bare]);
+    found.push(...hits.map((r: any) => `${r.npi} (${t})`));
+  }
+  if (found.length) {
+    throw new Error(
+      `found rows for demo NPIs that have no provider row: ${found.join(", ")}. ` +
+        "The seed can't tell whether they are demo data, so it changed nothing; remove them and run it again.",
+    );
+  }
+}
+
 async function main() {
   assertLocal();
+  await assertNoOrphanRowsInPool();
   const client = await pool.connect();
   try {
     await client.query("BEGIN");

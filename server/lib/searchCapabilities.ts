@@ -6,6 +6,8 @@ import { SEARCH_INDEX_NAMES } from "./searchIndexes";
 export interface SearchCapabilities {
   /** pg_trgm installed and the organization trigram index is valid: "contains" search. */
   trigram: boolean;
+  /** pg_trgm installed but its index isn't valid yet: "contains" search is still coming. */
+  trigramPending: boolean;
   lastName: boolean;
   orgPrefix: boolean;
   zip5: boolean;
@@ -15,6 +17,7 @@ export interface SearchCapabilities {
 
 export const NO_CAPABILITIES: SearchCapabilities = {
   trigram: false,
+  trigramPending: false,
   lastName: false,
   orgPrefix: false,
   zip5: false,
@@ -30,6 +33,7 @@ export function capabilitiesFrom(extensions: string[], validIndexes: string[]): 
   const N = SEARCH_INDEX_NAMES;
   return {
     trigram: extensions.includes("pg_trgm") && valid.has(N.orgTrigram),
+    trigramPending: extensions.includes("pg_trgm") && !valid.has(N.orgTrigram),
     lastName: valid.has(N.lastName),
     orgPrefix: valid.has(N.orgPrefix),
     zip5: valid.has(N.zip5),
