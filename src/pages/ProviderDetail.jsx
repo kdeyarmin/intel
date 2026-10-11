@@ -48,6 +48,7 @@ import OrgAffiliatedProvidersCard from '../components/providers/OrgAffiliatedPro
 import ComprehensiveReport from '../components/reports/ComprehensiveReport';
 import ProviderHeader from '../components/providers/ProviderHeader';
 import QueryErrorState from '../components/shared/QueryErrorState';
+import { pickPrimaryLocation } from '@/lib/locations';
 
 export default function ProviderDetail() {
   const navigate = useNavigate();
@@ -154,7 +155,7 @@ export default function ProviderDetail() {
 
   const provider = providers?.[0];
   const score = scores?.[0];
-  const primaryLocation = locations?.find(l => l.is_primary) || locations?.[0];
+  const primaryLocation = pickPrimaryLocation(locations);
   const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
   const latestRef = [...referrals].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
 

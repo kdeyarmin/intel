@@ -5,9 +5,11 @@ import {
   matchRank,
   mergeResults,
   npiPrefixRange,
+  PRACTICE_STATE_FILTER_SQL,
   runProviderSearch,
   searchBySpecialty,
   specialtyPatterns,
+  STATE_FILTER_SQL,
 } from "../server/lib/providerSearch";
 import { capabilitiesFrom, NO_CAPABILITIES } from "../server/lib/searchCapabilities";
 import { SEARCH_INDEXES, SEARCH_EXPR } from "../server/lib/searchIndexes";
@@ -205,6 +207,23 @@ describe("searchBySpecialty", () => {
     expect(r!.providers).toEqual([{ npi: "2", last_name: "X", taxonomy_code: "207Q00000X", specialty: "Family Medicine" }]);
     expect(calls[0].sql).toContain("is_primary = true AND (taxonomy_code LIKE $1)");
     expect(calls[0].sql).not.toMatch(/ORDER BY|JOIN/);
+    // Generic search counts any location in the state.
+    expect(calls.find((c) => c.sql.includes("provider_locations"))!.sql).toBe(STATE_FILTER_SQL);
+  });
+
+  it("can require a practice location in the state", async () => {
+    const { client, calls } = fakeClient((sql, params) => {
+      if (sql.includes("FROM provider_taxonomies")) return [{ npi: "1", taxonomy_code: "207Q00000X", taxonomy_description: "Family Medicine" }, { npi: "2", taxonomy_code: "207Q00000X", taxonomy_description: "Family Medicine" }];
+      // "1" has only a mailing address in OH.
+      if (sql.includes("FROM provider_locations")) return (sql.includes("location_type = 'Practice'") ? ["2"] : ["1", "2"]).map((npi) => ({ npi }));
+      if (sql.includes("FROM providers")) return params[0].map((npi: string) => ({ npi, last_name: "X" }));
+      return [];
+    });
+    const r = await searchBySpecialty(client, { group: "family_medicine", state: "OH", limit: 10, practiceOnly: true });
+    expect(r!.providers.map((p: any) => p.npi)).toEqual(["2"]);
+    const stateCall = calls.find((c) => c.sql.includes("provider_locations"))!;
+    expect(stateCall.sql).toBe(PRACTICE_STATE_FILTER_SQL);
+    expect(stateCall.params).toEqual([["1", "2"], "OH"]);
   });
 });
 

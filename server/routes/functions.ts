@@ -12,10 +12,6 @@ const DASHBOARD_CACHE_TTL = 5 * 60 * 1000;
 // Sample size for the dashboard's no-phone extrapolation. Used for both the
 // LIMIT and the scale-up divisor so the two can never drift apart.
 const PHONE_SAMPLE_SIZE = 2000;
-// The territory "available states" rollup is a GROUP BY over the 12M-row
-// provider_locations table and is identical for every request, so cache it.
-let territoryStatesCache: { data: any[]; timestamp: number } | null = null;
-const TERRITORY_STATES_TTL = 10 * 60 * 1000;
 
 
 router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000), async (req: AuthRequest, res: Response) => {
@@ -248,81 +244,8 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
       }
 
       case "getTerritoryData": {
-        const { db } = await import("../db");
-        const { sql } = await import("drizzle-orm");
-        const stateParam = req.body?.state || 'PA';
-        const limitParam = Math.min(Number(req.body?.limit) || 500, 1000);
-
-        const locResult = await db.execute(sql`
-          SELECT DISTINCT ON (pl.npi) pl.npi, pl.city, pl.state, pl.zip, pl.address_1,
-            p.first_name, p.last_name, p.organization_name, p.entity_type
-          FROM provider_locations pl
-          INNER JOIN providers p ON p.npi = pl.npi
-          WHERE pl.state = ${stateParam}
-          ORDER BY pl.npi, pl.id
-          LIMIT ${limitParam}
-        `);
-        const baseRows = ((locResult as any).rows || locResult) || [];
-        const npis = baseRows.map((r: any) => r.npi).filter(Boolean);
-
-        let taxMap: Record<string, any> = {};
-        let utilMap: Record<string, any> = {};
-        if (npis.length > 0) {
-          const npiParams = sql.join(npis.map((n: string) => sql`${n}`), sql`, `);
-          const [taxResult, utilResult] = await Promise.all([
-            db.execute(sql`SELECT DISTINCT ON (npi) npi, taxonomy_description, taxonomy_code FROM provider_taxonomies WHERE npi IN (${npiParams}) AND is_primary = true ORDER BY npi, id`),
-            db.execute(sql`SELECT DISTINCT ON (npi) npi, total_medicare_payment_amt, total_unique_benes, total_services, data_year FROM provider_service_utilization WHERE npi IN (${npiParams}) ORDER BY npi, data_year DESC`),
-          ]);
-          ((taxResult as any).rows || taxResult || []).forEach((r: any) => { taxMap[r.npi] = r; });
-          ((utilResult as any).rows || utilResult || []).forEach((r: any) => { utilMap[r.npi] = r; });
-        }
-
-        const result = baseRows.map((r: any) => {
-          const tax = taxMap[r.npi];
-          const util = utilMap[r.npi];
-          return { ...r, specialty: tax?.taxonomy_description, taxonomy_code: tax?.taxonomy_code, total_medicare_payment_amt: util?.total_medicare_payment_amt, total_unique_benes: util?.total_unique_benes, total_services: util?.total_services, data_year: util?.data_year };
-        });
-        result.sort((a: any, b: any) => (Number(b.total_unique_benes) || 0) - (Number(a.total_unique_benes) || 0));
-
-        const rows = result;
-
-        let statesList: any[];
-        if (territoryStatesCache && Date.now() - territoryStatesCache.timestamp < TERRITORY_STATES_TTL) {
-          statesList = territoryStatesCache.data;
-        } else {
-          const statesResult = await db.execute(sql`
-            SELECT state, COUNT(*)::int AS cnt
-            FROM provider_locations
-            WHERE state IS NOT NULL AND state != ''
-            GROUP BY state
-            ORDER BY cnt DESC
-            LIMIT 60
-          `);
-          statesList = ((statesResult as any).rows || statesResult) || [];
-          territoryStatesCache = { data: statesList, timestamp: Date.now() };
-        }
-
-        return res.json({
-          providers: rows.map((r: any) => ({
-            npi: r.npi,
-            firstName: r.first_name,
-            lastName: r.last_name,
-            organizationName: r.organization_name,
-            entityType: r.entity_type || 'Unknown',
-            city: r.city || '',
-            state: r.state || '',
-            zip: r.zip || '',
-            address: r.address_1 || '',
-            specialty: r.specialty || '',
-            taxonomyCode: r.taxonomy_code || '',
-            totalMedicarePayment: Number(r.total_medicare_payment_amt || 0),
-            totalBeneficiaries: Number(r.total_unique_benes || 0),
-            totalServices: Number(r.total_services || 0),
-            dataYear: r.data_year || '',
-          })),
-          availableStates: statesList.map((s: any) => ({ state: s.state, count: Number(s.cnt) })),
-          totalInState: rows.length,
-        });
+        const { handleGetTerritoryData } = await import("../functions/territory");
+        return res.json(await handleGetTerritoryData(req.body));
       }
 
       case "getDataHealthMetrics": {
@@ -787,6 +710,16 @@ Be concise and helpful. Use markdown formatting for readability.`;
       case "getGeoCounties": {
         const { handleGetGeoCounties } = await import("../functions/geography");
         return res.json(await handleGetGeoCounties(req.body));
+      }
+
+      case "getZipCoordinates": {
+        const { handleGetZipCoordinates } = await import("../functions/geography");
+        return res.json(await handleGetZipCoordinates(req.body));
+      }
+
+      case "getGeoContext": {
+        const { handleGetGeoContext } = await import("../functions/geography");
+        return res.json(await handleGetGeoContext(req.body));
       }
 
       case "loadCensusGeography": {

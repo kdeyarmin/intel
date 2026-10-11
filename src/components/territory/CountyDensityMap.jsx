@@ -1,68 +1,57 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { MapPin } from 'lucide-react';
+import { createPageUrl } from '@/utils';
 
-export default function CountyDensityMap({ countyStats }) {
-  const getDensityColor = (count) => {
-    // Monotonic ramp — higher density renders darker. (Previously 20-49 used a
-    // faint bg-teal-900/20 that looked lighter than the 10-19 bucket.)
-    if (count >= 50) return 'bg-teal-600';
-    if (count >= 20) return 'bg-teal-500';
-    if (count >= 10) return 'bg-teal-400';
-    if (count >= 5) return 'bg-teal-300';
-    return 'bg-teal-200';
-  };
-
-  const topCounties = countyStats.slice(0, 15);
+/**
+ * Practice locations per county across the whole state (from the ZIP
+ * rollup), with how many of the providers shown are in each.
+ */
+export default function CountyDensityMap({ counties = [], providers = [], state }) {
+  const shownByCounty = new Map();
+  for (const p of providers) if (p.countyFips) shownByCounty.set(p.countyFips, (shownByCounty.get(p.countyFips) || 0) + 1);
+  const total = counties.reduce((s, c) => s + c.practice_locations, 0);
+  const max = Math.max(1, ...counties.map((c) => c.practice_locations));
+  const top = counties.filter((c) => c.practice_locations > 0).slice(0, 20);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MapPin className="h-5 w-5 text-teal-600" />
-          Provider Density by County
+        <CardTitle className="flex items-center gap-2 text-base">
+          <MapPin className="h-5 w-5 text-teal-400" aria-hidden="true" />
+          Provider density by county{state ? ` in ${state}` : ''}
         </CardTitle>
+        <p className="text-xs text-slate-400">
+          Practice locations per county across the whole state. Open a county for its providers, facilities and referrals.
+        </p>
       </CardHeader>
       <CardContent>
-        <div className="space-y-2">
-          {topCounties.map((county, idx) => (
-            <div
-              key={idx}
-              className="flex items-center gap-3 p-3 bg-slate-800/40 rounded-lg hover:bg-slate-700/40 transition-colors"
-            >
-              <div className={`h-12 w-12 rounded-lg ${getDensityColor(county.count)} flex items-center justify-center text-white font-bold`}>
-                {county.count}
-              </div>
-              <div className="flex-1">
-                <div className="font-medium text-white">{county.county}</div>
-                <div className="flex items-center gap-2 text-sm text-slate-400">
-                  <span>Avg Score: {county.avgScore}</span>
-                  <span>•</span>
-                  <span>High: {county.highScore}</span>
-                </div>
-              </div>
-              <Badge variant="outline" className="text-xs">
-                {Math.round((county.count / countyStats.reduce((sum, c) => sum + c.count, 0)) * 100)}%
-              </Badge>
-            </div>
-          ))}
-        </div>
-        
-        {countyStats.length > 15 && (
-          <div className="mt-3 text-sm text-slate-400 text-center">
-            +{countyStats.length - 15} more counties
-          </div>
+        {top.length === 0 ? (
+          <p className="text-sm text-slate-400 py-6 text-center">
+            {state ? 'County density isn’t computed yet. It refreshes in the background once a day.' : 'Pick a state to see density by county.'}
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {top.map((c) => (
+              <li key={c.fips}>
+                <Link
+                  to={createPageUrl(`CountyIntelligence?state=${state}&county=${c.fips}`)}
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800/60"
+                >
+                  <span className="w-40 shrink-0 truncate text-sm text-slate-200">{c.name}</span>
+                  <span className="flex-1 h-3 rounded bg-slate-800">
+                    <span className="block h-3 rounded bg-teal-500" style={{ width: `${(c.practice_locations / max) * 100}%` }} />
+                  </span>
+                  <span className="w-28 shrink-0 text-right text-xs text-slate-300">
+                    {c.practice_locations.toLocaleString()} <span className="text-slate-400">({total ? Math.round((c.practice_locations / total) * 100) : 0}%)</span>
+                  </span>
+                  <span className="w-20 shrink-0 text-right text-[11px] text-slate-400">{shownByCounty.get(c.fips) || 0} shown</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         )}
-
-        <div className="mt-4 pt-4 border-t">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">Total PA Providers</span>
-            <span className="font-semibold text-white">
-              {countyStats.reduce((sum, c) => sum + c.count, 0)}
-            </span>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );

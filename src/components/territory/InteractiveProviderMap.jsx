@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Map, Layers, ZoomIn } from 'lucide-react';
-import { getProviderCoords } from './zipCoords';
+import { useProviderCoords } from '@/hooks/useProviderCoords';
 import ProviderMapPopup from './ProviderMapPopup';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'react-leaflet';
@@ -74,17 +74,21 @@ function HeatmapLayer({ points }) {
     const cellSize = 0.15; // ~10 mile grid cells
     points.forEach(p => {
       const key = `${Math.round(p.lat / cellSize)}_${Math.round(p.lng / cellSize)}`;
-      if (!grid[key]) grid[key] = { lat: 0, lng: 0, count: 0, totalScore: 0 };
+      if (!grid[key]) grid[key] = { lat: 0, lng: 0, count: 0, totalScore: 0, scored: 0 };
       grid[key].lat += p.lat;
       grid[key].lng += p.lng;
       grid[key].count++;
-      grid[key].totalScore += p.score;
+      // Unscored providers don't pull the average towards 0.
+      if (p.score != null) {
+        grid[key].totalScore += p.score;
+        grid[key].scored++;
+      }
     });
     return Object.values(grid).map(c => ({
       lat: c.lat / c.count,
       lng: c.lng / c.count,
       count: c.count,
-      avgScore: Math.round(c.totalScore / c.count),
+      avgScore: c.scored ? Math.round(c.totalScore / c.scored) : null,
     }));
   }, [points]);
 
@@ -106,7 +110,7 @@ function HeatmapLayer({ points }) {
         <Popup>
           <div className="text-xs">
             <div className="font-semibold">{cluster.count} providers</div>
-            <div className="text-slate-500">Avg Score: {cluster.avgScore}</div>
+            <div className="text-slate-500">Avg Score: {cluster.avgScore ?? 'Unscored'}</div>
           </div>
         </Popup>
       </CircleMarker>
@@ -129,16 +133,20 @@ function ResetViewButton({ center, zoom }) {
   );
 }
 
-function getScoreColor(score, colorByScore) {
-  if (!colorByScore) return '#0d9488'; // teal
+// Unscored providers (no lead or outreach score) are grey, never "0"; with
+// score colouring off every marker is teal.
+export function getScoreColor(score, colorByScore) {
+  if (!colorByScore) return '#0d9488';
+  if (score == null) return '#94a3b8';
   if (score >= 80) return '#16a34a'; // green
   if (score >= 60) return '#0d9488'; // teal
   if (score >= 40) return '#eab308'; // yellow
   if (score >= 20) return '#f97316'; // orange
-  return '#94a3b8'; // slate
+  return '#ef4444';
 }
 
 function getScoreRadius(score) {
+  if (score == null) return 4;
   if (score >= 80) return 7;
   if (score >= 60) return 6;
   if (score >= 40) return 5;
@@ -148,23 +156,25 @@ function getScoreRadius(score) {
 export default function InteractiveProviderMap({ filteredProviders, showHeatmap, showVolumeDensity, colorByScore, actions }) {
   const [mapLayer, setMapLayer] = useState('street'); // street | satellite
 
-  // Build map points
+  // Positions come with the item (territory data) or from the server's
+  // Census-based lookup; both are stable between loads.
+  const looked = useProviderCoords(filteredProviders);
   const mapPoints = useMemo(() => {
     const pts = [];
     filteredProviders.forEach(item => {
-      const coords = getProviderCoords(item.location);
-      if (coords) {
+      const coords = item.coords || looked.get(item.provider?.npi);
+      if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
         pts.push({
-          lat: coords[0],
-          lng: coords[1],
-          score: item.score || 0,
+          lat: coords.lat,
+          lng: coords.lng,
+          score: item.score ?? null,
           volume: item.utilization?.total_medicare_beneficiaries || 0,
           item,
         });
       }
     });
     return pts;
-  }, [filteredProviders]);
+  }, [filteredProviders, looked]);
 
   const center = useMemo(() => {
     if (mapPoints.length === 0) return [40.27, -77.19];
@@ -180,13 +190,14 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
   // Map stats
   const stats = useMemo(() => {
     if (mapPoints.length === 0) return null;
-    const scores = mapPoints.map(p => p.score);
+    const scores = mapPoints.map(p => p.score).filter(s => s != null);
     return {
       total: mapPoints.length,
-      avgScore: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+      avgScore: scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null,
       high: scores.filter(s => s >= 70).length,
+      unmapped: filteredProviders.length - mapPoints.length,
     };
-  }, [mapPoints]);
+  }, [mapPoints, filteredProviders.length]);
 
   const tileUrl = mapLayer === 'satellite'
     ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
@@ -207,8 +218,8 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
           <div className="flex items-center gap-2">
             {stats && (
               <div className="flex gap-2">
-                <Badge variant="outline" className="text-[10px]">{stats.total} mapped</Badge>
-                <Badge className="bg-teal-900/30 text-teal-400 text-[10px]">Avg {stats.avgScore}</Badge>
+                <Badge variant="outline" className="text-[10px]">{stats.total} mapped{stats.unmapped > 0 ? ` · ${stats.unmapped} without a location` : ''}</Badge>
+                {stats.avgScore != null && <Badge className="bg-teal-900/30 text-teal-400 text-[10px]">Avg {stats.avgScore}</Badge>}
                 <Badge className="bg-green-900/30 text-green-400 text-[10px]">{stats.high} high</Badge>
               </div>
             )}
@@ -217,8 +228,9 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
               variant="ghost" size="icon" className="h-6 w-6"
               onClick={() => setMapLayer(mapLayer === 'street' ? 'satellite' : 'street')}
               title="Toggle map style"
+              aria-label="Toggle map style"
             >
-              <Layers className="w-3.5 h-3.5" />
+              <Layers className="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
           </div>
         </CardTitle>
@@ -248,9 +260,9 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
                   fully disaggregate past zoom 11. Heatmap/density layers above are
                   intentionally left outside the cluster group. */}
               <MarkerClusterGroup chunkedLoading maxClusterRadius={50} disableClusteringAtZoom={11}>
-                {mapPoints.map((point, idx) => (
+                {mapPoints.map((point) => (
                   <CircleMarker
-                    key={idx}
+                    key={point.item.provider?.npi}
                     center={[point.lat, point.lng]}
                     radius={getScoreRadius(point.score)}
                     fillColor={getScoreColor(point.score, colorByScore)}
@@ -278,7 +290,8 @@ export default function InteractiveProviderMap({ filteredProviders, showHeatmap,
                   { color: '#0d9488', label: '60–79 (Good)' },
                   { color: '#eab308', label: '40–59 (Moderate)' },
                   { color: '#f97316', label: '20–39 (Low)' },
-                  { color: '#94a3b8', label: '0–19 (Minimal)' },
+                  { color: '#ef4444', label: '0–19 (Minimal)' },
+                  { color: '#94a3b8', label: 'Unscored' },
                 ].map(({ color, label }) => (
                   <div key={color} className="flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />

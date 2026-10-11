@@ -1,86 +1,63 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { MapPin } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { createPageUrl } from '@/utils';
 
+/** The provider's county (from Census ZIP areas) and how crowded it is. */
 export default function TerritoryIntelligence({ location }) {
-  if (!location) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            Territory Intelligence
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-400">Location data not available</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // PA counties for distance reference
-  const paCounties = [
-    'Philadelphia', 'Allegheny', 'Montgomery', 'Bucks', 'Delaware',
-    'Chester', 'Lancaster', 'York', 'Berks', 'Westmoreland'
-  ];
-
-  // Determine if provider is in PA
-  const isInPA = location.state === 'PA';
+  const zip = location?.zip || '';
+  const { data, isLoading } = useQuery({
+    queryKey: ['geoContext', zip.slice(0, 5)],
+    queryFn: async () => (await base44.functions.invoke('getGeoContext', { zip })).data,
+    enabled: zip.length >= 5,
+    staleTime: 60 * 60 * 1000,
+  });
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <MapPin className="h-5 w-5" />
-          Territory Intelligence
+          <MapPin className="h-5 w-5" aria-hidden="true" />
+          Territory
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="p-3 bg-slate-800/40 rounded-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-medium">Provider Location</span>
-            <Badge variant={isInPA ? 'default' : 'outline'}>
-              {location.state}
-            </Badge>
-          </div>
-          <p className="text-sm text-slate-400">
-            {location.city}, {location.state}
-          </p>
-        </div>
-
-        {isInPA ? (
-          <>
-            <div>
-              <h4 className="font-medium mb-2 flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Pennsylvania Coverage
-              </h4>
-              <p className="text-sm text-slate-400 mb-2">
-                Located in {location.city}, {location.state}
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {paCounties.slice(0, 5).map(county => (
-                  <Badge key={county} variant="outline" className="text-xs">
-                    {county}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-3 border-t">
-              <p className="text-xs text-slate-400">
-                Provider is well-positioned for Pennsylvania-focused partnerships
-              </p>
-            </div>
-          </>
+      <CardContent className="space-y-3">
+        {!location ? (
+          <p className="text-sm text-slate-400">No address on file.</p>
         ) : (
-          <div className="p-3 bg-yellow-900/20 rounded-lg border border-yellow-500/30">
-            <p className="text-sm text-yellow-400">
-              Provider is located outside of Pennsylvania. Territory analysis limited to PA-focused partnerships.
-            </p>
-          </div>
+          <>
+            <div className="p-3 bg-slate-800/40 rounded-lg">
+              <p className="font-medium text-slate-200">{[location.city, location.state].filter(Boolean).join(', ')} {zip}</p>
+              {isLoading ? (
+                <p className="text-sm text-slate-400">Looking up the county…</p>
+              ) : data?.county ? (
+                <p className="text-sm text-slate-300">{data.county.name}, {data.county.state}</p>
+              ) : (
+                <p className="text-sm text-slate-400">County unknown for this ZIP.</p>
+              )}
+            </div>
+            {data?.county && (
+              <>
+                {data.county_practice_locations != null && (
+                  <p className="text-sm text-slate-300">
+                    {data.county_practice_locations.toLocaleString()} provider practice locations in {data.county.name}
+                    {data.zip_practice_locations != null && `, ${data.zip_practice_locations.toLocaleString()} in ZIP ${zip.slice(0, 5)}`}.
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-3 text-xs">
+                  <Link to={createPageUrl(`CountyIntelligence?state=${data.county.state}&county=${data.county.fips}`)} className="text-cyan-400 hover:text-cyan-300">
+                    County Intel for {data.county.name}
+                  </Link>
+                  <Link to={createPageUrl(`TerritoryIntelligence?state=${data.county.state}`)} className="text-cyan-400 hover:text-cyan-300">
+                    {data.county.state} territory map
+                  </Link>
+                </div>
+              </>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
