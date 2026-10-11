@@ -123,7 +123,13 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   provider's county from `getGeoContext`.
 - **Scores are never invented.** Territory and County Intel show a provider's
   `lead_scores` score, else `ai_outreach_score`, else "Unscored" (`null`,
-  never 0); see `pickScore()` in `server/lib/territory.ts`.
+  never 0); see `pickScore()` in `server/lib/territory.ts`. `lead_scores` is
+  written only by the scoring job (`server/lib/leadScoringJob.ts`; rules in
+  `server/lib/leadScoring.ts`, mirrored by `src/lib/scoringRules.js`): every
+  individual provider located in the states named by the Geographic Priority
+  rule's conditions, started from Scoring Rules (`recalculateLeadScores`) or
+  weekly by the `refreshLeadScores` maintenance worker. Don't compute scores
+  in the browser.
 - **Specialty groups:** match specialties by NUCC code with
   `specialtyGroupFor()` (`server/lib/specialtyGroups.ts`, mirrored in
   `src/lib/specialtyGroups.js`; a parity test keeps them identical), not by
@@ -164,7 +170,7 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   `runMaintenanceFanout` → `FANOUT_WORKERS` (`server/lib/maintenance.ts`:
   `settleScheduledImports`, `checkCmsCatalog`, `autoResumePausedImports`,
   `autoRetryFailedImports`, `manageCrawlerRetries`, `cancelStalledImports`,
-  `runDueScheduledReports`, `refreshRollups`), which writes the
+  `runDueScheduledReports`, `refreshRollups`, `refreshLeadScores`), which writes the
   `maintenance_fanout` `AuditEvent` heartbeat that `MaintenanceHealthPanel`
   surfaces. There is no second copy of the workers: the admin buttons call the
   same functions. Hosts without a cron can set

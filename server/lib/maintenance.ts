@@ -419,6 +419,34 @@ export async function runRefreshRollupsWorker(opts: { jobs?: string[]; force?: b
   }
 }
 
+// ─── Worker: weekly lead scoring ─────────────────────────────────────────────
+// Re-scores the providers in the configured territory when the last
+// successful run is older than LEAD_SCORING_INTERVAL_MS (imports land in
+// between, so scores would otherwise go stale). Starts in the background.
+
+export async function runRefreshLeadScoresWorker(): Promise<WorkerResult> {
+  const started = Date.now();
+  try {
+    const { pool } = await import("../db");
+    const { leadScoringStatus, leadScoringDue, startLeadScoring } = await import("./leadScoringJob");
+    const { resolveTerritory, normalizeRules } = await import("./leadScoring");
+    const status = await leadScoringStatus(pool);
+    if (!leadScoringDue(status)) {
+      return { worker: "refreshLeadScores", ok: true, durationMs: Date.now() - started, details: { started: false, reason: status.running ? "running" : "not due", last_success_at: status.last_success_at } };
+    }
+    const { ensureScoringRules } = await import("../functions/leadScoring");
+    const rows = await ensureScoringRules();
+    const territory = resolveTerritory(normalizeRules(rows as any));
+    if (territory.states.length === 0) {
+      return { worker: "refreshLeadScores", ok: true, durationMs: Date.now() - started, details: { started: false, reason: "no states configured" } };
+    }
+    const result = startLeadScoring(pool, rows as any);
+    return { worker: "refreshLeadScores", ok: true, durationMs: Date.now() - started, details: { ...result, states: territory.states } };
+  } catch (e) {
+    return { worker: "refreshLeadScores", ok: false, durationMs: Date.now() - started, error: truncErr(e) };
+  }
+}
+
 // ─── Worker: settle scheduled imports whose batch has finished ────────────────
 // A schedule is "running" from the moment its batch starts until the batch
 // completes or fails. The importer settles it on completion; this sweep covers
@@ -455,7 +483,7 @@ export async function runCheckCmsCatalog(): Promise<WorkerResult> {
       refresh.catch((e) => console.warn("[checkCmsCatalog] failed:", (e as { message?: string })?.message));
       return { worker: "checkCmsCatalog", ok: true, durationMs: Date.now() - started, details: { still_running: true } };
     }
-    return { worker: "checkCmsCatalog", ok: result.r.errors.length === 0, durationMs: Date.now() - started, details: result.r };
+    return { worker: "checkCmsCatalog", ok: result.r.errors.length === 0, durationMs: Date.now() - started, details: result.r as unknown as Record<string, unknown> };
   } catch (e) {
     return { worker: "checkCmsCatalog", ok: false, durationMs: Date.now() - started, error: truncErr(e) };
   }
