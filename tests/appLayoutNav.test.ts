@@ -22,6 +22,7 @@ import {
   getVisibleNavSections,
   resolveLegacyRedirect,
   effectiveRole,
+  roleLabel,
 } from '../src/components/layout/navConfig';
 
 const allItems = NAV_SECTIONS.flatMap((s) => s.items);
@@ -171,6 +172,15 @@ describe('page access', () => {
     expect(canAccessPage('DataCenter', owner)).toBe(false);
     expect(canAccessPage('ProviderIntelligence', owner)).toBe(false);
     expect(canAccessPage('Billing', { role: 'user', orgRole: 'member' })).toBe(false);
+  });
+
+  it('names the role a session acts with', () => {
+    expect(roleLabel({ role: 'user', orgRole: 'member' })).toBe('Member');
+    expect(roleLabel({ role: 'user', orgRole: 'owner' })).toBe('Owner');
+    expect(roleLabel({ role: 'admin', orgRole: 'owner' })).toBe('Platform admin');
+    expect(roleLabel({ role: 'user', isPlatformAdmin: true })).toBe('Platform admin');
+    expect(roleLabel(null)).toBe('Member');
+    expect(roleLabel('owner')).toBe('Owner');
   });
 
   it('lets an owner open every page a member can (an owner is a member of their organization)', () => {

@@ -211,7 +211,14 @@ export default function LeadListBuilder() {
   };
 
   const handleExportCSV = async () => {
-    // Log export to audit trail (best-effort; never throws).
+    // Counts against the organization's daily export allowance, like every export.
+    const quota = await countExport();
+    if (!quota.ok) {
+      toast.error(quota.message);
+      return;
+    }
+
+    // Log export to audit trail (best-effort; never throws). Only exports that happen are logged.
     await base44.audit.record('export', {
       action: 'csv_export',
       entity: 'lead_list',
@@ -219,13 +226,6 @@ export default function LeadListBuilder() {
       file_name: `lead-list-${new Date().toISOString().split('T')[0]}.csv`,
       filters,
     });
-
-    // Counts against the organization's daily export allowance, like every export.
-    const quota = await countExport();
-    if (!quota.ok) {
-      toast.error(quota.message);
-      return;
-    }
 
     const fields = [
       { key: 'npi', label: 'NPI' }, { key: 'name', label: 'Name' }, { key: 'specialty', label: 'Specialty' }, { key: 'city', label: 'City' },

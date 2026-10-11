@@ -155,6 +155,8 @@ describe('Lead List Builder export', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Export CSV/ }));
     await waitFor(() => expect(h.toastError).toHaveBeenCalledWith("Today's export limit for your organization has been reached."));
     expect(blobs).toHaveLength(0);
+    // An export that didn't happen isn't logged as one.
+    expect(h.record).not.toHaveBeenCalled();
   });
 });
 
