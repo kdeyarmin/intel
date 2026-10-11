@@ -31,6 +31,7 @@ import { Search, Copy, Globe, List, PieChart as PieChartIcon, Map as MapIcon } f
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import InteractiveProviderMap from '../components/territory/InteractiveProviderMap';
 import { pickPrimaryLocation } from '@/lib/locations';
+import { US_STATES } from '@/lib/usStates';
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -285,10 +286,12 @@ export default function Providers() {
     return [...c].sort().map(cr => ({ value: cr, label: cr }));
   }, [providers]);
 
+  // While searching, the server applies the state across the whole table, so
+  // offer every state, not just those among the (capped) loaded locations.
   const stateOptions = useMemo(() => {
-    const s = new Set(locations.map(l => l.state).filter(Boolean));
-    return [...s].sort().map(st => ({ value: st, label: st }));
-  }, [locations]);
+    const states = debouncedSearch.length >= 2 ? US_STATES : [...new Set(locations.map(l => l.state).filter(Boolean))].sort();
+    return states.map(st => ({ value: st, label: st }));
+  }, [locations, debouncedSearch]);
 
   const specialtyOptions = useMemo(() => {
     const s = new Set(taxonomies.map(t => t.taxonomy_description).filter(Boolean));

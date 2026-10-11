@@ -10,7 +10,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 afterEach(cleanup);
 
-const applied = vi.hoisted(() => ({ textFilters: null, dateRange: null }));
+const applied = vi.hoisted(() => ({ textFilters: null, dateRange: null, stateOptions: null }));
 
 // ─── Module mocks ────────────────────────────────────────────────────────────
 
@@ -26,7 +26,9 @@ vi.mock('@tanstack/react-query', () => ({
 
 // Stub complex child components.
 vi.mock('../src/components/search/TypeAheadSearch', () => ({ default: () => null }));
-vi.mock('../src/components/filters/ProviderAdvancedFilters', () => ({ default: () => null }));
+vi.mock('../src/components/filters/ProviderAdvancedFilters', () => ({
+  default: ({ stateOptions }) => { applied.stateOptions = stateOptions; return null; },
+}));
 vi.mock('../src/components/filters/SortControl', () => ({ default: () => null }));
 vi.mock('../src/components/exports/ExportDialog', () => ({ default: () => null }));
 vi.mock('../src/components/filters/SavedFilterBar', () => ({ default: () => null }));
@@ -49,6 +51,7 @@ vi.mock('../src/components/territory/InteractiveProviderMap', () => ({ default: 
 
 import { useQuery } from '@tanstack/react-query';
 import Providers from '../src/pages/Providers';
+import { US_STATES } from '../src/lib/usStates';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -237,5 +240,19 @@ describe('Providers page – server search results', () => {
     setupMocks({ providers: [makeIndividual('6666666666', 'John', 'Smith')], locations: [] });
     renderProviders('/Providers?q=john%20smith&state=PA');
     expect(screen.getByText('Smith, John')).toBeInTheDocument();
+  });
+
+  it('offers every state while searching, not just those among the loaded locations', () => {
+    const locations = [{ npi: '6666666666', state: 'PA', location_type: 'Practice' }];
+    setupMocks({ providers: [makeIndividual('6666666666', 'John', 'Smith')], locations });
+    renderProviders('/Providers?q=smith');
+    const searching = applied.stateOptions.map((o) => o.value);
+    expect(searching).toContain('WY');
+    expect(searching).toHaveLength(US_STATES.length);
+    cleanup();
+
+    // The newest-providers view filters the loaded rows, so it offers their states.
+    renderProviders('/Providers');
+    expect(applied.stateOptions).toEqual([{ value: 'PA', label: 'PA' }]);
   });
 });
