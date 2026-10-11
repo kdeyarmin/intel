@@ -205,9 +205,9 @@ export default function Locations() {
                        </TableCell>
                        <TableCell><Badge variant="outline" className="text-slate-300">{loc.location_type || '-'}</Badge></TableCell>
                       <TableCell>
-                        <Link to={createPageUrl(`LocationDetail?id=${loc.id}`)}>
-                          <Button variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">View</Button>
-                        </Link>
+                        <Button asChild variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">
+                          <Link to={createPageUrl(`LocationDetail?id=${loc.id}`)}>View</Link>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
