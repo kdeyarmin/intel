@@ -7,8 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { MessageSquare, Send, Loader2, Sparkles, Calendar, Plus, X, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDateTimeET, formatDateET } from '../utils/dateUtils';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function ProviderMessaging({ provider, locations = [] }) {
+  // Sending email from CareMetric is admin-only; everyone else drafts here and
+  // sends from their own mail client.
+  const { user } = useAuth();
+  const canSendFromApp = user?.role === 'admin';
   const [activeTab, setActiveTab] = useState('messages');
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -54,9 +59,8 @@ export default function ProviderMessaging({ provider, locations = [] }) {
       setNewMessage('');
       toast.success('Message sent');
     } catch (err) {
-      console.error('Failed to send message:', err);
       setMessages(prev => prev.filter(m => m !== msg));
-      toast.error('Failed to send message. Please try again.');
+      toast.error(`Message not sent: ${err.message}`);
     } finally {
       setSending(false);
     }
@@ -164,11 +168,20 @@ Do NOT include subject line, just the body.`,
                   {generatingDraft ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                   AI Draft
                 </Button>
-                <Button size="sm" onClick={sendMessage} disabled={sending || !newMessage.trim() || !providerEmail}
-                  className="h-7 text-[10px] gap-1 bg-cyan-600 hover:bg-cyan-700">
-                  {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                  Send
-                </Button>
+                {canSendFromApp ? (
+                  <Button size="sm" onClick={sendMessage} disabled={sending || !newMessage.trim() || !providerEmail}
+                    className="h-7 text-[10px] gap-1 bg-cyan-600 hover:bg-cyan-700">
+                    {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                    Send
+                  </Button>
+                ) : providerEmail ? (
+                  <a
+                    href={`mailto:${providerEmail}?subject=${encodeURIComponent(`Following up — ${providerName}`)}&body=${encodeURIComponent(newMessage)}`}
+                    className="inline-flex h-7 items-center gap-1 rounded-md bg-cyan-600 px-3 text-[10px] font-medium text-white hover:bg-cyan-700"
+                  >
+                    <Send className="w-3 h-3" /> Open in email app
+                  </a>
+                ) : null}
               </div>
             </div>
           </div>

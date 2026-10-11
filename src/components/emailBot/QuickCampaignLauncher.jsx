@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Send, Loader2, Mail, Users, Sparkles, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { invokeOrThrow } from '@/api/functionResult';
 import AICampaignDrafter from './AICampaignDrafter';
 import CampaignTemplatePicker from './CampaignTemplatePicker';
 
@@ -84,21 +85,11 @@ export default function QuickCampaignLauncher({ selectedProviders = [], open, on
         target_npis: eligibleProviders.map(p => p.npi),
       });
 
-      const messages = eligibleProviders.map(p => ({
-        campaign_id: newCampaign.id,
-        npi: p.npi,
-        recipient_email: p.email,
-        recipient_name: p.entity_type === 'Individual'
-          ? `${p.first_name || ''} ${p.last_name || ''}`.trim()
-          : p.organization_name || p.npi,
-        status: 'pending',
-      }));
-
-      if (messages.length > 0) {
-        await base44.entities.OutreachMessage.bulkCreate(messages);
-      }
-
-      toast.success(`Campaign "${campaign.name}" created with ${eligibleProviders.length} recipients`);
+      // The server builds personalised messages (merge fields, suppression and
+      // duplicate checks); send it from the Campaigns page.
+      const prepared = await invokeOrThrow('prepareCampaignMessages', { campaign_id: newCampaign.id });
+      const created = prepared?.results?.messages_created ?? 0;
+      toast.success(`Campaign "${campaign.name}" created with ${created} recipients. Send it from the Campaigns page.`);
       setStep('done');
     } catch (err) {
       console.error('Campaign creation failed:', err);

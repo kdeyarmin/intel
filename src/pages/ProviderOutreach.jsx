@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Mail, Plus, TrendingUp, MessageSquare } from 'lucide-react';
+import { Mail, Plus, TrendingUp, MessageSquare, Send, Loader2 } from 'lucide-react';
+import { useConfirm } from '@/components/shared/ConfirmDialog';
+import { useCampaignSender } from '../components/outreach/useCampaignSender';
 import CampaignBuilder from '../components/outreach/CampaignBuilder';
 import CampaignPerformanceMetrics from '../components/outreach/CampaignPerformanceMetrics';
 import CampaignOutcomesPanel from '../components/outreach/CampaignOutcomesPanel';
@@ -30,18 +32,34 @@ export default function ProviderOutreach() {
 
   const { data: messages = [] } = useQuery({
     queryKey: ['messages', selectedCampaign?.id],
-    queryFn: () => selectedCampaign ? base44.entities.OutreachMessage.filter({ campaign_id: selectedCampaign.id }, '-created_date', 2000) : [],
+    queryFn: () => selectedCampaign ? base44.entities.OutreachMessage.filter({ campaign_id: selectedCampaign.id }, '-updated_date', 20) : [],
     enabled: !!selectedCampaign?.id
   });
+
+  const confirm = useConfirm();
+  const { send, sending, progress } = useCampaignSender();
+  // The list query refreshes after sends; prefer its copy of the selected campaign.
+  const liveCampaign = (selectedCampaign && campaigns.find(c => c.id === selectedCampaign.id)) || selectedCampaign || {};
+
+  const handleSendSelected = async () => {
+    const ok = await confirm({
+      title: `Send "${liveCampaign.name}" now?`,
+      description: 'Queued messages are emailed; anyone who has unsubscribed or bounced is skipped.',
+      confirmLabel: 'Send emails',
+    });
+    if (ok) await send(liveCampaign.id);
+  };
 
   const filteredCampaigns = campaigns.filter(c =>
     (c.name || '').toLowerCase().includes(searchCampaign.toLowerCase())
   );
 
   const ACTIVE_STATUSES = ['active', 'sending', 'scheduled', 'running'];
-  const totalSent = campaigns.reduce((s, c) => s + (c.sent_count || 0), 0);
-  const totalOpened = campaigns.reduce((s, c) => s + (c.opened_count || 0), 0);
-  const totalResponded = campaigns.reduce((s, c) => s + (c.responded_count || 0), 0);
+  // Delivery counts are rolled up by trackCampaignMetrics into metrics.delivery.
+  const delivery = (c) => c.metrics?.delivery || {};
+  const totalSent = campaigns.reduce((s, c) => s + (delivery(c).sent || 0), 0);
+  const totalOpened = campaigns.reduce((s, c) => s + (delivery(c).opened || 0), 0);
+  const totalResponded = campaigns.reduce((s, c) => s + (delivery(c).responded || 0), 0);
   const totalConversions = campaigns.reduce((s, c) => s + (Number(c.metrics?.conversions) || 0), 0);
   const totalRevenue = campaigns.reduce((s, c) => s + (Number(c.metrics?.revenue) || 0), 0);
   const rollup = [
@@ -56,6 +74,7 @@ export default function ProviderOutreach() {
   const getStatusColor = (status) => {
     const colors = {
       draft: 'bg-slate-700 text-slate-300',
+      ready: 'bg-cyan-900/30 text-cyan-400',
       scheduled: 'bg-blue-900/30 text-blue-400',
       sending: 'bg-amber-900/30 text-amber-400',
       completed: 'bg-green-900/30 text-green-400',
@@ -155,15 +174,15 @@ export default function ProviderOutreach() {
                         </div>
                         <div className="text-center">
                           <p className="text-xs text-slate-500">Sent</p>
-                          <p className="font-bold text-lg text-blue-400 mt-1">{campaign.sent_count || 0}</p>
+                          <p className="font-bold text-lg text-blue-400 mt-1">{(delivery(campaign).sent || 0).toLocaleString()}</p>
                         </div>
                         <div className="text-center">
                           <p className="text-xs text-slate-500">Opened</p>
-                          <p className="font-bold text-lg text-emerald-400 mt-1">{campaign.opened_count || 0}</p>
+                          <p className="font-bold text-lg text-emerald-400 mt-1">{(delivery(campaign).opened || 0).toLocaleString()}</p>
                         </div>
                         <div className="text-center">
                           <p className="text-xs text-slate-500">Responded</p>
-                          <p className="font-bold text-lg text-purple-400 mt-1">{campaign.responded_count || 0}</p>
+                          <p className="font-bold text-lg text-purple-400 mt-1">{(delivery(campaign).responded || 0).toLocaleString()}</p>
                         </div>
                       </div>
                     </div>
@@ -205,12 +224,25 @@ export default function ProviderOutreach() {
                   <h2 className="text-2xl font-bold text-white">{selectedCampaign.name}</h2>
                   <p className="text-sm text-slate-400 mt-1">{selectedCampaign.description}</p>
                 </div>
-                <Badge className={getStatusColor(selectedCampaign.status)}>
-                  {selectedCampaign.status}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className={getStatusColor(liveCampaign.status)}>
+                    {liveCampaign.status}
+                  </Badge>
+                  {liveCampaign.status !== 'completed' && (
+                    <Button size="sm" onClick={handleSendSelected} disabled={sending} className="gap-1.5">
+                      {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                      {liveCampaign.status === 'sending' ? 'Resume sending' : 'Send'}
+                    </Button>
+                  )}
+                </div>
               </div>
+              {sending && progress && (
+                <p className="text-sm text-slate-400" role="status">
+                  Sending… {progress.sent.toLocaleString()} sent{progress.remaining ? `, ${progress.remaining.toLocaleString()} remaining` : ''}
+                </p>
+              )}
 
-              <CampaignPerformanceMetrics campaign_id={selectedCampaign.id} />
+              <CampaignPerformanceMetrics campaign_id={selectedCampaign.id} status={sending ? 'sending' : liveCampaign.status} />
 
               <CampaignOutcomesPanel campaign={selectedCampaign} />
 

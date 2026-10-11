@@ -28,10 +28,10 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "getDMEProviders",
   "dmeEmailSearchStatus",
   "searchProviders",
+  // Read-only for non-admins: no AI call and nothing saved (see the handler).
   "calculateOutreachScore",
   "analyzeReferralPathways",
   "analyzeProviderNetwork",
-  "trackCampaignMetrics",
 ]);
 
 /** The dispatcher's gate: public functions for any signed-in user, everything else admin-only. */

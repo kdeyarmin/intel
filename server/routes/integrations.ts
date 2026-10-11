@@ -1,12 +1,15 @@
 import { Router, Request, Response } from "express";
 import Anthropic from "@anthropic-ai/sdk";
-import sgMail from "@sendgrid/mail";
 import multer from "multer";
 import path from "path";
 import crypto from "crypto";
-import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { authMiddleware, adminOnly, AuthRequest } from "../middleware/auth";
 import { rateLimit } from "../middleware/rateLimit";
 import { CLAUDE_MODELS } from "../lib/aiModels";
+import { sendMail } from "../lib/mailer";
+import { isSuppressed } from "../lib/suppressions";
+import { sendingRequirements, withComplianceFooter } from "../functions/outreach";
+import { textToHtml } from "../functions/outreachHelpers";
 
 // Only models the app actually uses may be requested. Prevents a caller from
 // forcing the most expensive model or an arbitrary/invalid one.
@@ -90,46 +93,27 @@ router.post("/ai/invoke", authMiddleware, rateLimit("ai_invoke", 60, 60_000), as
   }
 });
 
-// Sender addresses the app is permitted to send from. Configured via
-// SENDGRID_FROM_EMAIL (primary) and an optional comma-separated ALLOWED_FROM_EMAILS.
-// A caller-supplied `from` is honoured only if it is on this list — otherwise we
-// fall back to the configured default. This stops the endpoint being used as an
-// open spoofing/spam relay through the app's SendGrid account.
-function allowedFromAddresses(): string[] {
-  const list = [
-    process.env.SENDGRID_FROM_EMAIL,
-    ...(process.env.ALLOWED_FROM_EMAILS || "").split(","),
-  ]
-    .map((s) => (s || "").trim().toLowerCase())
-    .filter(Boolean);
-  return list.length > 0 ? list : ["noreply@caremetric.com"];
-}
-
-function resolveFrom(requested?: string): string {
-  const allowed = allowedFromAddresses();
-  if (requested && allowed.includes(requested.trim().toLowerCase())) return requested.trim();
-  return allowed[0];
-}
-
-router.post("/email/send", authMiddleware, rateLimit("email_send", 100, 60_000), async (req: AuthRequest, res: Response) => {
+// Direct (1:1) email to a provider. Outreach sending is admin-only, so this is
+// too; regular users get a mailto: link in the UI instead. Like campaign mail it
+// needs the postal address and unsubscribe URL configured, carries the
+// unsubscribe footer and headers, and never goes to a suppressed address.
+router.post("/email/send", authMiddleware, adminOnly, rateLimit("email_send", 100, 60_000), async (req: AuthRequest, res: Response) => {
   try {
     const { to, from, subject, body, html } = req.body;
     if (!to || !subject) return res.status(400).json({ message: "to and subject are required" });
+    // One recipient: the unsubscribe link is issued for that address.
+    if (typeof to !== "string") return res.status(400).json({ message: "to must be a single email address" });
 
-    const apiKey = process.env.SENDGRID_API_KEY;
-    if (!apiKey) return res.status(500).json({ message: "SENDGRID_API_KEY not configured" });
+    const missing = sendingRequirements();
+    if (missing.length > 0) {
+      return res.status(503).json({ message: "Email sending isn't configured", detail: `Missing ${missing.join(", ")}.` });
+    }
+    if (await isSuppressed(to)) {
+      return res.status(409).json({ message: "This address has unsubscribed or bounced", detail: "CareMetric won't email it again." });
+    }
 
-    sgMail.setApiKey(apiKey);
-
-    const msg = {
-      to,
-      from: resolveFrom(from),
-      subject,
-      text: body || "",
-      html: html || body || "",
-    };
-
-    await sgMail.send(msg);
+    const mail = withComplianceFooter(to, { text: body || "", html: html || textToHtml(body || "") });
+    await sendMail({ to, from, subject, ...mail });
     res.json({ success: true, message: "Email sent" });
   } catch (e: any) {
     console.error("[Email Send Error]", e.message);

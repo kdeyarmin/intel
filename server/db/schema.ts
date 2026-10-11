@@ -1,4 +1,5 @@
 import { pgTable, text, integer, boolean, timestamp, jsonb, doublePrecision, serial, varchar, uuid, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -41,6 +42,9 @@ export const providers = pgTable("providers", {
   ai_enrichment_status: varchar("ai_enrichment_status", { length: 50 }),
   ai_summary: text("ai_summary"),
   ai_outreach_score: doublePrecision("ai_outreach_score"),
+  ai_outreach_strategy: text("ai_outreach_strategy"),
+  ai_engagement_factors: jsonb("ai_engagement_factors"),
+  ai_outreach_scored_at: timestamp("ai_outreach_scored_at"),
   ai_category: varchar("ai_category", { length: 100 }),
   ai_tags: jsonb("ai_tags"),
   raw_data: jsonb("raw_data"),
@@ -288,6 +292,9 @@ export const outreachMessages = pgTable("outreach_messages", {
   opened_at: timestamp("opened_at"),
   clicked_at: timestamp("clicked_at"),
   bounced_at: timestamp("bounced_at"),
+  responded_at: timestamp("responded_at"),
+  // SendGrid's X-Message-Id, for matching delivery events to this row.
+  provider_message_id: varchar("provider_message_id", { length: 255 }),
   error_message: text("error_message"),
   metadata: jsonb("metadata"),
   created_date: timestamp("created_date").defaultNow(),
@@ -296,6 +303,8 @@ export const outreachMessages = pgTable("outreach_messages", {
   index("messages_campaign_idx").on(table.campaign_id),
   index("messages_npi_idx").on(table.npi),
   index("messages_status_idx").on(table.status),
+  // Unsubscribes and bounces suppress pending messages by address.
+  index("messages_pending_email_idx").on(sql`lower(${table.recipient_email})`).where(sql`${table.status} = 'pending'`),
 ]);
 
 export const campaignTemplates = pgTable("campaign_templates", {
@@ -876,6 +885,15 @@ export const apiInteractionLogs = pgTable("api_interaction_logs", {
   response_body: jsonb("response_body"),
   duration_ms: integer("duration_ms"),
   user_id: integer("user_id"),
+  created_date: timestamp("created_date").defaultNow(),
+});
+
+// Addresses that must never receive outreach: unsubscribed, bounced or
+// reported as spam. Checked before every campaign or direct send.
+export const emailSuppressions = pgTable("email_suppressions", {
+  email: varchar("email", { length: 255 }).primaryKey(),
+  reason: varchar("reason", { length: 50 }),
+  source: varchar("source", { length: 50 }),
   created_date: timestamp("created_date").defaultNow(),
 });
 
