@@ -14,7 +14,8 @@ import { toast } from 'sonner';
 import PageTabs from '@/components/layout/PageTabs';
 
 // rule_type identifies which scoring signal a rule weights (see the score
-// calculation below); threshold lives in the conditions jsonb column.
+// calculation below). Only weights are editable: each signal's cutoffs are
+// fixed in that calculation, so an editable threshold would change nothing.
 const DEFAULT_RULES = [
   { name: 'Specialty Match', rule_type: 'specialty_match', weight: 20, description: 'Family Medicine, Internal Med, NP, Geriatrics, Psychiatry' },
   { name: 'Medicare Participation', rule_type: 'medicare_participation', weight: 15, description: 'Active Medicare ordering eligibility' },
@@ -78,11 +79,7 @@ export default function ScoringRules() {
   });
 
   const handleSave = (rule) => {
-    const { weight, threshold } = editingRule;
-    updateMutation.mutate({
-      id: rule.id,
-      data: { weight, conditions: { ...(rule.conditions || {}), threshold } },
-    });
+    updateMutation.mutate({ id: rule.id, data: { weight: editingRule.weight } });
   };
 
   const handleRecalculate = async () => {
@@ -285,7 +282,6 @@ export default function ScoringRules() {
                 <TableHead>Rule Name</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Weight</TableHead>
-                <TableHead>Threshold</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -321,22 +317,6 @@ export default function ScoringRules() {
                    )}
                   </TableCell>
                   <TableCell>
-                    {editingRule?.id === rule.id ? (
-                      <Input
-                        type="number"
-                        value={editingRule.threshold}
-                        aria-label={`Threshold for ${(rule.name || rule.rule_type)?.replace(/_/g, ' ')}`}
-                        onChange={(e) => setEditingRule({
-                          ...editingRule,
-                          threshold: parseFloat(e.target.value)
-                        })}
-                        className="w-24"
-                      />
-                    ) : (
-                      rule.conditions?.threshold ?? '-'
-                    )}
-                  </TableCell>
-                  <TableCell>
                     <Badge variant={rule.enabled ? 'default' : 'secondary'}>
                       {rule.enabled ? 'Active' : 'Disabled'}
                     </Badge>
@@ -364,7 +344,7 @@ export default function ScoringRules() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setEditingRule({ id: rule.id, weight: rule.weight, threshold: rule.conditions?.threshold ?? '' })}
+                        onClick={() => setEditingRule({ id: rule.id, weight: rule.weight })}
                       >
                         Edit
                       </Button>

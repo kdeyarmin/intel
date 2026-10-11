@@ -228,31 +228,37 @@ export default function ImportCategoryCards({ onSelectCategory, batches = [] }) 
         return (
           <Card
             key={cat.id}
-            className={`cursor-pointer hover:scale-[1.02] transition-all border ${cat.color} bg-[#141d30]`}
-            onClick={() => onSelectCategory(cat)}
+            className={`hover:scale-[1.02] transition-all border ${cat.color} bg-[#141d30]`}
           >
-            <CardContent className="pt-4 pb-4 px-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Icon className="w-5 h-5" />
-                <h3 className="text-sm font-semibold text-slate-200">{cat.label}</h3>
-              </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">{cat.description}</p>
-              {dates ? (
-                <div className="mt-2 space-y-0.5">
-                  <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                    <Clock className="w-3 h-3 text-slate-400" />
-                    <span>Updated {formatDistanceToNow(dates.lastUpdate, { addSuffix: true })}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                    <CalendarClock className="w-3 h-3 text-slate-400" />
-                    <span>Next: {format(dates.nextExpected, 'MMM d, yyyy')}</span>
-                  </div>
+            {/* A native button inside the card, so the category can be focused and opened from the keyboard. */}
+            <button
+              type="button"
+              onClick={() => onSelectCategory(cat)}
+              className="block w-full h-full text-left rounded-xl cursor-pointer"
+            >
+              <CardContent className="pt-4 pb-4 px-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon className="w-5 h-5" aria-hidden="true" />
+                  <h3 className="text-sm font-semibold text-slate-200">{cat.label}</h3>
                 </div>
-              ) : (
-                <p className="text-[10px] text-slate-400 mt-2">No imports yet</p>
-              )}
-              <p className="text-[10px] text-slate-400 mt-1">{cat.types.length} dataset{cat.types.length !== 1 ? 's' : ''}</p>
-            </CardContent>
+                <p className="text-[11px] text-slate-400 leading-relaxed">{cat.description}</p>
+                {dates ? (
+                  <div className="mt-2 space-y-0.5">
+                    <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                      <Clock className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                      <span>Updated {formatDistanceToNow(dates.lastUpdate, { addSuffix: true })}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                      <CalendarClock className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                      <span>Next: {format(dates.nextExpected, 'MMM d, yyyy')}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 mt-2">No imports yet</p>
+                )}
+                <p className="text-[10px] text-slate-400 mt-1">{cat.types.length} dataset{cat.types.length !== 1 ? 's' : ''}</p>
+              </CardContent>
+            </button>
           </Card>
         );
       })}

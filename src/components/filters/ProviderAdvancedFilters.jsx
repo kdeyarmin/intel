@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ export default function ProviderAdvancedFilters({
   credentialOptions = [],
 }) {
   const [expanded, setExpanded] = useState(false);
+  const moreId = useId();
 
   const activeCount = Object.entries(filters).filter(
     ([k, v]) => v && v !== 'all' && k !== 'searchTerm' && k !== 'sortField' && k !== 'sortDir'
@@ -59,11 +60,13 @@ export default function ProviderAdvancedFilters({
           variant="ghost"
           size="sm"
           onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+          aria-controls={expanded ? moreId : undefined}
           className="text-slate-400 hover:text-slate-300 h-9 text-xs gap-1"
         >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
+          <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
           More
-          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          {expanded ? <ChevronUp className="w-3 h-3" aria-hidden="true" /> : <ChevronDown className="w-3 h-3" aria-hidden="true" />}
         </Button>
 
         {activeCount > 0 && (
@@ -75,7 +78,7 @@ export default function ProviderAdvancedFilters({
 
       {/* Expanded row */}
       {expanded && (
-        <div className="flex flex-wrap items-center gap-2 pl-0.5">
+        <div id={moreId} className="flex flex-wrap items-center gap-2 pl-0.5">
           <FilterSelect
             label="Credential"
             value={filters.credentialFilter}

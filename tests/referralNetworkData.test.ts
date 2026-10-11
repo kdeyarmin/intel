@@ -88,6 +88,15 @@ describe("node details", () => {
 const queries: Array<{ sql: string; params: any[] }> = [];
 let referralRows: any[] = [];
 let hasData = true;
+// Every location row per provider; the fake applies the handler's documented
+// preference (a practice in the scoped state, then any practice) to them.
+let locationRows: Array<{ npi: string; location_type: string; city: string; state: string }> = [];
+function pickLocation(npi: string, state: string | null | undefined) {
+  const mine = locationRows.filter((l) => l.npi === npi);
+  return mine.find((l) => l.location_type === "Practice" && state && l.state === state)
+    || mine.find((l) => l.location_type === "Practice")
+    || mine[0];
+}
 
 vi.mock("../server/db", () => {
   const client = {
@@ -103,6 +112,9 @@ vi.mock("../server/db", () => {
         return { rows: referralRows.filter((r) => params[0].includes(r.referred_to_npi)) };
       }
       if (sql.includes("FROM providers WHERE npi = ANY")) return { rows: [{ npi: "1000000001", entity_type: "Individual", first_name: "Ann", last_name: "Chen" }] };
+      if (sql.includes("FROM provider_locations") && sql.includes("CROSS JOIN LATERAL")) {
+        return { rows: params[0].map((npi: string) => pickLocation(npi, params[1])).filter(Boolean) };
+      }
       return { rows: [] };
     },
     release() {},
@@ -114,6 +126,7 @@ describe("handleGetReferralNetworkData", () => {
   beforeEach(async () => {
     queries.length = 0;
     hasData = true;
+    locationRows = [];
     referralRows = [
       { npi: "1000000001", referred_to_npi: "1000000002", total_referrals: "120" },
       { npi: "1000000001", referred_to_npi: "1000000003", total_referrals: 30 },
@@ -137,6 +150,30 @@ describe("handleGetReferralNetworkData", () => {
     // Statement timeout is set and reset on the pooled connection.
     expect(queries[0].sql).toMatch(/SET statement_timeout/);
     expect(queries.at(-1)!.sql).toMatch(/RESET statement_timeout/);
+  });
+
+  it("places a provider practicing in several states in the scoped state", async () => {
+    locationRows = [
+      { npi: "1000000001", location_type: "Practice", city: "Columbus", state: "OH" },
+      { npi: "1000000001", location_type: "Practice", city: "Pittsburgh", state: "PA" },
+      { npi: "1000000003", location_type: "Practice", city: "Columbus", state: "OH" },
+    ];
+    const { handleGetReferralNetworkData } = await import("../server/functions/referralNetwork");
+    const r = await handleGetReferralNetworkData({ state: "pa" }, { id: 1 });
+    expect(r.nodes.find((n: any) => n.npi === "1000000001")).toMatchObject({ city: "Pittsburgh", state: "PA" });
+    // A partner with no practice in the state keeps its own practice address.
+    expect(r.nodes.find((n: any) => n.npi === "1000000003")).toMatchObject({ city: "Columbus", state: "OH" });
+    const loc = queries.find((q) => q.sql.includes("FROM provider_locations") && q.sql.includes("CROSS JOIN LATERAL"))!;
+    expect(loc.params[1]).toBe("PA");
+    // The in-state practice row sorts ahead of any other practice row.
+    expect(loc.sql).toMatch(/ORDER BY coalesce\(location_type = 'Practice' AND state = \$2::varchar, false\) DESC,\s+\(location_type = 'Practice'\) DESC/);
+  });
+
+  it("doesn't prefer a state outside a state scope", async () => {
+    const { handleGetReferralNetworkData } = await import("../server/functions/referralNetwork");
+    await handleGetReferralNetworkData({ npi: "1000000001" }, { id: 1 });
+    const loc = queries.find((q) => q.sql.includes("FROM provider_locations") && q.sql.includes("CROSS JOIN LATERAL"))!;
+    expect(loc.params[1]).toBeNull();
   });
 
   it("caches per scope", async () => {

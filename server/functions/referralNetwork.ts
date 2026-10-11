@@ -59,21 +59,25 @@ async function hasReferralData(client: any): Promise<boolean> {
   return rows.length > 0;
 }
 
-async function loadDetails(client: any, npis: string[]) {
+async function loadDetails(client: any, npis: string[], state: string | null) {
   if (npis.length === 0) return new Map();
   const [providers, taxonomies, locations] = await Promise.all([
     client.query("SELECT npi, entity_type, first_name, last_name, organization_name, credential FROM providers WHERE npi = ANY($1)", [npis]),
     client.query("SELECT npi, taxonomy_code, taxonomy_description FROM provider_taxonomies WHERE npi = ANY($1) AND is_primary = true", [npis]),
-    // One location per provider, the practice one when there is one (a
-    // provider can have hundreds of rows; each lookup is one index probe).
+    // One location per provider: a practice in the scoped state, else any
+    // practice, else whatever there is (a provider can have hundreds of rows
+    // across several states; each lookup is one index probe).
     client.query(
       `SELECT l.npi, l.location_type, l.city, l.state
          FROM unnest($1::varchar[]) AS n(npi)
          CROSS JOIN LATERAL (
            SELECT npi, location_type, city, state FROM provider_locations
-            WHERE npi = n.npi ORDER BY (location_type = 'Practice') DESC NULLS LAST LIMIT 1
+            WHERE npi = n.npi
+            ORDER BY coalesce(location_type = 'Practice' AND state = $2::varchar, false) DESC,
+                     (location_type = 'Practice') DESC NULLS LAST
+            LIMIT 1
          ) l`,
-      [npis],
+      [npis, state],
     ),
   ]);
   return buildNodeDetails(npis, { providers: providers.rows, taxonomies: taxonomies.rows, locations: locations.rows });
@@ -111,7 +115,7 @@ export async function handleGetReferralNetworkData(payload: any, user?: { id: nu
           })();
 
       const picked = selectNetwork({ edges: loaded.edges, seeds: loaded.seeds, maxNodes, maxEdges, focusNpi: isNpi(payload?.npi) ? payload.npi : null });
-      const details = await loadDetails(client, picked.nodes.map((n) => n.npi));
+      const details = await loadDetails(client, picked.nodes.map((n) => n.npi), loaded.scope.type === "state" ? loaded.scope.state ?? null : null);
       return {
         nodes: withDetails(picked.nodes, details),
         edges: picked.edges,

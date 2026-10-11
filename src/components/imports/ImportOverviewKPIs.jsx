@@ -5,34 +5,41 @@ import {
 } from 'lucide-react';
 
 function KPICard({ label, value, icon: Icon, iconColor, trend, trendLabel, onClick, highlight }) {
+  const content = (
+    <CardContent className="pt-4 pb-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[11px] text-slate-400 uppercase tracking-wide">{label}</p>
+          <p className="text-2xl lg:text-3xl font-bold text-white mt-0.5">{value}</p>
+          {trend !== undefined && (
+            <div className="flex items-center gap-1 mt-1">
+              {trend >= 0 ? (
+                <TrendingUp className="w-3 h-3 text-emerald-400" aria-hidden="true" />
+              ) : (
+                <TrendingDown className="w-3 h-3 text-red-400" aria-hidden="true" />
+              )}
+              <span className={`text-[10px] ${trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {trend > 0 ? '+' : ''}{trend}% {trendLabel || ''}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconColor || 'bg-slate-800'}`}>
+          <Icon className="w-5 h-5" aria-hidden="true" />
+        </div>
+      </div>
+    </CardContent>
+  );
   return (
     <Card
-      className={`bg-[#141d30] border-slate-700/50 cursor-pointer hover:border-cyan-500/30 transition-all ${highlight ? 'ring-1 ring-red-500/40' : ''}`}
-      onClick={onClick}
+      className={`bg-[#141d30] border-slate-700/50 transition-all ${onClick ? 'hover:border-cyan-500/30' : ''} ${highlight ? 'ring-1 ring-red-500/40' : ''}`}
     >
-      <CardContent className="pt-4 pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[11px] text-slate-400 uppercase tracking-wide">{label}</p>
-            <p className="text-2xl lg:text-3xl font-bold text-white mt-0.5">{value}</p>
-            {trend !== undefined && (
-              <div className="flex items-center gap-1 mt-1">
-                {trend >= 0 ? (
-                  <TrendingUp className="w-3 h-3 text-emerald-400" />
-                ) : (
-                  <TrendingDown className="w-3 h-3 text-red-400" />
-                )}
-                <span className={`text-[10px] ${trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {trend > 0 ? '+' : ''}{trend}% {trendLabel || ''}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconColor || 'bg-slate-800'}`}>
-            <Icon className="w-5 h-5" />
-          </div>
-        </div>
-      </CardContent>
+      {/* A card that filters is a native button, so it works from the keyboard. */}
+      {onClick ? (
+        <button type="button" onClick={onClick} className="block w-full h-full text-left rounded-xl cursor-pointer">
+          {content}
+        </button>
+      ) : content}
     </Card>
   );
 }

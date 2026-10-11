@@ -6,13 +6,16 @@ import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { ShieldAlert, ShieldX, RefreshCw, Loader2, Mail, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import EmailValidationBadge from './EmailValidationBadge';
+import { checkedEmailStatus } from './emailCheck';
 
 export default function ProblematicEmailsPanel({ providers, onRefresh }) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyingId, setVerifyingId] = useState(null);
   
+  // Only addresses a DNS check flagged: the group re-checks below use the same
+  // marker, and an AI search's guess is still unchecked.
   const problematicProviders = useMemo(() => {
-    return providers.filter(p => p.email && (p.email_validation_status === 'risky' || p.email_validation_status === 'invalid'));
+    return providers.filter(p => ['risky', 'invalid'].includes(checkedEmailStatus(p)));
   }, [providers]);
 
   const riskyCount = problematicProviders.filter(p => p.email_validation_status === 'risky').length;

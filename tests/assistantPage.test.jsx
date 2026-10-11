@@ -120,6 +120,31 @@ describe('AI Assistant page', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument());
   });
 
+  it('creates one conversation when a suggestion is clicked again while it is being created', async () => {
+    api.listConversations.mockResolvedValue({ conversations: [] });
+    let created;
+    api.createConversation.mockImplementation(() => new Promise((r) => { created = () => r({ conversation: { id: 8 } }); }));
+    api.getConversation.mockResolvedValue({ conversation: { id: 8 }, turns: [], running: false });
+    api.streamMessage.mockImplementation(() => new Promise(() => {}));
+    renderPage();
+    const first = await screen.findByRole('button', { name: /highest-scored cardiologists in Allegheny/ });
+    const other = screen.getByRole('button', { name: /Franklin County, OH/ });
+    fireEvent.click(first);
+    fireEvent.click(first);
+    fireEvent.click(other);
+    // The question box stays editable, but Enter doesn't start another one.
+    const box = screen.getByRole('textbox', { name: 'Your question' });
+    fireEvent.change(box, { target: { value: 'Another question' } });
+    fireEvent.keyDown(box, { key: 'Enter' });
+    expect(api.createConversation).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(other).toBeDisabled());
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+    created();
+    await waitFor(() => expect(api.streamMessage).toHaveBeenCalledTimes(1));
+    expect(api.streamMessage).toHaveBeenCalledWith(8, expect.stringMatching(/Allegheny County/), expect.any(Object));
+    expect(api.createConversation).toHaveBeenCalledTimes(1);
+  });
+
   it('puts a rejected question back in the box with the reason', async () => {
     api.streamMessage.mockRejectedValue(Object.assign(new Error('You’ve reached today’s assistant usage limit.'), { status: 429 }));
     renderPage('/AIAssistant?c=5');

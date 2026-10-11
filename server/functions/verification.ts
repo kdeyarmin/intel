@@ -146,14 +146,29 @@ export async function handleVerifyProviderEmail(payload: any) {
   return { success: true, npi: provider.npi, name: displayName(provider), ...result };
 }
 
+// "Checked" means a DNS check of the current address (email_analyzed_at set).
+// The AI email search writes its own guess at the status without one, so those
+// addresses count as unverified, not risky or invalid. The email panels count
+// with the same marker (src/components/emailBot/emailCheck.js).
 const BULK_MODES: Record<string, string> = {
   unverified: "email_analyzed_at IS NULL",
-  reverify: "email_validation_status IN ('risky', 'invalid')",
-  risky: "email_validation_status = 'risky'",
-  invalid: "email_validation_status = 'invalid'",
+  reverify: "email_analyzed_at IS NOT NULL AND email_validation_status IN ('risky', 'invalid')",
+  risky: "email_analyzed_at IS NOT NULL AND email_validation_status = 'risky'",
+  invalid: "email_analyzed_at IS NOT NULL AND email_validation_status = 'invalid'",
 };
 const HAS_EMAIL = "email IS NOT NULL AND email <> ''";
 const MAX_SPECIFIC_NPIS = 100;
+
+/**
+ * Whether a provider checked in this mode still matches the mode afterwards.
+ * An `unknown` result isn't saved, so the row keeps whatever made it match.
+ */
+export function stillMatchesMode(mode: string, status: EmailScore["status"]): boolean {
+  if (mode === "specific_npis") return false;
+  if (status === "unknown") return true;
+  if (mode === "reverify") return status === "risky" || status === "invalid";
+  return status === mode;
+}
 
 async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);
@@ -206,9 +221,7 @@ export async function handleBulkVerifyEmails(payload: any) {
   });
 
   const verified = results.filter((r) => r.status !== "unknown").length;
-  const stillMatching = mode === "unverified"
-    ? results.filter((r) => r.status === "unknown").length
-    : results.filter((r) => mode === "reverify" ? r.status === "risky" || r.status === "invalid" : r.status === mode).length;
+  const stillMatching = results.filter((r) => stillMatchesMode(mode, r.status)).length;
   return {
     success: true,
     verified,

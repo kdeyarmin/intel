@@ -134,6 +134,7 @@ describe("getCountyIntelligence", () => {
     expect(svc.sql).not.toMatch(/LIMIT/);
     expect(fac.sql).toMatch(/ORDER BY data_year DESC NULLS LAST, id DESC LIMIT \$4/);
     expect(r.sample.facilities_capped).toBe(false);
+    expect(r.sample.providers_capped).toBe(false);
   });
 
   it("says when the facility list was capped", async () => {
@@ -144,6 +145,21 @@ describe("getCountyIntelligence", () => {
     const r: any = await handleGetCountyIntelligence({ state: "PA", county: "allegheny" });
     expect(r.sample).toMatchObject({ facilities_capped: true, facility_limit: 2000 });
     expect(r.summary.totalFacilities).toBe(2000);
+  });
+
+  it("says when the provider list was capped, below the detail sample", async () => {
+    // 300 providers: under both samples, so only the list cap applies.
+    const base = db.answer;
+    const npis = Array.from({ length: 300 }, (_, i) => String(1000000100 + i));
+    db.answer = (sql, params) => (sql.includes("FROM provider_locations") ? npis.map((npi) => ({ npi }))
+      : sql.includes("FROM providers WHERE npi = ANY") ? (params[0] as string[]).map((npi) => ({ npi, entity_type: "Individual", first_name: "P", last_name: npi, ai_outreach_score: Number(npi.slice(-3)) }))
+      : base(sql, params));
+    const { handleGetCountyIntelligence } = await import("../server/functions/countyIntelligence");
+    const r: any = await handleGetCountyIntelligence({ state: "PA", county: "allegheny" });
+    expect(r.summary).toMatchObject({ totalProviders: 300, providersExact: true });
+    expect(r.sample).toMatchObject({ sampled: false, details_cover_all: true, providers_capped: true, provider_limit: 200, providers_found: 300 });
+    expect(r.providers).toHaveLength(200);
+    expect(r.providers[0]).toMatchObject({ score: 399 }); // highest scored first
   });
 
   it("lists the state's counties when none is chosen", async () => {
@@ -227,6 +243,31 @@ describe("getTerritoryData", () => {
     expect(r.scope.label).toMatch(/the 0 highest-scored first/);
     // Stable ZIP choice when several practice addresses tie.
     expect(db.queries.find((q) => q.sql.includes("CROSS JOIN LATERAL"))!.sql).toMatch(/DESC NULLS LAST,\s+id\s+LIMIT 1/);
+  });
+
+  it("keeps a specialty sample to providers who practice in the state", async () => {
+    const base = db.answer;
+    // 1000000005's only PA address is a mailing one (it practices in OH); 1000000001 practices in PA.
+    db.answer = (sql, params) => {
+      if (sql.includes("FROM provider_taxonomies") && sql.includes("LIKE")) {
+        return ["1000000005", "1000000001"].map((npi) => ({ npi, taxonomy_code: "207RC0000X", taxonomy_description: "Internal Medicine, Cardiovascular Disease" }));
+      }
+      if (sql.includes("SELECT DISTINCT npi FROM provider_locations")) {
+        const inPa = sql.includes("location_type = 'Practice'") ? ["1000000001"] : ["1000000001", "1000000005"];
+        return (params[0] as string[]).filter((n) => inPa.includes(n)).map((npi) => ({ npi }));
+      }
+      if (sql.includes("CROSS JOIN LATERAL")) {
+        return [
+          { npi: "1000000001", location_type: "Practice", city: "Pittsburgh", state: "PA", zip: "15213" },
+          { npi: "1000000005", location_type: "Practice", city: "Columbus", state: "OH", zip: "43215" },
+        ].filter((l) => (params[0] as string[]).includes(l.npi));
+      }
+      return base(sql, params);
+    };
+    const { handleGetTerritoryData } = await import("../server/functions/territory");
+    const r: any = await handleGetTerritoryData({ state: "PA", specialty_group: "cardiology", limit: 10 });
+    expect(r.providers.map((p: any) => p.npi)).toEqual(["1000000001"]);
+    expect(r.providers.every((p: any) => p.state === "PA")).toBe(true);
   });
 
   it("handles all states", async () => {

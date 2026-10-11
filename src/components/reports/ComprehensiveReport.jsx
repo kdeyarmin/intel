@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,19 +24,29 @@ function formatCurrency(val) {
 
 function SectionCard({ icon: Icon, iconColor, title, children, count, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
+  const contentId = useId();
   return (
     <Card className="bg-slate-800/50 border-slate-700/50 print:bg-white print:border-gray-200">
-      <CardHeader className="pb-2 cursor-pointer" onClick={() => setOpen(!open)}>
-        <CardTitle className="text-sm text-slate-200 flex items-center gap-2 print:text-gray-900">
-          <Icon className={`w-4 h-4 ${iconColor}`} />
-          {title}
-          {count != null && (
-            <Badge className="bg-slate-700/50 text-slate-400 border-slate-600/50 text-[10px] ml-auto mr-2">{count}</Badge>
-          )}
-          {open ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm text-slate-200 print:text-gray-900">
+          {/* The disclosure is a native button, so it works from the keyboard and reports its state. */}
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            aria-controls={open ? contentId : undefined}
+            className="flex w-full items-center gap-2 text-left cursor-pointer"
+          >
+            <Icon className={`w-4 h-4 ${iconColor}`} aria-hidden="true" />
+            {title}
+            {count != null && (
+              <Badge className="bg-slate-700/50 text-slate-400 border-slate-600/50 text-[10px] ml-auto mr-2">{count}</Badge>
+            )}
+            {open ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />}
+          </button>
         </CardTitle>
       </CardHeader>
-      {open && <CardContent>{children}</CardContent>}
+      {open && <CardContent id={contentId}>{children}</CardContent>}
     </Card>
   );
 }

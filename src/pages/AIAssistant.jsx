@@ -61,6 +61,10 @@ export default function AIAssistantPage() {
   const confirm = useConfirm();
   const scrollRef = useRef(null);
   const pinnedRef = useRef(true);
+  // Set while a new conversation is being created, before streaming starts:
+  // the ref stops a second click at once, the state disables the controls.
+  const creatingRef = useRef(false);
+  const [creating, setCreating] = useState(false);
 
   const status = useQuery({ queryKey: ['assistantStatus'], queryFn: () => base44.assistant.status(), staleTime: 60000 });
   // Newest first, a page at a time; older ones load on request.
@@ -120,13 +124,15 @@ export default function AIAssistantPage() {
   const configured = status.data?.configured !== false;
   const ask = async (text) => {
     const question = text.trim();
-    if (!question || streaming || !configured) return;
+    if (!question || streaming || creatingRef.current || !configured) return;
     if (question.length > MAX_CHARS) {
       toast.error(`Questions can be up to ${MAX_CHARS.toLocaleString()} characters.`);
       return;
     }
     let id = selectedId;
     if (id == null) {
+      creatingRef.current = true;
+      setCreating(true);
       try {
         const res = await base44.assistant.createConversation();
         id = res.conversation.id;
@@ -135,6 +141,9 @@ export default function AIAssistantPage() {
       } catch (e) {
         toast.error(e?.message || 'Couldn’t start a conversation.');
         return;
+      } finally {
+        creatingRef.current = false;
+        setCreating(false);
       }
     }
     setInput('');
@@ -225,7 +234,7 @@ export default function AIAssistantPage() {
               <p className="text-sm text-red-400" role="alert">Couldn’t load this conversation: {conversation.error?.message}</p>
             )}
             {(selectedId == null || (conversation.isSuccess && turns.length === 0)) && !draftHere && (
-              <EmptyState onPick={ask} disabled={!configured || streaming} />
+              <EmptyState onPick={ask} disabled={!configured || streaming || creating} />
             )}
             {turns.map(({ turn, live }) => (
               <AssistantTurn key={turn.id} turn={turn} live={live} conversationId={selectedId} />
@@ -257,7 +266,7 @@ export default function AIAssistantPage() {
                   <Square className="h-4 w-4" aria-hidden="true" />
                 </Button>
               ) : (
-                <Button type="submit" disabled={!input.trim() || !configured} className="bg-violet-600 hover:bg-violet-500 text-white" aria-label="Send">
+                <Button type="submit" disabled={!input.trim() || !configured || creating} className="bg-violet-600 hover:bg-violet-500 text-white" aria-label="Send">
                   <Send className="h-4 w-4" aria-hidden="true" />
                 </Button>
               )}

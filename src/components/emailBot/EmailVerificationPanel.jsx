@@ -8,6 +8,7 @@ import { ShieldCheck, ShieldAlert, ShieldX, Loader2, RefreshCw, Zap, Info } from
 import { toast } from 'sonner';
 import EmailVerificationResultRow from './EmailVerificationResultRow';
 import BulkEmailActions from './BulkEmailActions';
+import { emailCheckStats } from './emailCheck';
 
 export default function EmailVerificationPanel({ providers, onRefresh }) {
   const uid = useId();
@@ -17,15 +18,7 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
   const [results, setResults] = useState(null);
   const [progress, setProgress] = useState(null);
 
-  const stats = useMemo(() => {
-    const withEmail = providers.filter(p => p.email);
-    const valid = withEmail.filter(p => p.email_validation_status === 'valid');
-    const risky = withEmail.filter(p => p.email_validation_status === 'risky');
-    const invalid = withEmail.filter(p => p.email_validation_status === 'invalid');
-    const verified = valid.length + risky.length + invalid.length;
-    const unverified = withEmail.length - verified;
-    return { withEmail: withEmail.length, analyzed: verified, unanalyzed: unverified, valid: valid.length, risky: risky.length, invalid: invalid.length };
-  }, [providers]);
+  const stats = useMemo(() => emailCheckStats(providers), [providers]);
 
   const runVerification = async () => {
     setIsRunning(true);
@@ -212,8 +205,10 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
         <Info className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
         <p className="text-[11px] text-slate-400">
           Each check looks at the address format, whether the domain exists and accepts mail (DNS/MX records), and flags
-          disposable, no-reply, shared (info@) and free-mail addresses, plus anyone who bounced or opted out. It doesn't contact
-          the mail server, so "valid" means the domain accepts mail, not that the mailbox is confirmed. Results are saved on each provider.
+          disposable, no-reply, shared (info@) and free-mail addresses, plus anyone who bounced, opted out or marked an
+          earlier email as spam. It doesn't contact the mail server, so "valid" means the domain accepts mail, not that the
+          mailbox is confirmed. Results are saved on each provider; a new address, including one the AI search found, counts
+          as unchecked until it's verified here.
         </p>
       </div>
     </div>

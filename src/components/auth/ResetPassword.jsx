@@ -11,6 +11,8 @@ export default function ResetPassword() {
   const navigate = useNavigate();
   const { adoptSession } = useAuth();
   const [info, setInfo] = useState(null);
+  const [lookupFailed, setLookupFailed] = useState(false);
+  const [lookupAttempt, setLookupAttempt] = useState(0);
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -23,11 +25,14 @@ export default function ResetPassword() {
       setInfo({ valid: false });
       return undefined;
     }
+    setLookupFailed(false);
     base44.auth.tokenInfo(token)
       .then((r) => { if (!cancelled) setInfo(r); })
-      .catch(() => { if (!cancelled) setInfo({ valid: false }); });
+      // Only the server's answer makes a link invalid. A failed lookup (server
+      // busy or unreachable) says nothing about the link, so offer a retry.
+      .catch(() => { if (!cancelled) setLookupFailed(true); });
     return () => { cancelled = true; };
-  }, [token]);
+  }, [token, lookupAttempt]);
 
   const invite = info?.purpose === 'invite';
 
@@ -48,6 +53,22 @@ export default function ResetPassword() {
       setLoading(false);
     }
   };
+
+  if (lookupFailed) {
+    return (
+      <AuthShell
+        title="Couldn't check your link"
+        footer={<Link to="/login" className="text-cyan-400 hover:text-cyan-300">Back to sign in</Link>}
+      >
+        <Notice tone="error">
+          We couldn&apos;t check this link just now. It may still work, so try again in a moment.
+        </Notice>
+        <button type="button" onClick={() => setLookupAttempt((n) => n + 1)} className={primaryButtonClass}>
+          Try again
+        </button>
+      </AuthShell>
+    );
+  }
 
   if (!info) return <AuthShell title="Checking your link…" />;
 

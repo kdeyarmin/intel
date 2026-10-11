@@ -6,7 +6,8 @@
  */
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import axe from 'axe-core';
@@ -56,6 +57,11 @@ import CriticalFailureAlerts from '../src/components/imports/CriticalFailureAler
 import TypeAheadSearch from '../src/components/search/TypeAheadSearch';
 import LeadListTable from '../src/components/leadlists/LeadListTable';
 import StateCrawlerGrid from '../src/components/nppes/StateCrawlerGrid';
+import ImportCategoryCards from '../src/components/dataCenter/ImportCategoryCards';
+import ImportOverviewKPIs from '../src/components/imports/ImportOverviewKPIs';
+import ProviderAdvancedFilters from '../src/components/filters/ProviderAdvancedFilters';
+import ComprehensiveReport from '../src/components/reports/ComprehensiveReport';
+import PageHeader from '../src/components/shared/PageHeader';
 
 function wrap(ui, path = '/Dashboard') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -290,5 +296,94 @@ describe('screens', () => {
     await screen.findByText('new@example.com');
     await act(async () => {});
     expect(await violations(container)).toEqual([]);
+  });
+});
+
+describe('clickable cards and disclosures', () => {
+  // Nothing clickable is a plain element, and no control sits inside another.
+  function expectNativeUnnested(container) {
+    for (const el of container.querySelectorAll('[role="button"]')) {
+      expect(el.tagName, el.outerHTML.slice(0, 80)).toBe('BUTTON');
+    }
+    for (const el of container.querySelectorAll('button, [role="button"], a')) {
+      expect(el.parentElement.closest('button, [role="button"], a'), el.outerHTML.slice(0, 80)).toBeNull();
+    }
+  }
+
+  it('data center category cards are buttons that open from the keyboard', async () => {
+    const onSelectCategory = vi.fn();
+    const user = userEvent.setup();
+    const { container } = wrap(<main><ImportCategoryCards onSelectCategory={onSelectCategory} batches={[]} /></main>);
+    const card = screen.getByRole('button', { name: /^Provider Data/ });
+    await user.tab();
+    expect(document.activeElement).toBe(card);
+    await user.keyboard('{Enter}');
+    expect(onSelectCategory).toHaveBeenCalledWith(expect.objectContaining({ id: 'providers' }));
+    expect(screen.getByRole('button', { name: /^Claims & Utilization/ })).toBeInTheDocument();
+    expectNativeUnnested(container);
+    expect(await violations(container)).toEqual([]);
+  });
+
+  it('import KPI cards that filter are buttons; the others are not', async () => {
+    const onFilterChange = vi.fn();
+    const user = userEvent.setup();
+    const { container } = wrap(<main><ImportOverviewKPIs batches={[]} onFilterChange={onFilterChange} /></main>);
+    expect(screen.getAllByRole('button').map((b) => b.querySelector('p').textContent)).toEqual(['Active Now', 'Last 24h', 'Successful', 'Failed']);
+    screen.getByRole('button', { name: /^Failed/ }).focus();
+    await user.keyboard('{Enter}');
+    expect(onFilterChange).toHaveBeenCalledWith('failed');
+    await user.keyboard(' ');
+    expect(onFilterChange).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('7d Success Rate').closest('button')).toBeNull();
+    expectNativeUnnested(container);
+    expect(await violations(container)).toEqual([]);
+  });
+
+  it('the provider filters "More" toggle reports whether it is expanded', async () => {
+    const { container } = wrap(<main><ProviderAdvancedFilters filters={{}} onFilterChange={() => {}} onReset={() => {}} /></main>);
+    const more = screen.getByRole('button', { name: 'More' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('combobox', { name: 'Credential' })).not.toBeInTheDocument();
+    fireEvent.click(more);
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    const region = document.getElementById(more.getAttribute('aria-controls'));
+    expect(region).toContainElement(screen.getByRole('combobox', { name: 'Credential' }));
+    expect(await violations(container)).toEqual([]);
+  });
+
+  it('report sections open and close with a button that reports its state', async () => {
+    search.invoke.mockImplementation((name) => Promise.resolve(name === 'getComprehensiveReport'
+      ? { data: { generatedAt: '2026-10-01T00:00:00Z', summary: {}, locations: [{ address_1: '1 Main St', city: 'Erie', state: 'PA' }] } }
+      : { data: {} }));
+    const user = userEvent.setup();
+    const { container } = wrap(<main><ComprehensiveReport npi="1000000001" /></main>);
+    fireEvent.click(screen.getByRole('button', { name: /Generate Full Report/ }));
+    const toggle = await screen.findByRole('button', { name: /^Locations/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(document.getElementById(toggle.getAttribute('aria-controls'))).toHaveTextContent('1 Main St');
+    toggle.focus();
+    await user.keyboard('{Enter}');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('1 Main St')).not.toBeInTheDocument();
+    await user.keyboard(' ');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expectNativeUnnested(container);
+    expect(await violations(container)).toEqual([]);
+  });
+
+  it('the last breadcrumb is the current page, also when it is a link', async () => {
+    const { container } = wrap(
+      <main>
+        <PageHeader title="Advanced Analytics" breadcrumbs={[{ label: 'Territory', page: 'TerritoryIntelligence' }, { label: 'Analytics', page: 'AdvancedAnalytics' }]} />
+      </main>,
+    );
+    const nav = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(within(nav).getByRole('link', { name: 'Analytics' })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('link', { name: 'Territory' })).not.toHaveAttribute('aria-current');
+    expect(await violations(container)).toEqual([]);
+    cleanup();
+    wrap(<PageHeader title="Ann Chen" breadcrumbs={[{ label: 'Providers', page: 'Providers' }, { label: 'Ann Chen' }]} />);
+    expect(screen.getByText('Ann Chen', { selector: 'nav span' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Providers' })).not.toHaveAttribute('aria-current');
   });
 });

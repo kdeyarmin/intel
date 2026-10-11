@@ -22,6 +22,8 @@ const MIN_ZCTA_SHARE = 0.5;
 const FACILITY_LIMIT = 2000;
 // Referral pairs listed (the heaviest, latest year per pair).
 const TOP_PAIRS = 30;
+// Providers listed (highest scored first); the response says when it's capped.
+const PROVIDER_LIST_LIMIT = 200;
 
 class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -209,6 +211,10 @@ export async function handleGetCountyIntelligence(payload: any) {
           // Facility totals cover the newest FACILITY_LIMIT records.
           facilities_capped: facilitiesCapped,
           facility_limit: FACILITY_LIMIT,
+          // The provider list holds the PROVIDER_LIST_LIMIT highest scored of providers_found.
+          providers_capped: providers.length > PROVIDER_LIST_LIMIT,
+          provider_limit: PROVIDER_LIST_LIMIT,
+          providers_found: providers.length,
         },
         topSpecialties,
         facilitySummary: [...facSummary.values()]
@@ -220,7 +226,7 @@ export async function handleGetCountyIntelligence(payload: any) {
           }))
           .sort((a, b) => b.count - a.count),
         facilities,
-        providers: providers.slice(0, 200),
+        providers: providers.slice(0, PROVIDER_LIST_LIMIT),
         referrals: topPairs.map((r) => ({
           fromNpi: r.npi,
           fromName: names.get(r.npi) || null,
