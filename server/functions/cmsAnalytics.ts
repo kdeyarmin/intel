@@ -70,6 +70,14 @@ export async function handleGetCMSAnalytics(pool: any) {
       [referred.map((r: any) => r.referred_to_npi)])).map((p: any) => [p.npi, personName(p)]))
     : new Map();
 
+  // The market rollups (server/lib/rollups/market.ts): how much of the
+  // country has a county profile and which vintages it carries.
+  const [markets = {}] = await q(
+    `SELECT count(*) FILTER (WHERE benes IS NOT NULL)::int AS profiled, count(DISTINCT state) FILTER (WHERE benes IS NOT NULL)::int AS states,
+            max(enrollment_period) AS enrollment_period, max(hsa_year) AS hsa_year, max(pac_year) AS pac_year, max(variation_year) AS variation_year
+       FROM rollup_county_market_profile`,
+  ).catch(() => [{}]);
+
   const est: Record<string, number> = {};
   for (const r of estimates) est[r.relname] = Math.max(0, Number(r.est) || 0);
   const job = (name: string) => {
@@ -112,6 +120,15 @@ export async function handleGetCMSAnalytics(pool: any) {
         .filter((r: any) => !AGGREGATE_DATASETS.includes(r.facility_type))
         .slice(0, 15)
         .map((r: any) => ({ type: r.facility_type, count: Number(r.record_count) || 0 })),
+    },
+    markets: {
+      rollup: job("county_market_profile"),
+      counties_profiled: Number(markets.profiled) || 0,
+      states: Number(markets.states) || 0,
+      enrollment_period: markets.enrollment_period || null,
+      hsa_year: markets.hsa_year || null,
+      pac_year: markets.pac_year || null,
+      variation_year: markets.variation_year || null,
     },
     tableCounts: {
       provider_service_utilization: est.provider_service_utilization || 0,

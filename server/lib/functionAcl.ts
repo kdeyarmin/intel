@@ -38,6 +38,13 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "getRollupStatus",
   // Which version of each dataset is loaded and how old it is (read-only).
   "getDataFreshness",
+  // Market and patient-flow views from the rollups (read-only; server/functions/market.ts).
+  "getCountyMarket",
+  "getHospitalCatchment",
+  "getFacilityMarket",
+  "getCountyMarketLayer",
+  "getReferralSources",
+  "getServiceAreaOverlap",
   // Read-only for non-admins: no AI call and nothing saved (see the handler).
   "calculateOutreachScore",
   // Runs or previews a saved report schedule (any user can create schedules);

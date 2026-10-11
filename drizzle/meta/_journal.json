@@ -120,6 +120,13 @@
       "when": 1791612027276,
       "tag": "0017_nucc_taxonomies",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791612087276,
+      "tag": "0018_market_rollups",
+      "breakpoints": true
     }
   ]
 }
