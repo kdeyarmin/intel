@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "1d51b0dbc82cfc88f22b182f0955c5ab2b31e0fa",
+    "ref": "17922748fdf84c67765642bbc8ae8bb1645269b6",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 30,
-    "text_character_count": 11080,
-    "canonical_sha256": "18a137e06330c781e6d1f878fa9e17411e95c2d357174d124f4e3434edde10ec"
+    "text_character_count": 11754,
+    "canonical_sha256": "c57ca5b5339dcf83b1f2805b94de7a5c85d6ca08003070d22b2862b759934362"
   },
   "sections": [
     {
@@ -221,8 +221,8 @@
         },
         {
           "heading": "Scoring rules",
-          "text": "The CareMetric score (0–100) weights specialty match, Medicare participation, patient volume, service intensity, geographic priority, practice type and behavioral-health potential. Adjust the weights (they should total 100%) and recalculate scores.",
-          "sha256": "b7cec30938dfcc995dd3852219e5bfe3b099a17c47e34fc3e5d81a33ffaee01f"
+          "text": "The CareMetric score (0–100) weights specialty match, Medicare participation, patient volume, service intensity, geographic priority, practice type and behavioral-health potential. Adjust the weights (they should total 100%); the **Geographic Priority** rule's conditions name the states that are scored and any priority counties, and the **Specialty Match** rule lists the specialty groups that count as a match.\n\nScores are computed on the server for every individual provider with a practice location in those states, from the NPPES taxonomy (by NUCC code), the CMS Order & Referring list, Physician & Other Practitioners by Provider volumes and facility affiliations. **Recalculate scores** runs the job in the background (it takes a few minutes per state) and it also runs weekly after imports. Each score keeps its breakdown and reasons, shown on provider pages; providers outside the scored states show as Unscored.",
+          "sha256": "5be1a09669d21f4a6a82948c857578924174c5f8057b2ad1c35dd380bb0cf894"
         },
         {
           "heading": "Data quality",
