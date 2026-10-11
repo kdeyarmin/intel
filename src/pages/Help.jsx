@@ -67,7 +67,7 @@ const GUIDE_SECTIONS = [
     color: 'text-blue-400',
     content: [
       { page: 'ReferralNetworkIntelligence', heading: 'Referral Network', text: 'Maps Medicare shared-patient patterns — how many patients two providers both saw — for a state, a lead list or one provider. These are patterns, not confirmed referrals. The view shows the busiest providers and their strongest connections; hubs are the most connected providers. Large networks are trimmed to the busiest part, and the page says when it is.' },
-      { page: 'CMSAnalytics', heading: 'CMS Data', text: 'Summaries of Medicare utilization by service type, the most-referred-to providers and facility datasets. They are computed in the background (roughly daily), and each section shows when it was last refreshed; admins can refresh them.' },
+      { page: 'CMSAnalytics', heading: 'CMS Data', text: 'Summaries of Medicare utilization by service type, the providers others share the most Medicare patients with (the **Top Referred-To Providers** chart; shared patients, not confirmed referrals) and facility datasets. They are computed in the background (roughly daily), and each section shows when it was last refreshed; admins can refresh them.' },
       { page: 'CustomReports', heading: 'Reports and analytics', text: '**Reports** builds reports from your data, saves them and emails them on a schedule to up to 25 people with an active account (or an address on a domain an admin has approved); the schedule\'s preview and its last-run note say who was left out. **Analytics** has trend and comparison views and a dashboard builder. **Utilization** explores Medicare services and payments by provider.' },
     ],
   },
