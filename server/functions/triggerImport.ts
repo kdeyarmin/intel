@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { importBatches, cmsReferrals, providerServiceUtilization, medicareFacilities, medicareFacilitiesRaw } from "../db/schema";
+import { importBatches, cmsReferrals, cmsOrderReferring, providerServiceUtilization, medicareFacilities, medicareFacilitiesRaw } from "../db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
 import { CMS_NATURAL_KEYS, partition, distinctValues } from "./cmsUpsert";
@@ -474,6 +474,7 @@ export async function handleTriggerImport(payload: any, user: any) {
       batch_id: activeBatchId,
       npi_filter: effNpiFilter,
       state_filter: effStateFilter,
+      as_of: version?.temporalEnd || null,
     }).catch((e) => console.error(`[triggerImport] CMS import error:`, e.message));
   }, 100);
 
@@ -491,16 +492,31 @@ export async function handleTriggerImport(payload: any, user: any) {
   };
 }
 
-function mapCMSOrderReferringRow(row: any, year: number, batchId: number) {
+// CMS Order & Referring: one row per NPI with Y/N flags for the services the
+// provider may order or refer. Lands in cms_order_referring (replaced per
+// release), never in cms_referrals.
+const yesNo = (v: unknown): boolean | null => {
+  if (v == null || v === "") return null;
+  const s = String(v).trim().toUpperCase();
+  if (s === "Y" || s === "YES" || s === "TRUE" || s === "1") return true;
+  if (s === "N" || s === "NO" || s === "FALSE" || s === "0") return false;
+  return null;
+};
+
+export function mapCMSOrderReferringRow(row: any, batchId: number, asOf: string | null) {
+  const npi = String(row.NPI || row.npi || "").trim();
   return {
-    npi: row.NPI || row.npi || null,
-    referred_to_npi: null,
-    referred_to_name: [row.LAST_NAME || row.last_name, row.FIRST_NAME || row.first_name].filter(Boolean).join(", ") || null,
-    total_referrals: null,
-    total_beneficiaries: null,
-    data_year: String(year),
-    raw_data: row,
-    import_batch_id: String(batchId),
+    npi: /^\d{10}$/.test(npi) ? npi : null,
+    last_name: row.LAST_NAME || row.last_name || null,
+    first_name: row.FIRST_NAME || row.first_name || null,
+    partb: yesNo(row.PARTB ?? row.partb),
+    dme: yesNo(row.DME ?? row.dme),
+    hha: yesNo(row.HHA ?? row.hha),
+    pmd: yesNo(row.PMD ?? row.pmd),
+    hospice: yesNo(row.HOSPICE ?? row.hospice),
+    as_of: asOf,
+    import_batch_id: batchId,
+    updated_date: new Date(),
   };
 }
 
@@ -1094,7 +1110,7 @@ export async function dualWriteFacilityRows(
 /**
  * Inserts mapped CMS rows into the appropriate destination table, applying per-import-type mapping, chunked deduplication, and conflict-tolerant insertion.
  *
- * @param importType - Import type that determines mapping and destination routing. Examples: `"cms_order_referring"` → inserts/upserts into `providers`; `"provider_service_utilization"` → `providerServiceUtilization`; `"physician_shared_patient_patterns"` → `cmsReferrals`; other import types are treated as facility-like and inserted into `medicareFacilities`.
+ * @param importType - Import type that determines mapping and destination routing. Examples: `"cms_order_referring"` → upserts into `cmsOrderReferring` (one row per NPI); `"provider_service_utilization"` → `providerServiceUtilization`; `"physician_shared_patient_patterns"` → `cmsReferrals`; other import types are treated as facility-like and inserted into `medicareFacilities`.
  * @param rows - Raw CMS dataset rows to be mapped and inserted.
  * @param year - Data year used when mapping rows and when scoping natural-key deduplication.
  * @param batchId - Import batch identifier to attach to mapped rows.
@@ -1103,7 +1119,7 @@ export async function dualWriteFacilityRows(
  *   - `skipped`: number of rows skipped due to deduplication or per-row insert failures,
  *   - `filtered`: number of input rows removed before mapping (e.g., invalid or missing required keys).
  */
-async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number): Promise<{ inserted: number; skipped: number; filtered: number }> {
+async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number, opts: { asOf?: string | null } = {}): Promise<{ inserted: number; skipped: number; filtered: number }> {
   if (rows.length === 0) return { inserted: 0, skipped: 0, filtered: 0 };
 
   const CHUNK_SIZE = 500;
@@ -1114,9 +1130,15 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
   let table: any;
 
   if (importType === "cms_order_referring") {
-    mapped = rows.map(r => mapCMSOrderReferringRow(r, year, batchId));
-    mapped = mapped.filter(r => r.npi);
-    table = cmsReferrals;
+    // One row per NPI, last one wins within a page (ON CONFLICT can't touch
+    // the same row twice in one statement).
+    const byNpi = new Map<string, any>();
+    for (const r of rows) {
+      const m = mapCMSOrderReferringRow(r, batchId, opts.asOf ?? new Date().toISOString().slice(0, 10));
+      if (m.npi) byNpi.set(m.npi, m);
+    }
+    mapped = [...byNpi.values()];
+    table = cmsOrderReferring;
   } else if (importType === "provider_service_utilization") {
     mapped = rows.map(r => mapCMSUtilizationRow(r, year, batchId));
     mapped = mapped.filter(r => r.npi);
@@ -1168,6 +1190,17 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
     // + raw mirror in a single transaction keeps the two tables consistent
     // even if the second statement errors.
     const isFacility = table === medicareFacilities;
+    // Order & Referring is a complete snapshot per release: replace by NPI.
+    const upsertByNpi = table === cmsOrderReferring;
+    const ORDER_REFERRING_SET = {
+      last_name: sql`excluded.last_name`, first_name: sql`excluded.first_name`,
+      partb: sql`excluded.partb`, dme: sql`excluded.dme`, hha: sql`excluded.hha`, pmd: sql`excluded.pmd`, hospice: sql`excluded.hospice`,
+      as_of: sql`excluded.as_of`, import_batch_id: sql`excluded.import_batch_id`, updated_date: sql`excluded.updated_date`,
+    };
+    const insertRows = async (values: any[]) => {
+      if (upsertByNpi) await db.insert(cmsOrderReferring).values(values).onConflictDoUpdate({ target: cmsOrderReferring.npi, set: ORDER_REFERRING_SET });
+      else await db.insert(table).values(values);
+    };
 
     const result = await safeImportQuery(
       async () => {
@@ -1176,7 +1209,7 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
             await dualWriteFacilityRows(tx, chunk);
           });
         } else {
-          await db.insert(table).values(chunk);
+          await insertRows(chunk);
         }
         return chunk.length;
       },
@@ -1193,7 +1226,7 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
                 await dualWriteFacilityRows(tx, [row]);
               });
             } else {
-              await db.insert(table).values(row);
+              await insertRows([row]);
             }
             return true;
           },
@@ -1209,7 +1242,7 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
 }
 
 export async function handleAutoImportCMSData(params: any) {
-  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, npi_filter, state_filter } = params;
+  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, npi_filter, state_filter, as_of = null } = params;
   // Optional row-level filters from the import dialog. Built once; null when no
   // filter is configured so the common path stays allocation-free.
   const rowFilter = buildImportRowFilter(npi_filter, state_filter);
@@ -1354,7 +1387,7 @@ export async function handleAutoImportCMSData(params: any) {
 
       if (!dry_run && pageRows.length > 0) {
         try {
-          const result = await insertCMSRows(import_type, pageRows, year, batch_id);
+          const result = await insertCMSRows(import_type, pageRows, year, batch_id, { asOf: as_of });
           totalInserted += result.inserted;
           totalSkipped += result.skipped + result.filtered;
         } catch (e: any) {
@@ -1421,6 +1454,12 @@ export async function handleAutoImportCMSData(params: any) {
     );
     console.log(`[AutoImportCMS] Completed ${import_type}: fetched=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
     await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: totalFetched, dataYear: year, note: dry_run ? "dry run" : null }).catch(() => {});
+    if (import_type === "cms_order_referring" && !dry_run) {
+      // The eligibility rows that used to land in cms_referrals come out now
+      // that the typed table holds this release; long on a big table, so it
+      // runs on after the batch is marked complete.
+      import("../lib/orderReferringCleanup").then(({ purgeOrderReferringRows }) => purgeOrderReferringRows()).catch((err) => console.warn("[AutoImportCMS] order/referring cleanup:", err?.message));
+    }
     await settleBatchCompletion(batch_id);
   } catch (e: any) {
     console.error(`[AutoImportCMS] Fatal error:`, e.message);

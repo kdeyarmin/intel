@@ -124,10 +124,10 @@ export default function AIImportQualityAnalysis() {
 
     const refSummary = referrals.slice(0, 30).map(r => ({
       npi: r.npi,
-      year: r.year,
+      referred_to_npi: r.referred_to_npi,
+      data_year: r.data_year,
       total_referrals: r.total_referrals,
-      hh_referrals: r.home_health_referrals,
-      hospice_referrals: r.hospice_referrals,
+      total_beneficiaries: r.total_beneficiaries,
     }));
 
     // Check for cross-source address conflicts

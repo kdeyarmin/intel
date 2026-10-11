@@ -1,3 +1,4 @@
+import { describeReferrals } from '@/lib/referralSummary';
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, Network, TrendingUp, Users, Target } from 'lucide-react';
 import { pickPrimaryLocation } from '@/lib/locations';
 
-export default function AINetworkFitCard({ provider, taxonomy = [], utilization, referrals, score, locations = [] }) {
+export default function AINetworkFitCard({ provider, taxonomy = [], utilization, referrals, orderReferring = null, score, locations = [] }) {
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
 
@@ -31,7 +32,7 @@ CareMetric Score: ${score?.score || 'N/A'}
 
 UTILIZATION: ${utilization ? `${utilization.total_medicare_beneficiaries || 0} beneficiaries, ${utilization.total_services || 0} services, $${utilization.total_medicare_payment?.toLocaleString() || 0} payment` : 'No data'}
 
-REFERRALS: ${referrals ? `Total: ${referrals.total_referrals || 0}, Home Health: ${referrals.home_health_referrals || 0}, Hospice: ${referrals.hospice_referrals || 0}, SNF: ${referrals.snf_referrals || 0}` : 'No data'}
+SHARED PATIENTS AND ELIGIBILITY: ${describeReferrals(referrals ? [{ data_year: referrals.year, total_referrals: referrals.total_referrals, total_beneficiaries: referrals.total_beneficiaries, referred_to_npi: null }] : [], orderReferring)}${referrals?.partners ? ` Partner providers: ${referrals.partners}.` : ''}
 
 Provide:
 1. Network Fit Score (0-100) — how well this provider fits into a post-acute care referral network

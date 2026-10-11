@@ -30,10 +30,8 @@ export default function PredictiveAnalyticsPanel({ utilization = [], referrals =
         { key: 'total_medicare_beneficiaries', label: 'Beneficiaries' },
       ]
     : [
-        { key: 'total_referrals', label: 'Total Referrals' },
-        { key: 'home_health_referrals', label: 'Home Health' },
-        { key: 'hospice_referrals', label: 'Hospice' },
-        { key: 'snf_referrals', label: 'SNF' },
+        { key: 'total_referrals', label: 'Shared patients' },
+        { key: 'total_beneficiaries', label: 'Beneficiaries' },
       ];
 
   const { chartData, insights, lastActualYear } = useMemo(() => {

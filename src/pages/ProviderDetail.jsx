@@ -1,3 +1,4 @@
+import { latestReferralSnapshot } from '@/lib/referralSummary';
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -157,7 +158,9 @@ export default function ProviderDetail() {
   const score = scores?.[0];
   const primaryLocation = pickPrimaryLocation(locations);
   const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
-  const latestRef = [...referrals].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+  // The latest data year's shared-patient totals (patterns, not confirmed referrals).
+  const latestRef = latestReferralSnapshot(referrals);
+  const orderReferring = cmsData?.order_referring || null;
 
   if (providerError) {
     return (
@@ -246,6 +249,7 @@ export default function ProviderDetail() {
                 taxonomies={taxonomies}
                 utilization={latestUtil}
                 referral={latestRef}
+                orderReferring={orderReferring}
                 locations={locations}
                 score={score}
               />
@@ -253,6 +257,7 @@ export default function ProviderDetail() {
                 score={score}
                 utilization={latestUtil}
                 referrals={latestRef}
+                orderReferring={orderReferring}
                 taxonomy={taxonomies}
               />
               {score && (
@@ -269,6 +274,7 @@ export default function ProviderDetail() {
                 taxonomy={taxonomies}
                 utilization={latestUtil}
                 referrals={latestRef}
+                orderReferring={orderReferring}
                 score={score}
                 locations={locations}
               />
@@ -304,7 +310,7 @@ export default function ProviderDetail() {
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UtilizationSummaryCard utilizations={utilizations} />
-            <ReferralSummaryCard referrals={referrals} />
+            <ReferralSummaryCard referrals={referrals} orderReferring={orderReferring} />
           </div>
           <UtilizationInsights utilization={latestUtil} />
           <UtilizationTrendChart utilizations={utilizations} />

@@ -1,3 +1,4 @@
+import { describeReferrals } from '@/lib/referralSummary';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Sparkles, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { pickPrimaryLocation } from '@/lib/locations';
 
-export default function AISummary({ provider, taxonomies, utilization, referral, locations, score }) {
+export default function AISummary({ provider, taxonomies, utilization, referral, orderReferring = null, locations, score }) {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -33,12 +34,8 @@ UTILIZATION (most recent):
 - Total Medicare Payment: $${utilization?.total_medicare_payment?.toLocaleString() || 'N/A'}
 - Drug Services: ${utilization?.drug_services?.toLocaleString() || 'N/A'}
 
-REFERRALS (most recent):
-- Total Referrals: ${referral?.total_referrals?.toLocaleString() || 'N/A'}
-- Home Health: ${referral?.home_health_referrals?.toLocaleString() || 'N/A'}
-- Hospice: ${referral?.hospice_referrals?.toLocaleString() || 'N/A'}
-- SNF: ${referral?.snf_referrals?.toLocaleString() || 'N/A'}
-- DME: ${referral?.dme_referrals?.toLocaleString() || 'N/A'}
+SHARED PATIENTS AND REFERRAL ELIGIBILITY:
+- ${describeReferrals(referral ? [{ data_year: referral.year, total_referrals: referral.total_referrals, total_beneficiaries: referral.total_beneficiaries, referred_to_npi: null }] : [], orderReferring)}${referral?.partners ? ` Partner providers: ${referral.partners}.` : ''}
 
 LEAD SCORE: ${score?.score || 'N/A'}/100
 ${score?.reasons?.length ? 'Score Reasons: ' + score.reasons.join('; ') : ''}

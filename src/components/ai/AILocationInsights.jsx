@@ -1,3 +1,4 @@
+import { latestReferralSnapshot } from '@/lib/referralSummary';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,7 @@ export default function AILocationInsights({ location, coProviders = [], associa
 
     const specialties = taxonomies.map(t => t.taxonomy_description).filter(Boolean).join(', ');
     const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
-    const latestRef = [...referrals].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+    const latestRef = latestReferralSnapshot(referrals);
 
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `Analyze this healthcare location and provide strategic insights about the market, related providers to connect with, and growth opportunities.
@@ -41,10 +42,9 @@ UTILIZATION:
 - Services: ${latestUtil?.total_services || 0}
 - Medicare Payment: $${latestUtil?.total_medicare_payment || 0}
 
-REFERRALS:
-- Total: ${latestRef?.total_referrals || 0}
-- Home Health: ${latestRef?.home_health_referrals || 0}
-- Hospice: ${latestRef?.hospice_referrals || 0}
+SHARED PATIENTS (CMS shared-patient patterns, not confirmed referrals):
+- Shared patients (data year ${latestRef?.year || 'n/a'}): ${latestRef?.total_referrals || 0}
+- Partner providers: ${latestRef?.partners || 0}
 
 Provide:
 1. Related organizations or providers in the area that could be strategic connections

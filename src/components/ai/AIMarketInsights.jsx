@@ -1,3 +1,4 @@
+import { referralTotalsByYear } from '@/lib/referralSummary';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,7 +29,8 @@ export default function AIMarketInsights({ provider, location, taxonomies, utili
 
     const specialty = (taxonomies || []).map(t => t.taxonomy_description).filter(Boolean).join(', ');
     const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
-    const latestRef = [...referrals].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+    const refByYear = referralTotalsByYear(referrals);
+    const latestRef = refByYear[refByYear.length - 1];
 
     // Calculate YoY trends
     const sortedUtil = [...utilizations].sort((a, b) => a.year - b.year);
@@ -36,9 +38,8 @@ export default function AIMarketInsights({ provider, location, taxonomies, utili
       ? `Beneficiaries changed from ${sortedUtil[sortedUtil.length - 2]?.total_medicare_beneficiaries || 0} to ${sortedUtil[sortedUtil.length - 1]?.total_medicare_beneficiaries || 0}`
       : 'Insufficient trend data';
 
-    const sortedRef = [...referrals].sort((a, b) => a.year - b.year);
-    const refTrend = sortedRef.length >= 2
-      ? `Referrals changed from ${sortedRef[sortedRef.length - 2]?.total_referrals || 0} to ${sortedRef[sortedRef.length - 1]?.total_referrals || 0}`
+    const refTrend = refByYear.length >= 2
+      ? `Shared patients changed from ${refByYear[refByYear.length - 2].total_referrals} to ${refByYear[refByYear.length - 1].total_referrals}`
       : 'Insufficient trend data';
 
     try {
@@ -59,11 +60,9 @@ UTILIZATION DATA:
 - Medicare payment: $${latestUtil?.total_medicare_payment || 0}
 - Trend: ${utilTrend}
 
-REFERRAL DATA:
-- Total referrals: ${latestRef?.total_referrals || 0}
-- Home Health: ${latestRef?.home_health_referrals || 0}
-- Hospice: ${latestRef?.hospice_referrals || 0}
-- SNF: ${latestRef?.snf_referrals || 0}
+SHARED-PATIENT DATA (CMS shared-patient patterns, not confirmed referrals):
+- Shared patients (data year ${latestRef?.year || 'n/a'}): ${latestRef?.total_referrals || 0}
+- Partner providers: ${latestRef?.partners || 0}
 - Trend: ${refTrend}
 
 Analyze and provide:

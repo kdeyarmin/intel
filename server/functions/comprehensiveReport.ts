@@ -29,6 +29,7 @@ export async function handleGetComprehensiveReport(payload: any) {
       utilization: [],
       referralsFrom: [],
       referralsTo: [],
+      orderReferring: null as null | Record<string, unknown>,
       affiliations: [],
       facilities: [],
       leadScore: null,
@@ -78,7 +79,28 @@ export async function handleGetComprehensiveReport(payload: any) {
         dataYear: r.data_year,
       }));
 
-      result.referralsTo = [];
+      // Inbound: who shares patients with this provider (idx_cms_referrals_referred_to).
+      result.referralsTo = (await safeQuery(client, `
+        SELECT npi, total_referrals, total_beneficiaries, data_year
+        FROM cms_referrals WHERE referred_to_npi = $1 ORDER BY total_referrals DESC NULLS LAST LIMIT 50
+      `, [npi])).map((r: any) => ({
+        fromNpi: r.npi, fromName: null as string | null,
+        totalReferrals: r.total_referrals, totalBeneficiaries: r.total_beneficiaries,
+        dataYear: r.data_year,
+      }));
+      const inboundNpis = result.referralsTo.map((r: any) => r.fromNpi).filter(Boolean);
+      if (inboundNpis.length) {
+        const names = await safeQuery(client, `
+          SELECT npi, entity_type, first_name, last_name, organization_name FROM providers WHERE npi = ANY($1)
+        `, [inboundNpis]);
+        const byNpi = new Map(names.map((p: any) => [p.npi, p.entity_type === "Individual" ? [p.first_name, p.last_name].filter(Boolean).join(" ") : (p.organization_name || [p.first_name, p.last_name].filter(Boolean).join(" "))]));
+        for (const r of result.referralsTo) r.fromName = byNpi.get(r.fromNpi) || null;
+      }
+
+      const orderRows = await safeQuery(client, `
+        SELECT partb, dme, hha, pmd, hospice, as_of FROM cms_order_referring WHERE npi = $1 LIMIT 1
+      `, [npi]);
+      result.orderReferring = orderRows[0] || null;
 
       result.affiliations = await safeQuery(client, `SELECT * FROM provider_affiliations WHERE npi = $1`, [npi]);
 
@@ -150,7 +172,9 @@ export async function handleGetComprehensiveReport(payload: any) {
     const totalReferralsOut = result.referralsFrom.reduce(
       (s: number, r: any) => s + (parseInt(r.totalReferrals) || 0), 0
     );
-    const totalReferralsIn = 0;
+    const totalReferralsIn = result.referralsTo.reduce(
+      (s: number, r: any) => s + (parseInt(r.totalReferrals) || 0), 0
+    );
 
     result.summary = {
       totalPayments: Math.round(totalPayments),

@@ -57,8 +57,8 @@ describe('DATA_DESTINATION_MAP', () => {
       expect(DATA_DESTINATION_MAP.cms_utilization.page).toBe('Utilization');
     });
 
-    it('routes cms_order_referring to ReferralNetworkIntelligence', () => {
-      expect(DATA_DESTINATION_MAP.cms_order_referring.page).toBe('ReferralNetworkIntelligence');
+    it('routes cms_order_referring to the provider directory (eligibility shows on profiles)', () => {
+      expect(DATA_DESTINATION_MAP.cms_order_referring.page).toBe('Providers');
     });
 
     it('routes home_health_enrollments to HomeHealthAgencies', () => {
@@ -111,16 +111,9 @@ describe('DATA_DESTINATION_MAP', () => {
       expect(DATA_DESTINATION_MAP.physician_shared_patient_patterns.label).toBe('Referrals');
     });
 
-    it('physician_shared_patient_patterns and cms_order_referring share the same page', () => {
-      expect(DATA_DESTINATION_MAP.physician_shared_patient_patterns.page).toBe(
-        DATA_DESTINATION_MAP.cms_order_referring.page,
-      );
-    });
-
-    it('physician_shared_patient_patterns and cms_order_referring share the same label', () => {
-      expect(DATA_DESTINATION_MAP.physician_shared_patient_patterns.label).toBe(
-        DATA_DESTINATION_MAP.cms_order_referring.label,
-      );
+    it('cms_order_referring is eligibility, shown on provider profiles, not a referral network', () => {
+      expect(DATA_DESTINATION_MAP.cms_order_referring.page).toBe('Providers');
+      expect(DATA_DESTINATION_MAP.cms_order_referring.label).toBe('Referral eligibility');
     });
   });
 

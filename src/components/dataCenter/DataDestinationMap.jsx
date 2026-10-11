@@ -7,7 +7,7 @@ const DATA_DESTINATION_MAP = {
   cms_utilization: { page: 'Utilization', label: 'Utilization' },
   cms_service_utilization: { page: 'Utilization', label: 'Utilization' },
   provider_service_utilization: { page: 'Utilization', label: 'Utilization' },
-  cms_order_referring: { page: 'ReferralNetworkIntelligence', label: 'Referrals' },
+  cms_order_referring: { page: 'Providers', label: 'Referral eligibility' },
   physician_shared_patient_patterns: { page: 'ReferralNetworkIntelligence', label: 'Referrals' },
 
   hospital_general_info: { page: 'Facilities', params: { type: 'hospital' }, label: 'Hospitals' },

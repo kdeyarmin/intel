@@ -143,6 +143,8 @@ export interface ImportVersion {
   source: string;
   dataUrl: string | null;
   dataYear: string | null;
+  /** The last day the version covers (YYYY-MM-DD), the "as of" date for snapshot files. */
+  temporalEnd: string | null;
   catalogModified: Date | null;
 }
 
@@ -153,8 +155,9 @@ export async function resolveImportVersion(importType: string): Promise<ImportVe
   if (!row) return null;
   const id = row.source_dataset_id as string | null;
   const dataUrl = !id ? null : row.source === "cms_data_api" ? dataApiUrl(id) : row.source === "cms_provider_data" ? providerDataUrl(id) : null;
-  const dataYear = row.data_year || dataYearOf({ temporalEnd: row.temporal_end ? String(row.temporal_end).slice(0, 10) : null, temporalStart: null });
-  return { source: row.source, dataUrl, dataYear, catalogModified: row.catalog_modified ? new Date(row.catalog_modified) : null };
+  const temporalEnd = row.temporal_end ? (row.temporal_end instanceof Date ? row.temporal_end.toISOString().slice(0, 10) : String(row.temporal_end).slice(0, 10)) : null;
+  const dataYear = row.data_year || dataYearOf({ temporalEnd, temporalStart: null });
+  return { source: row.source, dataUrl, dataYear, temporalEnd, catalogModified: row.catalog_modified ? new Date(row.catalog_modified) : null };
 }
 
 export async function markImportStarted(importType: string, batchId: number, source: string, now = new Date()): Promise<void> {

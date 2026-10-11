@@ -1,3 +1,4 @@
+import { latestReferralSnapshot } from '@/lib/referralSummary';
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -130,7 +131,7 @@ export default function LocationDetail() {
   }
 
   const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
-  const latestRef = [...referrals].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+  const latestRef = latestReferralSnapshot(referrals);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
@@ -220,36 +221,33 @@ export default function LocationDetail() {
               </CardContent>
             </Card>
 
-            {/* Referral Summary */}
+            {/* Shared patients */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <GitBranch className="w-4 h-4 text-violet-500" /> Referral Summary
+                  <GitBranch className="w-4 h-4 text-violet-500" aria-hidden="true" /> Shared Patients
                 </CardTitle>
-                <p className="text-[11px] text-slate-400">Provider-wide totals (NPI-level) — not specific to this location</p>
+                <p className="text-[11px] text-slate-400">Provider-wide (NPI-level) CMS shared-patient patterns — not specific to this location, and not confirmed referrals</p>
               </CardHeader>
               <CardContent>
                 {latestRef ? (
                   <div className="space-y-2">
                     <div className="flex justify-between items-center p-2.5 bg-slate-800/40 rounded-lg">
-                      <span className="text-sm text-slate-400">Total Referrals</span>
-                      <span className="text-lg font-bold text-white">{(latestRef.total_referrals || 0).toLocaleString()}</span>
+                      <span className="text-sm text-slate-400">Shared patients (data year {latestRef.year})</span>
+                      <span className="text-lg font-bold text-white">{latestRef.total_referrals.toLocaleString()}</span>
                     </div>
                     {[
-                      { label: 'Home Health', value: latestRef.home_health_referrals, color: 'bg-blue-900/20 text-blue-400' },
-                      { label: 'Hospice', value: latestRef.hospice_referrals, color: 'bg-purple-900/20 text-purple-400' },
-                      { label: 'SNF', value: latestRef.snf_referrals, color: 'bg-amber-900/20 text-amber-400' },
-                      { label: 'DME', value: latestRef.dme_referrals, color: 'bg-green-900/20 text-green-400' },
-                      { label: 'Imaging', value: latestRef.imaging_referrals, color: 'bg-pink-900/20 text-pink-400' },
+                      { label: 'Partner providers', value: latestRef.partners, color: 'bg-blue-900/20 text-blue-400' },
+                      { label: 'Beneficiaries', value: latestRef.total_beneficiaries, color: 'bg-purple-900/20 text-purple-400' },
                     ].filter(r => r.value > 0).map(r => (
                       <div key={r.label} className="flex justify-between items-center px-2.5 py-1.5">
                         <span className="text-sm text-slate-400">{r.label}</span>
-                        <Badge className={r.color}>{r.value}</Badge>
+                        <Badge className={r.color}>{r.value.toLocaleString()}</Badge>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-400 py-4 text-center">No referral data</p>
+                  <p className="text-sm text-slate-400 py-4 text-center">No shared-patient data</p>
                 )}
               </CardContent>
             </Card>
