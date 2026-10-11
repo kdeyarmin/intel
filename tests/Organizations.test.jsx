@@ -5,8 +5,8 @@
  * providers) rather than the individual-oriented ProviderDetail page.
  */
 import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 
 afterEach(cleanup);
 
@@ -22,7 +22,9 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('../src/components/leadlists/AddToLeadListDialog', () => ({ default: () => null }));
 
 // Stub child components that pull in their own heavy deps.
-vi.mock('../src/components/search/TypeAheadSearch', () => ({ default: () => null }));
+vi.mock('../src/components/search/TypeAheadSearch', () => ({
+  default: ({ value, onChange }) => <input aria-label="Search" value={value} onChange={(e) => onChange(e.target.value)} />,
+}));
 vi.mock('../src/components/filters/SortControl', () => ({ default: () => null }));
 vi.mock('../src/components/exports/ExportDialog', () => ({ default: () => null }));
 vi.mock('../src/components/filters/SavedFilterBar', () => ({ default: () => null }));
@@ -113,5 +115,49 @@ describe('Organizations page – link URLs after PR change', () => {
     const linkB = screen.getByRole('link', { name: 'Clinic B' });
     expect(linkA.getAttribute('href')).toBe('/OrganizationDetail?npi=1111111111');
     expect(linkB.getAttribute('href')).toBe('/OrganizationDetail?npi=2222222222');
+  });
+});
+
+function UrlProbe() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  return (
+    <div>
+      <span data-testid="url-search">{location.search}</span>
+      <button onClick={() => navigate(`${location.pathname}?q=mercy`)}>open mercy link</button>
+      <button onClick={() => navigate(-1)}>go back</button>
+    </div>
+  );
+}
+
+describe('Organizations page – search kept in the URL', () => {
+  function renderWithProbe(entries) {
+    setupMocks({ providers: [] });
+    render(
+      <MemoryRouter initialEntries={entries} initialIndex={entries.length - 1}>
+        <Organizations />
+        <UrlProbe />
+      </MemoryRouter>,
+    );
+  }
+  const urlSearch = () => screen.getByTestId('url-search').textContent;
+  const settleDebounce = () => act(() => new Promise((resolve) => setTimeout(resolve, 400)));
+
+  it('takes the search from a same-page link instead of writing the old one back', async () => {
+    renderWithProbe(['/Organizations?q=city']);
+    fireEvent.click(screen.getByRole('button', { name: 'open mercy link' }));
+    expect(urlSearch()).toBe('?q=mercy');
+    await settleDebounce();
+    expect(urlSearch()).toBe('?q=mercy');
+    expect(screen.getByRole('textbox', { name: 'Search' })).toHaveValue('mercy');
+  });
+
+  it('takes the search from Back', async () => {
+    renderWithProbe(['/Organizations?q=city', '/Organizations?q=mercy']);
+    fireEvent.click(screen.getByRole('button', { name: 'go back' }));
+    expect(urlSearch()).toBe('?q=city');
+    await settleDebounce();
+    expect(urlSearch()).toBe('?q=city');
+    expect(screen.getByRole('textbox', { name: 'Search' })).toHaveValue('city');
   });
 });

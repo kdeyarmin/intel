@@ -67,11 +67,17 @@ export default function Organizations() {
   const queryClient = useQueryClient();
 
   const [debouncedSearch, setDebouncedSearch] = useState(url.q.trim());
+  // The typed search reaches the URL when it settles. Writing it from its own
+  // effect re-ran on every navigation and put the old search back over a
+  // link's or Back's ?q=; here the sync below resets the timer instead.
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 350);
+    const t = setTimeout(() => {
+      const q = searchTerm.trim();
+      setDebouncedSearch(q);
+      if (q !== url.q) setUrl({ q });
+    }, 350);
     return () => clearTimeout(t);
-  }, [searchTerm]);
-  useEffect(() => { setUrl({ q: debouncedSearch }); }, [debouncedSearch, setUrl]);
+  }, [searchTerm, url.q, setUrl]);
   useEffect(() => {
     setSearchTerm((current) => (current.trim() === url.q ? current : url.q));
   }, [url.q]);

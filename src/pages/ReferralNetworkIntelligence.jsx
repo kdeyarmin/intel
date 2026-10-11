@@ -52,6 +52,10 @@ export default function ReferralNetworkIntelligence() {
     return [...new Set(networkData.nodes.map(n => n.state).filter(Boolean))].sort();
   }, [networkData]);
 
+  // Every state, plus any odd code in the graph: the server-side analyses
+  // below follow this filter and don't need the state to be in the graph.
+  const stateOptions = useMemo(() => [...new Set([...US_STATES, ...availableStates])].sort(), [availableStates]);
+
   const availableSpecialties = useMemo(() => {
     if (!networkData?.nodes) return [];
     return [...new Set(networkData.nodes.map(n => n.specialty).filter(Boolean))].sort();
@@ -148,7 +152,7 @@ export default function ReferralNetworkIntelligence() {
             state={stateFilter} onStateChange={setStateFilter}
             specialty={specialty} onSpecialtyChange={setSpecialty}
             minVolume={minVolume} onMinVolumeChange={setMinVolume}
-            states={availableStates.length ? availableStates : US_STATES} specialties={availableSpecialties}
+            states={stateOptions} specialties={availableSpecialties}
             onReset={resetFilters} totalNodes={allNodes.length} filteredNodes={filteredNodes.length}
           />
 
