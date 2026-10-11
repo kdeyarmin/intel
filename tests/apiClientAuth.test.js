@@ -4,6 +4,9 @@
  * helpers in src/lib/returnUrl.js.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createElement } from 'react';
+import { cleanup, render, waitFor } from '@testing-library/react';
+import { AuthProvider, useAuth } from '../src/lib/AuthContext';
 import {
   ACCOUNT_STATUS_EVENT,
   AUTH_EXPIRED_EVENT,
@@ -196,6 +199,34 @@ describe('account status handling', () => {
     await expect(base44.functions.invoke('triggerImport')).rejects.toThrow('Forbidden');
     window.removeEventListener(ACCOUNT_STATUS_EVENT, onStatus);
     expect(seen).toEqual(['account_pending']);
+  });
+
+  it("re-checks a disabled account once instead of probing the session forever", async () => {
+    // Answers on a later tick, as the network does, so a loop can't starve the test.
+    const fetchMock = vi.fn(() => new Promise((resolve) => {
+      setTimeout(() => resolve(jsonResponse(403, { message: 'Account disabled', code: 'account_disabled', detail: 'This account has been disabled.' })), 0);
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    let auth;
+    function Probe() {
+      auth = useAuth();
+      return null;
+    }
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
+    try {
+      render(createElement(AuthProvider, null, createElement(Probe)));
+      await waitFor(() => expect(auth.authError?.type).toBe('account_disabled'));
+      await settle();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      // Another request refused for the same reason: one re-check, then quiet.
+      await expect(base44.entities.Provider.list()).rejects.toThrow('Account disabled');
+      await settle();
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me', '/api/entities/Provider?', '/api/auth/me']);
+    } finally {
+      cleanup();
+    }
   });
 
   it('records audit events through the server and never throws', async () => {

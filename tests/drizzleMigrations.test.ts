@@ -395,3 +395,32 @@ describe("migration 0008_accounts", () => {
     expect(schema).toContain('uniqueIndex("users_email_lower_uq")');
   });
 });
+
+describe("migration 0009_login_attempts", () => {
+  const sql = readMigration("0009_login_attempts.sql");
+  const schema = readSchema();
+  const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+
+  it("is registered after 0008", () => {
+    const entry = journal.entries.find((e: { tag: string }) => e.tag === "0009_login_attempts");
+    const prev = journal.entries.find((e: { tag: string }) => e.tag === "0008_accounts");
+    expect(entry.idx).toBe(prev.idx + 1);
+    expect(entry.when).toBeGreaterThan(prev.when);
+  });
+
+  it("only creates the table and its index, idempotently", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    expect(statements).toHaveLength(2);
+    expect(statements[0]).toMatch(/^CREATE TABLE IF NOT EXISTS "login_attempts" \(/);
+    expect(statements[1]).toMatch(/^CREATE INDEX IF NOT EXISTS "login_attempts_window_ends_idx" ON "login_attempts" /);
+  });
+
+  it("is declared in the Drizzle schema", () => {
+    expect(schema).toContain('export const loginAttempts = pgTable("login_attempts"');
+    expect(schema).toContain('index("login_attempts_window_ends_idx")');
+    for (const column of ["email", "attempts", "window_ends_at"]) {
+      expect(sql, column).toContain(`"${column}"`);
+      expect(schema, column).toMatch(new RegExp(`\\b${column}: \\w+\\("${column}"`));
+    }
+  });
+});
