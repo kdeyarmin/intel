@@ -291,8 +291,8 @@ export default function UserManagement() {
             Users
           </CardTitle>
           <CardDescription>
-            {organization ? `People in ${organization.name || 'your organization'}. ` : 'Every organization’s people. '}
-            New sign-ups wait here until an owner approves them.
+            {/* A self-serve sign-up starts its own organization, so only a platform admin sees it here; paying approves it too. */}
+            {organization ? `People in ${organization.name || 'your organization'}. ` : 'Every organization’s people. New sign-ups wait here until you approve them or they subscribe. '}
             {organization?.seats && organization.seats.limit > 0 && ` ${organization.seats.used} of ${organization.seats.limit} seats used.`}
             {data && !data.email_enabled && ' Email isn’t set up, so reset and invite links are shown here for you to pass on.'}
           </CardDescription>

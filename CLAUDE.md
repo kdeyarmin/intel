@@ -135,7 +135,8 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
 - **Audit:** server code writes `recordAudit()` (`server/lib/audit.ts`), passing
   the `org_id` the event belongs to (an owner reads their organization's events;
   platform events such as the maintenance heartbeat have none and only platform
-  admins see them). The browser records its own actions with
+  admins see them; the Stripe webhook records its subscription changes and the
+  accounts a payment approved, as user "stripe"). The browser records its own actions with
   `base44.audit.record(type, details)` (`POST /api/audit`, allowlisted types);
   it can't write `AuditEvent` directly.
 - **Edge-function helpers are unit-tested from Node:** pure logic lives in

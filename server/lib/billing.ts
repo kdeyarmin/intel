@@ -4,6 +4,7 @@
 // webhook handler call them. Prices are configured in Stripe and matched to
 // plans by plans.stripe_price_id (or STRIPE_PRICE_<CODE> at runtime).
 import { normalizeTerritory, TERMS_VERSION, type Territory } from "./orgs";
+import type { AuditEntry } from "./audit";
 
 export interface PlanRow {
   code: string;
@@ -126,14 +127,66 @@ function invoiceSubscriptionId(invoice: any): string | null {
  * and an event older than the last one applied is ignored (stripe_event_at).
  */
 export async function applyStripeEvent(
-  event: { type: string; created?: number; data: { object: any } },
+  event: StripeEventLike,
   db: BillingDb,
   log: Pick<Console, "log" | "warn"> = console,
-  opts: { env?: NodeJS.ProcessEnv } = {},
-): Promise<{ handled: boolean; org_id?: number; status?: string; ignored?: string }> {
+  opts: { env?: NodeJS.ProcessEnv; audit?: (entry: AuditEntry) => Promise<void> } = {},
+): Promise<StripeEventResult> {
+  const result = await applyEvent(event, db, log, opts);
+  if (opts.audit && result.handled && result.org_id) {
+    for (const entry of billingAuditEntries(event, result)) await opts.audit(entry);
+  }
+  return result;
+}
+
+export interface StripeEventLike { id?: string; type: string; created?: number; data: { object: any } }
+export interface StripeEventResult {
+  handled: boolean; org_id?: number; status?: string; ignored?: string;
+  /** Owners whose pending accounts this event approved (a payment approves a self-serve signup). */
+  approved?: Array<{ id: number; email: string }>;
+}
+
+const BILLING_ACTIONS: Record<string, string> = {
+  "checkout.session.completed": "subscribed",
+  "customer.subscription.created": "subscription_updated",
+  "customer.subscription.updated": "subscription_updated",
+  "customer.subscription.deleted": "canceled",
+  "invoice.payment_failed": "payment_failed",
+  "invoice.paid": "payment_received",
+};
+
+/**
+ * What the security trail records for an event that changed an organization: the subscription
+ * state change, and each account a payment approved. Without these an admin can't reconstruct
+ * why an account became active, or why an organization lost access on a given day.
+ */
+export function billingAuditEntries(event: StripeEventLike, result: StripeEventResult): AuditEntry[] {
+  const action = BILLING_ACTIONS[event.type];
+  if (!action || !result.handled || !result.org_id) return [];
+  const entries: AuditEntry[] = [{
+    event_type: "billing", action, user_email: "stripe", entity_type: "Organization", entity_id: result.org_id,
+    details: { status: result.status ?? null, event: event.type, event_id: event.id ?? null }, org_id: result.org_id,
+  }];
+  for (const user of result.approved ?? []) {
+    entries.push({
+      event_type: "account", action: "approve", user_email: "stripe", entity_type: "User", entity_id: user.id,
+      details: { target_email: user.email, by: "payment", event_id: event.id ?? null }, org_id: result.org_id,
+    });
+  }
+  return entries;
+}
+
+async function applyEvent(
+  event: StripeEventLike,
+  db: BillingDb,
+  log: Pick<Console, "log" | "warn">,
+  opts: { env?: NodeJS.ProcessEnv },
+): Promise<StripeEventResult> {
   const env = opts.env ?? process.env;
   const obj = event.data?.object ?? {};
-  const orgIdFromMeta = Number(obj.metadata?.org_id ?? obj.client_reference_id);
+  // Only the metadata our own Checkout sets names an organization (or else the customer id we stored).
+  // client_reference_id is not trusted: Stripe lets the payer set it from the URL of a Payment Link.
+  const orgIdFromMeta = Number(obj.metadata?.org_id);
   const customerId = typeof obj.customer === "string" ? obj.customer : obj.customer?.id ?? null;
   const eventAt = toDate(event.created);
 
@@ -177,13 +230,14 @@ export async function applyStripeEvent(
       );
       if (!rows[0]) return { handled: false, ignored: "stale" };
       // A self-serve signup still awaiting approval is approved by paying.
-      await db.query(
+      const approved = await db.query(
         `UPDATE users SET status = 'active', approved_at = COALESCE(approved_at, now()), approved_by = COALESCE(approved_by, 'stripe'), updated_date = now()
-          WHERE status = 'pending' AND id IN (SELECT user_id FROM organization_members WHERE org_id = $1 AND org_role = 'owner')`,
+          WHERE status = 'pending' AND id IN (SELECT user_id FROM organization_members WHERE org_id = $1 AND org_role = 'owner') RETURNING id, email`,
         [org.id],
       );
       log.log(`[billing] organization ${org.id} subscribed (${planCode ?? "plan unchanged"})`);
-      return { handled: true, org_id: org.id, status: "active" };
+      const people = (approved?.rows ?? []).map((r: any) => ({ id: Number(r.id), email: String(r.email) }));
+      return { handled: true, org_id: org.id, status: "active", ...(people.length ? { approved: people } : {}) };
     }
     case "customer.subscription.created":
     case "customer.subscription.updated": {
