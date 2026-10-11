@@ -37,6 +37,8 @@ vi.mock('../src/components/leadlists/LeadResultsTable', () => ({ default: ({ res
 
 import { countExport, exportAttribution, exportCSV, exportExcel, exportJSON } from '../src/components/exports/exportUtils';
 import LeadListBuilder from '../src/pages/LeadListBuilder';
+import LeadListStatusExport from '../src/components/leadlists/LeadListStatusExport';
+import ReportDataTable from '../src/components/customReports/ReportDataTable';
 import MarketIntelligence from '../src/pages/MarketIntelligence';
 
 const fetchedOnImport = h.fetch.mock.calls.length;
@@ -186,6 +188,45 @@ describe('Market Intelligence download', () => {
     await screen.findAllByRole('row');
     fireEvent.click(screen.getByRole('button', { name: /Download CSV/ }));
     await waitFor(() => expect(h.toastError).toHaveBeenCalledWith('You have used all 50 exports for today.'));
+    expect(blobs).toHaveLength(0);
+  });
+});
+
+describe('the other export buttons', () => {
+  const leads = [{ member: { npi: '1234567893', status: 'New' }, provider: { entity_type: 'Individual', first_name: 'Ann', last_name: 'Lee' }, taxonomy: null, location: null, score: null, utilization: null, referrals: null }];
+  const config = { dataset: 'providers', name: 'My report', metrics: ['count'], group_by: 'state' };
+  const chartData = [{ group: 'PA', count: 12 }];
+
+  it('count a lead list export, and build the file only when the day has room', async () => {
+    h.countExport.mockResolvedValue({ ok: true });
+    render(<LeadListStatusExport leads={leads} listName="PA cardiology" />);
+    fireEvent.click(screen.getByRole('button', { name: /Export/ }));
+    await waitFor(() => expect(blobs).toHaveLength(1));
+    expect(h.countExport).toHaveBeenCalledTimes(1);
+    expect(await readBlob(blobs[0])).toContain('not CMS publications');
+    cleanup();
+
+    blobs.length = 0;
+    h.countExport.mockRejectedValue(quotaError('You have used all 50 exports for today.'));
+    render(<LeadListStatusExport leads={leads} listName="PA cardiology" />);
+    fireEvent.click(screen.getByRole('button', { name: /Export/ }));
+    await waitFor(() => expect(h.toastError).toHaveBeenCalledWith('You have used all 50 exports for today.'));
+    expect(blobs).toHaveLength(0);
+  });
+
+  it('count a custom report export, and build nothing once the limit is used up', async () => {
+    h.countExport.mockResolvedValue({ ok: true });
+    render(<ReportDataTable chartData={chartData} config={config} />);
+    fireEvent.click(screen.getByRole('button', { name: /CSV/ }));
+    await waitFor(() => expect(blobs).toHaveLength(1));
+    expect(h.countExport).toHaveBeenCalledTimes(1);
+    cleanup();
+
+    blobs.length = 0;
+    h.countExport.mockRejectedValue(quotaError("Today's export limit for your organization has been reached."));
+    render(<ReportDataTable chartData={chartData} config={config} />);
+    fireEvent.click(screen.getByRole('button', { name: /CSV/ }));
+    await waitFor(() => expect(h.toastError).toHaveBeenCalledWith("Today's export limit for your organization has been reached."));
     expect(blobs).toHaveLength(0);
   });
 });

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download } from 'lucide-react';
-import { exportCSV } from '../exports/exportUtils';
+import { toast } from 'sonner';
+import { countExport, exportCSV } from '../exports/exportUtils';
 
 const LEAD_FIELDS = [
   { key: 'npi', label: 'NPI' }, { key: 'name', label: 'Name' }, { key: 'specialty', label: 'Specialty' },
@@ -14,7 +15,13 @@ const LEAD_FIELDS = [
 export default function LeadListStatusExport({ leads, listName }) {
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    // Counts against the organization's daily export allowance, like every export.
+    const quota = await countExport();
+    if (!quota.ok) {
+      toast.error(quota.message);
+      return;
+    }
     const filtered = statusFilter === 'all'
       ? leads
       : leads.filter(l => (l.member?.status || 'New') === statusFilter);

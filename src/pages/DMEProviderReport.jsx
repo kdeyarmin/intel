@@ -12,7 +12,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { exportCSV, exportExcel } from '@/components/exports/exportUtils';
+import { countExport, exportCSV, exportExcel } from '@/components/exports/exportUtils';
 
 const EXPORT_FIELDS = [
   { key: 'name', label: 'Company Name' },
@@ -117,6 +117,12 @@ export default function DMEProviderReport() {
   const handleExport = async (format) => {
     setExporting(format);
     try {
+      // Counts against the organization's daily export allowance, like every export.
+      const quota = await countExport();
+      if (!quota.ok) {
+        toast.error(quota.message);
+        return;
+      }
       const res = await base44.functions.invoke('getDMEProviders', {
         state: selectedState || undefined,
         search: debouncedSearch || undefined,
