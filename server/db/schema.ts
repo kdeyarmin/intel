@@ -738,7 +738,7 @@ export const scheduledExports = pgTable("scheduled_exports", {
   format: varchar("format", { length: 20 }),
   recipients: jsonb("recipients"),
   // Form settings without a dedicated column (dataset, columns, frequency,
-  // schedule_day/time, include_summary...) — see JSONB_OVERFLOW in routes/entities.ts.
+  // schedule_day/time, include_summary...) — see JSONB_OVERFLOW in lib/entityFields.ts.
   config: jsonb("config"),
   last_run: timestamp("last_run"),
   status: varchar("status", { length: 50 }).default("active"),

@@ -117,6 +117,21 @@ describe('401 handling', () => {
     expect(events).toEqual([]);
   });
 
+  it('ignores an old-session 401 from a file upload too', async () => {
+    let finishOld;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => {
+      finishOld = () => resolve({ ok: false, status: 401, statusText: 'x', json: () => Promise.resolve({}) });
+    })));
+    const upload = base44.integrations.Core.UploadFile(new Blob(['x']));
+
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(200, { id: 1, token: 'fresh' })));
+    await base44.auth.login('a@b.c', 'right');
+
+    finishOld();
+    await expect(upload).rejects.toThrow();
+    expect(events).toEqual([]);
+  });
+
   it('does nothing while already on the login page', async () => {
     window.history.pushState({}, '', '/login');
     vi.stubGlobal('fetch', vi.fn(() => jsonResponse(401, { message: 'nope' })));

@@ -305,6 +305,7 @@ export const base44 = {
         const actualFile = fileOrObj?.file || fileOrObj;
         const formData = new FormData();
         formData.append("file", actualFile);
+        // Like request(): a 401 only ends the session this upload was sent under.
         const generation = authGeneration;
         const res = await fetch(`${API_BASE}/integrations/file/upload`, {
           method: "POST",
