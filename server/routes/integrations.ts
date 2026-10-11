@@ -122,10 +122,13 @@ router.post("/email/send", authMiddleware, adminOnly, rateLimit("email_send", 10
       return res.status(409).json({ message: "This address has unsubscribed or bounced", detail: "CareMetric won't email it again." });
     }
 
+    // An owner's email counts against the organization's daily allowance, like campaign mail.
+    await consumeQuota(req.user, "emails_sent");
     const mail = withComplianceFooter(to, { text: body || "", html: html || textToHtml(body || "") });
     await sendMail({ to, from, subject, ...mail });
     res.json({ success: true, message: "Email sent" });
   } catch (e: any) {
+    if (e instanceof QuotaError) return res.status(429).json({ message: e.message, code: e.code, kind: e.kind, limit: e.limit });
     console.error("[Email Send Error]", e.message);
     res.status(500).json({ message: e.message });
   }

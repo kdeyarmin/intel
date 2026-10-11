@@ -45,7 +45,8 @@ export async function usageToday(orgId: number, db: any = pool): Promise<{ day: 
 /**
  * Counts `amount` against today's quota and throws a 429 QuotaError when the
  * day's limit would be passed. One statement, so parallel requests can't
- * both squeeze under the limit.
+ * both squeeze under the limit; the day's first call is checked too (a limit
+ * of 0 admits nothing).
  */
 export async function consumeQuota(user: { orgId?: number | null; isPlatformAdmin?: boolean } | null | undefined, kind: QuotaKind, amount = 1, db: any = pool): Promise<void> {
   if (!user?.orgId || user.isPlatformAdmin) return;
@@ -54,7 +55,7 @@ export async function consumeQuota(user: { orgId?: number | null; isPlatformAdmi
        SELECT COALESCE((o.quotas->>$3)::int, (p.features->'quotas'->>$3)::int, $4::int) AS limit_value
          FROM organizations o LEFT JOIN plans p ON p.code = o.plan_code WHERE o.id = $1),
      upsert AS (
-       INSERT INTO org_usage (org_id, day, ${kind}) VALUES ($1, current_date, $2)
+       INSERT INTO org_usage (org_id, day, ${kind}) SELECT $1::int, current_date, $2::int FROM lim WHERE $2::int <= lim.limit_value
        ON CONFLICT (org_id, day) DO UPDATE SET ${kind} = org_usage.${kind} + EXCLUDED.${kind}
        WHERE org_usage.${kind} + EXCLUDED.${kind} <= (SELECT limit_value FROM lim)
        RETURNING ${kind} AS used)
