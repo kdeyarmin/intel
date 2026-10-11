@@ -31,6 +31,7 @@ import { Search, Copy, Globe, List, PieChart as PieChartIcon, Map as MapIcon } f
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import InteractiveProviderMap from '../components/territory/InteractiveProviderMap';
 import { pickPrimaryLocation } from '@/lib/locations';
+import { US_STATES } from '@/lib/usStates';
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -128,16 +129,20 @@ export default function Providers() {
 
   const queryClient = useQueryClient();
 
-  // Debounce the search term so we don't fire a request per keystroke.
+  // Debounce the search term so we don't fire a request per keystroke, and
+  // write it to the URL when it settles. Writing it from its own effect re-ran
+  // on every navigation and put the old search back over a link's or Back's
+  // ?q=; here the sync below resets the timer instead.
   const [debouncedSearch, setDebouncedSearch] = useState(url.q.trim());
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 350);
+    const t = setTimeout(() => {
+      const q = searchTerm.trim();
+      setDebouncedSearch(q);
+      if (q !== url.q) setUrl({ q });
+    }, 350);
     return () => clearTimeout(t);
-  }, [searchTerm]);
-  useEffect(() => {
-    setUrl({ q: debouncedSearch });
-  }, [debouncedSearch, setUrl]);
-  // Keep the box in sync when the URL changes underneath us (Back/Forward).
+  }, [searchTerm, url.q, setUrl]);
+  // Keep the box in sync when the URL changes underneath us (links, Back/Forward).
   useEffect(() => {
     setSearchTerm((current) => (current.trim() === url.q ? current : url.q));
   }, [url.q]);
@@ -285,10 +290,12 @@ export default function Providers() {
     return [...c].sort().map(cr => ({ value: cr, label: cr }));
   }, [providers]);
 
+  // While searching, the server applies the state across the whole table, so
+  // offer every state, not just those among the (capped) loaded locations.
   const stateOptions = useMemo(() => {
-    const s = new Set(locations.map(l => l.state).filter(Boolean));
-    return [...s].sort().map(st => ({ value: st, label: st }));
-  }, [locations]);
+    const states = debouncedSearch.length >= 2 ? US_STATES : [...new Set(locations.map(l => l.state).filter(Boolean))].sort();
+    return states.map(st => ({ value: st, label: st }));
+  }, [locations, debouncedSearch]);
 
   const specialtyOptions = useMemo(() => {
     const s = new Set(taxonomies.map(t => t.taxonomy_description).filter(Boolean));

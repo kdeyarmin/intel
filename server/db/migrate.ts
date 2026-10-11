@@ -4,10 +4,11 @@
 // - An advisory lock stops two instances migrating at once.
 // - A database built with `drizzle-kit push` (schema but no history) is
 //   baselined first, so the non-idempotent early migrations aren't replayed.
+//   One with only part of 0000's tables stops with an error instead.
 import path from "path";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { migrationHash, planBaseline, readJournal } from "./migrationPlan";
+import { initialTables, migrationHash, planBaseline, readJournal } from "./migrationPlan";
 
 const LOCK_KEY = 4206917; // arbitrary, constant across deploys
 export const MIGRATIONS_FOLDER = path.resolve(import.meta.dirname, "..", "..", "drizzle");
@@ -51,6 +52,7 @@ export async function runMigrations(pool: any, log: Log = console): Promise<Migr
       const baseline = planBaseline({
         historyCount: await historyCount(client),
         existingTables: await existingTables(client),
+        initialTables: initialTables(MIGRATIONS_FOLDER),
         journal,
         hashOf: (tag) => migrationHash(MIGRATIONS_FOLDER, tag),
       });

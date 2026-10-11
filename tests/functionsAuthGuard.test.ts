@@ -78,10 +78,12 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "getCMSDatasetCatalog", "validateDataQuality", "getEnrichmentCandidateCount",
       "getIntelCandidateCount", "enrichmentJobStatus", "intelJobStatus",
       "getFacilityDetail", "listFacilities", "getProviderCMSData",
+      "getLeadListMemberDetails",
       "getCountyIntelligence", "getAvailableStatesCounties", "getComprehensiveReport",
-      "searchProviders", "searchLocations", "getGeoCounties", "getGeoStatus", "calculateOutreachScore", "analyzeReferralPathways",
-      "analyzeProviderNetwork", "trackCampaignMetrics", "getDMEProviders",
-      "dmeEmailSearchStatus", "validateProviderNPI", "verifyProviderEmail", "generateScheduledReport",
+      "searchProviders", "searchLocations", "getGeoCounties",
+      "getGeoStatus", "calculateOutreachScore", "analyzeReferralPathways",
+      "analyzeProviderNetwork", "getDMEProviders", "dmeEmailSearchStatus",
+      "validateProviderNPI", "verifyProviderEmail", "generateScheduledReport",
     ];
     for (const fn of expected) {
       expect(PUBLIC_FUNCTIONS.has(fn), `Expected "${fn}" to be in PUBLIC_FUNCTIONS`).toBe(true);
@@ -97,6 +99,9 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "sendEmail",
       "reconcileProviderData",
       "sendCampaignMessages",
+      "prepareCampaignMessages",
+      "trackCampaignMetrics",
+      "saveCampaignOutcomes",
       "bulkVerifyEmails",
       "testCMSUrl",
       "testCMSApiConnector",

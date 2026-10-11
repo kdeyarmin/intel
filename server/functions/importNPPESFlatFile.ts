@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { importBatches, providers, nppesCrawlerConfigs } from "../db/schema";
 import { eq } from "drizzle-orm";
+import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
 
 const MAX_EXEC_MS = 50000;
 const BULK_INSERT_SIZE = 1000;
@@ -58,7 +59,9 @@ export async function handleImportNPPESFlatFile(payload: any) {
     const [batch] = await db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1);
     if (!batch) throw new Error("Batch not found");
 
-    const response = await fetch(file_url, {
+    // file_url can be any link an admin pastes (e.g. cloud storage), so it goes
+    // through the SSRF guard: https only, public addresses only.
+    const response = await safeFetchStream(file_url, {
       headers: { Range: `bytes=${byte_offset}-` },
     });
 
@@ -194,7 +197,7 @@ export async function handleImportNPPESFlatFile(payload: any) {
       }).where(eq(importBatches.id, batch_id)),
       undefined, "fail batch"
     );
-    throw e;
+    throw e instanceof SafeFetchError ? { status: 400, message: e.message } : e;
   }
 }
 
