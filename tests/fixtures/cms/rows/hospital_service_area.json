@@ -1,0 +1,30 @@
+[
+ {
+  "MEDICARE_PROV_NUM": "01M307",
+  "ZIP_CD_OF_RESIDENCE": "01730",
+  "TOTAL_DAYS_OF_CARE": "*",
+  "TOTAL_CHARGES": "*",
+  "TOTAL_CASES": "*"
+ },
+ {
+  "MEDICARE_PROV_NUM": "01M307",
+  "ZIP_CD_OF_RESIDENCE": "30240",
+  "TOTAL_DAYS_OF_CARE": "*",
+  "TOTAL_CHARGES": "*",
+  "TOTAL_CASES": "*"
+ },
+ {
+  "MEDICARE_PROV_NUM": "01M307",
+  "ZIP_CD_OF_RESIDENCE": "30306",
+  "TOTAL_DAYS_OF_CARE": "*",
+  "TOTAL_CHARGES": "*",
+  "TOTAL_CASES": "*"
+ },
+ {
+  "MEDICARE_PROV_NUM": "01M307",
+  "ZIP_CD_OF_RESIDENCE": "31221",
+  "TOTAL_DAYS_OF_CARE": "*",
+  "TOTAL_CHARGES": "*",
+  "TOTAL_CASES": "*"
+ }
+]

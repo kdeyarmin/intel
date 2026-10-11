@@ -106,6 +106,13 @@
       "when": 1791611907276,
       "tag": "0015_import_completion",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791611967276,
+      "tag": "0016_cms_typed_tables",
+      "breakpoints": true
     }
   ]
 }

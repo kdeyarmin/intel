@@ -8,6 +8,8 @@ import { markImportFinished, markImportStarted, resolveImportVersion } from "../
 import { sourceForUrl } from "../lib/cmsCatalog";
 import { csvSourceRecords, isLocalUpload, sourceKindFor } from "../lib/importSources";
 import { pageRecords } from "../lib/csv";
+import { TYPED_ROUTES, mapTypedRows } from "./cmsTypedTables";
+import { getTableColumns } from "drizzle-orm";
 import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
 
 const LOOKUP_PRIMARY_BATCH_SIZE = 100;
@@ -1145,8 +1147,44 @@ export async function dualWriteFacilityRows(
  *   - `skipped`: number of rows skipped due to deduplication or per-row insert failures,
  *   - `filtered`: number of input rows removed before mapping (e.g., invalid or missing required keys).
  */
+// Typed destinations (server/functions/cmsTypedTables.ts): map, drop rows
+// without a key, and upsert on the natural key so a re-import or a newer
+// vintage replaces rather than duplicates or collapses.
+async function insertTypedRows(importType: string, rows: any[], year: number, batchId: number, asOf: string | null | undefined): Promise<{ inserted: number; skipped: number; filtered: number }> {
+  const route = TYPED_ROUTES[importType];
+  const { rows: mapped, dropped } = mapTypedRows(route, rows, { year, asOf, batchId });
+  if (mapped.length === 0) return { inserted: 0, skipped: 0, filtered: dropped };
+  const columns = Object.keys(getTableColumns(route.table));
+  const set = Object.fromEntries(columns.filter((c) => c !== "id" && !route.key.includes(c)).map((c) => [c, sql.raw(`excluded."${c}"`)]));
+  const target = route.key.map((k) => route.table[k]);
+  let inserted = 0;
+  let skipped = 0;
+  const CHUNK = 500;
+  for (let i = 0; i < mapped.length; i += CHUNK) {
+    const chunk = mapped.slice(i, i + CHUNK);
+    const ok = await safeImportQuery(async () => {
+      await db.insert(route.table).values(chunk).onConflictDoUpdate({ target, set });
+      return chunk.length;
+    }, -1, `typed upsert ${importType}`);
+    if (ok >= 0) {
+      inserted += ok;
+      continue;
+    }
+    for (const row of chunk) {
+      const one = await safeImportQuery(async () => {
+        await db.insert(route.table).values(row).onConflictDoUpdate({ target, set });
+        return true;
+      }, false, `typed upsert ${importType} (row)`);
+      if (one) inserted++;
+      else skipped++;
+    }
+  }
+  return { inserted, skipped, filtered: dropped };
+}
+
 async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number, opts: { asOf?: string | null } = {}): Promise<{ inserted: number; skipped: number; filtered: number }> {
   if (rows.length === 0) return { inserted: 0, skipped: 0, filtered: 0 };
+  if (TYPED_ROUTES[importType]) return insertTypedRows(importType, rows, year, batchId, opts.asOf);
 
   const CHUNK_SIZE = 500;
   let inserted = 0;

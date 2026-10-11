@@ -24,6 +24,7 @@
     "db:status": "tsx scripts/db/migration-status.ts",
     "db:backfill-facilities-raw": "tsx scripts/db/backfill-facilities-raw.ts",
     "db:backfill-facility-years": "tsx scripts/db/backfill-facility-years.ts",
+    "db:retire-typed-facility-rows": "tsx scripts/db/retire-typed-facility-rows.ts",
     "db:seed-demo": "tsx scripts/dev/seed-demo.ts",
     "geo:load": "tsx scripts/census/load-census-geo.ts"
   },
