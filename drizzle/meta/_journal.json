@@ -57,13 +57,6 @@
       "when": 1791611487276,
       "tag": "0008_accounts",
       "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1791611547276,
-      "tag": "0009_login_attempts",
-      "breakpoints": true
     }
   ]
 }
