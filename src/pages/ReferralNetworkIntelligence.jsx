@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { US_STATES } from '@/lib/usStates';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +29,8 @@ export default function ReferralNetworkIntelligence() {
   const [search, setSearch] = useState('');
   const [entityType, setEntityType] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
+  // The server-side analyses follow the page's state filter.
+  const analysisState = stateFilter && stateFilter !== 'all' ? stateFilter : null;
   const [specialty, setSpecialty] = useState('all');
   const [minVolume, setMinVolume] = useState(0);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -48,6 +51,10 @@ export default function ReferralNetworkIntelligence() {
     if (!networkData?.nodes) return [];
     return [...new Set(networkData.nodes.map(n => n.state).filter(Boolean))].sort();
   }, [networkData]);
+
+  // Every state, plus any odd code in the graph: the server-side analyses
+  // below follow this filter and don't need the state to be in the graph.
+  const stateOptions = useMemo(() => [...new Set([...US_STATES, ...availableStates])].sort(), [availableStates]);
 
   const availableSpecialties = useMemo(() => {
     if (!networkData?.nodes) return [];
@@ -145,7 +152,7 @@ export default function ReferralNetworkIntelligence() {
             state={stateFilter} onStateChange={setStateFilter}
             specialty={specialty} onSpecialtyChange={setSpecialty}
             minVolume={minVolume} onMinVolumeChange={setMinVolume}
-            states={availableStates} specialties={availableSpecialties}
+            states={stateOptions} specialties={availableSpecialties}
             onReset={resetFilters} totalNodes={allNodes.length} filteredNodes={filteredNodes.length}
           />
 
@@ -212,19 +219,19 @@ export default function ReferralNetworkIntelligence() {
 
             <TabsContent value="insights" className="mt-4 space-y-5">
               <NetworkInsightsDashboard nodes={filteredNodes} edges={filteredEdges} />
-              <AINetworkRecommendations />
+              <AINetworkRecommendations state={analysisState} />
             </TabsContent>
 
             <TabsContent value="influencers" className="mt-4">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                  <NetworkInfluencerAnalysis onInfluencerSelect={(npi) => {
+                  <NetworkInfluencerAnalysis state={analysisState} onInfluencerSelect={(npi) => {
                     const node = allNodes.find(n => n.npi === npi);
                     setSelectedNode(node);
                   }} />
                 </div>
                 <div>
-                  <NetworkGapAnalysis />
+                  <NetworkGapAnalysis state={analysisState} />
                 </div>
               </div>
             </TabsContent>

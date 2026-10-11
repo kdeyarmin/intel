@@ -44,6 +44,7 @@ export interface MailMessage {
   /** Echoed back on SendGrid event webhooks (e.g. { message_id: "42" }). */
   customArgs?: Record<string, string>;
   headers?: Record<string, string>;
+  attachments?: Array<{ filename: string; content: string | Buffer; type: string }>;
 }
 
 export class MailerNotConfiguredError extends Error {
@@ -66,6 +67,12 @@ export async function sendMail(msg: MailMessage): Promise<{ messageId: string | 
     html: msg.html || msg.text,
     customArgs: msg.customArgs,
     headers: msg.headers,
+    attachments: msg.attachments?.map((a) => ({
+      filename: a.filename,
+      type: a.type,
+      disposition: "attachment",
+      content: Buffer.isBuffer(a.content) ? a.content.toString("base64") : Buffer.from(a.content, "utf8").toString("base64"),
+    })),
   });
   const messageId = (response?.headers as Record<string, string> | undefined)?.["x-message-id"] ?? null;
   return { messageId };

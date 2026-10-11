@@ -14,6 +14,7 @@ import SavedReportsList from '../components/customReports/SavedReportsList';
 import ReportScheduleForm from '../components/scheduledReports/ReportScheduleForm';
 import ScheduledReportsList from '../components/scheduledReports/ScheduledReportsList';
 import ReportTemplateLibrary from '../components/scheduledReports/ReportTemplateLibrary';
+import ScheduledReportPreviewDialog from '../components/scheduledReports/ScheduledReportPreviewDialog';
 import { DATASET_CONFIG } from '../components/customReports/reportConfig';
 import PageHeader from '../components/shared/PageHeader';
 import { useConfirm } from '@/components/shared/ConfirmDialog';
@@ -35,6 +36,7 @@ export default function CustomReports() {
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [runningScheduleId, setRunningScheduleId] = useState(null);
+  const [previewReport, setPreviewReport] = useState(null);
 
   // Queries
   const { data: savedReports = [], isLoading: loadingSaved } = useQuery({
@@ -164,9 +166,10 @@ export default function CustomReports() {
       });
       toast.success(
         typeof data.emails_sent === 'number'
-          ? `Sent to ${data.emails_sent} recipient(s)`
+          ? `Sent to ${data.emails_sent} recipient${data.emails_sent === 1 ? '' : 's'}`
           : (data.message || 'Report run complete'),
       );
+      if (typeof data.emails_sent === 'number' && data.message) toast.info(data.message);
       queryClient.invalidateQueries({ queryKey: ['scheduledReports'] });
     } catch (err) {
       toastFunctionError(err);
@@ -284,9 +287,11 @@ export default function CustomReports() {
               }}
               onToggleActive={(r) => updateScheduleMutation.mutate({ id: r.id, data: { is_active: !r.is_active } })}
               onRunNow={handleRunScheduleNow}
+              onPreview={setPreviewReport}
               runningId={runningScheduleId}
             />
           )}
+          <ScheduledReportPreviewDialog report={previewReport} onClose={() => setPreviewReport(null)} />
         </TabsContent>
 
         {/* TEMPLATES TAB */}

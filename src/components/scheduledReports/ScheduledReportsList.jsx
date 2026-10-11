@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import {
-  Calendar, Clock, Mail, Play, Pencil, Trash2, Loader2,
+  Calendar, Clock, Mail, Play, Pencil, Trash2, Loader2, Eye,
   CheckCircle2, XCircle
 } from 'lucide-react';
 import moment from 'moment';
@@ -33,6 +33,7 @@ export default function ScheduledReportsList({
   onDelete,
   onToggleActive,
   onRunNow,
+  onPreview,
   runningId,
 }) {
   if (loading) {
@@ -118,7 +119,8 @@ export default function ScheduledReportsList({
                   className="h-7 w-7"
                   onClick={() => onRunNow(report)}
                   disabled={runningId === report.id}
-                  title="Run now"
+                  title="Send now"
+                  aria-label={`Send ${report.name} now`}
                 >
                   {runningId === report.id ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -126,6 +128,11 @@ export default function ScheduledReportsList({
                     <Play className="w-3.5 h-3.5 text-green-600" />
                   )}
                 </Button>
+                {onPreview && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onPreview(report)} title="Preview" aria-label={`Preview ${report.name}`}>
+                    <Eye className="w-3.5 h-3.5" />
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(report)} title="Edit">
                   <Pencil className="w-3.5 h-3.5" />
                 </Button>

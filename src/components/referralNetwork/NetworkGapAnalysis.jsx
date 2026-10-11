@@ -1,28 +1,24 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, AlertTriangle, Target } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import AnalysisScopeNote, { scopeHint } from './AnalysisScopeNote';
+import { useScopedAnalysis } from './useScopedAnalysis';
 
-export default function NetworkGapAnalysis() {
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+export default function NetworkGapAnalysis({ state = null }) {
+  // Results belong to one scope; a response for another state never shows.
+  const { data, loading, run } = useScopedAnalysis(state);
 
-  const handleAnalyze = async () => {
-    setLoading(true);
-    try {
-      const result = await invokeOrThrow('analyzeProviderNetwork', {
-        analysis_type: 'gaps'
-      });
-      setData(result.analysis);
-    } catch (error) {
-      toastFunctionError(error, 'Failed to analyze gaps');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleAnalyze = () => run(
+    async () => (await invokeOrThrow('analyzeProviderNetwork', {
+      analysis_type: 'gaps',
+      ...(state ? { state } : {}),
+    })).analysis,
+    (error) => toastFunctionError(error, 'Failed to analyze gaps'),
+  );
 
   if (!data) {
     return (
@@ -35,7 +31,7 @@ export default function NetworkGapAnalysis() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-slate-400 mb-4">
-            Identify underutilized specialties and referral opportunities.
+            Find specialties where most providers aren't part of the referral network yet. {scopeHint(state)}
           </p>
           <Button onClick={handleAnalyze} disabled={loading} className="gap-2">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
@@ -48,7 +44,7 @@ export default function NetworkGapAnalysis() {
 
   const gaps = data.network_gaps || [];
   const gapData = gaps.map(g => ({
-    specialty: g.specialty.substring(0, 15) + '...',
+    specialty: g.specialty.length > 15 ? `${g.specialty.substring(0, 15)}…` : g.specialty,
     active: g.active_referrers,
     total: g.total_providers,
     utilization: g.utilization_percent
@@ -64,13 +60,14 @@ export default function NetworkGapAnalysis() {
               Underutilized Specialties
             </CardTitle>
             <Button variant="outline" size="sm" onClick={handleAnalyze} disabled={loading}>
-              Refresh
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Refresh'}
             </Button>
           </div>
+          <AnalysisScopeNote analysis={data} />
         </CardHeader>
         <CardContent>
           {gaps.length === 0 ? (
-            <p className="text-sm text-slate-400">No significant gaps detected in your network.</p>
+            <p className="text-sm text-slate-400">{data.gaps_note || 'No significant gaps: in every specialty with 5+ providers, at least half exchange referrals.'}</p>
           ) : (
             <>
               <ResponsiveContainer width="100%" height={250}>
@@ -95,14 +92,14 @@ export default function NetworkGapAnalysis() {
                       </Badge>
                     </div>
                     <p className="text-xs text-slate-400 mb-2">
-                      {gap.active_referrers} of {gap.total_providers} providers are active in your network
+                      {gap.active_referrers} of {gap.total_providers} providers exchange referrals in this network
                     </p>
                     <div className="space-y-1">
-                      <p className="text-xs font-medium text-slate-400">Underutilized providers:</p>
+                      <p className="text-xs font-medium text-slate-400">Not referring yet:</p>
                       <div className="flex flex-wrap gap-1">
                         {gap.underutilized?.map((provider) => (
-                          <Badge key={provider.npi} variant="outline" className="text-xs">
-                            {provider.npi}
+                          <Badge key={provider.npi} variant="outline" className="text-xs" title={`NPI ${provider.npi}`}>
+                            {provider.name || provider.npi}
                           </Badge>
                         ))}
                       </div>

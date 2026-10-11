@@ -360,11 +360,25 @@ export async function writeMaintenanceHeartbeat(
 // preamble — that part will be wired in a separate PR when the cron driver is
 // fully ported to Express.
 
+// ─── Worker: email scheduled reports that are due ─────────────────────────────
+
+export async function runDueScheduledReportsWorker(): Promise<WorkerResult> {
+  const started = Date.now();
+  try {
+    const { handleRunDueScheduledReports } = await import("../functions/scheduledReports");
+    const result = await handleRunDueScheduledReports();
+    return { worker: "runDueScheduledReports", ok: true, durationMs: Date.now() - started, details: result.details };
+  } catch (e) {
+    return { worker: "runDueScheduledReports", ok: false, durationMs: Date.now() - started, error: truncErr(e) };
+  }
+}
+
 export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResult>; destructive?: boolean }> = [
   { name: "autoResumePausedImports", run: runAutoResumePausedImports },
   { name: "autoRetryFailedImports", run: runAutoRetryFailedImports },
   { name: "manageCrawlerRetries", run: runManageCrawlerRetries },
   { name: "cancelStalledImports", run: runCancelStalledImports },
+  { name: "runDueScheduledReports", run: runDueScheduledReportsWorker },
 ];
 
 export async function runMaintenanceFanout(

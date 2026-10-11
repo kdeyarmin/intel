@@ -196,6 +196,7 @@ async function runMaintenanceWorkers() {
     run("autoRetryFailedImports", handleAutoRetryFailedImports),
     run("cancelStalledImports", handleCancelStalledImports),
     run("manageCrawlerRetries", () => handleNppesCrawler({ action: "batch_resume" }, ADMIN)),
+    run("runDueScheduledReports", async () => (await import("./scheduledReports")).handleRunDueScheduledReports()),
   ]);
   return out;
 }

@@ -24,7 +24,7 @@ function timingSafeEqualStr(a: string, b: string): boolean {
 // keys like "toString", "constructor", "__proto__" can never match a caller's
 // task name.  We replicate that structure to test the invariant.
 
-const TASK_NAMES = ["runScheduledImports", "autoRetryFailedImports", "autoResumePausedImports", "cancelStalledImports"];
+const TASK_NAMES = ["runScheduledImports", "autoRetryFailedImports", "autoResumePausedImports", "cancelStalledImports", "runDueScheduledReports"];
 
 function buildTasks(): Record<string, () => string> {
   return Object.assign(Object.create(null) as Record<string, () => string>, {
@@ -32,6 +32,7 @@ function buildTasks(): Record<string, () => string> {
     autoRetryFailedImports: () => "ran",
     autoResumePausedImports: () => "ran",
     cancelStalledImports: () => "ran",
+    runDueScheduledReports: () => "ran",
   });
 }
 
@@ -139,7 +140,7 @@ describe("maintenanceAuth — MAINTENANCE_TOKEN check", () => {
 describe("TASKS object — prototype pollution safety", () => {
   const TASKS = buildTasks();
 
-  it("dispatches all four maintenance task names", () => {
+  it("dispatches all five maintenance task names", () => {
     for (const name of TASK_NAMES) {
       expect(TASKS[name]).toBeTypeOf("function");
     }
@@ -172,9 +173,9 @@ describe("TASKS object — prototype pollution safety", () => {
     expect(TASKS["valueOf"]).toBeUndefined();
   });
 
-  it("has exactly the four documented task names", () => {
+  it("has exactly the five documented task names", () => {
     const keys = Object.keys(TASKS);
-    expect(keys).toHaveLength(4);
+    expect(keys).toHaveLength(5);
     expect(keys.sort()).toEqual([...TASK_NAMES].sort());
   });
 });

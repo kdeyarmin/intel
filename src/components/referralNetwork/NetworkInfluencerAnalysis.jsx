@@ -1,28 +1,24 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Crown, TrendingUp, Users } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import AnalysisScopeNote, { scopeHint } from './AnalysisScopeNote';
+import { useScopedAnalysis } from './useScopedAnalysis';
 
-export default function NetworkInfluencerAnalysis({ onInfluencerSelect }) {
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+export default function NetworkInfluencerAnalysis({ onInfluencerSelect, state = null }) {
+  // Results belong to one scope; a response for another state never shows.
+  const { data, loading, run } = useScopedAnalysis(state);
 
-  const handleAnalyze = async () => {
-    setLoading(true);
-    try {
-      const result = await invokeOrThrow('analyzeProviderNetwork', {
-        analysis_type: 'influencers'
-      });
-      setData(result.analysis);
-    } catch (error) {
-      toastFunctionError(error, 'Failed to analyze network');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleAnalyze = () => run(
+    async () => (await invokeOrThrow('analyzeProviderNetwork', {
+      analysis_type: 'influencers',
+      ...(state ? { state } : {}),
+    })).analysis,
+    (error) => toastFunctionError(error, 'Failed to analyze network'),
+  );
 
   if (!data) {
     return (
@@ -35,7 +31,7 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect }) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-slate-400 mb-4">
-            Identify key influencers and decision-makers in your provider network.
+            Identify key influencers and decision-makers in your provider network. {scopeHint(state)}
           </p>
           <Button onClick={handleAnalyze} disabled={loading} className="gap-2">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
@@ -46,7 +42,10 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect }) {
     );
   }
 
-  const topInfluencers = data.influencers?.slice(0, 10) || [];
+  const topInfluencers = (data.influencers?.slice(0, 10) || []).map(i => ({
+    ...i,
+    label: String(i.name || i.npi).slice(0, 16),
+  }));
 
   return (
     <div className="space-y-4">
@@ -58,15 +57,16 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect }) {
               Top Network Influencers
             </CardTitle>
             <Button variant="outline" size="sm" onClick={handleAnalyze} disabled={loading}>
-              Refresh
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Refresh'}
             </Button>
           </div>
+          <AnalysisScopeNote analysis={data} />
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={topInfluencers}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="npi" tick={{ fontSize: 12 }} />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
               <YAxis />
               <Tooltip />
               <Legend />
@@ -82,6 +82,9 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect }) {
           <CardTitle className="text-base">Influencer Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {topInfluencers.length === 0 && (
+            <p className="text-sm text-slate-400">No referral relationships were found for these providers.</p>
+          )}
           {topInfluencers.map((influencer, idx) => (
             <div 
               key={influencer.npi} 
@@ -92,8 +95,10 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect }) {
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-lg text-amber-600 w-6">#{idx + 1}</span>
                   <div>
-                    <p className="font-semibold text-sm">{influencer.npi}</p>
-                    <p className="text-xs text-slate-500">Influence Score: {influencer.influence_score.toFixed(0)}</p>
+                    <p className="font-semibold text-sm">{influencer.name || influencer.npi}</p>
+                    <p className="text-xs text-slate-500">
+                      NPI {influencer.npi}{influencer.specialty ? ` · ${influencer.specialty}` : ''} · Influence {Number(influencer.influence_score ?? 0).toFixed(0)}/100
+                    </p>
                   </div>
                 </div>
                 <Badge variant="default" className="bg-amber-600">
@@ -103,7 +108,7 @@ export default function NetworkInfluencerAnalysis({ onInfluencerSelect }) {
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="p-2 bg-slate-800/50 rounded flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-blue-500" />
-                  <span>{influencer.outbound_referrals} referrals sent</span>
+                  <span>{Number(influencer.outbound_referrals || 0).toLocaleString()} sent · {Number(influencer.inbound_referrals || 0).toLocaleString()} received</span>
                 </div>
                 <div className="p-2 bg-slate-800/50 rounded flex items-center gap-2">
                   <Users className="w-4 h-4 text-purple-500" />

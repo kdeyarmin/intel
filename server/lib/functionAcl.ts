@@ -30,6 +30,10 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "searchProviders",
   // Read-only for non-admins: no AI call and nothing saved (see the handler).
   "calculateOutreachScore",
+  // Runs or previews a saved report schedule (any user can create schedules);
+  // the "run_all_due" action is admin-only inside the handler. Recipients are
+  // limited to app users and REPORT_RECIPIENT_DOMAINS.
+  "generateScheduledReport",
   // Rate-limited checks; they only write derived verification fields.
   "validateProviderNPI",
   "verifyProviderEmail",

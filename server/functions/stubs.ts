@@ -559,14 +559,6 @@ export async function handleAnalyzeReferralPathways(_payload: any) {
   return notConfigured("Referral pathway analysis isn't available yet.");
 }
 
-export async function handleMatchProvidersToLocations(_payload: any) {
-  return notConfigured("Automatic provider-to-facility matching isn't available yet.");
-}
-
-export async function handleGenerateScheduledReport(_payload: any) {
-  return notConfigured("Emailing scheduled reports isn't available yet. Run the report on this page and export it instead.");
-}
-
 export async function handlePredictImportFormat(_payload: any) {
   return notConfigured("Import format prediction isn't available yet.");
 }
@@ -905,10 +897,6 @@ export async function handleEnrichProviderDEAData(payload: any) {
 
 export async function handleCleanProviderData(_payload: any) {
   return notConfigured("Automatic data cleaning isn't available yet.");
-}
-
-export async function handleAnalyzeProviderNetwork(_payload: any) {
-  return notConfigured("Network analysis isn't available yet.");
 }
 
 export async function handleGenerateHyperPersonalizedMessages(_payload: any) {

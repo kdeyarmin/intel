@@ -344,6 +344,8 @@ app.listen(PORT, "0.0.0.0", async () => {
           // Bulk email verification picks providers that have an email; only a
           // small share of the ~6M providers do, so a partial index keeps that
           // lookup from scanning the whole table.
+          // Inbound referral lookups (who refers to these providers) for network analysis.
+          "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cms_referrals_referred_to ON cms_referrals (referred_to_npi) WHERE referred_to_npi IS NOT NULL",
           "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_providers_with_email ON providers (email_analyzed_at NULLS FIRST, id) WHERE email IS NOT NULL AND email <> ''",
         ];
         for (const ddl of indexes) {

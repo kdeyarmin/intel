@@ -1,31 +1,27 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Lightbulb, ArrowRight } from 'lucide-react';
+import AnalysisScopeNote, { scopeHint } from './AnalysisScopeNote';
+import { useScopedAnalysis } from './useScopedAnalysis';
 
-export default function AINetworkRecommendations() {
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(null);
+export default function AINetworkRecommendations({ state = null }) {
+  // Results belong to one scope; a response for another state never shows.
+  const { data, loading, run } = useScopedAnalysis(state);
 
-  const handleGetRecommendations = async () => {
-    setLoading(true);
-    try {
-      const result = await invokeOrThrow('analyzeProviderNetwork', {
-        analysis_type: 'full'
-      });
-      setData(result.analysis);
-    } catch (error) {
-      toastFunctionError(error, 'Failed to get recommendations');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleGetRecommendations = () => run(
+    async () => (await invokeOrThrow('analyzeProviderNetwork', {
+      analysis_type: 'full',
+      ...(state ? { state } : {}),
+    })).analysis,
+    (error) => toastFunctionError(error, 'Failed to get recommendations'),
+  );
 
   if (!data) {
     return (
-      <Card className="bg-gradient-to-br from-violet-50 to-purple-50 border-violet-500/40">
+      <Card className="bg-violet-900/20 border-violet-500/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-violet-400">
             <Lightbulb className="w-5 h-5" />
@@ -34,7 +30,7 @@ export default function AINetworkRecommendations() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-violet-400 mb-4">
-            Get AI-powered recommendations for strategic network expansion and optimization.
+            Recommendations for growing and strengthening the referral network, based on its influencers and specialty gaps. {scopeHint(state)}
           </p>
           <Button onClick={handleGetRecommendations} disabled={loading} className="gap-2 bg-violet-600 hover:bg-violet-700">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lightbulb className="w-4 h-4" />}
@@ -45,10 +41,18 @@ export default function AINetworkRecommendations() {
     );
   }
 
-  const { recommendations = {} } = data;
+  const recommendations = data.recommendations || {};
 
   return (
     <div className="space-y-4">
+      <div className="space-y-1">
+        <AnalysisScopeNote analysis={data} />
+        <p className="text-xs text-slate-500">
+          {data.recommendations_source === 'ai'
+            ? 'Written by AI from the computed network numbers.'
+            : 'Derived directly from the computed network numbers.'}
+        </p>
+      </div>
       {/* Expansion Opportunities */}
       {recommendations.expansion_opportunities?.length > 0 && (
         <Card className="border-emerald-500/30 bg-emerald-900/20">
@@ -142,7 +146,7 @@ export default function AINetworkRecommendations() {
         className="w-full gap-2"
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-        Refresh Recommendations
+        Refresh recommendations
       </Button>
     </div>
   );

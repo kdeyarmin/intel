@@ -64,7 +64,7 @@ const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
   ],
 };
 
-const LISTING_PRIMARY_TYPES: Record<string, string> = {
+export const LISTING_PRIMARY_TYPES: Record<string, string> = {
   hospital: "hospital_general_info",
   home_health: "home_health_agencies",
   hospice: "hospice_general_info",
