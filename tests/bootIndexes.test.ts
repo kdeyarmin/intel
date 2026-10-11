@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, it, expect, vi } from "vitest";
 import { BOOT_INDEXES, OBSOLETE_INDEXES, runBootIndexes, SWEEP_TABLES } from "../server/lib/bootIndexes";
 
@@ -22,6 +24,15 @@ describe("BOOT_INDEXES", () => {
 
   it("never drops an index it is about to build", () => {
     for (const name of OBSOLETE_INDEXES) expect(BOOT_INDEXES.map((i) => i.name)).not.toContain(name);
+  });
+
+  it("is the index set the dedupe script tells an operator to build (it must not name an obsolete one)", () => {
+    const sql = fs.readFileSync(path.join(import.meta.dirname, "..", "scripts", "dedupe-existing-imports.sql"), "utf8");
+    for (const name of OBSOLETE_INDEXES) expect(sql, name).not.toContain(name);
+    // Every unique index the script suggests is one the server builds at boot, under the same name.
+    const suggested = [...sql.matchAll(/CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS (\w+)/g)].map((m) => m[1]);
+    expect(suggested.length).toBeGreaterThan(0);
+    for (const name of suggested) expect(BOOT_INDEXES.map((i) => i.name), name).toContain(name);
   });
 });
 
