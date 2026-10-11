@@ -39,6 +39,51 @@ export function sanitizeWriteData(entityName: string, data: Record<string, any>)
   return cleaned;
 }
 
+/** A provider's email verification result; it describes one address. */
+export const EMAIL_VERIFICATION_COLUMNS = [
+  "email_validation_status",
+  "email_validation_reason",
+  "email_quality_score",
+  "email_quality_confidence",
+  "email_quality_reasons",
+  "email_quality_risk_flags",
+  "email_analyzed_at",
+];
+
+/**
+ * When an update sets a provider's email, clear the verification result unless
+ * the address is unchanged (ignoring case) or the update sets those fields
+ * itself. Done in SQL against the stored address, so it holds without a read.
+ */
+export function clearStaleEmailVerification<T extends Record<string, any>>(table: any, data: T): T {
+  if (!("email" in data) || !table.email) return data;
+  const next: Record<string, any> = { ...data };
+  for (const col of EMAIL_VERIFICATION_COLUMNS) {
+    if (col in next || !table[col]) continue;
+    next[col] = sql`CASE WHEN ${emailChanged(table, data.email)} THEN NULL ELSE ${table[col]} END`;
+  }
+  return next as T;
+}
+
+const emailChanged = (table: any, email: unknown) =>
+  sql`lower(coalesce(${table.email}, '')) IS DISTINCT FROM lower(coalesce(${email ?? null}::text, ''))`;
+
+/**
+ * For writers that set a provider's email together with their own unchecked
+ * guess at its status (the AI email search). A different address loses the
+ * old verification, as above. The same address keeps a stored DNS check
+ * (email_analyzed_at set) rather than having its status replaced by a guess.
+ */
+export function unverifiedEmailUpdate<T extends Record<string, any>>(table: any, data: T): T {
+  const next: Record<string, any> = clearStaleEmailVerification(table, data);
+  if (!("email" in data) || !table.email) return next as T;
+  for (const col of ["email_validation_status", "email_validation_reason"]) {
+    if (!(col in data) || !table[col]) continue;
+    next[col] = sql`CASE WHEN ${emailChanged(table, data.email)} OR ${table.email_analyzed_at} IS NULL THEN ${data[col] ?? null}::text ELSE ${table[col]} END`;
+  }
+  return next as T;
+}
+
 const FILTER_OPERATORS = new Set(["$in", "$nin", "$gt", "$gte", "$lt", "$lte", "$ne", "$like", "$exists"]);
 
 export class InvalidFieldValueError extends Error {
@@ -89,6 +134,9 @@ export const JSONB_OVERFLOW: Record<string, string> = {
   LeadScore: "details",
   // Rule parameters written by the validation-rule editor.
   ImportValidationRule: "config",
+  // NPI Registry check details (status, registry name/address, taxonomies,
+  // discrepancies), written by validateProviderNPI.
+  ProviderNPIValidation: "validation_details",
 };
 
 const SYSTEM_FIELDS = new Set(["id", "created_date", "updated_date"]);

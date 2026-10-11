@@ -30,6 +30,9 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "searchProviders",
   // Read-only for non-admins: no AI call and nothing saved (see the handler).
   "calculateOutreachScore",
+  // Rate-limited checks; they only write derived verification fields.
+  "validateProviderNPI",
+  "verifyProviderEmail",
   "analyzeReferralPathways",
   "analyzeProviderNetwork",
 ]);

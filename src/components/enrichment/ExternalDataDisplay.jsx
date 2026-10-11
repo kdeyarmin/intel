@@ -2,17 +2,23 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { invokeOrThrow, toastFunctionError } from '@/api/functionResult';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Zap, RefreshCw, Clock } from 'lucide-react';
+import { Zap, ShieldCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import EnrichmentMergePanel from './EnrichmentMergePanel';
 
+const NPI_STATUS_LABELS = { active: 'Active', deactivated: 'Deactivated', not_found: 'Not in registry' };
+
 export default function ExternalDataDisplay({ npi, provider, onEnrichmentComplete }) {
-  const [enriching, setEnriching] = useState(false);
-  const { data: medicareData, isLoading: loadingMedicare, refetch: refetchMedicare } = useQuery({
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const [checking, setChecking] = useState(false);
+  const [tab, setTab] = useState(null);
+  const { data: medicareData, isLoading: loadingMedicare } = useQuery({
     queryKey: ['providerMedicareCompare', npi],
     queryFn: () => base44.entities.ProviderMedicareCompare.filter({ npi }),
     enabled: !!npi,
@@ -26,46 +32,46 @@ export default function ExternalDataDisplay({ npi, provider, onEnrichmentComplet
     staleTime: 86400000,
   });
 
-  const { data: deaData, isLoading: loadingDEA, refetch: refetchDEA } = useQuery({
+  const { data: deaData, isLoading: loadingDEA } = useQuery({
     queryKey: ['providerDEASchedules', npi],
     queryFn: () => base44.entities.ProviderDEASchedules.filter({ npi }),
     enabled: !!npi,
     staleTime: 86400000,
   });
 
-  const handleEnrich = async () => {
-    setEnriching(true);
+  const handleCheckRegistry = async () => {
+    setChecking(true);
     try {
-      // Run each source independently so one unavailable source doesn't hide
-      // the results (or the failure) of the others.
-      const results = await Promise.allSettled([
-        invokeOrThrow('enrichProviderMedicareData', { npi }),
-        invokeOrThrow('validateProviderNPI', { npi, checkDiscrepancies: true }),
-        invokeOrThrow('enrichProviderDEAData', { npi }),
-      ]);
-      const failures = results.filter(r => r.status === 'rejected').map(r => r.reason);
-      if (failures.length === results.length) {
-        toastFunctionError(failures[0], 'Enrichment failed');
-      } else if (failures.length > 0) {
-        toast.info(`Some sources were unavailable: ${failures.map(f => f.message).join(' ')}`);
+      const data = await invokeOrThrow('validateProviderNPI', { npi, checkDiscrepancies: true });
+      const v = data.validation || {};
+      const diffs = v.discrepancies?.length || 0;
+      if (v.status === 'active') {
+        (diffs ? toast.warning : toast.success)(
+          diffs ? `NPI is active. ${diffs} detail${diffs === 1 ? '' : 's'} differ from the registry.` : 'NPI is active and matches the registry.',
+        );
+      } else if (v.status === 'deactivated') {
+        toast.warning('The registry lists this NPI as deactivated.');
+      } else {
+        toast.warning('This NPI isn\'t in the NPI Registry. It may have been deactivated.');
       }
-
-      // Refresh all data
-      await Promise.all([refetchMedicare(), refetchNPI(), refetchDEA()]);
+      await refetchNPI();
+      setTab('npi');
       onEnrichmentComplete?.();
     } catch (error) {
-      toastFunctionError(error, 'Enrichment failed');
+      toastFunctionError(error, "Couldn't check the NPI Registry");
     } finally {
-      setEnriching(false);
+      setChecking(false);
     }
   };
 
-  const hasData = (medicareData?.length > 0) || (npiValidation?.length > 0) || (deaData?.length > 0);
-  if (!hasData && !loadingMedicare && !loadingNPI && !loadingDEA) return null;
-
+  if (!npi) return null;
   const medicare = medicareData?.[0];
   const npi_val = npiValidation?.[0];
   const dea = deaData?.[0];
+  const loading = loadingMedicare || loadingNPI || loadingDEA;
+  const available = [medicare && 'medicare', npi_val && 'npi', dea && 'dea'].filter(Boolean);
+  const activeTab = available.includes(tab) ? tab : available[0];
+  const checkedAt = npi_val?.checked_at || npi_val?.validated_at;
 
   return (
     <Card className="bg-slate-900 border-slate-700">
@@ -75,20 +81,25 @@ export default function ExternalDataDisplay({ npi, provider, onEnrichmentComplet
             <Zap className="w-5 h-5 text-blue-400" />
             External Data Enrichment
           </CardTitle>
-          <Button 
-            onClick={handleEnrich} 
-            disabled={enriching}
+          <Button
+            onClick={handleCheckRegistry}
+            disabled={checking}
             variant="outline"
             size="sm"
             className="gap-2 text-slate-200 border-slate-600 hover:border-slate-500"
           >
-            {enriching ? <Clock className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            {enriching ? 'Enriching...' : 'Enrich Now'}
+            {checking ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+            {checking ? 'Checking…' : npi_val ? 'Re-check NPI Registry' : 'Check NPI Registry'}
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="medicare" className="w-full">
+        {available.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            {loading ? 'Loading…' : 'Check this NPI against the national NPI Registry (NPPES) to confirm it\'s active and spot outdated name, address, phone or specialty details.'}
+          </p>
+        ) : (
+        <Tabs value={activeTab} onValueChange={setTab} className="w-full">
           <TabsList className="w-full justify-start h-10 bg-slate-800 p-1 mb-4">
             {medicare && (
               <TabsTrigger value="medicare" className="h-8 data-[state=active]:bg-slate-700 data-[state=active]:text-white">
@@ -185,14 +196,27 @@ export default function ExternalDataDisplay({ npi, provider, onEnrichmentComplet
               <div className="space-y-2">
                 <div className="flex items-center justify-between p-3 bg-slate-800 rounded border border-slate-700">
                   <p className="text-sm text-slate-400">Status</p>
-                  <Badge variant={npi_val.is_valid ? 'default' : 'destructive'} className="capitalize">
-                    {npi_val.status}
+                  <Badge variant={npi_val.is_valid ? 'default' : 'destructive'}>
+                    {NPI_STATUS_LABELS[npi_val.status] || npi_val.status}
                   </Badge>
                 </div>
-                <div className="p-3 bg-slate-800 rounded border border-slate-700">
-                  <p className="text-xs text-slate-400">NPI Type</p>
-                  <p className="text-sm font-semibold text-slate-200 mt-1 capitalize">{npi_val.npi_type}</p>
-                </div>
+                {npi_val.npi_type && (
+                  <div className="p-3 bg-slate-800 rounded border border-slate-700 text-sm">
+                    <p className="text-xs text-slate-400">Registry record</p>
+                    <p className="font-semibold text-slate-200 mt-1">
+                      {npi_val.organization_name || [npi_val.first_name, npi_val.last_name].filter(Boolean).join(' ')}
+                      {npi_val.credentials?.length > 0 && `, ${npi_val.credentials.join(', ')}`}
+                      <span className="ml-2 text-xs font-normal text-slate-400 capitalize">{npi_val.npi_type}</span>
+                    </p>
+                    {npi_val.address && (
+                      <p className="text-slate-300 mt-1">{[npi_val.address, npi_val.city, npi_val.state, npi_val.zip].filter(Boolean).join(', ')}</p>
+                    )}
+                    {npi_val.phone && <p className="text-slate-400 mt-0.5">{npi_val.phone}</p>}
+                    {npi_val.registry_last_updated && (
+                      <p className="text-xs text-slate-500 mt-1">Registry record last updated {npi_val.registry_last_updated}</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {npi_val.taxonomies?.length > 0 && (
@@ -219,7 +243,7 @@ export default function ExternalDataDisplay({ npi, provider, onEnrichmentComplet
                 </div>
               )}
 
-              {provider && npi_val.is_valid && (
+              {provider && isAdmin && npi_val.is_valid && (
                  <div className="mt-4">
                     <EnrichmentMergePanel 
                        provider={provider} 
@@ -290,10 +314,13 @@ export default function ExternalDataDisplay({ npi, provider, onEnrichmentComplet
             </TabsContent>
           )}
         </Tabs>
+        )}
 
-        <p className="text-xs text-slate-400 mt-4 pt-4 border-t border-slate-700">
-          Last updated: {new Date().toLocaleDateString()}
-        </p>
+        {checkedAt && (
+          <p className="text-xs text-slate-400 mt-4 pt-4 border-t border-slate-700">
+            NPI Registry checked {new Date(checkedAt).toLocaleString()}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

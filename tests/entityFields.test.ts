@@ -14,13 +14,15 @@ import {
   coerceRowValues,
   _resetReportedDropsForTests,
   buildWhereClause,
+  clearStaleEmailVerification,
   decorateRow,
   expandOverflow,
   reportDroppedFields,
   sanitizeWriteData,
   splitWriteData,
+  unverifiedEmailUpdate,
 } from "../server/lib/entityFields";
-import { customReports, importBatches, leadListMembers, providerLocations, scheduledReports, tableMap } from "../server/db/schema";
+import { customReports, importBatches, leadListMembers, providerLocations, providers, scheduledReports, tableMap } from "../server/db/schema";
 
 const dialect = new PgDialect();
 const render = (cond: any) => dialect.sqlToQuery(cond);
@@ -181,5 +183,57 @@ describe("sanitizeWriteData", () => {
   it("keeps ProviderAffiliation.role, which is a provider's role at an organization", () => {
     expect(sanitizeWriteData("ProviderAffiliation", { npi: "1", role: "Medical Director", password_hash: "h" }))
       .toEqual({ npi: "1", role: "Medical Director" });
+  });
+});
+
+describe("clearStaleEmailVerification", () => {
+  it("leaves updates that don't touch the email alone", () => {
+    const data = { phone: "555" };
+    expect(clearStaleEmailVerification(providers, data)).toBe(data);
+  });
+
+  it("clears the verification in SQL only when the stored address differs (ignoring case)", () => {
+    const out = clearStaleEmailVerification(providers, { email: "New@Clinic.org" });
+    expect(out.email).toBe("New@Clinic.org");
+    const q = render(out.email_validation_status);
+    expect(q.sql).toMatch(/CASE WHEN lower\(coalesce\("providers"\."email", ''\)\) IS DISTINCT FROM lower\(coalesce\(\$1::text, ''\)\) THEN NULL ELSE "providers"\."email_validation_status" END/);
+    expect(q.params).toEqual(["New@Clinic.org"]);
+    expect(render(out.email_analyzed_at).sql).toContain('"providers"."email_analyzed_at"');
+  });
+
+  it("keeps verification fields the update sets itself", () => {
+    const out = clearStaleEmailVerification(providers, { email: "a@b.org", email_validation_status: "valid" });
+    expect(out.email_validation_status).toBe("valid");
+    expect(render(out.email_quality_score).sql).toContain("CASE WHEN");
+  });
+});
+
+describe("unverifiedEmailUpdate (AI email search)", () => {
+  const out = unverifiedEmailUpdate(providers, {
+    email: "new@clinic.org",
+    email_source: "ai",
+    email_validation_status: "valid",
+    email_validation_reason: "Looks like the practice's domain",
+  });
+
+  it("clears the old address's DNS check when the address changes", () => {
+    for (const col of ["email_quality_score", "email_quality_reasons", "email_quality_risk_flags", "email_quality_confidence", "email_analyzed_at"]) {
+      expect(render(out[col]).sql).toMatch(/^CASE WHEN lower\(coalesce\("providers"\."email", ''\)\) IS DISTINCT FROM lower\(coalesce\(\$1::text, ''\)\) THEN NULL ELSE "providers"\."email_/);
+    }
+    expect(out.email_source).toBe("ai");
+  });
+
+  it("writes its guessed status for a new or unchecked address, but never over a DNS check of the same address", () => {
+    const q = render(out.email_validation_status);
+    expect(q.sql).toBe(
+      'CASE WHEN lower(coalesce("providers"."email", \'\')) IS DISTINCT FROM lower(coalesce($1::text, \'\')) OR "providers"."email_analyzed_at" IS NULL THEN $2::text ELSE "providers"."email_validation_status" END',
+    );
+    expect(q.params).toEqual(["new@clinic.org", "valid"]);
+    expect(render(out.email_validation_reason).params).toEqual(["new@clinic.org", "Looks like the practice's domain"]);
+  });
+
+  it("leaves updates without an email alone", () => {
+    const data = { email_searched_at: new Date() };
+    expect(unverifiedEmailUpdate(providers, data)).toBe(data);
   });
 });

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/shared/ConfirmDialog';
+import UrlCheckButton from './UrlCheckButton';
 
 const MAINTENANCE_TASKS = [
   { key: 'runScheduledImports', label: 'Run Scheduled Imports', desc: 'Process all due schedules and fan out the maintenance workers.', icon: PlayCircle, accent: 'text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/20' },
@@ -342,6 +343,7 @@ export default function ImportScheduleManager() {
             <div>
               <label className={labelCls}>API URL override (optional)</label>
               <Input className={inputCls} value={form.api_url} onChange={(e) => setForm({ ...form, api_url: e.target.value })} placeholder="leave blank to use the built-in CMS URL" />
+              {form.api_url.trim() && <UrlCheckButton url={form.api_url} />}
             </div>
             <div className="flex items-center gap-2 pt-1">
               <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />

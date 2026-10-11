@@ -8,16 +8,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import ConnectorCard from '@/components/apiConnectors/ConnectorCard';
 import { useConfirm } from '@/components/shared/ConfirmDialog';
+import QueryErrorState from '@/components/shared/QueryErrorState';
 
 export default function APIConnectors() {
   const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
 
-  const { data: connectors, isLoading } = useQuery({
+  const { data: connectors = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['cms_api_connectors'],
     queryFn: () => base44.entities.CMSApiConnector.list('-created_date', 100),
-    initialData: []
   });
 
   const createMutation = useMutation({
@@ -35,7 +35,7 @@ export default function APIConnectors() {
 
   const handleUpdate = (updatedConnector) => {
     queryClient.setQueryData(['cms_api_connectors'], (old) => 
-      old.map(c => c.id === updatedConnector.id ? updatedConnector : c)
+      (old || []).map(c => c.id === updatedConnector.id ? updatedConnector : c)
     );
   };
 
@@ -87,7 +87,9 @@ export default function APIConnectors() {
         </Button>
       </PageHeader>
 
-      {isLoading ? (
+      {isError ? (
+        <QueryErrorState title="Couldn't load connectors" error={error} onRetry={refetch} />
+      ) : isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map(i => (
             <div key={i} className="h-64 rounded-xl border bg-card text-card-foreground shadow-sm p-6 space-y-4">
@@ -110,7 +112,7 @@ export default function APIConnectors() {
         </div>
       )}
 
-      {!isLoading && connectors.length === 0 && (
+      {!isLoading && !isError && connectors.length === 0 && (
         <div className="text-center py-12 bg-slate-800/40 rounded-lg border border-dashed border-slate-600">
           <Server className="w-12 h-12 text-slate-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-white mb-1">No API Connectors</h3>

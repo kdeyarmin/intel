@@ -259,6 +259,44 @@ describe("migration 0003_entity_field_sync", () => {
   });
 });
 
+// ─── 0004 / 0005: outreach sending and email verification ─────────────────────
+
+describe.each([
+  ["0004_outreach_sending", "0003_entity_field_sync"],
+  ["0005_email_verification", "0004_outreach_sending"],
+])("migration %s", (tag, previous) => {
+  const sql = readMigration(`${tag}.sql`);
+  const schema = readSchema();
+  const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+
+  it(`is registered in the drizzle journal after ${previous}`, () => {
+    const entry = journal.entries.find((e: { tag: string }) => e.tag === tag);
+    const prev = journal.entries.find((e: { tag: string }) => e.tag === previous);
+    expect(entry).toBeTruthy();
+    expect(entry.idx).toBe(prev.idx + 1);
+    expect(entry.when).toBeGreaterThan(prev.when);
+  });
+
+  it("is idempotent and only adds nullable columns, new tables or indexes", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    for (const stmt of statements) {
+      expect(stmt).toMatch(/^(ALTER TABLE "\w+" ADD COLUMN IF NOT EXISTS "\w+" [\w()]+;|CREATE TABLE IF NOT EXISTS |CREATE INDEX IF NOT EXISTS "\w+" ON "\w+" )/);
+    }
+  });
+
+  it("every index it creates is declared in the Drizzle schema", () => {
+    for (const [, name] of sql.matchAll(/CREATE INDEX IF NOT EXISTS "(\w+)"/g)) {
+      expect(schema, name).toContain(`index("${name}")`);
+    }
+  });
+
+  it("every added column is declared in the Drizzle schema", () => {
+    for (const [, column] of sql.matchAll(/ADD COLUMN IF NOT EXISTS "(\w+)"/g)) {
+      expect(schema, column).toMatch(new RegExp(`\\b${column}: \\w+\\("${column}"`));
+    }
+  });
+});
+
 // ─── 0004: campaign sending (suppressions, tracking, score details) ───────────
 
 describe("migration 0004_outreach_sending", () => {

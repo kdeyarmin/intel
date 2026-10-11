@@ -8,6 +8,7 @@ import { ShieldCheck, ShieldAlert, ShieldX, Loader2, RefreshCw, Zap, Info } from
 import { toast } from 'sonner';
 import EmailVerificationResultRow from './EmailVerificationResultRow';
 import BulkEmailActions from './BulkEmailActions';
+import { emailCheckStats } from './emailCheck';
 
 export default function EmailVerificationPanel({ providers, onRefresh }) {
   const [isRunning, setIsRunning] = useState(false);
@@ -16,15 +17,7 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
   const [results, setResults] = useState(null);
   const [progress, setProgress] = useState(null);
 
-  const stats = useMemo(() => {
-    const withEmail = providers.filter(p => p.email);
-    const valid = withEmail.filter(p => p.email_validation_status === 'valid');
-    const risky = withEmail.filter(p => p.email_validation_status === 'risky');
-    const invalid = withEmail.filter(p => p.email_validation_status === 'invalid');
-    const verified = valid.length + risky.length + invalid.length;
-    const unverified = withEmail.length - verified;
-    return { withEmail: withEmail.length, analyzed: verified, unanalyzed: unverified, valid: valid.length, risky: risky.length, invalid: invalid.length };
-  }, [providers]);
+  const stats = useMemo(() => emailCheckStats(providers), [providers]);
 
   const runVerification = async () => {
     setIsRunning(true);
@@ -38,8 +31,11 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
       });
       setResults(data);
       setProgress({ processed: data.batch_processed, total: data.total_candidates, status: 'done' });
-      const smtpChecked = (data.results || []).filter(r => r.smtp?.reachable != null).length;
-      toast.success(`Verified ${data.verified} emails (${data.remaining} remaining)${smtpChecked > 0 ? ` — ${smtpChecked} SMTP-probed` : ''}`);
+      const s = data.summary || {};
+      const parts = [`${s.valid || 0} valid`, `${s.risky || 0} risky`, `${s.invalid || 0} invalid`];
+      if (s.unknown) parts.push(`${s.unknown} couldn't be checked`);
+      if (data.batch_processed === 0) toast.info('Nothing to verify in this group.');
+      else toast.success(`Checked ${data.batch_processed} emails: ${parts.join(', ')}. ${data.remaining.toLocaleString()} left.`);
       onRefresh?.();
     } catch (err) {
       toastFunctionError(err, 'Verification failed');
@@ -167,7 +163,7 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
           {isRunning && progress && (
             <div className="flex items-center gap-2 text-xs text-cyan-400">
               <Loader2 className="w-3 h-3 animate-spin" />
-              Processing... this may take a minute per provider (DNS + AI checks)
+              Checking each domain's mail (DNS) records…
             </div>
           )}
         </CardContent>
@@ -206,8 +202,11 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
       <div className="flex items-start gap-2 bg-slate-800/40 border border-slate-700/30 rounded-lg p-3">
         <Info className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
         <p className="text-[11px] text-slate-400">
-          Verification performs 3-phase checks: format & pattern analysis, DNS/MX record validation, and AI deliverability assessment. 
-          Provider records are automatically updated with verification results.
+          Each check looks at the address format, whether the domain exists and accepts mail (DNS/MX records), and flags
+          disposable, no-reply, shared (info@) and free-mail addresses, plus anyone who bounced, opted out or marked an
+          earlier email as spam. It doesn't contact the mail server, so "valid" means the domain accepts mail, not that the
+          mailbox is confirmed. Results are saved on each provider; a new address, including one the AI search found, counts
+          as unchecked until it's verified here.
         </p>
       </div>
     </div>
