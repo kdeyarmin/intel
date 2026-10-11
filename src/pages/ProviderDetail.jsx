@@ -184,11 +184,11 @@ export default function ProviderDetail() {
         <Button variant="ghost" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Button>
-        <Link to={createPageUrl('Providers')}>
-          <Button variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-cyan-400">
+        <Button asChild variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-cyan-400">
+          <Link to={createPageUrl('Providers')}>
             All Providers
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       <ProviderHeader

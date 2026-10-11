@@ -574,9 +574,9 @@ export default function Organizations() {
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-1">
-                                <Link to={createPageUrl(`ProviderDetail?npi=${provider.npi}`)}>
-                                  <Button variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">View Details</Button>
-                                </Link>
+                                <Button asChild variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-cyan-400">
+                                  <Link to={createPageUrl(`ProviderDetail?npi=${provider.npi}`)}>View Details</Link>
+                                </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"

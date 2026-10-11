@@ -143,11 +143,11 @@ export default function RecentImportsList({ batches = [], showLimit = 10 }) {
                   </div>
                 </div>
                 {dest && (
-                  <Link to={destinationHref(dest)}>
-                    <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1 bg-transparent border-slate-700 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 shrink-0">
+                  <Button asChild variant="outline" size="sm" className="h-7 text-[11px] gap-1 bg-transparent border-slate-700 text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 shrink-0">
+                    <Link to={destinationHref(dest)}>
                       View {dest.label} <ExternalLink className="w-3 h-3" />
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 )}
               </div>
             </div>

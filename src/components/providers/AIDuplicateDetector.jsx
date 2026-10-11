@@ -36,11 +36,11 @@ function DuplicateGroupCard({ group }) {
             </div>
             <div className="flex items-center gap-1.5 shrink-0 ml-2">
               {rec.detail && <span className="text-[10px] text-slate-400 hidden sm:inline">{rec.detail}</span>}
-              <Link to={createPageUrl(`ProviderDetail?npi=${rec.npi}`)}>
-                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2">
+              <Button asChild variant="ghost" size="sm" className="h-6 text-[10px] px-2">
+                <Link to={createPageUrl(`ProviderDetail?npi=${rec.npi}`)}>
                   <Eye className="w-3 h-3 mr-1" /> View
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </div>
         ))}
