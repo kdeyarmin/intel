@@ -699,6 +699,26 @@ describe("migration 0020_organizations", () => {
   });
 });
 
+describe("migration 0021_billing_event_guard", () => {
+  const sql = readMigration("0021_billing_event_guard.sql");
+
+  it("adds the Stripe event time to organizations, idempotently, and the schema declares it", () => {
+    const statements = sql.replace(/^--.*$/gm, "").split(";").map((x) => x.trim()).filter(Boolean);
+    expect(statements).toEqual(['ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "stripe_event_at" timestamp']);
+    const schema = readSchema();
+    const start = schema.indexOf('pgTable("organizations"');
+    expect(schema.slice(start, schema.indexOf("});", start))).toContain('stripe_event_at: timestamp("stripe_event_at")');
+  });
+
+  it("is registered in the drizzle journal after 0020, later than it", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const tags = journal.entries.map((e: { tag: string }) => e.tag);
+    expect(tags.indexOf("0021_billing_event_guard")).toBe(tags.indexOf("0020_organizations") + 1);
+    const at = (tag: string) => journal.entries.find((e: { tag: string }) => e.tag === tag).when;
+    expect(at("0021_billing_event_guard")).toBeGreaterThan(at("0020_organizations"));
+  });
+});
+
 describe("migration 0012_assistant", () => {
   const sql = readMigration("0012_assistant.sql");
   const schema = readSchema();

@@ -13,7 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BarChart3, Download, AlertTriangle, ArrowUpDown } from 'lucide-react';
 import { US_STATES } from '@/lib/usStates';
 import { COUNTY_LAYER_METRICS, LAYER_BY_KEY } from '@/lib/marketLayers';
-import { formatMetric, sortRows, toCsv } from '@/lib/marketFormat';
+import { csvHeader, csvValue, describeVintages, formatMetric, sortRows } from '@/lib/marketFormat';
+import { countExport, exportCSV } from '@/components/exports/exportUtils';
+import { toast } from 'sonner';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import MarketFreshness from '../components/market/MarketFreshness';
@@ -47,17 +49,18 @@ export default function MarketIntelligence() {
   };
   const removeColumn = (key) => setUrl({ cols: columns.filter((k) => k !== key).join(',') });
 
-  const download = () => {
-    const csv = toCsv(
-      [{ key: 'fips', label: 'county_fips' }, { key: 'name', label: 'county' }, ...COUNTY_LAYER_METRICS.map((m) => ({ key: m.key, label: m.key }))],
-      rows,
-    );
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `caremetric-county-market-${url.state}.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+  const download = async () => {
+    // Counts against the organization's daily export allowance, like every export.
+    const quota = await countExport();
+    if (!quota.ok) {
+      toast.error(quota.message);
+      return;
+    }
+    // Every metric, one unit per column (shares as percent numbers), headed by what it is; the file ends with
+    // the data vintages the table used and the source line every export carries.
+    const fields = [{ key: 'fips', label: 'County FIPS' }, { key: 'name', label: 'County' }, ...COUNTY_LAYER_METRICS.map((m) => ({ key: m.key, label: csvHeader(m) }))];
+    const exportRows = rows.map((r) => ({ fips: r.fips, name: r.name, ...Object.fromEntries(COUNTY_LAYER_METRICS.map((m) => [m.key, csvValue(r[m.key], m.format)])) }));
+    exportCSV(exportRows, fields, `caremetric-county-market-${url.state}`, { notes: [describeVintages(data?.vintages)] });
   };
 
   return (

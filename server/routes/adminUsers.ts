@@ -57,8 +57,11 @@ export function createAdminUsersRouter(deps: AccountDeps) {
   const { repo } = deps;
   router.use(authMiddleware, adminOnly, rateLimit("admin_users", 120, 60_000));
 
-  const audit = (req: AuthRequest, action: string, target: Pick<UserRow, "id" | "email"> | null, details: Record<string, unknown> = {}) =>
-    deps.audit({
+  // The event belongs to the organization of the person it is about, so that organization's owners see it on
+  // their activity feed even when a platform admin (who belongs to another organization) acted.
+  const audit = async (req: AuthRequest, action: string, target: Pick<UserRow, "id" | "email"> | null, details: Record<string, unknown> = {}) => {
+    const targetOrg = typeof details.org_id === "number" ? details.org_id : target ? (await deps.orgs.membershipOf(target.id).catch(() => null))?.org_id : undefined;
+    return deps.audit({
       event_type: ACCOUNT_EVENT,
       action,
       user_email: req.user!.email,
@@ -66,8 +69,9 @@ export function createAdminUsersRouter(deps: AccountDeps) {
       entity_id: target?.id ?? null,
       details: { target_email: target?.email ?? null, ...details },
       ip_address: clientIp(req),
-      org_id: req.user!.orgId ?? null,
+      org_id: targetOrg ?? req.user!.orgId ?? null,
     });
+  };
 
   // Sentinel for an admin with no organization: nothing is in their scope.
   const NO_ORG = -1;
@@ -194,6 +198,8 @@ export function createAdminUsersRouter(deps: AccountDeps) {
         password_hash: await deps.hashPassword(crypto.randomBytes(32).toString("hex")),
         full_name: cleanName(req.body?.full_name),
         role,
+        // The admin role is the platform-admin flag: one thing, kept together.
+        is_platform_admin: role === "admin",
         status: "invited",
       });
     } catch (e: any) {
@@ -221,7 +227,7 @@ export function createAdminUsersRouter(deps: AccountDeps) {
 
     const updated = await (hasRole
       ? guarded(req, "role", async (target, r) => {
-          const u = await r.update(target.id, { role: role!, ...(hasName ? { full_name: cleanName(req.body.full_name) } : {}) });
+          const u = await r.update(target.id, { role: role!, is_platform_admin: role === "admin", ...(hasName ? { full_name: cleanName(req.body.full_name) } : {}) });
           if (target.role !== role) await audit(req, "role_change", target, { from: target.role || "user", to: role });
           if (hasName) await audit(req, "rename", target);
           return u;

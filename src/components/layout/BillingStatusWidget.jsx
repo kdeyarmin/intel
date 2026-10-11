@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { CreditCard, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
+import { canAccessPage } from '@/components/layout/navConfig';
 
 const STATUS = {
   trial: { label: 'Trial', className: 'bg-cyan-500/10 text-cyan-400' },
@@ -31,6 +32,8 @@ export default function BillingStatusWidget({ sidebarOpen }) {
     retry: false,
   });
   if (!user?.orgId || !data?.organization) return null;
+  // Billing is the owners' page: a member sees the plan but not a link they can't open.
+  const canBill = canAccessPage('Billing', user);
 
   const org = data.organization;
   const status = STATUS[org.status] || { label: org.status, className: 'bg-slate-700 text-slate-300' };
@@ -43,9 +46,15 @@ export default function BillingStatusWidget({ sidebarOpen }) {
   if (!sidebarOpen) {
     return (
       <div className="flex justify-center p-3 border-t border-slate-800/60">
-        <Link to="/Billing" aria-label="Plan and billing" title="Plan and billing">
-          <CreditCard className={`w-5 h-5 ${attention ? 'text-amber-400' : 'text-slate-400'}`} aria-hidden="true" />
-        </Link>
+        {canBill ? (
+          <Link to="/Billing" aria-label="Plan and billing" title="Plan and billing">
+            <CreditCard className={`w-5 h-5 ${attention ? 'text-amber-400' : 'text-slate-400'}`} aria-hidden="true" />
+          </Link>
+        ) : (
+          <span role="img" aria-label={`Plan: ${status.label}`} title={`${data.plan?.name || 'Plan'}: ${status.label}`}>
+            <CreditCard className={`w-5 h-5 ${attention ? 'text-amber-400' : 'text-slate-400'}`} aria-hidden="true" />
+          </span>
+        )}
       </div>
     );
   }
@@ -53,10 +62,17 @@ export default function BillingStatusWidget({ sidebarOpen }) {
   return (
     <div className="mx-2 mb-3 mt-2 p-3 rounded-xl bg-slate-800/30 border border-slate-700/50 shadow-sm">
       <div className="flex items-center justify-between mb-2">
-        <Link to="/Billing" className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-200 flex items-center gap-1.5">
-          <CreditCard className="w-3.5 h-3.5" aria-hidden="true" />
-          {data.plan?.name || 'Plan'}
-        </Link>
+        {canBill ? (
+          <Link to="/Billing" className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-200 flex items-center gap-1.5">
+            <CreditCard className="w-3.5 h-3.5" aria-hidden="true" />
+            {data.plan?.name || 'Plan'}
+          </Link>
+        ) : (
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+            <CreditCard className="w-3.5 h-3.5" aria-hidden="true" />
+            {data.plan?.name || 'Plan'}
+          </span>
+        )}
         <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider font-bold ${status.className}`}>{status.label}</span>
       </div>
       <p className="text-[11px] text-slate-400 truncate" title={org.name}>{org.name}</p>
@@ -66,7 +82,7 @@ export default function BillingStatusWidget({ sidebarOpen }) {
       {attention && (
         <p className="text-[11px] text-amber-400 mt-1 flex items-center gap-1">
           <AlertCircle className="w-3 h-3" aria-hidden="true" />
-          {org.status === 'past_due' ? 'A payment failed' : 'Subscription ended'}. <Link to="/Billing" className="underline">Fix it</Link>
+          {org.status === 'past_due' ? 'A payment failed' : 'Subscription ended'}. {canBill ? <Link to="/Billing" className="underline">Fix it</Link> : 'Ask an owner to fix it.'}
         </p>
       )}
       {ai && ai.limit > 0 && (

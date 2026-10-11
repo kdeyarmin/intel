@@ -6,6 +6,7 @@ import { z } from "zod";
 import type Anthropic from "@anthropic-ai/sdk";
 import { SPECIALTY_GROUPS } from "../specialtyGroups";
 import { ASSISTANT_CONFIG } from "./config";
+import type { SessionPrincipal } from "../../middleware/auth";
 
 type Tool = Anthropic.Beta.BetaTool;
 
@@ -14,17 +15,18 @@ export interface ToolDeps {
   searchProviders(payload: { q?: string; state?: string; entity_type?: string; specialty_group?: string; limit: number }): Promise<{ providers: any[]; truncated?: boolean }>;
   describeProviders(npis: string[]): Promise<Map<string, ProviderBrief>>;
   getProviderReport(npi: string): Promise<any>;
-  getCountyIntelligence(payload: { state: string; county_fips?: string; county?: string }): Promise<any>;
+  getCountyIntelligence(payload: { state: string; county_fips?: string; county?: string }, user: ToolUser): Promise<any>;
   /** The county's market rollups (server/functions/market.ts); null when the rollups aren't computed. */
-  getCountyMarket(payload: { state: string; county_fips: string }): Promise<any>;
-  getReferralSources(payload: { state: string; county_fips?: string; setting?: string; limit: number }): Promise<any>;
+  getCountyMarket(payload: { state: string; county_fips: string }, user: ToolUser): Promise<any>;
+  getReferralSources(payload: { state: string; county_fips?: string; setting?: string; limit: number }, user: ToolUser): Promise<any>;
   /** CMS files on one provider: ordering eligibility and the referral-source rollup row. */
   getProviderCMSData(npi: string): Promise<any>;
-  getTerritoryData(payload: { state: string; specialty_group?: string }): Promise<any>;
-  getReferralNetwork(payload: Record<string, unknown>, user: { id: number }): Promise<any>;
+  getTerritoryData(payload: { state: string; specialty_group?: string }, user: ToolUser): Promise<any>;
+  getReferralNetwork(payload: Record<string, unknown>, user: ToolUser): Promise<any>;
   getDashboardStats(): Promise<any>;
-  listLeadLists(opts: { nameContains?: string; limit: number }): Promise<any[]>;
-  getLeadList(id: number, limit: number): Promise<{ list: any; members: Array<{ npi: string; status: string | null }> } | null>;
+  /** The caller's organization's lead lists only. */
+  listLeadLists(opts: { nameContains?: string; limit: number }, user: ToolUser): Promise<any[]>;
+  getLeadList(id: number, limit: number, user: ToolUser): Promise<{ list: any; members: Array<{ npi: string; status: string | null }> } | null>;
   existingNpis(npis: string[]): Promise<string[]>;
   /** Writes nothing once `signal` is aborted (the turn was stopped or timed out). */
   createProposal(input: ProposalInput, signal?: AbortSignal): Promise<ProposedAction>;
@@ -59,8 +61,12 @@ export interface ProposedAction {
   expiresAt: string;
 }
 
+/** The signed-in account a tool runs for: what the territory, subscription and organization checks need. */
+export type ToolUser = SessionPrincipal;
+
 export interface ToolContext {
   userId: number;
+  user: ToolUser;
   conversationId: number;
   turnId: number;
   toolUseId: string;
@@ -201,7 +207,7 @@ const TOOL_SPECS = [
       const state = input.state.toUpperCase();
       if (input.county) {
         const county = input.county.trim();
-        const r = await ctx.deps.getCountyIntelligence(/^\d{5}$/.test(county) ? { state, county_fips: county } : { state, county });
+        const r = await ctx.deps.getCountyIntelligence(/^\d{5}$/.test(county) ? { state, county_fips: county } : { state, county }, ctx.user);
         if (r?.notLoaded) throw new ToolError(r.message || "County geography isn't loaded.");
         if (r?.needsCounty) {
           return { error: `No county called "${county}" in ${state}.`, counties_in_state: (r.counties || []).map((c: any) => `${c.name} (${c.fips})`) };
@@ -225,7 +231,7 @@ const TOOL_SPECS = [
           market: await marketBlock(ctx, state, r.county?.fips),
         };
       }
-      const t = await ctx.deps.getTerritoryData({ state, specialty_group: input.specialty_group });
+      const t = await ctx.deps.getTerritoryData({ state, specialty_group: input.specialty_group }, ctx.user);
       const providers = t?.providers || [];
       const groups = new Map<string, number>();
       for (const p of providers) groups.set(p.specialtyGroup || "other", (groups.get(p.specialtyGroup || "other") || 0) + 1);
@@ -254,7 +260,7 @@ const TOOL_SPECS = [
       const scopes = [input.npi, input.state, input.lead_list_id].filter((v) => v != null);
       if (scopes.length !== 1) throw new ToolError("Give exactly one of npi, state or lead_list_id.");
       const payload = input.npi ? { npi: input.npi } : input.state ? { state: input.state.toUpperCase() } : { lead_list_id: input.lead_list_id };
-      const r = await ctx.deps.getReferralNetwork({ ...payload, limit_nodes: 40, limit_edges: 60 }, { id: ctx.userId });
+      const r = await ctx.deps.getReferralNetwork({ ...payload, limit_nodes: 40, limit_edges: 60 }, ctx.user);
       if (r?.notConfigured) return { available: false, note: r.message };
       const nodes = [...(r?.nodes || [])];
       const names = new Map(nodes.map((n: any) => [n.npi, n.name]));
@@ -302,7 +308,7 @@ const TOOL_SPECS = [
       limit: z.number().int().min(1).max(50).optional().describe("Default 20"),
     }),
     async run(input, ctx) {
-      const lists = await ctx.deps.listLeadLists({ nameContains: input.name_contains?.trim() || undefined, limit: input.limit ?? 20 });
+      const lists = await ctx.deps.listLeadLists({ nameContains: input.name_contains?.trim() || undefined, limit: input.limit ?? 20 }, ctx.user);
       return {
         lead_lists: lists.map((l: any) => ({
           id: l.id, name: l.name, description: l.description || null, members: l.member_count ?? 0, created_by: l.created_by || null, updated: l.updated_date,
@@ -319,7 +325,7 @@ const TOOL_SPECS = [
     }),
     async run(input, ctx) {
       const limit = input.limit ?? 50;
-      const found = await ctx.deps.getLeadList(input.list_id, limit);
+      const found = await ctx.deps.getLeadList(input.list_id, limit, ctx.user);
       if (!found) return { found: false, list_id: input.list_id };
       const npis = found.members.map((m) => m.npi);
       const status = new Map(found.members.map((m) => [m.npi, m.status]));
@@ -454,8 +460,8 @@ export async function runTool(name: string, input: unknown, ctx: ToolContext): P
 async function marketBlock(ctx: ToolContext, state: string, countyFips: string | undefined) {
   if (!countyFips) return null;
   const [m, s] = await Promise.all([
-    ctx.deps.getCountyMarket({ state, county_fips: countyFips }).catch(() => null),
-    ctx.deps.getReferralSources({ state, county_fips: countyFips, limit: 10 }).catch(() => null),
+    ctx.deps.getCountyMarket({ state, county_fips: countyFips }, ctx.user).catch(() => null),
+    ctx.deps.getReferralSources({ state, county_fips: countyFips, limit: 10 }, ctx.user).catch(() => null),
   ]);
   if (!m && !s) return null;
   const p = m?.profile?.available ? m.profile : null;

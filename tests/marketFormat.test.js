@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeVintages, fmtCount, fmtMoney, fmtPct, fmtShare, formatMetric, ordinal, sortRows, toCsv } from '../src/lib/marketFormat.js';
+import { csvHeader, csvValue, describeVintages, fmtCount, fmtMoney, fmtPct, fmtShare, formatMetric, ordinal, sortRows, toCsv } from '../src/lib/marketFormat.js';
 
 describe('market formatting', () => {
   it('formats counts, fractions, percent units, money and rates, with a dash for nothing', () => {
@@ -35,5 +35,24 @@ describe('market formatting', () => {
       .toBe('Data: Medicare enrollment 2026-06; Market saturation 2025-01-01; Hospital Service Area 2025.');
     expect(describeVintages(null)).toBeNull();
     expect(describeVintages({})).toBeNull();
+  });
+
+  it('names each setting\'s own post-acute year when CMS released them in different years', () => {
+    expect(describeVintages({ pac_utilization: '2025', pac_utilization_by_setting: { snf: '2025', hha: '2024', hospice: '2024' } }))
+      .toBe('Data: Post-acute utilization skilled nursing 2025, home health 2024, hospice 2024.');
+    expect(describeVintages({ pac_utilization: '2025', pac_utilization_by_setting: { snf: '2025', hha: '2025' } })).toBe('Data: Post-acute utilization 2025.');
+    expect(describeVintages({ pac_utilization: '2024' })).toBe('Data: Post-acute utilization 2024.');
+  });
+
+  it('exports each county metric with one unit per column', () => {
+    expect(csvHeader({ label: 'Medicare Advantage share', format: 'percent' })).toBe('Medicare Advantage share (%)');
+    expect(csvHeader({ label: 'Home health use (% of FFS)', format: 'pct_units' })).toBe('Home health use (%)');
+    expect(csvHeader({ label: 'SNF spend per beneficiary', format: 'money' })).toBe('SNF spend per beneficiary ($)');
+    expect(csvHeader({ label: 'Medicare beneficiaries', format: 'count' })).toBe('Medicare beneficiaries');
+    expect(csvValue(0.6234, 'percent')).toBe(62.34);
+    expect(csvValue(11.05, 'pct_units')).toBe(11.05);
+    expect(csvValue(null, 'percent')).toBe('');
+    expect(csvValue('', 'count')).toBe('');
+    expect(csvValue('310000', 'count')).toBe(310000);
   });
 });

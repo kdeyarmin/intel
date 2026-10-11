@@ -45,6 +45,58 @@ describe("signup", () => {
   });
 });
 
+describe("signup when the organization can't be made", () => {
+  it("removes the account again, so the same address can sign up later", async () => {
+    const make = h.orgs.createWithOwner;
+    h.orgs.createWithOwner = async () => {
+      throw new Error("organization insert failed");
+    };
+    const body = { email: "owner@sunnyhill.com", password: "longenough", full_name: "Olivia Owner", accept_terms: true };
+    const failed = await h.client().call("POST", "/api/auth/signup", body);
+    expect(failed.status).toBeGreaterThanOrEqual(500);
+    // Nothing stranded: no account without an organization.
+    expect(h.repo.users.some((u) => u.email === "owner@sunnyhill.com")).toBe(false);
+
+    h.orgs.createWithOwner = make;
+    const retried = await h.client().call("POST", "/api/auth/signup", body);
+    expect(retried.status).toBe(201);
+    expect(h.orgs.members.filter((m) => m.user_id === retried.body.id)).toHaveLength(1);
+  });
+});
+
+describe("audit events carry the organization they belong to", () => {
+  beforeEach(async () => {
+    h.orgs.orgs.push({ id: 2, name: "Riverbend Hospice", status: "active", seat_limit: 5, plan_code: "county_pack", territory: { states: [], county_fips: ["42003"] } });
+    await h.seed({ email: "platform@example.com", role: "admin" });
+    await h.seed({ email: "owner@riverbend.org", role: "user", org_id: 2, org_role: "owner" });
+    await h.seed({ email: "member@riverbend.org", org_id: 2 });
+    await h.seed({ email: "pending@riverbend.org", org_id: 2, status: "pending" });
+  });
+
+  it("stamps signup with the organization it just created, and sign-ins with the person's own", async () => {
+    const r = await h.client().call("POST", "/api/auth/signup", { email: "pat@riverbend-hospice.org", password: "longenough", full_name: "Pat Jones", accept_terms: true });
+    const org = h.orgs.orgs.find((o) => o.name === "Riverbend-hospice")!;
+    expect(h.audits.find((a) => a.action === "signup")!.org_id).toBe(org.id);
+    expect(r.status).toBe(201);
+
+    await signedIn(h, "member@riverbend.org");
+    expect(h.audits.find((a) => a.action === "login" && a.user_email === "member@riverbend.org")!.org_id).toBe(2);
+    await h.client().call("POST", "/api/auth/login", { email: "member@riverbend.org", password: "wrong-password" });
+    expect(h.audits.find((a) => a.action === "login_failed" && a.details?.target_email === "member@riverbend.org")!.org_id).toBe(2);
+  });
+
+  it("stamps an administrator's action with the organization of the person it is about", async () => {
+    const admin = await signedIn(h, "platform@example.com");
+    expect((await admin.call("POST", `/api/admin/users/${idOf("pending@riverbend.org")}/approve`)).status).toBe(200);
+    // The platform admin belongs to organization 1, but the approval is organization 2's business.
+    expect(h.audits.find((a) => a.action === "approve")!.org_id).toBe(2);
+
+    const owner = await signedIn(h, "owner@riverbend.org");
+    expect((await owner.call("POST", `/api/admin/users/${idOf("member@riverbend.org")}/revoke-sessions`)).status).toBe(200);
+    expect(h.audits.find((a) => a.action === "revoke_sessions")!.org_id).toBe(2);
+  });
+});
+
 describe("an organization's owner", () => {
   let owner: Client;
   beforeEach(async () => {
@@ -134,13 +186,32 @@ describe("a platform admin", () => {
     expect(promoted.body.user.role).toBe("admin");
   });
 
-  it("is the legacy admin role: a seeded admin is a platform admin unless said otherwise", async () => {
+  it("keeps the platform-admin flag with the admin role when it is invited, granted and taken away", async () => {
+    await h.seed({ email: "platform@example.com", role: "admin" });
+    const admin = await signedIn(h, "platform@example.com");
+    const flagOf = (email: string) => h.repo.users.find((u) => u.email === email)!.is_platform_admin;
+
+    expect((await admin.call("POST", "/api/admin/users/invite", { email: "second@example.com", role: "admin" })).status).toBe(201);
+    expect(flagOf("second@example.com")).toBe(true);
+    expect((await admin.call("POST", "/api/admin/users/invite", { email: "plain@example.com" })).status).toBe(201);
+    expect(flagOf("plain@example.com")).toBe(false);
+
+    expect((await admin.call("PATCH", `/api/admin/users/${idOf("plain@example.com")}`, { role: "admin" })).status).toBe(200);
+    expect(flagOf("plain@example.com")).toBe(true);
+    expect((await admin.call("PATCH", `/api/admin/users/${idOf("second@example.com")}`, { role: "user" })).status).toBe(200);
+    expect(flagOf("second@example.com")).toBe(false);
+    expect(h.repo.users.find((u) => u.email === "second@example.com")!.role).toBe("user");
+  });
+
+  it("is one thing with the admin role: either the role or the flag makes a platform admin", async () => {
     await h.seed({ email: "legacy@example.com", role: "admin" });
-    await h.seed({ email: "scoped@example.com", role: "admin", is_platform_admin: false });
-    expect((await (await signedIn(h, "legacy@example.com")).call("GET", "/api/auth/me")).body.isPlatformAdmin).toBe(true);
-    const scoped = await signedIn(h, "scoped@example.com");
-    expect((await scoped.call("GET", "/api/auth/me")).body.isPlatformAdmin).toBe(false);
-    // Still an administrator of their organization.
-    expect((await scoped.call("GET", "/api/admin/users")).body.organization).toMatchObject({ id: 1 });
+    // The flag and the role are kept together, but a row where only one is set is still a platform admin.
+    await h.seed({ email: "roleonly@example.com", role: "admin", is_platform_admin: false });
+    await h.seed({ email: "flagonly@example.com", role: "user", is_platform_admin: true });
+    await h.seed({ email: "plain@example.com", role: "user" });
+    for (const email of ["legacy@example.com", "roleonly@example.com", "flagonly@example.com"]) {
+      expect((await (await signedIn(h, email)).call("GET", "/api/auth/me")).body.isPlatformAdmin, email).toBe(true);
+    }
+    expect((await (await signedIn(h, "plain@example.com")).call("GET", "/api/auth/me")).body.isPlatformAdmin).toBe(false);
   });
 });

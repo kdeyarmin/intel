@@ -87,6 +87,14 @@ export function computeNextRun(
     next.setUTCHours(next.getUTCHours() + 1);
     return next;
   } else if (schedule.schedule_frequency === "on_release") {
+    if (failures > 0) {
+      // A failed run retries on the usual backoff. Parking it for a year would
+      // wait for a catalog wake-up that never comes for a dataset with nothing
+      // imported yet (the catalog only wakes datasets with an update available).
+      next.setTime(now.getTime() + backoffHours(failures) * 60 * 60_000 + jitterMs(SCHEDULE_JITTER_MINUTES, random));
+      next.setTime(Math.max(next.getTime(), now.getTime() + NEXT_RUN_MIN_BUFFER_MS));
+      return next;
+    }
     // Due only when checkCmsCatalog sees a newer release (it sets next_run_at).
     next.setUTCDate(next.getUTCDate() + ON_RELEASE_PARK_DAYS);
     return next;

@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "36f7a346624c863257674c98d7ed1e8043497e40",
+    "ref": "1cee3a7acef12788f6b23c781d72c8efba8f1354",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 36,
-    "text_character_count": 17643,
-    "canonical_sha256": "5f223143678d0a3b7c3388007af277e2d565e4a242fb4af44a2eb4af1bda821c"
+    "text_character_count": 17501,
+    "canonical_sha256": "fbcf62f6eb94998fe873ad7707c1adeb62ecd6c429e27d6d42fa216552cde13a"
   },
   "sections": [
     {
@@ -194,8 +194,8 @@
       "topics": [
         {
           "heading": "Importing state-licensed homes",
-          "text": "Personal care homes and assisted living residences are licensed by states and never appear in CMS files. Pick **State-Licensed Homes** in the Data Center, upload the state's licensing export as a CSV (or give an https link) and set the state, the license type the file holds (if its rows don't say) and the export's year. Columns are matched by name: name, address, city, ZIP, license number, license type, capacity, status, licensee and phone are recognised under their usual spellings. Each home gets its county from its ZIP; re-importing a newer export updates the same homes. They then show on **Facilities › Licensed Homes**, on County Intel's **Competitors** tab and in the county profile's licensed homes and beds. For Pennsylvania, the DHS personal care home and assisted living directories are the source.",
-          "sha256": "3ede2361b7f80bb7000229c90fabb75f0c21d76228ca7f95e8dd01e3e4142ff9"
+          "text": "Personal care homes and assisted living residences are licensed by states and never appear in CMS files. Pick **State-Licensed Homes** in the Data Center, upload the state's licensing export as a CSV (or give an https link) and set the state, the license type the file holds (if its rows don't say) and the export's year. Columns are matched by name: name, address, city, ZIP, license number, license type, capacity, status, licensee and phone are recognised under their usual spellings. Each home gets its county from its ZIP; re-importing a newer export updates the same homes and removes the ones it no longer lists. They then show on **Facilities › Licensed Homes**, on County Intel's **Competitors** tab and in the county profile's licensed homes and beds. For Pennsylvania, the DHS personal care home and assisted living directories are the source.",
+          "sha256": "a4ed9cd254158ce2a403f4c9c29a4dde5f643abe570ae4eff8db855292aa64e2"
         },
         {
           "heading": "Importing data",
@@ -204,8 +204,8 @@
         },
         {
           "heading": "Import monitor",
-          "text": "Tracks every import with live progress, history, validation rules, alerts, performance and schedules (tabs at the top). Imports that fail for temporary reasons, such as a network error or rate limit, are retried automatically; the **Health** tab shows success rates, top errors and the retry pipeline, and warns when scheduled maintenance has stopped running. Its **Needs attention** list (platform admins) names datasets whose newer release hasn't been imported within a week, schedules failing three times in a row, a maintenance run that is overdue or had failing workers, and analytics rollups older than two days; platform admins also get that list by email at most once a day while anything is open.",
-          "sha256": "1067adc82f60e8fe21b386a2fabece9a87826c00015d2062d978fcbe0e6fa84b"
+          "text": "Tracks every import with live progress, history, validation rules, alerts, performance and schedules (tabs at the top). Imports that fail for temporary reasons, such as a network error or rate limit, are retried automatically; the **Health** tab shows success rates, top errors and the retry pipeline, and warns when scheduled maintenance has stopped running.",
+          "sha256": "d793709d7fb1a348e8829abc5339cdc9e44a09719a3c5e53994686761817feb9"
         },
         {
           "heading": "Dataset catalog",
@@ -241,8 +241,8 @@
         },
         {
           "heading": "Plan, billing and territory",
-          "text": "Under **Admin Settings → Billing** an owner sees the organization's plan and status, the trial or billing period, seats used, and today's usage against the plan's quotas (AI requests, exports and outreach emails per day). Choose or change a plan with secure checkout, or open the billing portal for payment methods and invoices. A county pack covers a chosen set of counties and a state plan one state: pick them here, and the County, Market, Territory and referral-source views answer only for that territory (anything else says it is outside the plan). New organizations start with a free trial; a failed payment shows as payment due until it is fixed.",
-          "sha256": "b09f3529c8c503bded3ca30c04fe8d071608667411eaacd3c64db62d45ebe6d6"
+          "text": "Under **Admin Settings → Billing** an owner sees the organization's plan and status, the trial or billing period, seats used, and today's usage against the plan's quotas (AI requests, exports and outreach emails per day). Choose or change a plan with secure checkout, or open the billing portal for payment methods and invoices. A county pack covers a chosen set of counties and a state plan one state: pick them here, and the County, Market, Territory and referral-source views answer only for that territory (anything else says it is outside the plan, and until an owner has chosen the places those views stay locked). Changing plans updates the subscription in place; the difference is prorated on the next invoice. New organizations start with a free trial; a failed payment shows as payment due until it is fixed.",
+          "sha256": "6daa45568b0b4668364da54398adab97e68fb656c28d4f0103118727c3a983d3"
         },
         {
           "heading": "Scoring rules",

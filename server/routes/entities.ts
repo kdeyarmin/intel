@@ -1,8 +1,8 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db";
-import { tableMap, leadListMembers } from "../db/schema";
+import { tableMap, leadListMembers, outreachCampaigns } from "../db/schema";
 import { eq, desc, asc, sql, getTableColumns, and, inArray } from "drizzle-orm";
-import { authMiddleware, AuthRequest, isOrgAdmin } from "../middleware/auth";
+import { authMiddleware, AuthRequest, SessionPrincipal, isOrgAdmin, isPlatformAdmin } from "../middleware/auth";
 import { leadLists } from "../db/schema";
 import {
   InvalidFieldValueError,
@@ -23,15 +23,18 @@ const router = Router();
 // Entirely off-limits to the entity router (handled via dedicated routes only).
 const BLOCKED_ENTITIES = new Set(["User"]);
 
-// Sensitive entities that may contain credentials, secrets, audit logs, request payloads,
-// or system configuration. Only admins may read or modify these.
-const ADMIN_ONLY_ENTITIES = new Set([
+// The platform's own operation: imports and their schedules, the crawler,
+// connectors, reconciliation, background tasks and validation rules. They hold
+// credentials, request payloads and system configuration, and the cron-run
+// workers act on these rows with platform authority, so only platform
+// administrators read or change them. An organization's owner administers their
+// own organization, not the data every customer shares.
+export const PLATFORM_ONLY_ENTITIES = new Set([
   "ReconciliationSettings",
   "ApiInteractionLog",
   "NPPESCrawlerConfig",
   "CMSApiConnector",
   "ImportScheduleConfig",
-  "AuditEvent",
   "ErrorReport",
   "BackgroundTask",
   "ImportBatch",
@@ -43,12 +46,16 @@ const ADMIN_ONLY_ENTITIES = new Set([
   "NPPESQueueItem",
 ]);
 
-// Entities that any authenticated user may write/modify (collaborative work product).
-// Anything not in this set requires the admin role for write/delete operations.
-// Campaigns (OutreachCampaign, OutreachMessage, CampaignSequenceStep,
-// CampaignTask) and the shared CampaignTemplate rows are admin-only to change,
-// like the Campaigns page and sending; everyone can still read them (the
-// dashboard pipeline, a provider's outreach history).
+// The security trail: an organization's owners read their organization's
+// events and platform administrators read all of them. The server writes it
+// (recordAudit, POST /api/audit); nobody edits it through the entity API.
+const AUDIT_ENTITY = "AuditEvent";
+
+// Entities that any authenticated user may write/modify (collaborative work
+// product, scoped to their organization below). Anything not listed here
+// needs more than membership to write.
+// Scoring rules are platform configuration (one scoring job serves every
+// customer), so they are not here: platform administrators change them.
 export const USER_WRITABLE_ENTITIES = new Set([
   "LeadList",
   "LeadListMember",
@@ -56,18 +63,45 @@ export const USER_WRITABLE_ENTITIES = new Set([
   "ScheduledReport",
   "ScheduledExport",
   "SavedFilter",
-  "ScoringRule",
   "DataQualityAlert",
   "AnalyticsDashboard",
 ]);
 
+// Campaigns and the rows that make them up change what is sent in an
+// organization's name, so they need its owner (everyone can still read them:
+// the dashboard pipeline, a provider's outreach history).
+export const ORG_ADMIN_ENTITIES = new Set([
+  "OutreachCampaign",
+  "OutreachMessage",
+  "CampaignSequenceStep",
+  "CampaignTask",
+  "CampaignTemplate",
+]);
+
 // Customer-owned entities (migration 0020): every read and write is limited
 // to the caller's organization, and a created row is stamped with it.
-// LeadListMember belongs to its list, so it is scoped through lead_lists.
+// LeadListMember belongs to its list and CampaignSequenceStep to its campaign,
+// so they are scoped through lead_lists and outreach_campaigns.
 export const ORG_SCOPED_ENTITIES = new Set([
-  "LeadList", "SavedFilter", "CustomReport", "ScheduledReport", "ScheduledExport", "AnalyticsDashboard", "ScoringRule",
-  "OutreachCampaign", "OutreachMessage", "CampaignTemplate", "CampaignTask", "DataQualityAlert", "AuditEvent",
+  "LeadList", "SavedFilter", "CustomReport", "ScheduledReport", "ScheduledExport", "AnalyticsDashboard",
+  "OutreachCampaign", "OutreachMessage", "CampaignTemplate", "CampaignTask", "DataQualityAlert", AUDIT_ENTITY,
 ]);
+
+/** Entities that belong to a parent row (the key to it, the parent's table, and its columns), scoped through the parent's organization. */
+const PARENT_SCOPED: Record<string, { key: string; parent: any; label: string }> = {
+  LeadListMember: { key: "list_id", parent: leadLists, label: "lead list" },
+  CampaignSequenceStep: { key: "campaign_id", parent: outreachCampaigns, label: "campaign" },
+};
+
+// Platform administrators read these across every organization, and the platform's own rows (the server writes
+// them with no organization: the maintenance heartbeat, the data-quality scan's alerts). Everything else
+// customer-owned stays inside the caller's organization, platform administrators included.
+const PLATFORM_READS_ALL = new Set([AUDIT_ENTITY, "DataQualityAlert"]);
+
+/** Whether this caller sees `entity` across all organizations. */
+export function readsAcrossOrganizations(entity: string, user: SessionPrincipal | undefined): boolean {
+  return PLATFORM_READS_ALL.has(entity) && isPlatformAdmin(user);
+}
 
 /** The organization a request is scoped to; null when the account has none (then it sees nothing customer-owned). */
 function orgIdOf(req: AuthRequest): number | null {
@@ -79,12 +113,14 @@ function orgIdOf(req: AuthRequest): number | null {
 function orgCondition(entity: string | string[], table: any, req: AuthRequest) {
   const entityName = String(entity);
   if (ORG_SCOPED_ENTITIES.has(entityName)) {
+    if (readsAcrossOrganizations(entityName, req.user)) return undefined;
     const orgId = orgIdOf(req);
     return orgId == null ? sql`false` : eq(table.org_id, orgId);
   }
-  if (entityName === "LeadListMember") {
+  const via = PARENT_SCOPED[entityName];
+  if (via) {
     const orgId = orgIdOf(req);
-    return orgId == null ? sql`false` : inArray(table.list_id, db.select({ id: leadLists.id }).from(leadLists).where(eq(leadLists.org_id, orgId)));
+    return orgId == null ? sql`false` : inArray(table[via.key], db.select({ id: via.parent.id }).from(via.parent).where(eq(via.parent.org_id, orgId)));
   }
   return undefined;
 }
@@ -139,27 +175,46 @@ function safeError(res: Response, e: any, label: string) {
   });
 }
 
-/** An organization's owner (or a platform admin, or the legacy admin role) administers its rows. */
-function isAdmin(req: AuthRequest): boolean {
-  return isOrgAdmin(req.user);
-}
+type Caller = Pick<SessionPrincipal, "role" | "orgRole" | "isPlatformAdmin">;
+/** A bare role string is accepted for callers (and tests) that only have the role: "admin" is a platform administrator. */
+const callerOf = (who: Caller | string | null | undefined): Caller | undefined => (typeof who === "string" ? { role: who } : who ?? undefined);
 
-function requireReadAccess(req: AuthRequest, res: Response, entityName: string): boolean {
-  if (isAdmin(req)) return true;
-  if (ADMIN_ONLY_ENTITIES.has(entityName)) {
-    res.status(403).json({ message: "Forbidden", detail: "Admin access is required to view this resource." });
-    return false;
-  }
+/** Who may read an entity through the generic API: the platform's own rows need a platform administrator, the audit trail an owner. */
+export function canReadEntity(entityName: string, who: Caller | string | null | undefined): boolean {
+  const user = callerOf(who);
+  if (PLATFORM_ONLY_ENTITIES.has(entityName)) return isPlatformAdmin(user);
+  if (entityName === AUDIT_ENTITY) return isOrgAdmin(user);
   return true;
 }
 
-export function canWriteEntity(entityName: string, role: string | undefined): boolean {
-  return role === "admin" || USER_WRITABLE_ENTITIES.has(entityName);
+/**
+ * Who may create, change or delete rows: members for collaborative work
+ * product, an organization's owner for campaigns, and platform administrators
+ * for everything else (the shared data every customer reads, the platform's
+ * own rows and the audit trail).
+ */
+export function canWriteEntity(entityName: string, who: Caller | string | null | undefined): boolean {
+  const user = callerOf(who);
+  if (USER_WRITABLE_ENTITIES.has(entityName)) return true;
+  if (ORG_ADMIN_ENTITIES.has(entityName)) return isOrgAdmin(user);
+  return isPlatformAdmin(user);
+}
+
+function requireReadAccess(req: AuthRequest, res: Response, entityName: string): boolean {
+  if (canReadEntity(entityName, req.user)) return true;
+  res.status(403).json({
+    message: "Forbidden",
+    detail: PLATFORM_ONLY_ENTITIES.has(entityName) ? "Platform administrator access is required to view this resource." : "Admin access is required to view this resource.",
+  });
+  return false;
 }
 
 function requireWriteAccess(req: AuthRequest, res: Response, entityName: string): boolean {
-  if (canWriteEntity(entityName, isAdmin(req) ? "admin" : req.user?.role)) return true;
-  res.status(403).json({ message: "Forbidden", detail: "Admin access is required to modify this resource." });
+  if (canWriteEntity(entityName, req.user)) return true;
+  res.status(403).json({
+    message: "Forbidden",
+    detail: ORG_ADMIN_ENTITIES.has(entityName) ? "Admin access is required to modify this resource." : "Only platform administrators can modify this resource.",
+  });
   return false;
 }
 
@@ -356,7 +411,8 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
       return data;
     });
     sendDroppedFields(res, entityName, [...dropped]);
-    for (const data of cleaned) if (!(await stampOrg(entityName, data, req, res))) return;
+    const knownParents = new Map<number, boolean>();
+    for (const data of cleaned) if (!(await stampOrg(entityName, data, req, res, knownParents))) return;
 
     const rows = (await db.insert(table).values(cleaned).returning()) as any[];
     res.status(201).json(rows.map((r: any) => decorateRow(entityName, r)));
@@ -390,8 +446,16 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
       data[overflowCol] = sql`COALESCE(${(table as any)[overflowCol]}, '{}'::jsonb) || ${JSON.stringify(split.overflow)}::jsonb`;
     }
     sendDroppedFields(res, entityName, split.dropped);
-    // The organization a row belongs to never changes through this route.
+    // The organization a row belongs to never changes through this route, and a lead list member or
+    // campaign step can only be moved to a parent in the caller's own organization.
     if (ORG_SCOPED_ENTITIES.has(String(entityName))) delete data.org_id;
+    const via = PARENT_SCOPED[String(entityName)];
+    if (via && data[via.key] !== undefined) {
+      const orgId = orgIdOf(req);
+      if (orgId == null || !(await parentInOrg(String(entityName), data, orgId))) {
+        return res.status(404).json({ message: "Not found", detail: `That ${via.label} isn't in your organization.` });
+      }
+    }
 
     const [row] = (await db.update(table).set(data).where(withOrg(eq(table.id, idNum), orgCondition(entityName, table, req))).returning()) as any[];
     if (!row) return res.status(404).json({ message: "Not found" });
@@ -429,11 +493,27 @@ router.delete("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Resp
 });
 
 /**
- * Stamps a new customer-owned row with the caller's organization (a client
- * can't choose another), and checks a new lead list member's list belongs
- * to it. Answers 403 and returns false when the account has no organization.
+ * Whether a row's parent (the lead list of a member, the campaign of a step) is in the caller's organization.
+ * `known` caches answers within one request (a bulk insert names the same list many times).
  */
-async function stampOrg(entity: string | string[], data: Record<string, any>, req: AuthRequest, res: Response): Promise<boolean> {
+async function parentInOrg(entityName: string, data: Record<string, any>, orgId: number, known: Map<number, boolean> = new Map()): Promise<boolean> {
+  const via = PARENT_SCOPED[entityName];
+  const parentId = Number(data[via.key]);
+  if (!Number.isInteger(parentId)) return false;
+  if (!known.has(parentId)) {
+    const [parent] = await db.select({ id: via.parent.id }).from(via.parent).where(and(eq(via.parent.id, parentId), eq(via.parent.org_id, orgId))).limit(1);
+    known.set(parentId, !!parent);
+  }
+  return known.get(parentId)!;
+}
+
+/**
+ * Stamps a new customer-owned row with the caller's organization (a client
+ * can't choose another), and checks a new lead list member's list or campaign
+ * step's campaign belongs to it. Answers 403/404 and returns false when it
+ * doesn't, or when the account has no organization.
+ */
+async function stampOrg(entity: string | string[], data: Record<string, any>, req: AuthRequest, res: Response, known?: Map<number, boolean>): Promise<boolean> {
   const entityName = String(entity);
   if (ORG_SCOPED_ENTITIES.has(entityName)) {
     const orgId = orgIdOf(req);
@@ -445,16 +525,15 @@ async function stampOrg(entity: string | string[], data: Record<string, any>, re
     if (!data.created_by && "created_by" in data === false) data.created_by = req.user?.email ?? null;
     return true;
   }
-  if (entityName === "LeadListMember") {
+  const via = PARENT_SCOPED[entityName];
+  if (via) {
     const orgId = orgIdOf(req);
-    const listId = Number(data.list_id);
-    if (orgId == null || !Number.isInteger(listId)) {
-      res.status(403).json({ message: "Forbidden", detail: "A lead list member needs a list in your organization." });
+    if (orgId == null || !Number.isInteger(Number(data[via.key]))) {
+      res.status(403).json({ message: "Forbidden", detail: `A ${entityName} needs a ${via.label} in your organization.` });
       return false;
     }
-    const [list] = await db.select({ id: leadLists.id }).from(leadLists).where(and(eq(leadLists.id, listId), eq(leadLists.org_id, orgId))).limit(1);
-    if (!list) {
-      res.status(404).json({ message: "Not found", detail: "That lead list isn't in your organization." });
+    if (!(await parentInOrg(entityName, data, orgId, known))) {
+      res.status(404).json({ message: "Not found", detail: `That ${via.label} isn't in your organization.` });
       return false;
     }
   }

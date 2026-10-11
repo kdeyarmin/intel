@@ -66,10 +66,14 @@ describe('sidebar', () => {
     }
   });
 
-  it('shows an organization’s owner the everyday pages plus campaigns and Admin Settings', () => {
+  it('shows an organization’s owner everything a member sees, plus campaigns and Admin Settings', () => {
     const ownerPages = getVisibleNavSections('owner').flatMap((s) => s.items.map((i) => i.page));
     const userPages = getVisibleNavSections('user').flatMap((s) => s.items.map((i) => i.page));
+    // An owner is a member of their organization first: the dashboard, directory and analytics are theirs too.
+    expect(userPages.filter((p) => !ownerPages.includes(p))).toEqual([]);
     expect(ownerPages.filter((p) => !userPages.includes(p))).toEqual(['ProviderOutreach', 'AdminSettings']);
+    // …but not the platform's own pages.
+    for (const page of ['ProviderIntelligence', 'DataCenter', 'APIConnectors', 'NPPESCrawler', 'DataQuality']) expect(ownerPages).not.toContain(page);
   });
 });
 
@@ -163,11 +167,46 @@ describe('page access', () => {
     const owner = { role: 'user', orgRole: 'owner' };
     expect(canAccessPage('Billing', owner)).toBe(true);
     expect(canAccessPage('AdminSettings', owner)).toBe(true);
-    expect(canAccessPage('ScoringRules', owner)).toBe(true);
     expect(canAccessPage('ProviderOutreach', owner)).toBe(true);
     expect(canAccessPage('DataCenter', owner)).toBe(false);
     expect(canAccessPage('ProviderIntelligence', owner)).toBe(false);
     expect(canAccessPage('Billing', { role: 'user', orgRole: 'member' })).toBe(false);
+  });
+
+  it('lets an owner open every page a member can (an owner is a member of their organization)', () => {
+    const owner = { role: 'user', orgRole: 'owner' };
+    const member = { role: 'user', orgRole: 'member' };
+    const memberPages = [...pages].filter((key) => canAccessPage(key, member));
+    expect(memberPages.length).toBeGreaterThan(10);
+    for (const key of memberPages) expect(canAccessPage(key, owner), key).toBe(true);
+    // The route guard hands the guard the session user, so a server-side owner is not locked out of Dashboard.
+    expect(canAccessPage('Dashboard', owner)).toBe(true);
+    expect(canAccessPage('Providers', owner)).toBe(true);
+    expect(canAccessPage('TerritoryIntelligence', owner)).toBe(true);
+    expect(canAccessPage('MarketIntelligence', owner)).toBe(true);
+  });
+
+  it('applies the roles a tab names for itself: scoring rules are platform configuration, not an owner’s', () => {
+    const admin = { role: 'admin' };
+    const owner = { role: 'user', orgRole: 'owner' };
+    const member = { role: 'user', orgRole: 'member' };
+    expect(canAccessPage('ScoringRules', admin)).toBe(true);
+    expect(canAccessPage('ScoringRules', owner)).toBe(false);
+    expect(canAccessPage('ScoringRules', member)).toBe(false);
+    for (const page of ['Billing', 'SecurityAudit']) {
+      expect(canAccessPage(page, admin), page).toBe(true);
+      expect(canAccessPage(page, owner), page).toBe(true);
+      expect(canAccessPage(page, member), page).toBe(false);
+    }
+    // A tab with no roles of its own follows its group's first page.
+    expect(canAccessPage('AdminSettings', owner)).toBe(true);
+    expect(canAccessPage('AdminSettings', member)).toBe(false);
+    for (const group of Object.values(PAGE_GROUPS)) {
+      for (const tab of group.pages) {
+        // A tab never opens to someone its group's own entry closes to, unless it says so on purpose.
+        if (!(tab as { roles?: string[] }).roles) expect(canAccessPage(tab.page, member), tab.page).toBe(canAccessPage(group.pages[0].page, member));
+      }
+    }
   });
 
   it('highlights the nav entry a page belongs to', () => {

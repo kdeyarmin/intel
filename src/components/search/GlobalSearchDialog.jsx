@@ -196,8 +196,8 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
           refSeen.add(r.npi);
           items.push({
             type: 'Referral',
-            label: `Shared patients for NPI ${r.npi}`,
-            sublabel: `${r.data_year || r.year || ''} • ${(r.total_referrals || 0).toLocaleString()} shared patients`,
+            label: `Shared-patient encounters for NPI ${r.npi}`,
+            sublabel: `${r.data_year || r.year || ''} • ${(r.total_referrals || 0).toLocaleString()} shared-patient encounters`,
             url: createPageUrl(`ProviderDetail?npi=${r.npi}`),
             pageName: 'ProviderDetail',
           });

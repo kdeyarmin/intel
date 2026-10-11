@@ -1,10 +1,13 @@
 // Campaign outreach: turn a campaign + lead list into personalised messages,
 // send them through SendGrid, and roll delivery events up into metrics.
-// Sending is admin-only (these functions are not in PUBLIC_FUNCTIONS).
+// Sending is for an organization's owners (these functions are not in
+// PUBLIC_FUNCTIONS), and every campaign id is checked against the caller's
+// organization: another organization's campaign answers 404.
 import crypto from "crypto";
 import { pool } from "../db";
 import { getMailerStatus, sendMail } from "../lib/mailer";
 import { consumeQuota } from "../lib/orgQuota";
+import { isPlatformAdmin } from "../lib/roles";
 import { addSuppression, isSuppressed, loadSuppressed, normalizeEmail } from "../lib/suppressions";
 import { CLAUDE_MODELS } from "../lib/aiModels";
 import {
@@ -88,9 +91,29 @@ async function withClient<T>(timeout: string, fn: (client: any) => Promise<T>): 
   }
 }
 
-async function loadCampaign(client: any, campaignId: number, { forUpdate = false } = {}) {
+/** The signed-in caller, as the dispatcher passes it (req.user). */
+export interface Caller {
+  email?: string;
+  role?: string;
+  orgId?: number | null;
+  orgRole?: string | null;
+  isPlatformAdmin?: boolean;
+}
+
+/** The organization a caller's campaign work is limited to; an account in none can't touch campaigns. */
+function orgOf(user: Caller | undefined): number {
+  if (user?.orgId == null) throw new HttpError(403, "Your account isn't part of an organization yet.");
+  return user.orgId;
+}
+
+/**
+ * The campaign, which must belong to the caller's organization: a campaign id
+ * from another organization answers 404, exactly like one that doesn't exist.
+ * (Platform administrators work in their own organization like everyone else.)
+ */
+async function loadCampaign(client: any, campaignId: number, user: Caller | undefined, { forUpdate = false } = {}) {
   const { rows } = await client.query(
-    `SELECT * FROM outreach_campaigns WHERE id = $1${forUpdate ? " FOR UPDATE" : ""}`, [campaignId]);
+    `SELECT * FROM outreach_campaigns WHERE id = $1 AND org_id = $2${forUpdate ? " FOR UPDATE" : ""}`, [campaignId, orgOf(user)]);
   if (!rows[0]) throw new HttpError(404, "Campaign not found");
   return rows[0];
 }
@@ -100,7 +123,7 @@ const chunk = <T,>(arr: T[], size: number): T[][] =>
 
 // ─── Prepare ─────────────────────────────────────────────────────────────────
 
-export async function handlePrepareCampaignMessages(payload: any) {
+export async function handlePrepareCampaignMessages(payload: any, user?: Caller) {
   const campaignId = Number(payload?.campaign_id);
   if (!Number.isInteger(campaignId)) throw new HttpError(400, "campaign_id is required");
 
@@ -109,7 +132,7 @@ export async function handlePrepareCampaignMessages(payload: any) {
     // Send at once): the second one sees the first one's messages and adds none.
     await client.query("BEGIN");
     try {
-      const result = await prepareLocked(client, campaignId);
+      const result = await prepareLocked(client, campaignId, user);
       await client.query("COMMIT");
       return result;
     } catch (e) {
@@ -119,8 +142,8 @@ export async function handlePrepareCampaignMessages(payload: any) {
   });
 }
 
-async function prepareLocked(client: any, campaignId: number) {
-  const campaign = await loadCampaign(client, campaignId, { forUpdate: true });
+async function prepareLocked(client: any, campaignId: number, user: Caller | undefined) {
+  const campaign = await loadCampaign(client, campaignId, user, { forUpdate: true });
   if (!campaign.subject || !campaign.body) {
     throw new HttpError(400, "Add a subject and message before preparing this campaign.");
   }
@@ -212,12 +235,12 @@ async function prepareLocked(client: any, campaignId: number) {
   for (const part of chunk(rows, 500)) {
     const values: any[] = [];
     const tuples = part.map((r, i) => {
-      values.push(campaignId, r.npi, r.email, r.name, r.subject, r.body);
-      const o = i * 6;
-      return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6}, 'pending')`;
+      values.push(campaignId, campaign.org_id, r.npi, r.email, r.name, r.subject, r.body);
+      const o = i * 7;
+      return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6}, $${o + 7}, 'pending')`;
     });
     await client.query(
-      `INSERT INTO outreach_messages (campaign_id, npi, recipient_email, recipient_name, subject, body, status) VALUES ${tuples.join(", ")}`,
+      `INSERT INTO outreach_messages (campaign_id, org_id, npi, recipient_email, recipient_name, subject, body, status) VALUES ${tuples.join(", ")}`,
       values,
     );
   }
@@ -252,13 +275,13 @@ async function mapWithConcurrency<T>(items: T[], limit: number, fn: (item: T) =>
   await Promise.all(workers);
 }
 
-export async function handleSendCampaignMessages(payload: any, user?: { email?: string }) {
+export async function handleSendCampaignMessages(payload: any, user?: Caller) {
   const campaignId = Number(payload?.campaign_id);
   if (!Number.isInteger(campaignId)) throw new HttpError(400, "campaign_id is required");
   const batchSize = Math.min(Math.max(Number(payload?.batch_size) || 50, 1), 100);
 
   const prepared = await withClient("15s", async (client) => {
-    await loadCampaign(client, campaignId);
+    await loadCampaign(client, campaignId, user);
     const { rows: [{ count }] } = await client.query(
       "SELECT count(*)::int AS count FROM outreach_messages WHERE campaign_id = $1", [campaignId]);
     // Preparation never queues more than the cap; refuse a queue that does.
@@ -271,7 +294,7 @@ export async function handleSendCampaignMessages(payload: any, user?: { email?: 
     return count > 0;
   });
   // First send on a new campaign builds the message list.
-  const preparation = prepared ? null : await handlePrepareCampaignMessages({ campaign_id: campaignId });
+  const preparation = prepared ? null : await handlePrepareCampaignMessages({ campaign_id: campaignId }, user);
 
   const missing = sendingRequirements();
   if (missing.length > 0) {
@@ -405,11 +428,11 @@ export async function handleSendCampaignMessages(payload: any, user?: { email?: 
 
 // ─── Metrics ─────────────────────────────────────────────────────────────────
 
-export async function handleTrackCampaignMetrics(payload: any) {
+export async function handleTrackCampaignMetrics(payload: any, user?: Caller) {
   const campaignId = Number(payload?.campaign_id);
   if (!Number.isInteger(campaignId)) throw new HttpError(400, "campaign_id is required");
   return withClient("15s", async (client) => {
-    await loadCampaign(client, campaignId);
+    await loadCampaign(client, campaignId, user);
     const { rows: [c] } = await client.query(
       `SELECT count(*)::int AS total,
               count(*) FILTER (WHERE status = 'pending')::int AS pending,
@@ -444,7 +467,7 @@ export async function handleTrackCampaignMetrics(payload: any) {
  * statement, so it can't overwrite the delivery counts that
  * trackCampaignMetrics keeps in the same column.
  */
-export async function handleSaveCampaignOutcomes(payload: any) {
+export async function handleSaveCampaignOutcomes(payload: any, user?: Caller) {
   const campaignId = Number(payload?.campaign_id);
   if (!Number.isInteger(campaignId) || campaignId <= 0) throw new HttpError(400, "campaign_id is required");
   const conversions = Number(payload?.conversions ?? 0);
@@ -456,9 +479,9 @@ export async function handleSaveCampaignOutcomes(payload: any) {
     `UPDATE outreach_campaigns
         SET metrics = COALESCE(metrics, '{}'::jsonb) || jsonb_build_object('conversions', $2::numeric, 'revenue', $3::numeric),
             updated_date = now()
-      WHERE id = $1
+      WHERE id = $1 AND org_id = $4
       RETURNING metrics`,
-    [campaignId, conversions, revenue],
+    [campaignId, conversions, revenue, orgOf(user)],
   );
   if (!rows[0]) throw new HttpError(404, "Campaign not found");
   return { success: true, metrics: rows[0].metrics };
@@ -503,11 +526,16 @@ async function aiStrategy(summary: Record<string, unknown>): Promise<string | nu
 /**
  * Outreach score for one provider. Public, so for regular users it's read-only:
  * the deterministic score, no AI strategy (which costs tokens) and nothing
- * saved. Admins also get the AI strategy and the score is stored on the
- * provider.
+ * saved. An organization's owner can also ask for the AI strategy (counted
+ * against the organization's daily allowance); only a platform admin stores the
+ * score on the provider, which every customer shares.
  */
-export async function handleCalculateOutreachScore(payload: any, user?: { role?: string }) {
-  const isAdmin = user?.role === "admin" || user?.isPlatformAdmin === true || user?.orgRole === "owner";
+export async function handleCalculateOutreachScore(payload: any, user?: Caller) {
+  // The provider record is shared by every customer, so only a platform admin writes the score back to it.
+  // An organization's owner may ask for the AI strategy (counted against the organization's allowance);
+  // anyone else gets the deterministic score.
+  const platform = isPlatformAdmin(user);
+  const wantsAi = (platform || user?.orgRole === "owner") && !!payload?.with_ai;
   const npi = String(payload?.npi || "").trim();
   if (!/^\d{10}$/.test(npi)) throw new HttpError(400, "A 10-digit npi is required");
 
@@ -532,11 +560,12 @@ export async function handleCalculateOutreachScore(payload: any, user?: { role?:
            FROM (SELECT referred_to_npi FROM cms_referrals WHERE npi = $1 AND referred_to_npi IS NOT NULL LIMIT 1000) x`,
         [npi],
       ),
+      // The caller's own organization's outreach to this provider (another customer's is not theirs to see).
       client.query(
         `SELECT count(*) FILTER (WHERE sent_at IS NOT NULL)::int AS sent, count(opened_at)::int AS opened,
                 count(responded_at)::int AS responded, count(bounced_at)::int AS bounced
-           FROM outreach_messages WHERE npi = $1`,
-        [npi],
+           FROM outreach_messages WHERE npi = $1 AND org_id = $2`,
+        [npi, user?.orgId ?? -1],
       ),
     ]);
     const provider = p.rows[0];
@@ -561,11 +590,12 @@ export async function handleCalculateOutreachScore(payload: any, user?: { role?:
   if (features.email) features.emailSuppressed = await isSuppressed(features.email);
 
   const result = computeOutreachScore(features);
-  const strategy = isAdmin && payload?.with_ai
+  if (wantsAi) await consumeQuota(user as any, "ai_calls");
+  const strategy = wantsAi
     ? (await aiStrategy({ score: result.score, factors: result.factors })) || result.strategy
     : result.strategy;
 
-  if (isAdmin) {
+  if (platform) {
     await pool.query(
       `UPDATE providers SET ai_outreach_score = $2, ai_outreach_strategy = $3, ai_engagement_factors = $4::jsonb,
               ai_outreach_scored_at = now(), updated_date = now() WHERE npi = $1`,
@@ -573,5 +603,5 @@ export async function handleCalculateOutreachScore(payload: any, user?: { role?:
     );
   }
 
-  return { success: true, npi, ...result, strategy, saved: isAdmin };
+  return { success: true, npi, ...result, strategy, saved: platform };
 }

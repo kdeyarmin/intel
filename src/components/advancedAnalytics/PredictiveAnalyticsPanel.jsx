@@ -30,7 +30,7 @@ export default function PredictiveAnalyticsPanel({ utilization = [], referrals =
         { key: 'total_medicare_beneficiaries', label: 'Beneficiaries' },
       ]
     : [
-        { key: 'total_referrals', label: 'Shared patients' },
+        { key: 'total_referrals', label: 'Shared encounters' },
         { key: 'total_beneficiaries', label: 'Beneficiaries' },
       ];
 

@@ -3,7 +3,7 @@
 import { asc } from "drizzle-orm";
 import { db, pool } from "../db";
 import { scoringRules } from "../db/schema";
-import { DEFAULT_SCORING_RULES, LEGACY_RULE_DESCRIPTIONS, normalizeRules, resolveTerritory, totalWeight } from "../lib/leadScoring";
+import { DEFAULT_SCORING_RULES, LEGACY_RULE_DESCRIPTIONS, normalizeRules, territoryFromRows, totalWeight } from "../lib/leadScoring";
 import { leadScoringStatus, startLeadScoring } from "../lib/leadScoringJob";
 
 /**
@@ -42,7 +42,7 @@ export async function handleGetLeadScoringStatus() {
   const rules = normalizeRules(rows as any);
   return {
     rules: rows,
-    territory: resolveTerritory(rules),
+    territory: territoryFromRows(rows as any),
     total_weight: totalWeight(rules),
     job: await leadScoringStatus(pool),
   };
@@ -50,8 +50,7 @@ export async function handleGetLeadScoringStatus() {
 
 export async function handleRecalculateLeadScores(_payload: any, user?: { email?: string | null } | null) {
   const rows = await ensureScoringRules();
-  const rules = normalizeRules(rows as any);
-  const territory = resolveTerritory(rules);
+  const territory = territoryFromRows(rows as any);
   if (territory.states.length === 0) {
     throw Object.assign(new Error("Configure at least one state in the Geographic Priority rule's conditions before scoring."), { status: 400 });
   }

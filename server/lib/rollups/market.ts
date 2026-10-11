@@ -20,8 +20,11 @@ export interface MarketJob {
 }
 
 // Chronic-condition shares come from the physician file's jsonb, whose
-// column names changed between vintages; the first present key wins.
-const cc = (keys: string[]) => `COALESCE(${keys.map((k) => `(p.chronic_conditions->>'${k}')::float8`).join(", ")})`;
+// column names changed between vintages; the first present key wins. CMS
+// publishes them in percent units (31 for 31%); the result stores fractions
+// (0.31), like every other share in these tables, so the views format them
+// all the same way.
+const cc = (keys: string[]) => `COALESCE(${keys.map((k) => `(p.chronic_conditions->>'${k}')::float8`).join(", ")}) / 100.0`;
 
 export const MARKET_JOBS: MarketJob[] = [
   {
@@ -219,13 +222,20 @@ export const MARKET_JOBS: MarketJob[] = [
         SELECT county_fips, data_year, count(*)::int AS hospitals_serving,
                max(ccn) FILTER (WHERE rank = 1) AS top_hospital_ccn, max(share_of_county) FILTER (WHERE rank = 1) AS top_hospital_share
           FROM rollup_county_hospital_sources h, latest_hsa l WHERE h.data_year = l.year GROUP BY 1, 2),
-      latest_pac AS (SELECT max(data_year) AS year FROM rollup_pac_market_share WHERE geo_level = 'county'),
+      -- CMS publishes each setting's file on its own schedule, so each is counted
+      -- at its own latest year (one shared year would zero the settings not yet
+      -- released for it).
+      latest_pac AS (SELECT setting, max(data_year) AS year FROM rollup_pac_market_share WHERE geo_level = 'county' GROUP BY setting),
+      pac_years AS (
+        SELECT max(year) AS year, jsonb_object_agg(setting, year) AS by_setting
+          FROM latest_pac WHERE setting IN ('snf', 'hha', 'hospice')),
       pac AS (
-        SELECT geo_code AS county_fips, data_year,
-               count(*) FILTER (WHERE setting = 'snf')::int AS snf_facilities,
-               count(*) FILTER (WHERE setting = 'hha')::int AS hha_agencies,
-               count(*) FILTER (WHERE setting = 'hospice')::int AS hospice_agencies
-          FROM rollup_pac_market_share p, latest_pac l WHERE p.geo_level = 'county' AND p.data_year = l.year GROUP BY 1, 2),
+        SELECT p.geo_code AS county_fips,
+               count(*) FILTER (WHERE p.setting = 'snf')::int AS snf_facilities,
+               count(*) FILTER (WHERE p.setting = 'hha')::int AS hha_agencies,
+               count(*) FILTER (WHERE p.setting = 'hospice')::int AS hospice_agencies
+          FROM rollup_pac_market_share p JOIN latest_pac l ON l.setting = p.setting AND l.year = p.data_year
+         WHERE p.geo_level = 'county' GROUP BY 1),
       acs_meta AS (SELECT vintage FROM geo_meta WHERE key = 'acs'),
       lic AS (
         SELECT county_fips, count(*)::int AS homes, sum(capacity)::int AS beds, max(as_of)::text AS as_of
@@ -235,9 +245,10 @@ export const MARKET_JOBS: MarketJob[] = [
              s.reference_period, s.hha_providers, s.hha_users, s.hha_users_pct, s.hospice_providers, s.hospice_users, s.hospice_users_pct, s.snf_providers, s.snf_users, s.snf_users_pct,
              v.data_year, v.std_per_capita_total, v.std_per_capita_snf, v.std_per_capita_hha, v.std_per_capita_hospice, v.readmission_rate, v.er_visits_per_1000, v.avg_hcc_score,
              h.data_year, h.hospitals_serving, h.top_hospital_ccn, h.top_hospital_share,
-             p.data_year, p.snf_facilities, p.hha_agencies, p.hospice_agencies,
+             py.year, p.snf_facilities, p.hha_agencies, p.hospice_agencies,
              jsonb_build_object('enrollment', e.period, 'saturation', s.reference_period, 'variation', v.data_year,
-                                'hospital_service_area', h.data_year, 'pac_utilization', p.data_year,
+                                'hospital_service_area', h.data_year, 'pac_utilization', py.year,
+                                'pac_utilization_by_setting', py.by_setting,
                                 'acs', (SELECT vintage FROM acs_meta), 'licensed', lf.as_of),
              a.pop_total, a.pop_65_plus, a.pop_85_plus, a.median_income, a.median_home_value, a.living_alone_65_plus,
              lf.homes, lf.beds
@@ -247,6 +258,7 @@ export const MARKET_JOBS: MarketJob[] = [
         LEFT JOIN var v ON v.geo_code = c.fips
         LEFT JOIN hsa h ON h.county_fips = c.fips
         LEFT JOIN pac p ON p.county_fips = c.fips
+        LEFT JOIN pac_years py ON true
         LEFT JOIN census_acs_county a ON a.fips = c.fips
         LEFT JOIN lic lf ON lf.county_fips = c.fips`,
   },

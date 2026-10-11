@@ -85,7 +85,8 @@ export default function ProviderDetail() {
   const { data: utilizations = [], isLoading: loadingUtil } = useQuery({
     queryKey: ['providerUtilAll', npi],
     queryFn: async () => {
-      const rows = await base44.entities.ProviderServiceUtilization.filter({ npi });
+      // The entity API returns 100 rows unless asked for more; a provider with many HCPCS codes or partners has more.
+      const rows = await base44.entities.ProviderServiceUtilization.filter({ npi }, '-data_year', 5000);
       return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0, total_submitted_charges: (r.average_submitted_chrg_amt || 0) * (r.total_services || 1) }));
     },
     enabled: !!npi,
@@ -93,7 +94,7 @@ export default function ProviderDetail() {
 
   const { data: referrals = [], isLoading: loadingRef } = useQuery({
     queryKey: ['providerRefAll', npi],
-    queryFn: () => base44.entities.CMSReferral.filter({ npi }),
+    queryFn: () => base44.entities.CMSReferral.filter({ npi }, '-total_referrals', 5000),
     enabled: !!npi,
   });
 

@@ -74,8 +74,10 @@ export function createAuthRouter(deps: AccountDeps) {
   const passwordMatches = async (password: string, hash: string) =>
     (await deps.verifyPassword(password, hash)) && Buffer.byteLength(password, "utf8") <= MAX_PASSWORD_BYTES;
 
-  const audit = (req: Request, action: string, actorEmail: string | null, target: Pick<UserRow, "id" | "email"> | null, details: Record<string, unknown> = {}) =>
-    deps.audit({
+  // Account events carry the target's organization, so its owners see them on their activity feed.
+  const audit = async (req: Request, action: string, actorEmail: string | null, target: Pick<UserRow, "id" | "email"> | null, details: Record<string, unknown> = {}) => {
+    const orgId = typeof details.org_id === "number" ? details.org_id : target ? (await deps.orgs.membershipOf(target.id).catch(() => null))?.org_id ?? null : null;
+    return deps.audit({
       event_type: ACCOUNT_EVENT,
       action,
       user_email: actorEmail,
@@ -83,7 +85,9 @@ export function createAuthRouter(deps: AccountDeps) {
       entity_id: target?.id ?? null,
       details: { target_email: target?.email ?? null, ...details },
       ip_address: clientIp(req),
+      org_id: orgId,
     });
+  };
 
   router.get("/options", (_req, res) => {
     res.json({ emailReset: deps.mailerConfigured() && !!deps.baseUrl() });
@@ -121,7 +125,15 @@ export function createAuthRouter(deps: AccountDeps) {
       }
       // Each signup starts its own organization (in trial) with this person as
       // its owner; the account itself still waits for approval or a checkout.
-      const org = await deps.orgs.createWithOwner({ name: orgNameFor({ organization_name: req.body?.organization_name, email, full_name }), ownerUserId: user.id, termsVersion: TERMS_VERSION });
+      // If the organization can't be made, the account goes too: one stranded
+      // without an organization could neither work nor sign up again.
+      let org: { id: number; name: string };
+      try {
+        org = await deps.orgs.createWithOwner({ name: orgNameFor({ organization_name: req.body?.organization_name, email, full_name }), ownerUserId: user.id, termsVersion: TERMS_VERSION });
+      } catch (e) {
+        await repo.delete(user.id, { ifStatus: ["pending"] }).catch(() => {});
+        throw e;
+      }
       deps.onUserChanged(user.id);
       await audit(req, "signup", email, user, { org_id: org.id, organization: org.name, terms_version: TERMS_VERSION });
       // Signed in so the "awaiting approval" screen can watch for approval.

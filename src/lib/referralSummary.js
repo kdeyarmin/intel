@@ -45,10 +45,19 @@ export function eligibilityLabels(orderReferring) {
 
 /** One or two plain sentences for AI prompts; never invents a number. */
 export function describeReferrals(referrals = [], orderReferring = null) {
+  return describeSnapshot(latestReferralSnapshot(referrals), orderReferring);
+}
+
+/**
+ * The same sentences from an already-aggregated snapshot
+ * ({ year, total_referrals, partners }, as latestReferralSnapshot returns), so a
+ * caller that holds the snapshot doesn't have to rebuild pair rows (which loses
+ * the partner count).
+ */
+export function describeSnapshot(latest, orderReferring = null) {
   const parts = [];
-  const latest = latestReferralSnapshot(referrals);
   if (latest) {
-    parts.push(`Shared Medicare patients (CMS shared-patient patterns, not confirmed referrals; data year ${latest.year}): ${latest.total_referrals.toLocaleString()} shared-patient encounters with ${latest.partners.toLocaleString()} partner providers.`);
+    parts.push(`Shared Medicare patients (CMS shared-patient patterns, not confirmed referrals; data year ${latest.year}): ${(Number(latest.total_referrals) || 0).toLocaleString()} shared-patient encounters with ${(Number(latest.partners) || 0).toLocaleString()} partner providers.`);
   } else {
     parts.push('No shared-patient data on file.');
   }

@@ -46,8 +46,9 @@ export default function ResetPassword() {
     setLoading(true);
     try {
       const user = await base44.auth.resetPassword(token, password, invite ? fullName : undefined);
-      adoptSession(user);
-      navigate(user.status === 'pending' ? '/pending' : '/', { replace: true });
+      // Wait for the full session (organization, roles) before leaving, so the first page sees it.
+      const session = await adoptSession(user);
+      navigate((session ?? user).status === 'pending' ? '/pending' : '/', { replace: true });
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.');
       setLoading(false);
