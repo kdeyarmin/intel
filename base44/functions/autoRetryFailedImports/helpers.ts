@@ -97,6 +97,8 @@ export function nextRetryDueAt(
     return new Date(last.getTime() + hours * 60 * 60 * 1000);
 }
 
+export const SELF_RESUMING_IMPORT_TYPES: ReadonlySet<string> = new Set(['nppes_registry', 'nppes_flat_file', 'nppes_registry_file']);
+
 export type RetryDecision =
     | { eligible: true; reason: 'retryable_failure'; attemptCount: number }
     | { eligible: false; reason: string };
@@ -113,6 +115,10 @@ export function shouldRetryBatch(
         // The NPPES crawler has its own retry path (manageCrawlerRetries +
         // superviseNPPESCrawler). Skip here so we don't double-trigger.
         return { eligible: false, reason: 'nppes_handled_elsewhere' };
+    }
+    if (SELF_RESUMING_IMPORT_TYPES.has(String(batch.import_type ?? ''))) {
+        // Mirrors SELF_RESUMING_IMPORT_TYPES in server/lib/scheduling.ts.
+        return { eligible: false, reason: 'self_resuming_import_type' };
     }
 
     const params = (batch.retry_params as Record<string, unknown> | undefined) ?? {};

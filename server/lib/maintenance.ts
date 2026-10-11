@@ -14,6 +14,7 @@ import { db } from "../db";
 import { importBatches, auditEvents } from "../db/schema";
 import { eq, sql } from "drizzle-orm";
 import { endedWithoutFinishing } from "./importProgress";
+import { SELF_RESUMING_IMPORT_TYPES } from "./scheduling";
 import {
   MAX_AUTO_RESUMES,
   MAX_AUTO_RETRY_ATTEMPTS,
@@ -36,7 +37,7 @@ export const STALLED_AFTER_MS = 2 * 60 * 60 * 1000;
 // flat-file imports resume from a byte offset that triggerImport's flat-file
 // path doesn't honor (it would restart from 0). They self-chain and are
 // recovered on startup instead.
-export const SELF_RESUMING_IMPORT_TYPES: ReadonlySet<string> = new Set(["nppes_registry", "nppes_flat_file", "nppes_registry_file"]);
+export { SELF_RESUMING_IMPORT_TYPES };
 
 // Synthetic admin used when an internal worker calls handleTriggerImport. Real
 // human admin credentials are still enforced at the HTTP boundary
