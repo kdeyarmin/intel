@@ -4,6 +4,8 @@ import { runAssistantTurn, usageUnits, apiErrorMessage, buildParams, type RunTur
 import { ASSISTANT_CONFIG } from "../server/lib/assistant/config";
 import { SYSTEM_PROMPT } from "../server/lib/assistant/prompt";
 import type { ToolDeps } from "../server/lib/assistant/tools";
+import { renderTranscript, replayHistory } from "../server/lib/assistant/render";
+import type { MessageRow, TurnRow } from "../server/lib/assistant/store";
 import { scriptedStreams, text, toolCall, withStop, type Step } from "./helpers/assistantHarness";
 
 function deps(overrides: Partial<ToolDeps> = {}): ToolDeps {
@@ -132,6 +134,17 @@ describe("runAssistantTurn", () => {
     const result = await runAssistantTurn(input);
     expect(result.status).toBe("error");
     expect(toolDeps.listLeadLists).not.toHaveBeenCalled();
+  });
+
+  it("reports an answer cut off by max_tokens, keeping its text for display but not for replay", async () => {
+    const { input, persisted } = setup([withStop(text("The top cardiologists are Dr Chen and"), "max_tokens")]);
+    const result = await runAssistantTurn(input);
+    expect(result).toMatchObject({ status: "error", error: "The answer was cut off. Try asking for less at once." });
+    expect(persisted.at(-1)).toEqual({ role: "assistant", content: [{ type: "text", text: "The top cardiologists are Dr Chen and", citations: null }] });
+    const turns = [{ id: 1, status: result.status }] as TurnRow[];
+    const rows = persisted.map((p, i) => ({ id: i + 1, conversation_id: 3, turn_id: 1, seq: i + 1, role: p.role, content: p.content })) as MessageRow[];
+    expect(replayHistory(turns, rows)).toEqual([]);
+    expect(renderTranscript(turns, rows, [])[0].items).toEqual([{ type: "text", text: "The top cardiologists are Dr Chen and" }]);
   });
 
   it("marks the turn interrupted when the user stops it, keeping the text shown so far", async () => {

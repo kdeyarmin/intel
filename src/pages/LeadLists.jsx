@@ -169,16 +169,16 @@ export default function LeadLists() {
   );
 }
 
-// Detail lookups go in NPI chunks with a row budget per NPI; one capped
-// $in over thousands of NPIs left most members without details.
-const NPI_CHUNK = 200;
-async function fetchByNpis(entity, npis, rowsPerNpi) {
-  const rows = [];
-  for (let i = 0; i < npis.length; i += NPI_CHUNK) {
-    const chunk = npis.slice(i, i + NPI_CHUNK);
-    rows.push(...await entity.filter({ npi: { $in: chunk } }, undefined, chunk.length * rowsPerNpi));
+// The server picks each member's detail rows per NPI. A row limit shared by a
+// chunk of NPIs let one NPI with hundreds of rows leave the others blank.
+const DETAIL_CHUNK = 500; // getLeadListMemberDetails' per-call maximum
+async function fetchMemberDetails(npis) {
+  const out = { providers: [], scores: [], locations: [], utilizations: [], referrals: [], taxonomies: [] };
+  for (let i = 0; i < npis.length; i += DETAIL_CHUNK) {
+    const { data } = await base44.functions.invoke('getLeadListMemberDetails', { npis: npis.slice(i, i + DETAIL_CHUNK) });
+    for (const key of Object.keys(out)) out[key].push(...(data?.[key] || []));
   }
-  return rows;
+  return out;
 }
 
 /** First row per NPI, preferring rows that pass `prefer`. */
@@ -211,14 +211,9 @@ function ViewListDialog({ listId, listName }) {
       if (members.length === 0) { setLeads([]); return; }
 
       const npis = [...new Set(members.map(m => m.npi))];
-      const [providers, scores, locations, utilizations, referrals, taxonomies] = await Promise.all([
-        fetchByNpis(base44.entities.Provider, npis, 1),
-        fetchByNpis(base44.entities.LeadScore, npis, 2),
-        fetchByNpis(base44.entities.ProviderLocation, npis, 5),
-        fetchByNpis(base44.entities.ProviderServiceUtilization, npis, 10).then(rows => rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }))),
-        fetchByNpis(base44.entities.CMSReferral, npis, 5),
-        fetchByNpis(base44.entities.ProviderTaxonomy, npis, 5),
-      ]);
+      const details = await fetchMemberDetails(npis);
+      const { providers, scores, locations, referrals, taxonomies } = details;
+      const utilizations = details.utilizations.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
 
       const providerOf = firstByNpi(providers);
       const scoreOf = firstByNpi(scores);

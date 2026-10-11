@@ -114,6 +114,30 @@ describe('401 handling', () => {
     expect(events).toEqual([]);
   });
 
+  it.each([
+    ['deleting a conversation', () => base44.assistant.deleteConversation(5)],
+    ['asking the assistant', () => base44.assistant.streamMessage(5, 'Hi', { onEvent: () => {} })],
+    ['uploading a file', () => base44.integrations.Core.UploadFile(new Blob(['x']))],
+  ])("ignores an old session's 401 from %s that arrives after signing in again", async (_, call) => {
+    let finishOld;
+    vi.stubGlobal('fetch', vi.fn(() => new Promise((resolve) => {
+      finishOld = () => resolve({ ok: false, status: 401, statusText: 'x', json: () => Promise.resolve({}) });
+    })));
+    const old = call();
+
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(200, { id: 1, token: 'fresh' })));
+    await base44.auth.login('a@b.c', 'right');
+
+    finishOld();
+    await expect(old).rejects.toMatchObject({ status: 401 });
+    expect(events).toEqual([]);
+
+    // A 401 for the current session still signs the user out.
+    vi.stubGlobal('fetch', vi.fn(() => jsonResponse(401, {})));
+    await expect(call()).rejects.toMatchObject({ status: 401 });
+    expect(events).toEqual(['expired']);
+  });
+
   it('does nothing while already on the login page', async () => {
     window.history.pushState({}, '', '/login');
     vi.stubGlobal('fetch', vi.fn(() => jsonResponse(401, { message: 'nope' })));

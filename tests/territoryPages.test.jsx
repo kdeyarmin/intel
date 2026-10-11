@@ -123,6 +123,22 @@ describe('CountyIntelligence', () => {
     expect(screen.getByText('Hilltop Hospice').closest('a')).toBeNull();
   });
 
+  it('says when the provider list is capped, even when nothing else was sampled', async () => {
+    const providers = Array.from({ length: 200 }, (_, i) => ({ npi: String(1000000100 + i), name: `Provider ${i}`, specialty: 'Cardiology', score: 300 - i }));
+    const capped = {
+      ...COUNTY,
+      summary: { ...COUNTY.summary, totalProviders: 300, providersExact: true, practiceLocations: null, sampledProviders: 300 },
+      sample: { sampled: false, detail_limit: 1000, details_cover_all: true, facilities_capped: false, providers_capped: true, provider_limit: 200, providers_found: 300 },
+      providers,
+    };
+    invoke.mockReset().mockImplementation((fn) => Promise.resolve(fn === 'getGeoCounties' ? { counties: [{ fips: '42003', name: 'Allegheny County' }] } : capped));
+    renderAt('/CountyIntelligence?state=PA&county=42003', CountyIntelligence, '/CountyIntelligence');
+    await screen.findByRole('heading', { name: 'Allegheny County, PA' });
+    expect(screen.getByText(/The provider list shows the 200 highest-scored of 300 providers\./)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show the top 200' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show all 200' })).toBeNull();
+  });
+
   it('drops the county when the state changes, and does not bring it back', async () => {
     // Radix Select needs these in jsdom.
     Element.prototype.hasPointerCapture ??= () => false;

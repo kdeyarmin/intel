@@ -143,7 +143,7 @@ export default function CountyIntelligence() {
             <Badge variant="outline" className="text-slate-400">{data.zip_areas} ZIP areas</Badge>
             {isFetching && <span className="text-xs text-slate-400">Refreshing…</span>}
           </div>
-          {(data.sample?.sampled || !data.sample?.details_cover_all || data.sample?.facilities_capped) && (
+          {(data.sample?.sampled || !data.sample?.details_cover_all || data.sample?.facilities_capped || data.sample?.providers_capped) && (
             <p className="flex items-start gap-1.5 text-xs text-slate-400">
               <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
               {data.sample.sampled
@@ -151,6 +151,7 @@ export default function CountyIntelligence() {
                 : ''}
               {!data.sample.details_cover_all && ` Referrals and services are from the first ${data.sample.detail_limit.toLocaleString()} providers.`}
               {data.sample.facilities_capped && ` Facility totals cover the newest ${data.sample.facility_limit.toLocaleString()} facility records.`}
+              {data.sample.providers_capped && ` The provider list shows the ${data.sample.provider_limit.toLocaleString()} highest-scored of ${data.sample.providers_found.toLocaleString()} providers.`}
             </p>
           )}
 
@@ -320,7 +321,7 @@ export default function CountyIntelligence() {
                 </ul>
               )}
               {data.providers.length > 20 && (
-                <Button variant="ghost" size="sm" className="mt-2 text-xs text-cyan-400" onClick={() => toggle('prov')}>{showAll.prov ? 'Show fewer' : `Show all ${data.providers.length}`}</Button>
+                <Button variant="ghost" size="sm" className="mt-2 text-xs text-cyan-400" onClick={() => toggle('prov')}>{showAll.prov ? 'Show fewer' : data.sample?.providers_capped ? `Show the top ${data.providers.length}` : `Show all ${data.providers.length}`}</Button>
               )}
             </CardContent>
           </Card>

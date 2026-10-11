@@ -84,6 +84,15 @@ export function createAdminUsersRouter(deps: AccountDeps) {
     return user;
   }
 
+  /**
+   * For a status-conditional write that matched nothing because the account
+   * changed after it was read: 404 if it was deleted, otherwise 409.
+   */
+  async function changedMeanwhile(r: UserRepo, id: number, message: string): Promise<never> {
+    if (!(await r.findById(id))) throw new HttpError(404, "User not found");
+    throw new HttpError(409, message);
+  }
+
   /** Loads the target and checks the guards while admin rows are locked. */
   async function guarded<T>(req: AuthRequest, action: AdminAction, fn: (target: UserRow, r: UserRepo) => Promise<T>, newRole?: "user" | "admin"): Promise<T> {
     return repo.withAdminLock(async (activeAdmins, r) => {
@@ -180,9 +189,13 @@ export function createAdminUsersRouter(deps: AccountDeps) {
   }));
 
   router.post("/:id/approve", handle(async (req, res) => {
+    const notPending = "Only accounts awaiting approval can be approved";
     const target = await load(repo, req.params.id as string);
-    if (target.status !== "pending") throw new HttpError(409, "Only accounts awaiting approval can be approved");
-    const updated = await repo.update(target.id, { status: "active", approved_at: new Date(), approved_by: req.user!.email });
+    if (target.status !== "pending") throw new HttpError(409, notPending);
+    // Still pending is checked in the same statement, so when two admins
+    // approve at once only one sends the email and records the approval.
+    const updated = await repo.update(target.id, { status: "active", approved_at: new Date(), approved_by: req.user!.email }, { ifStatus: ["pending"] });
+    if (!updated) await changedMeanwhile(repo, target.id, notPending);
     deps.onUserChanged(target.id);
     await audit(req, "approve", target);
     const base = deps.baseUrl();
@@ -204,11 +217,13 @@ export function createAdminUsersRouter(deps: AccountDeps) {
   }));
 
   router.post("/:id/enable", handle(async (req, res) => {
+    const notDisabled = "This account isn't disabled";
     const target = await load(repo, req.params.id as string);
-    if (target.status !== "disabled") throw new HttpError(409, "This account isn't disabled");
+    if (target.status !== "disabled") throw new HttpError(409, notDisabled);
     // An account disabled before anyone approved it goes back to awaiting approval.
     const status = target.approved_at ? "active" : "pending";
-    const updated = await repo.update(target.id, { status, disabled_at: null, disabled_reason: null });
+    const updated = await repo.update(target.id, { status, disabled_at: null, disabled_reason: null }, { ifStatus: ["disabled"] });
+    if (!updated) await changedMeanwhile(repo, target.id, notDisabled);
     deps.onUserChanged(target.id);
     await audit(req, "enable", target, { status });
     res.json({ user: adminUserView(updated!) });
@@ -241,7 +256,11 @@ export function createAdminUsersRouter(deps: AccountDeps) {
   // Only for accounts that never got in (pending signups, unaccepted invites).
   router.delete("/:id", handle(async (req, res) => {
     const target = await guarded(req, "delete", async (t, r) => {
-      await r.delete(t.id);
+      // Only while still never approved, checked in the same statement: an
+      // approval or an accepted invite that lands first keeps the account.
+      if (!(await r.delete(t.id, { ifStatus: ["pending", "invited"] }))) {
+        await changedMeanwhile(r, t.id, "Only accounts that were never approved can be deleted. Disable this account instead.");
+      }
       await audit(req, "delete", t, { status: t.status });
       return t;
     });

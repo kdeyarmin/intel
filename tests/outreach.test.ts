@@ -211,4 +211,17 @@ describe("SendGrid event webhook", () => {
     expect(mapSendgridEvent({ event: "processed", message_id: "12" })).toBeNull();
     expect(mapSendgridEvent({ event: "open" })).toBeNull();
   });
+
+  it("keeps suppression events from direct sends, which carry no message id", () => {
+    expect(mapSendgridEvent({ event: "bounce", email: "x@y.org", reason: "550" })).toMatchObject({
+      messageId: null, email: "x@y.org", suppressReason: "bounced",
+    });
+    expect(mapSendgridEvent({ event: "spamreport", email: "x@y.org" })).toMatchObject({ messageId: null, suppressReason: "spam_report" });
+    expect(mapSendgridEvent({ event: "unsubscribe", email: "x@y.org" })).toMatchObject({ messageId: null, suppressReason: "unsubscribed" });
+    expect(mapSendgridEvent({ event: "group_unsubscribe", email: "x@y.org" })).toMatchObject({ messageId: null, suppressReason: "unsubscribed" });
+    // Nothing to do without an id or an address to suppress.
+    expect(mapSendgridEvent({ event: "delivered", email: "x@y.org" })).toBeNull();
+    expect(mapSendgridEvent({ event: "bounce" })).toBeNull();
+    expect(mapSendgridEvent(null as any)).toBeNull();
+  });
 });
