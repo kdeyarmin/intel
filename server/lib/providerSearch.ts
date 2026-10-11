@@ -204,6 +204,8 @@ export function mergeResults(results: Array<{ query: SearchQuery; rows: any[] }>
 
 /** NPIs (from `npis`) with a location in `state`. Bounded by the NPI list. */
 export const STATE_FILTER_SQL = "SELECT DISTINCT npi FROM provider_locations WHERE npi = ANY($1) AND state = $2";
+/** The same, counting only practice locations (a mailing address there doesn't count). */
+export const PRACTICE_STATE_FILTER_SQL = "SELECT DISTINCT npi FROM provider_locations WHERE npi = ANY($1) AND state = $2 AND location_type = 'Practice'";
 export const ENTITY_FILTER_SQL = "SELECT npi FROM providers WHERE npi = ANY($1) AND entity_type = $2";
 
 export interface ProviderSearchResult {
@@ -255,10 +257,12 @@ export function specialtyPatterns(input: { group?: string | null; taxonomyCode?:
  * Providers whose primary taxonomy is in a specialty group, optionally in a
  * state. Reads a bounded candidate set from the taxonomy index (no sort, no
  * join), then checks the state in chunks. `truncated` means more may exist.
+ * Any location in the state counts, unless `practiceOnly` asks for a practice
+ * location there (as the territory map does).
  */
 export async function searchBySpecialty(
   client: any,
-  input: { group?: string | null; taxonomyCode?: string | null; state?: string | null; entityType?: string | null; limit?: number },
+  input: { group?: string | null; taxonomyCode?: string | null; state?: string | null; entityType?: string | null; limit?: number; practiceOnly?: boolean },
 ): Promise<{ providers: any[]; truncated: boolean; scanned: number } | null> {
   const patterns = specialtyPatterns(input);
   if (!patterns) return null;
@@ -280,7 +284,7 @@ export async function searchBySpecialty(
     let chunk = candidates.slice(i, i + SPECIALTY_CHUNK);
     scanned += chunk.length;
     if (state) {
-      const { rows: inState } = await client.query(STATE_FILTER_SQL, [chunk.map((r: any) => r.npi), state]);
+      const { rows: inState } = await client.query(input.practiceOnly ? PRACTICE_STATE_FILTER_SQL : STATE_FILTER_SQL, [chunk.map((r: any) => r.npi), state]);
       const keep = new Set(inState.map((r: any) => r.npi));
       chunk = chunk.filter((r: any) => keep.has(r.npi));
     }

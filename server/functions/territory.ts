@@ -5,7 +5,7 @@ import { pool } from "../db";
 import { withTimeoutClient, isStatementTimeout } from "../lib/pgClient";
 import { coordsFor, getGeoIndex, zipToCounty } from "../lib/geo";
 import { normalizeEntityType, specialtyGroupFor, specialtyGroupLabel } from "../lib/specialtyGroups";
-import { ENTITY_FILTER_SQL, normalizeStateFilter, searchBySpecialty } from "../lib/providerSearch";
+import { ENTITY_FILTER_SQL, PRACTICE_STATE_FILTER_SQL, normalizeStateFilter, searchBySpecialty } from "../lib/providerSearch";
 import { countyDensity, pickScore, providerName, stateCountsFromStats, utilizationByNpi } from "../lib/territory";
 
 const DEFAULT_LIMIT = 500;
@@ -73,10 +73,7 @@ async function chooseNpis(client: any, state: string | null, limit: number, enti
     const fresh = rows.map((r: any) => r.npi as string).filter((n: string) => !seen.has(n) && seen.add(n));
     let keep = fresh;
     if (state && fresh.length) {
-      const { rows: inState } = await client.query(
-        "SELECT DISTINCT npi FROM provider_locations WHERE npi = ANY($1) AND state = $2 AND location_type = 'Practice'",
-        [fresh, state],
-      );
+      const { rows: inState } = await client.query(PRACTICE_STATE_FILTER_SQL, [fresh, state]);
       const ok = new Set(inState.map((r: any) => r.npi));
       keep = fresh.filter((n: string) => ok.has(n));
     }
@@ -125,7 +122,9 @@ export async function handleGetTerritoryData(payload: any) {
       let scoredFirst = 0;
       let truncated = true;
       if (group) {
-        const found = await searchBySpecialty(client, { group, state, entityType: entity, limit });
+        // Practice in the state, like the scored path: a mailing address there
+        // would let in a provider who is then plotted at an out-of-state practice.
+        const found = await searchBySpecialty(client, { group, state, entityType: entity, limit, practiceOnly: true });
         if (!found) throw new HttpError(400, "Unknown specialty.");
         npis = found.providers.map((p: any) => p.npi);
         truncated = found.truncated;

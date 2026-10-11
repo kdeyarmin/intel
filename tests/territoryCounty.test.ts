@@ -245,6 +245,31 @@ describe("getTerritoryData", () => {
     expect(db.queries.find((q) => q.sql.includes("CROSS JOIN LATERAL"))!.sql).toMatch(/DESC NULLS LAST,\s+id\s+LIMIT 1/);
   });
 
+  it("keeps a specialty sample to providers who practice in the state", async () => {
+    const base = db.answer;
+    // 1000000005's only PA address is a mailing one (it practices in OH); 1000000001 practices in PA.
+    db.answer = (sql, params) => {
+      if (sql.includes("FROM provider_taxonomies") && sql.includes("LIKE")) {
+        return ["1000000005", "1000000001"].map((npi) => ({ npi, taxonomy_code: "207RC0000X", taxonomy_description: "Internal Medicine, Cardiovascular Disease" }));
+      }
+      if (sql.includes("SELECT DISTINCT npi FROM provider_locations")) {
+        const inPa = sql.includes("location_type = 'Practice'") ? ["1000000001"] : ["1000000001", "1000000005"];
+        return (params[0] as string[]).filter((n) => inPa.includes(n)).map((npi) => ({ npi }));
+      }
+      if (sql.includes("CROSS JOIN LATERAL")) {
+        return [
+          { npi: "1000000001", location_type: "Practice", city: "Pittsburgh", state: "PA", zip: "15213" },
+          { npi: "1000000005", location_type: "Practice", city: "Columbus", state: "OH", zip: "43215" },
+        ].filter((l) => (params[0] as string[]).includes(l.npi));
+      }
+      return base(sql, params);
+    };
+    const { handleGetTerritoryData } = await import("../server/functions/territory");
+    const r: any = await handleGetTerritoryData({ state: "PA", specialty_group: "cardiology", limit: 10 });
+    expect(r.providers.map((p: any) => p.npi)).toEqual(["1000000001"]);
+    expect(r.providers.every((p: any) => p.state === "PA")).toBe(true);
+  });
+
   it("handles all states", async () => {
     const { handleGetTerritoryData } = await import("../server/functions/territory");
     const r: any = await handleGetTerritoryData({ state: "ALL", limit: 3 });
