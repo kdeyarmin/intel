@@ -83,8 +83,8 @@ WHERE a.id > b.id
 --   ON medicare_facilities (facility_type, provider_id) WHERE provider_id IS NOT NULL;
 -- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_medfac_type_name
 --   ON medicare_facilities (facility_type, md5(lower(facility_name))) WHERE provider_id IS NULL AND facility_name IS NOT NULL;
--- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_cms_referrals_npi_year
---   ON cms_referrals (npi, data_year);
+-- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_cms_referrals_npi_referred_year
+--   ON cms_referrals (npi, COALESCE(referred_to_npi, ''), data_year);
 -- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_psu_natural
 --   ON provider_service_utilization (npi, COALESCE(hcpcs_code,''), COALESCE(place_of_service,''), data_year);
 -- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_loc_natural
