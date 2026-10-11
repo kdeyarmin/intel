@@ -134,6 +134,7 @@ describe("getCountyIntelligence", () => {
     expect(svc.sql).not.toMatch(/LIMIT/);
     expect(fac.sql).toMatch(/ORDER BY data_year DESC NULLS LAST, id DESC LIMIT \$4/);
     expect(r.sample.facilities_capped).toBe(false);
+    expect(r.sample.providers_capped).toBe(false);
   });
 
   it("says when the facility list was capped", async () => {
@@ -144,6 +145,21 @@ describe("getCountyIntelligence", () => {
     const r: any = await handleGetCountyIntelligence({ state: "PA", county: "allegheny" });
     expect(r.sample).toMatchObject({ facilities_capped: true, facility_limit: 2000 });
     expect(r.summary.totalFacilities).toBe(2000);
+  });
+
+  it("says when the provider list was capped, below the detail sample", async () => {
+    // 300 providers: under both samples, so only the list cap applies.
+    const base = db.answer;
+    const npis = Array.from({ length: 300 }, (_, i) => String(1000000100 + i));
+    db.answer = (sql, params) => (sql.includes("FROM provider_locations") ? npis.map((npi) => ({ npi }))
+      : sql.includes("FROM providers WHERE npi = ANY") ? (params[0] as string[]).map((npi) => ({ npi, entity_type: "Individual", first_name: "P", last_name: npi, ai_outreach_score: Number(npi.slice(-3)) }))
+      : base(sql, params));
+    const { handleGetCountyIntelligence } = await import("../server/functions/countyIntelligence");
+    const r: any = await handleGetCountyIntelligence({ state: "PA", county: "allegheny" });
+    expect(r.summary).toMatchObject({ totalProviders: 300, providersExact: true });
+    expect(r.sample).toMatchObject({ sampled: false, details_cover_all: true, providers_capped: true, provider_limit: 200, providers_found: 300 });
+    expect(r.providers).toHaveLength(200);
+    expect(r.providers[0]).toMatchObject({ score: 399 }); // highest scored first
   });
 
   it("lists the state's counties when none is chosen", async () => {
