@@ -22,7 +22,9 @@ const URL_DEFAULTS = { type: 'hospital', page: 1 };
 
 export default function Facilities() {
   const [url, setUrl] = useUrlState(URL_DEFAULTS);
-  const type = LOOK[url.type] ? url.type : 'hospital';
+  // Own keys only: `?type=toString` or `__proto__` would otherwise find an
+  // inherited property and render without an icon.
+  const type = Object.hasOwn(LOOK, url.type) ? url.type : 'hospital';
   const look = LOOK[type];
 
   return (

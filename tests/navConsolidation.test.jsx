@@ -69,4 +69,13 @@ describe('Facilities', () => {
     renderAt('/Facilities?type=spaceport', <Facilities />);
     expect(screen.getByTestId('list')).toHaveTextContent('hospital:Hospitals');
   });
+
+  it.each(['toString', 'constructor', '__proto__', 'hasOwnProperty'])(
+    'falls back to hospitals for ?type=%s instead of an inherited property',
+    (type) => {
+      renderAt(`/Facilities?type=${type}`, <Facilities />);
+      expect(screen.getByTestId('list')).toHaveTextContent('hospital:Hospitals');
+      expect(screen.getByRole('button', { name: 'Hospitals' })).toHaveAttribute('aria-pressed', 'true');
+    },
+  );
 });
