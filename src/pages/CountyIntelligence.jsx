@@ -372,7 +372,7 @@ export default function CountyIntelligence() {
                 ) : tab === 'hospitals' ? (
                   <HospitalSourcesTable sources={market.hospital_sources} rollups={market.rollups} countyName={data.county.name} />
                 ) : (
-                  <PacCompetitorsTable competitors={market.competitors} trends={market.trends} coverage={market.coverage} labels={market.labels} rollups={market.rollups} countyName={data.county.name} />
+                  <PacCompetitorsTable competitors={market.competitors} trends={market.trends} coverage={market.coverage} licensed={market.licensed} labels={market.labels} rollups={market.rollups} countyName={data.county.name} />
                 )}
               </TabsContent>
             ))}

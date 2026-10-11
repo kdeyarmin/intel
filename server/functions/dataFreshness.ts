@@ -21,12 +21,24 @@ export async function getTaxonomyStatus() {
     : { loaded: false, message: "The NUCC taxonomy isn't loaded yet. It loads automatically at start-up, or an admin can run npm run nucc:load." };
 }
 
+/** Which Census ACS 5-year bundle is loaded (server/lib/census/acs.ts). */
+export async function getAcsStatus() {
+  const { rows } = await pool.query(
+    `SELECT vintage, row_counts, loaded_at, EXISTS (SELECT 1 FROM census_acs_county) AS complete FROM geo_meta WHERE key = 'acs'`,
+  ).catch(() => ({ rows: [] as any[] }));
+  const meta = rows[0];
+  return meta?.complete
+    ? { loaded: true, vintage: meta.vintage, counts: meta.row_counts, loaded_at: meta.loaded_at, source: "U.S. Census Bureau, American Community Survey 5-year estimates" }
+    : { loaded: false, message: "The Census ACS demographics aren't loaded yet. They load automatically at start-up when the bundle is shipped, or an admin can run npm run acs:load." };
+}
+
 export async function handleGetDataFreshness() {
-  const [rows, rollups, geography, taxonomy] = await Promise.all([
+  const [rows, rollups, geography, taxonomy, demographics] = await Promise.all([
     listDatasetVersions().catch(() => []),
     handleGetRollupStatus().catch(() => ({ jobs: [] })),
     handleGetGeoStatus().catch(() => ({ loaded: false })),
     getTaxonomyStatus().catch(() => ({ loaded: false })),
+    getAcsStatus().catch(() => ({ loaded: false })),
   ]);
   const catalog = getCMSDatasetCatalog().datasets;
   const titles = new Map(catalog.map((d) => [d.id, d.title]));
@@ -55,5 +67,5 @@ export async function handleGetDataFreshness() {
     }
   }
   datasets.sort((a, b) => String(a.label).localeCompare(String(b.label)));
-  return { datasets, rollups: (rollups as any).jobs || [], geography, taxonomy, generated_at: new Date().toISOString() };
+  return { datasets, rollups: (rollups as any).jobs || [], geography, taxonomy, demographics, generated_at: new Date().toISOString() };
 }

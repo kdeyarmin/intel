@@ -301,8 +301,57 @@ export const rollupCountyMarketProfile = pgTable("rollup_county_market_profile",
   hha_agencies: integer("hha_agencies"),
   hospice_agencies: integer("hospice_agencies"),
   as_of: jsonb("as_of"),
+  // Demand (Census ACS) and state-licensed homes (migration 0019).
+  pop_total: integer("pop_total"),
+  pop_65_plus: integer("pop_65_plus"),
+  pop_85_plus: integer("pop_85_plus"),
+  median_income: integer("median_income"),
+  median_home_value: integer("median_home_value"),
+  living_alone_65_plus: integer("living_alone_65_plus"),
+  licensed_homes: integer("licensed_homes"),
+  licensed_beds: integer("licensed_beds"),
 }, (table) => [
   index("idx_rollup_county_profile_state").on(table.state),
+]);
+
+// Census ACS 5-year estimates (server/lib/census/acs.ts). Not exposed via tableMap.
+const acsColumns = {
+  pop_total: integer("pop_total"),
+  pop_65_plus: integer("pop_65_plus"),
+  pop_85_plus: integer("pop_85_plus"),
+  median_income: integer("median_income"),
+  median_home_value: integer("median_home_value"),
+  hh_65_plus: integer("hh_65_plus"),
+  living_alone_65_plus: integer("living_alone_65_plus"),
+};
+export const censusAcsCounty = pgTable("census_acs_county", { fips: varchar("fips", { length: 5 }).primaryKey(), ...acsColumns });
+export const censusAcsZcta = pgTable("census_acs_zcta", { zcta: varchar("zcta", { length: 5 }).primaryKey(), ...acsColumns });
+
+/** State-licensed homes not in CMS files (personal care homes, assisted living), from CSV uploads. */
+export const licensedFacilities = pgTable("licensed_facilities", {
+  id: serial("id").primaryKey(),
+  state: varchar("state", { length: 2 }).notNull(),
+  license_type: varchar("license_type", { length: 60 }).notNull(),
+  facility_key: varchar("facility_key", { length: 64 }).notNull(),
+  license_number: varchar("license_number", { length: 60 }),
+  name: text("name").notNull(),
+  address: text("address"),
+  city: varchar("city", { length: 100 }),
+  zip5: varchar("zip5", { length: 5 }),
+  county_fips: varchar("county_fips", { length: 5 }),
+  capacity: integer("capacity"),
+  status: varchar("status", { length: 60 }),
+  licensee: text("licensee"),
+  phone: varchar("phone", { length: 50 }),
+  source_url: text("source_url"),
+  as_of: date("as_of"),
+  raw_data: jsonb("raw_data"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_licensed_facilities").on(table.state, table.license_type, table.facility_key),
+  index("idx_licensed_facilities_county").on(table.county_fips, table.license_type),
+  index("idx_licensed_facilities_state_type").on(table.state, table.license_type),
 ]);
 
 // Census geography (2020), loaded from server/data/census. Not exposed via tableMap.

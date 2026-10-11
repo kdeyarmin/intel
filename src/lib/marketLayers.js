@@ -18,6 +18,13 @@ export const COUNTY_LAYER_METRICS = [
   { key: 'readmission_rate', label: 'Hospital readmission rate', format: 'percent' },
   { key: 'er_visits_per_1000', label: 'ER visits per 1,000', format: 'rate' },
   { key: 'hospitals_serving', label: 'Hospitals serving residents', format: 'count' },
+  { key: 'pop_65_plus', label: 'Population aged 65+', format: 'count' },
+  { key: 'pop_85_plus', label: 'Population aged 85+', format: 'count' },
+  { key: 'living_alone_65_plus', label: 'People 65+ living alone', format: 'count' },
+  { key: 'median_income', label: 'Median household income', format: 'money' },
+  { key: 'median_home_value', label: 'Median home value', format: 'money' },
+  { key: 'licensed_homes', label: 'Licensed personal care / assisted living homes', format: 'count' },
+  { key: 'licensed_beds', label: 'Licensed personal care / assisted living beds', format: 'count' },
 ];
 
 export const LAYER_BY_KEY = Object.fromEntries(COUNTY_LAYER_METRICS.map((m) => [m.key, m]));

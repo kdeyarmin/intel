@@ -1,4 +1,4 @@
-import { db } from "../db";
+import { db, pool } from "../db";
 import { importBatches, cmsReferrals, cmsOrderReferring, providerServiceUtilization, medicareFacilities, medicareFacilitiesRaw } from "../db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
@@ -180,6 +180,7 @@ const CMS_DATASET_CATALOG = [
   { id: "nppes_weekly_incremental", title: "NPPES Weekly Update (V.2 file)", description: "CMS's weekly NPPES dissemination file: new NPIs, changed records and deactivations for the week. Providers are updated in place, and each NPI's addresses and taxonomies are replaced with the file's. The current file is found on CMS's NPI files page automatically.", category: "Physicians & Clinicians", records: "~100K/week", priority: "high" },
   { id: "nppes_monthly_full", title: "NPPES Monthly Full File (V.2)", description: "The complete NPPES registry (about 1.1 GB zipped, 8M+ records). Replaces every provider, address and taxonomy with the current registry. Needs disk for the download; run on demand.", category: "Physicians & Clinicians", records: "~8.5M", priority: "medium" },
   { id: "cms_order_referring", title: "Order & Referring Providers", description: "Complete list of providers eligible to order and refer Medicare services including Part B, DME, HHA, PMD, and Hospice designations.", category: "Physicians & Clinicians", records: "~2M", priority: "high" },
+  { id: "licensed_facilities", title: "State-Licensed Homes (personal care, assisted living)", description: "Personal care homes, assisted living residences and similar state-licensed homes that CMS files never list. Import a state licensing export as a CSV upload (or an https link): columns are matched by name (name, address, city, state, zip, license number, license type, capacity, status, licensee); set state_filter and license_type for files that don't carry them, and year for the export's date. Each home gets its county from its ZIP and shows on the Facilities page (Licensed Homes) and County Intel's Competitors tab; the county profile counts homes and beds.", category: "Nursing Homes & SNF", records: "varies by state", priority: "high", available: true },
   { id: "physician_shared_patient_patterns", title: "Physician Shared Patient Patterns", description: "Real provider-to-provider relationships: directed pairs of providers who treated the same Medicare beneficiaries within a 30/60/90/180-day window, with shared-patient and encounter counts. Populates referred_to_npi + total_referrals so the Network/County/Dashboard referral features show real relationships. Not on the data.cms.gov data-api — import by supplying a CMS FOIA file_url (the rows must reach the importer as named-field JSON; a headerless FOIA CSV must have a header row / be converted first).", category: "Physicians & Clinicians", records: "~35M", priority: "high" },
   { id: "provider_service_utilization", title: "Physician & Other Practitioners - by Provider and Service", description: "Utilization and payment data for Medicare Part B services by individual provider and HCPCS code.", category: "Physicians & Clinicians", records: "~10M", priority: "high" },
   { id: "medicare_physician_by_provider", title: "Physician & Other Practitioners - by Provider", description: "Aggregate utilization and payment data for Medicare Part B services summarized at the provider level.", category: "Physicians & Clinicians", records: "~1.2M", priority: "high" },
@@ -357,7 +358,7 @@ export async function handleTriggerImport(payload: any, user: any) {
     throw { status: 403, message: "Forbidden: Admin access required" };
   }
 
-  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter, headers } = payload;
+  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter, headers, license_type } = payload;
 
   if (!raw_import_type) {
     throw { status: 400, message: "Missing required field: import_type" };
@@ -539,9 +540,11 @@ export async function handleTriggerImport(payload: any, user: any) {
       batch_id: activeBatchId,
       npi_filter: effNpiFilter,
       state_filter: effStateFilter,
-      as_of: version?.temporalEnd || null,
+      as_of: version?.temporalEnd || (typeof payload.as_of === "string" && /^\d{4}-\d{2}-\d{2}$/.test(payload.as_of) ? payload.as_of : null),
       // Column names for a headerless CSV upload (e.g. the FOIA shared-patient files).
       headers: Array.isArray(headers) && headers.length ? headers.map(String) : undefined,
+      // State licensing files: the license type the file holds when its rows don't say.
+      license_type: typeof license_type === "string" ? license_type.slice(0, 60) : undefined,
     }).catch((e) => console.error(`[triggerImport] CMS import error:`, e.message));
   }, 100);
 
@@ -1189,9 +1192,16 @@ export async function dualWriteFacilityRows(
 // Typed destinations (server/functions/cmsTypedTables.ts): map, drop rows
 // without a key, and upsert on the natural key so a re-import or a newer
 // vintage replaces rather than duplicates or collapses.
-async function insertTypedRows(importType: string, rows: any[], year: number, batchId: number, asOf: string | null | undefined): Promise<{ inserted: number; skipped: number; filtered: number }> {
+async function insertTypedRows(importType: string, rows: any[], year: number, batchId: number, asOf: string | null | undefined, params?: Record<string, unknown> | null): Promise<{ inserted: number; skipped: number; filtered: number }> {
   const route = TYPED_ROUTES[importType];
-  const { rows: mapped, dropped } = mapTypedRows(route, rows, { year, asOf, batchId });
+  let countyForZip: ((zip: string) => string | null) | undefined;
+  if (route.needsGeo) {
+    // State licensing files carry ZIPs, not counties: the Census geography gives each ZIP its county.
+    const { getGeoIndex, zipToCounty } = await import("../lib/geo");
+    const index = await getGeoIndex(pool).catch(() => null);
+    countyForZip = index && index.counties.size > 0 ? (zip) => zipToCounty(index, zip)?.fips ?? null : undefined;
+  }
+  const { rows: mapped, dropped } = mapTypedRows(route, rows, { year, asOf, batchId, params: params ?? null, countyForZip });
   if (mapped.length === 0) return { inserted: 0, skipped: 0, filtered: dropped };
   const columns = Object.keys(getTableColumns(route.table));
   const set = Object.fromEntries(columns.filter((c) => c !== "id" && !route.key.includes(c)).map((c) => [c, sql.raw(`excluded."${c}"`)]));
@@ -1221,9 +1231,9 @@ async function insertTypedRows(importType: string, rows: any[], year: number, ba
   return { inserted, skipped, filtered: dropped };
 }
 
-async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number, opts: { asOf?: string | null } = {}): Promise<{ inserted: number; skipped: number; filtered: number }> {
+async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number, opts: { asOf?: string | null; params?: Record<string, unknown> | null } = {}): Promise<{ inserted: number; skipped: number; filtered: number }> {
   if (rows.length === 0) return { inserted: 0, skipped: 0, filtered: 0 };
-  if (TYPED_ROUTES[importType]) return insertTypedRows(importType, rows, year, batchId, opts.asOf);
+  if (TYPED_ROUTES[importType]) return insertTypedRows(importType, rows, year, batchId, opts.asOf, opts.params);
 
   const CHUNK_SIZE = 500;
   let inserted = 0;
@@ -1392,7 +1402,7 @@ async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | n
       }
       if (!dry_run && rows.length > 0) {
         try {
-          const result = await insertCMSRows(import_type, rows, year, batch_id, { asOf: as_of });
+          const result = await insertCMSRows(import_type, rows, year, batch_id, { asOf: as_of, params });
           totalInserted += result.inserted;
           totalSkipped += result.skipped + result.filtered;
         } catch (e: any) {

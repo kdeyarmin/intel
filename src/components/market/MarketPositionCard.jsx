@@ -52,6 +52,12 @@ export default function MarketPositionCard({ ccn, setting }) {
             ))}
           </ul>
         )}
+        {data.census && (
+          <p className="text-xs text-slate-300">
+            CMS-671 census ({data.census.period_end}): {fmtCount(data.census.total_residents)} residents, {fmtShare(data.census.medicare_pct)} Medicare, {fmtShare(data.census.medicaid_pct)} Medicaid
+            {data.census.ownership_type ? ` · ${data.census.ownership_type}` : ''}{data.census.chain ? ` · ${data.census.chain}` : ''}{data.census.ccrc ? ' · CCRC' : ''}
+          </p>
+        )}
         {data.trend?.length > 1 && (
           <p className="text-xs text-slate-400">
             Trend: {data.trend.map((t) => `${t.data_year} ${fmtShare(t.share, 1)} (${ordinal(t.rank)})`).join(' → ')}

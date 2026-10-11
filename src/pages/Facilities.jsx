@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, Heart, HeartHandshake, Home, HeartPulse, BedDouble, Package, Building } from 'lucide-react';
+import { Building2, Heart, HeartHandshake, Home, HeartPulse, BedDouble, Package, Building, Landmark } from 'lucide-react';
 import FacilityListPage from '@/components/facilities/FacilityListPage';
 import PageTabs from '@/components/layout/PageTabs';
 import { FACILITY_TYPES } from '@/components/layout/navConfig';
@@ -16,6 +16,7 @@ const LOOK = {
   ltch: { title: 'Long-Term Care Hospitals', icon: BedDouble, iconCls: 'text-orange-400' },
   dme: { title: 'DME Suppliers', icon: Package, iconCls: 'text-cyan-400' },
   community_health: { title: 'Community Health Centers', icon: Building, iconCls: 'text-lime-400' },
+  licensed: { title: 'State-Licensed Homes', icon: Landmark, iconCls: 'text-pink-400' },
 };
 
 const URL_DEFAULTS = { type: 'hospital', page: 1 };

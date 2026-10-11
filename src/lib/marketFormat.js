@@ -73,6 +73,7 @@ export function describeVintages(vintages) {
   const labels = {
     enrollment: 'Medicare enrollment', saturation: 'Market saturation', variation: 'Geographic variation',
     hospital_service_area: 'Hospital Service Area', pac_utilization: 'Post-acute utilization',
+    acs: 'Census ACS', licensed: 'State licensing',
   };
   const parts = Object.entries(labels).filter(([k]) => vintages[k]).map(([k, label]) => `${label} ${String(vintages[k]).replace(/ to .*$/, '').slice(0, 10)}`);
   return parts.length ? `Data: ${parts.join('; ')}.` : null;

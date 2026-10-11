@@ -3,6 +3,7 @@
 // row to a typed row, and the natural key the importer upserts on. The
 // mappers are unit-tested on rows captured from the live APIs
 // (tests/fixtures/cms/rows/<import_type>.json).
+import crypto from "crypto";
 import {
   cmsDmeByReferring,
   cmsFacilityAffiliation,
@@ -10,6 +11,7 @@ import {
   cmsHospitalServiceArea,
   cmsHospitalSpendingByClaim,
   cmsLtcFacilityCharacteristics,
+  licensedFacilities,
   cmsMarketSaturation,
   cmsMonthlyEnrollment,
   cmsPacUtilization,
@@ -23,6 +25,10 @@ export interface MapContext {
   /** The last day of the dataset's period (YYYY-MM-DD) when the catalog knows it. */
   asOf?: string | null;
   batchId: number;
+  /** The import's own parameters (state_filter, license_type, file_url) for files that don't carry them. */
+  params?: Record<string, unknown> | null;
+  /** County FIPS for a ZIP (Census geography), for routes that need it. */
+  countyForZip?: (zip: string) => string | null;
 }
 
 export interface TypedRoute {
@@ -30,6 +36,8 @@ export interface TypedRoute {
   /** Columns of the natural key; a row missing any of them is dropped. */
   key: string[];
   map: (row: any, ctx: MapContext) => Record<string, unknown> | null;
+  /** The mapper wants ctx.countyForZip. */
+  needsGeo?: boolean;
 }
 
 // ─── parsing ─────────────────────────────────────────────────────────────────
@@ -372,6 +380,67 @@ export function mapLtcFacilityCharacteristics(row: any, ctx: MapContext) {
   };
 }
 
+// ─── state licensing files (uploads) ────────────────────────────────────────
+
+/** The first present column among aliases, after csvRecords' lower-snake normalization. */
+function pick(row: any, aliases: string[]): unknown {
+  for (const a of aliases) {
+    const v = row[a];
+    if (v != null && String(v).trim() !== "") return v;
+  }
+  return undefined;
+}
+
+export const LICENSE_TYPE_DEFAULT = "personal_care_home";
+
+/** "Personal Care Home" / "ALR" / "assisted-living residence" → a stable key. */
+export function normalizeLicenseType(value: unknown): string {
+  const v = String(value ?? "").trim().toLowerCase();
+  if (!v) return LICENSE_TYPE_DEFAULT;
+  if (/assisted|\balr\b|\balf\b/.test(v)) return "assisted_living";
+  if (/personal care|\bpch\b/.test(v)) return "personal_care_home";
+  if (/memory|dementia|alzheimer/.test(v)) return "memory_care";
+  if (/nursing|skilled|\bsnf\b/.test(v)) return "nursing_home";
+  if (/adult day/.test(v)) return "adult_day";
+  if (/domiciliary|dom care/.test(v)) return "domiciliary_care";
+  return v.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 60) || LICENSE_TYPE_DEFAULT;
+}
+
+/**
+ * A row of a state licensing export (Pennsylvania DHS personal care homes,
+ * assisted living residences, other states' ALF directories). Column names
+ * vary by state, so each field takes its first present alias; the state and
+ * license type can come from the import's parameters when the file has none.
+ * Rows without a license number are keyed by name and ZIP.
+ */
+export function mapLicensedFacility(row: any, ctx: MapContext) {
+  const params = ctx.params ?? {};
+  const name = str(pick(row, ["name", "facility_name", "facility", "home_name", "provider_name", "legal_name", "dba", "licensee_name"]), 500);
+  if (!name) return null;
+  const stateRaw = String(pick(row, ["state", "st", "state_code"]) ?? params.state_filter ?? "").trim().toUpperCase();
+  const state = /^[A-Z]{2}$/.test(stateRaw) ? stateRaw : null;
+  if (!state) return null;
+  const license_type = normalizeLicenseType(pick(row, ["license_type", "licence_type", "facility_type", "type", "category", "program", "service_type"]) ?? params.license_type);
+  const license_number = str(pick(row, ["license_number", "licence_number", "license_no", "license", "license_id", "licensenumber", "certificate_number", "certificate_no", "facility_id", "id"]), 60);
+  const zip = zip5(pick(row, ["zip5", "zip", "zip_code", "zipcode", "postal_code", "postal"]));
+  const facility_key = license_number ?? crypto.createHash("md5").update(`${name.toLowerCase()}|${zip ?? ""}`).digest("hex");
+  const asOf = ctx.asOf ?? (typeof params.as_of === "string" ? params.as_of : null) ?? (ctx.year ? `${ctx.year}-12-31` : null);
+  return {
+    state, license_type, facility_key, license_number, name,
+    address: str(pick(row, ["address", "address_1", "address1", "street", "street_address", "addr"]), 500),
+    city: str(pick(row, ["city", "town", "municipality"]), 100),
+    zip5: zip,
+    county_fips: zip && ctx.countyForZip ? ctx.countyForZip(zip) : null,
+    capacity: int(pick(row, ["capacity", "licensed_capacity", "beds", "licensed_beds", "bed_count", "total_beds", "max_capacity"])),
+    status: str(pick(row, ["status", "license_status", "licence_status"]), 60),
+    licensee: str(pick(row, ["licensee", "owner", "operator", "legal_entity", "licensee_name"]), 500),
+    phone: str(pick(row, ["phone", "telephone", "phone_number"]), 50),
+    source_url: typeof params.file_url === "string" && /^https?:\/\//.test(params.file_url) ? params.file_url.slice(0, 500) : null,
+    as_of: asOf,
+    raw_data: row, import_batch_id: ctx.batchId,
+  };
+}
+
 // ─── routes ──────────────────────────────────────────────────────────────────
 
 export const TYPED_ROUTES: Record<string, TypedRoute> = {
@@ -390,6 +459,7 @@ export const TYPED_ROUTES: Record<string, TypedRoute> = {
   facility_affiliation: { table: cmsFacilityAffiliation, key: ["npi", "facility_type", "facility_ccn"], map: mapFacilityAffiliation },
   medicare_dme_by_referring: { table: cmsDmeByReferring, key: ["npi", "data_year"], map: mapDmeByReferring },
   ltc_facility_characteristics: { table: cmsLtcFacilityCharacteristics, key: ["ccn", "period_end"], map: mapLtcFacilityCharacteristics },
+  licensed_facilities: { table: licensedFacilities, key: ["state", "license_type", "facility_key"], map: mapLicensedFacility, needsGeo: true },
 };
 
 export const TYPED_IMPORT_TYPES: ReadonlySet<string> = new Set(Object.keys(TYPED_ROUTES));

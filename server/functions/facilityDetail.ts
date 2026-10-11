@@ -344,9 +344,37 @@ async function paramQuery(sqlText: string, values: any[], timeoutMs: number = 30
   }
 }
 
+/** State-licensed homes (licensed_facilities), listed like the Medicare facilities but without a detail page. */
+async function listLicensedFacilities(params: any) {
+  const { state, search, page = 1, limit = 50 } = params;
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 50, 200));
+  const safePage = Math.max(1, Number(page) || 1);
+  const offset = (safePage - 1) * safeLimit;
+  const where: string[] = [];
+  const values: any[] = [];
+  if (state) { values.push(String(state).toUpperCase()); where.push(`state = $${values.length}`); }
+  if (search) { values.push(`%${search}%`); where.push(`(name ILIKE $${values.length} OR city ILIKE $${values.length})`); }
+  const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const [rows, counts, states] = await Promise.all([
+    paramQuery(`SELECT facility_key, license_type, license_number, name AS facility_name, address, city, state, zip5 AS zip, county_fips, capacity, status, licensee, phone, as_of::text AS as_of
+                  FROM licensed_facilities ${whereSQL} ORDER BY name ASC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`, [...values, safeLimit, offset], 30000),
+    paramQuery(`SELECT count(*)::int AS count FROM licensed_facilities ${whereSQL}`, values, 30000),
+    paramQuery("SELECT state, count(*)::int AS count FROM licensed_facilities GROUP BY state ORDER BY count DESC LIMIT 60", [], 30000),
+  ]);
+  return {
+    facility_group: "licensed",
+    facilities: rows.map((r: any) => ({ ...r, provider_id: null, quality_rating: null, total_discharges: null, total_payments: null })),
+    total: Number(counts[0]?.count || 0),
+    page: safePage,
+    limit: safeLimit,
+    available_states: states.map((s: any) => ({ state: s.state, count: Number(s.count) })),
+  };
+}
+
 export async function handleListFacilities(params: any) {
   const { facility_group, state, search, page = 1, limit = 50 } = params;
   if (!facility_group) return { error: "facility_group is required" };
+  if (facility_group === "licensed") return listLicensedFacilities(params);
 
   const groupTypes = FACILITY_TYPE_GROUPS[facility_group];
   if (!groupTypes) return { error: `Unknown facility_group: ${facility_group}` };

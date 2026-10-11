@@ -129,7 +129,14 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   files in `server/data/census` (built by `scripts/census/build-census-geo.ts`,
   checked against `manifest.json`), loaded into `geo_*` tables and read through
   `server/lib/geo.ts` (`resolveCounty`, `countyZctas`, `zipToCounty`,
-  `coordsFor`). Don't hardcode coordinates or county lists. Browser code gets
+  `coordsFor`). Don't hardcode coordinates or county lists. Demand data comes
+  the same way: `scripts/census/build-acs.ts --year YYYY` builds the ACS
+  5-year bundle (`census_acs_county.csv.gz`, `census_acs_zcta.csv.gz`,
+  `acs.manifest.json`; no API key, ~300 MB download once a year) that
+  `server/lib/census/acs.ts` loads at boot into `census_acs_*`; the county
+  profile rollup joins it. State-licensed homes (personal care, assisted
+  living) live in `licensed_facilities`, imported from CSV uploads through
+  the typed route `licensed_facilities` (`mapLicensedFacility`). Browser code gets
   map positions from `getZipCoordinates` (`useProviderCoords`) and a
   provider's county from `getGeoContext`.
 - **Scores are never invented.** Territory and County Intel show a provider's

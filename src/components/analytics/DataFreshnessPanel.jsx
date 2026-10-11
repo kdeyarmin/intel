@@ -73,19 +73,22 @@ export default function DataFreshnessPanel({ onlyLoaded = false }) {
             </table>
           </div>
         )}
-        <ReferenceData geography={data?.geography} taxonomy={data?.taxonomy} />
+        <ReferenceData geography={data?.geography} taxonomy={data?.taxonomy} demographics={data?.demographics} />
       </CardContent>
     </Card>
   );
 }
 
 /** The bundled reference data every page relies on: Census geography and the NUCC taxonomy. */
-function ReferenceData({ geography, taxonomy }) {
-  if (!geography && !taxonomy) return null;
+function ReferenceData({ geography, taxonomy, demographics }) {
+  if (!geography && !taxonomy && !demographics) return null;
   const items = [
     geography?.loaded
       ? `U.S. Census ${geography.vintage} geography (${fmtCount(geography.counts?.counties)} counties, ${fmtCount(geography.counts?.zctas)} ZIP areas)`
       : 'Census geography not loaded',
+    demographics?.loaded
+      ? `Census ACS ${demographics.vintage} demographics (${fmtCount(demographics.counts?.counties)} counties, ${fmtCount(demographics.counts?.zctas)} ZIP areas)`
+      : 'Census ACS demographics not loaded',
     taxonomy?.loaded
       ? `NUCC taxonomy ${taxonomy.version} (${fmtCount(taxonomy.counts?.taxonomies)} codes)`
       : 'NUCC taxonomy not loaded',

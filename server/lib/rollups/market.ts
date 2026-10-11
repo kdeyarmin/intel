@@ -192,6 +192,7 @@ export const MARKET_JOBS: MarketJob[] = [
       "saturation_period", "hha_providers", "hha_users", "hha_users_pct", "hospice_providers", "hospice_users", "hospice_users_pct", "snf_providers", "snf_users", "snf_users_pct",
       "variation_year", "std_per_capita_total", "std_per_capita_snf", "std_per_capita_hha", "std_per_capita_hospice", "readmission_rate", "er_visits_per_1000", "avg_hcc_score",
       "hsa_year", "hospitals_serving", "top_hospital_ccn", "top_hospital_share", "pac_year", "snf_facilities", "hha_agencies", "hospice_agencies", "as_of",
+      "pop_total", "pop_65_plus", "pop_85_plus", "median_income", "median_home_value", "living_alone_65_plus", "licensed_homes", "licensed_beds",
     ],
     sql: `
       WITH latest_enroll AS (SELECT max(period) AS period FROM cms_monthly_enrollment WHERE geo_level = 'County' AND period NOT LIKE '%-ALL'),
@@ -224,7 +225,11 @@ export const MARKET_JOBS: MarketJob[] = [
                count(*) FILTER (WHERE setting = 'snf')::int AS snf_facilities,
                count(*) FILTER (WHERE setting = 'hha')::int AS hha_agencies,
                count(*) FILTER (WHERE setting = 'hospice')::int AS hospice_agencies
-          FROM rollup_pac_market_share p, latest_pac l WHERE p.geo_level = 'county' AND p.data_year = l.year GROUP BY 1, 2)
+          FROM rollup_pac_market_share p, latest_pac l WHERE p.geo_level = 'county' AND p.data_year = l.year GROUP BY 1, 2),
+      acs_meta AS (SELECT vintage FROM geo_meta WHERE key = 'acs'),
+      lic AS (
+        SELECT county_fips, count(*)::int AS homes, sum(capacity)::int AS beds, max(as_of)::text AS as_of
+          FROM licensed_facilities WHERE county_fips IS NOT NULL GROUP BY 1)
       SELECT c.fips, c.state, c.name,
              e.period, e.total_benes, e.original_medicare, e.ma_and_other, e.ma_and_other::float8 / NULLIF(e.total_benes, 0), e.aged, e.dual, e.age_85_plus,
              s.reference_period, s.hha_providers, s.hha_users, s.hha_users_pct, s.hospice_providers, s.hospice_users, s.hospice_users_pct, s.snf_providers, s.snf_users, s.snf_users_pct,
@@ -232,12 +237,17 @@ export const MARKET_JOBS: MarketJob[] = [
              h.data_year, h.hospitals_serving, h.top_hospital_ccn, h.top_hospital_share,
              p.data_year, p.snf_facilities, p.hha_agencies, p.hospice_agencies,
              jsonb_build_object('enrollment', e.period, 'saturation', s.reference_period, 'variation', v.data_year,
-                                'hospital_service_area', h.data_year, 'pac_utilization', p.data_year)
+                                'hospital_service_area', h.data_year, 'pac_utilization', p.data_year,
+                                'acs', (SELECT vintage FROM acs_meta), 'licensed', lf.as_of),
+             a.pop_total, a.pop_65_plus, a.pop_85_plus, a.median_income, a.median_home_value, a.living_alone_65_plus,
+             lf.homes, lf.beds
         FROM geo_counties c
         LEFT JOIN enroll e ON e.geo_code = c.fips
         LEFT JOIN sat s ON s.geo_code = c.fips
         LEFT JOIN var v ON v.geo_code = c.fips
         LEFT JOIN hsa h ON h.county_fips = c.fips
-        LEFT JOIN pac p ON p.county_fips = c.fips`,
+        LEFT JOIN pac p ON p.county_fips = c.fips
+        LEFT JOIN census_acs_county a ON a.fips = c.fips
+        LEFT JOIN lic lf ON lf.county_fips = c.fips`,
   },
 ];

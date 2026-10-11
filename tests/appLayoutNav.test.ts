@@ -103,7 +103,7 @@ describe('legacy redirects', () => {
   });
 
   it('send every old facility page to Facilities with its type', () => {
-    for (const { type, legacyPage } of FACILITY_TYPES) {
+    for (const { type, legacyPage } of FACILITY_TYPES.filter((t) => t.legacyPage)) {
       expect(resolveLegacyRedirect(legacyPage)).toBe(`/Facilities?type=${type}`);
     }
   });

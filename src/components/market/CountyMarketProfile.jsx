@@ -60,6 +60,14 @@ export default function CountyMarketProfile({ profile, vintages, rollups, county
           </Card>
         ))}
       </div>
+      {(p.pop_65_plus != null || p.licensed_homes != null) && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Kpi icon={Users} color="text-teal-400" label="Residents aged 65+" value={fmtCount(p.pop_65_plus)} sub={p.pop_total != null && p.pop_65_plus != null ? `${fmtShare(p.pop_65_plus / p.pop_total)} of ${fmtCount(p.pop_total)} residents (ACS)` : 'Census ACS'} />
+          <Kpi icon={HeartPulse} color="text-teal-400" label="Residents aged 85+" value={fmtCount(p.pop_85_plus)} sub={p.living_alone_65_plus != null ? `${fmtCount(p.living_alone_65_plus)} people 65+ live alone` : null} />
+          <Kpi icon={DollarSign} color="text-teal-400" label="Median household income" value={fmtMoney(p.median_income)} sub={p.median_home_value != null ? `Median home ${fmtMoney(p.median_home_value)}` : null} />
+          <Kpi icon={Building2} color="text-pink-400" label="Licensed personal care / assisted living" value={p.licensed_homes != null ? `${fmtCount(p.licensed_homes)} homes` : 'Not loaded'} sub={p.licensed_beds != null ? `${fmtCount(p.licensed_beds)} licensed beds` : 'Import a state licensing export'} />
+        </div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Kpi icon={DollarSign} color="text-emerald-400" label="Standardized spend per beneficiary" value={fmtMoney(p.std_per_capita_total)} sub={p.variation_year ? `Geographic variation ${p.variation_year}` : null} />
         <Kpi icon={Activity} color="text-amber-400" label="Hospital readmission rate" value={fmtShare(p.readmission_rate, 1)} />
