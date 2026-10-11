@@ -11,7 +11,8 @@ vi.mock("../server/db", () => ({ db: {}, pool: {} }));
 import { csvRecords } from "../server/lib/csv";
 import { NPPES_REQUIRED_INDEXES, missingNppesIndexes, nppesDate, nppesRowToRecords, writeNppesRecords } from "../server/lib/nppesWrite";
 import { BOOT_INDEXES } from "../server/lib/bootIndexes";
-import { openNpiDataStream, NPPES_FILE_TYPES } from "../server/functions/importNPPESFile";
+import { openNpiDataStream, NPPES_FILE_TYPES, resolveNppesDir } from "../server/functions/importNPPESFile";
+import { UPLOAD_DIR } from "../server/lib/importSources";
 
 const ZIP = path.join(import.meta.dirname, "fixtures", "nppes", "NPPES_Data_Dissemination_092826_100426_Weekly_V2.zip");
 
@@ -203,5 +204,22 @@ describe("the unique indexes the upserts conflict on", () => {
     expect(await missingNppesIndexes(present([...NPPES_REQUIRED_INDEXES]))).toEqual([]);
     expect(await missingNppesIndexes(present(["uq_prov_loc_natural"]))).toEqual(["uq_prov_tax_natural"]);
     expect(await missingNppesIndexes(present([]))).toEqual([...NPPES_REQUIRED_INDEXES]);
+  });
+});
+
+describe("download folder", () => {
+  // /api/storage serves uploads/ to every signed-in user: a 1.1 GB zip kept there is a download for any member.
+  it("is not inside the uploads folder that is served to signed-in users", () => {
+    const dir = resolveNppesDir(""); // not configured
+    expect(path.relative(UPLOAD_DIR, dir).startsWith("..")).toBe(true);
+    expect(dir).toBe(path.resolve("downloads", "nppes"));
+  });
+
+  it("takes NPPES_DOWNLOAD_DIR, unless it points into uploads", () => {
+    expect(resolveNppesDir("/var/data/nppes", "/srv/app/uploads")).toBe("/var/data/nppes");
+    expect(() => resolveNppesDir("/srv/app/uploads/nppes", "/srv/app/uploads")).toThrow(/served to signed-in users/);
+    expect(() => resolveNppesDir("/srv/app/uploads", "/srv/app/uploads")).toThrow(/served to signed-in users/);
+    // A sibling with the same prefix is outside.
+    expect(resolveNppesDir("/srv/app/uploads-nppes", "/srv/app/uploads")).toBe("/srv/app/uploads-nppes");
   });
 });

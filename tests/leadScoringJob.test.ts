@@ -6,7 +6,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const h = vi.hoisted(() => ({ audits: [] as any[], lockOk: true }));
+const h = vi.hoisted(() => ({ audits: [] as any[], lockOk: true, staleRows: 0, failInsert: false }));
 
 vi.mock("../server/db", () => ({
   pool: {},
@@ -18,7 +18,7 @@ vi.mock("../server/lib/geo", () => ({
 }));
 
 import { DEFAULT_SCORING_RULES } from "../server/lib/leadScoring";
-import { leadScoringDue, leadScoringStatus, runLeadScoring, settleInterruptedLeadScoring, startLeadScoring, waitForLeadScoring } from "../server/lib/leadScoringJob";
+import { leadScoringDue, leadScoringStatus, removeStaleScores, runLeadScoring, settleInterruptedLeadScoring, startLeadScoring, waitForLeadScoring } from "../server/lib/leadScoringJob";
 
 const LOCATIONS = [
   { id: 1, npi: "1111111111", state: "PA", zip: "15213-1234", city: "Pittsburgh", location_type: "Practice" },
@@ -39,6 +39,8 @@ function fakePool() {
     async query(sql: string, params?: any[]) {
       statements.push({ sql, params });
       if (sql.includes("pg_try_advisory_lock")) return { rows: [{ ok: h.lockOk }] };
+      if (sql.startsWith("DELETE FROM lead_scores WHERE id IN")) return { rows: [], rowCount: h.staleRows };
+      if (sql.startsWith("INSERT INTO lead_scores") && h.failInsert) throw new Error("disk full");
       if (sql.startsWith("SELECT min(id)")) return { rows: [{ lo: 1, hi: 5 }] };
       if (sql.includes("FROM provider_locations")) {
         const [lo, hi, states] = params!;
@@ -60,6 +62,8 @@ function fakePool() {
 beforeEach(() => {
   h.audits.length = 0;
   h.lockOk = true;
+  h.staleRows = 0;
+  h.failInsert = false;
 });
 
 describe("runLeadScoring", () => {
@@ -94,6 +98,33 @@ describe("runLeadScoring", () => {
     expect(h.audits[0]).toMatchObject({ event_type: "scoring_run", user_email: "system@maintenance", details: { scored: 1, candidates: 3, states: ["PA"] } });
     expect(sql.at(-1)).toMatch(/pg_advisory_unlock/);
     expect(log.log).toHaveBeenCalledWith(expect.stringMatching(/Scored 1 of 3 providers in PA/));
+  });
+
+  it("removes the older scores a complete run didn't rewrite, after the last batch and before it reports success", async () => {
+    h.staleRows = 7;
+    const { pool, statements } = fakePool();
+    const log = { log: vi.fn(), warn: vi.fn() };
+    const start = new Date("2026-10-11T00:00:00Z");
+    const r = await runLeadScoring(pool, DEFAULT_SCORING_RULES as any, { log, now: () => start });
+    expect(r).toMatchObject({ status: "success", scored: 1, removed: 7 });
+
+    const sql = statements.map((s) => s.sql);
+    const stale = sql.findIndex((s) => s.startsWith("DELETE FROM lead_scores WHERE id IN"));
+    expect(stale).toBeGreaterThan(sql.lastIndexOf("COMMIT"));
+    expect(stale).toBeLessThan(sql.findIndex((s) => s.includes("SET status = 'success'")));
+    // "Older" means before this run began; the rows it wrote are stamped at or after it.
+    expect(statements[stale].sql).toMatch(/last_calculated IS NULL OR last_calculated < \$1/);
+    expect(statements[stale].params![0]).toEqual(start);
+    expect(h.audits[0].details).toMatchObject({ scored: 1, removed: 7 });
+    expect(log.log).toHaveBeenCalledWith(expect.stringMatching(/removed 7 older scores/));
+  });
+
+  it("keeps the older scores when the run fails part-way", async () => {
+    h.failInsert = true;
+    const { pool, statements } = fakePool();
+    const r = await runLeadScoring(pool, DEFAULT_SCORING_RULES as any, { log: { log: vi.fn(), warn: vi.fn() } });
+    expect(r.status).toBe("failed");
+    expect(statements.some((s) => s.sql.startsWith("DELETE FROM lead_scores WHERE id IN"))).toBe(false);
   });
 
   it("refuses to score without a configured state", async () => {
@@ -202,5 +233,22 @@ describe("a run a restart interrupted", () => {
     expect(await settleInterruptedLeadScoring(pool)).toBe(false);
     expect(state.row.status).toBe("running");
     expect(released).toEqual([true]);
+  });
+});
+
+describe("removeStaleScores", () => {
+  it("deletes in batches until a short batch says it is done", async () => {
+    const counts = [20_000, 20_000, 5];
+    const calls: any[][] = [];
+    const client = { query: async (_sql: string, params: any[]) => { calls.push(params); return { rowCount: counts.shift() ?? 0 }; } };
+    const start = new Date("2026-10-11T00:00:00Z");
+    expect(await removeStaleScores(client, start)).toBe(40_005);
+    expect(calls).toEqual([[start, 20_000], [start, 20_000], [start, 20_000]]);
+  });
+
+  it("is one cheap statement when nothing is stale", async () => {
+    const client = { query: vi.fn(async () => ({ rowCount: 0 })) };
+    expect(await removeStaleScores(client, new Date())).toBe(0);
+    expect(client.query).toHaveBeenCalledTimes(1);
   });
 });

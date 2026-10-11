@@ -99,8 +99,13 @@ export async function refreshCatalog(opts: { urls: Record<string, string>; now?:
   const fetcher = opts.fetch ?? fetchJson;
   const result: CatalogRefreshResult = { checked: 0, unresolved: [], updates_available: [], woken: 0, errors: [] };
 
+  const types = Object.keys(opts.urls);
+
   if (!opts.force) {
-    const { rows } = await pool.query("SELECT max(catalog_checked_at) AS last FROM dataset_versions");
+    // Only the rows this check owns: other sources (the NPPES files) stamp catalog_checked_at
+    // too when they look at their own pages, and would otherwise keep the CMS catalogs
+    // from ever being checked on a host that imports NPPES files daily.
+    const { rows } = await pool.query("SELECT max(catalog_checked_at) AS last FROM dataset_versions WHERE import_type = ANY($1)", [types]);
     const last = rows[0]?.last ? new Date(rows[0].last).getTime() : 0;
     if (last && now.getTime() - last < CATALOG_CHECK_INTERVAL_MS) {
       return { ...result, skipped: `checked ${Math.round((now.getTime() - last) / 60000)} minutes ago` };
@@ -126,7 +131,6 @@ export async function refreshCatalog(opts: { urls: Record<string, string>; now?:
   lastFetchFailure = null;
   const index = indexCatalog([...dcat, ...providerItems]);
 
-  const types = Object.keys(opts.urls);
   const { rows: existingRows } = await pool.query("SELECT * FROM dataset_versions WHERE import_type = ANY($1)", [types]);
   const existing = new Map<string, any>(existingRows.map((r: any) => [r.import_type, r]));
   const { rows: activeRows } = await pool.query(

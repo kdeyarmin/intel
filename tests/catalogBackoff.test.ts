@@ -54,3 +54,38 @@ describe("refreshCatalog after a failed fetch", () => {
     expect(good).toHaveBeenCalledTimes(4);
   });
 });
+
+describe("refreshCatalog's daily throttle", () => {
+  // dataset_versions as the database holds it: the CMS rows were last checked two days ago,
+  // the NPPES file row an hour ago (it stamps catalog_checked_at when its own page is read).
+  const rows = [
+    { import_type: "hospital_service_area", catalog_checked_at: new Date(T0.getTime() - 48 * 3600_000) },
+    { import_type: "nppes_weekly_incremental", catalog_checked_at: new Date(T0.getTime() - 3600_000) },
+  ];
+  beforeEach(() => {
+    query.mockImplementation(async (sql: string, params?: unknown[][]) => {
+      if (/max\(catalog_checked_at\)/.test(sql)) {
+        const only = /WHERE import_type = ANY\(\$1\)/.test(sql) ? new Set(params![0]) : null;
+        const times = rows.filter((r) => !only || only.has(r.import_type)).map((r) => r.catalog_checked_at.getTime());
+        return { rows: [{ last: times.length ? new Date(Math.max(...times)) : null }] };
+      }
+      return { rows: [], rowCount: 0 };
+    });
+  });
+
+  it("is not satisfied by another source's check", async () => {
+    const good = vi.fn(async (url: string) => (url.endsWith("data.json") ? { dataset: [] } : []));
+    const r = await refreshCatalog({ urls: { hospital_service_area: "https://data.cms.gov/data-api/v1/dataset/x/data" }, now: T0, fetch: good });
+    expect(r.skipped).toBeUndefined();
+    expect(good).toHaveBeenCalledTimes(2);
+  });
+
+  it("still skips when the CMS rows themselves were checked within the day", async () => {
+    rows[0].catalog_checked_at = new Date(T0.getTime() - 3600_000);
+    const good = vi.fn(async () => ({}));
+    const r = await refreshCatalog({ urls: { hospital_service_area: "https://data.cms.gov/data-api/v1/dataset/x/data" }, now: T0, fetch: good });
+    expect(r.skipped).toMatch(/checked 60 minutes ago/);
+    expect(good).not.toHaveBeenCalled();
+    rows[0].catalog_checked_at = new Date(T0.getTime() - 48 * 3600_000);
+  });
+});

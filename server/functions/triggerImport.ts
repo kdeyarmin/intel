@@ -368,6 +368,18 @@ function retireSnapshotRows(importType: string, batchId: number, opts: { dry_run
     .catch((err) => console.warn(`[triggerImport] retiring stale ${importType} rows:`, err?.message));
 }
 
+/**
+ * The release date a snapshot import's rows are stamped with (`as_of`): the resumed batch's
+ * own, else the last day the newest release covers, else the day it was published. The Care
+ * Compare catalog gives no coverage dates, only the publication date, so without the last
+ * fallback the ZIP service areas and affiliations would carry no vintage at all.
+ */
+export function importAsOf(o: { inherited?: string | null; temporalEnd?: string | null; stated?: string | null; catalogModified?: Date | string | null }): string | null {
+  const modified = o.catalogModified instanceof Date ? (Number.isNaN(o.catalogModified.getTime()) ? null : o.catalogModified.toISOString().slice(0, 10))
+    : typeof o.catalogModified === "string" && /^\d{4}-\d{2}-\d{2}/.test(o.catalogModified) ? o.catalogModified.slice(0, 10) : null;
+  return o.inherited ?? o.temporalEnd ?? o.stated ?? modified ?? null;
+}
+
 export async function handleTriggerImport(payload: any, user: any) {
   if (!user || user.role !== "admin") {
     throw { status: 403, message: "Forbidden: Admin access required" };
@@ -524,7 +536,7 @@ export async function handleTriggerImport(payload: any, user: any) {
     if (!effHeaders && Array.isArray(prevParams.headers) && prevParams.headers.length) effHeaders = prevParams.headers.map(String);
     inheritedAsOf = typeof prevParams.as_of === "string" ? prevParams.as_of : null;
   }
-  const effAsOf = inheritedAsOf ?? version?.temporalEnd ?? null;
+  const effAsOf = importAsOf({ inherited: inheritedAsOf, temporalEnd: version?.temporalEnd, catalogModified: version?.catalogModified });
 
   if (batch_id) {
     await db.update(importBatches).set({

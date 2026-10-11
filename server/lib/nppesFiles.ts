@@ -43,15 +43,33 @@ export function classifyNppesLink(href: string): NppesFile | null {
   return null;
 }
 
+/**
+ * Pure: the date a monthly file was cut, from the text of its link on the NPI files page
+ * ("NPPES Data Dissemination V.2 - September 14, 2026"). CMS cuts it mid-month, so the
+ * last day of the month (all the file name gives) would claim two weeks of data it
+ * doesn't have. Null when the text has no date in the file's own month.
+ */
+export function monthlyCutDate(file: NppesFile, linkText: string): string | null {
+  if (file.kind !== "monthly") return null;
+  for (const m of linkText.matchAll(/([A-Za-z]+)\.?\s*(\d{1,2})\s*,?\s*(\d{4})/g)) {
+    const month = MONTHS.indexOf(m[1].toLowerCase());
+    const day = Number(m[2]);
+    const iso = `${m[3]}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    if (month >= 0 && day >= 1 && day <= 31 && iso.slice(0, 7) === file.periodEnd.slice(0, 7) && iso <= file.periodEnd) return iso;
+  }
+  return null;
+}
+
 /** Pure: every V.2 file linked from the NPI files page, newest first per kind. */
 export function parseNpiFilesPage(html: string): NppesFile[] {
   const out: NppesFile[] = [];
   const seen = new Set<string>();
-  for (const m of html.matchAll(/href\s*=\s*["']([^"']+\.zip)["']/gi)) {
+  for (const m of html.matchAll(/<a\b[^>]*?href\s*=\s*["']([^"']+\.zip)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
     const file = classifyNppesLink(m[1]);
     if (!file || seen.has(file.name)) continue;
     seen.add(file.name);
-    out.push(file);
+    const cut = monthlyCutDate(file, m[2].replace(/<[^>]*>/g, " "));
+    out.push(cut ? { ...file, periodEnd: cut } : file);
   }
   return out.sort((a, b) => b.periodEnd.localeCompare(a.periodEnd));
 }
