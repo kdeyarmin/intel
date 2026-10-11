@@ -7,6 +7,8 @@
 // them. Never point push at a database these have been built on; use the
 // migration runner (scripts/db/migrate.ts) instead.
 
+import { SEARCH_INDEXES } from "./searchIndexes";
+
 export interface BootIndex {
   name: string;
   ddl: string;
@@ -41,6 +43,9 @@ export const BOOT_INDEXES: BootIndex[] = [
   // Bulk email verification picks providers that have an email; only a small
   // share of the ~6M providers do, so a partial index avoids a full scan.
   idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_providers_with_email ON providers (email_analyzed_at NULLS FIRST, id) WHERE email IS NOT NULL AND email <> ''"),
+  // Search (server/lib/providerSearch.ts, locationSearch.ts). The expressions
+  // must match SEARCH_EXPR exactly or the planner won't use them.
+  ...SEARCH_INDEXES.map(idx),
   // Recent events of one type, newest first: account activity on Admin
   // Settings and the maintenance heartbeat. audit_events only grows.
   idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_events_type_created ON audit_events (event_type, created_date DESC)"),
@@ -99,6 +104,11 @@ export async function runBootIndexes(pool: any, log: Log = console): Promise<voi
       return;
     }
 
+    // Trigram search needs pg_trgm (migration 0009 also tries). Without it,
+    // the trigram index build fails and search uses prefix matching.
+    await client.query("CREATE EXTENSION IF NOT EXISTS pg_trgm").catch((e: any) => {
+      log.warn("[DB Index] pg_trgm unavailable; organization search will match name prefixes only:", e.message?.substring(0, 120));
+    });
     const { rows: invalid } = await client.query(
       `SELECT c2.relname AS indexname
          FROM pg_index i

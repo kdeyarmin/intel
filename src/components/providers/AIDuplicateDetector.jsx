@@ -7,6 +7,7 @@ import { Loader2, AlertTriangle, Eye, Info, ShieldAlert, CheckCircle2, Users } f
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { pickPrimaryLocation } from '@/lib/locations';
 
 function DuplicateGroupCard({ group }) {
   const confStyle = {
@@ -60,7 +61,7 @@ export default function AIDuplicateDetector({ providers = [], locations = [], ta
 
     try {
     const sample = providers.slice(0, 100).map(p => {
-      const loc = locations.find(l => l.npi === p.npi && l.is_primary) || locations.find(l => l.npi === p.npi);
+      const loc = pickPrimaryLocation(locations, p.npi);
       const tax = taxonomies.find(t => t.npi === p.npi && t.is_primary) || taxonomies.find(t => t.npi === p.npi);
       return {
         npi: p.npi,

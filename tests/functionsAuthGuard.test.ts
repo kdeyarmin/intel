@@ -67,8 +67,8 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
     expect(PUBLIC_FUNCTIONS.has("admin")).toBe(false);
   });
 
-  it("contains exactly the 28 documented public function names", () => {
-    expect(PUBLIC_FUNCTIONS.size).toBe(28);
+  it("contains exactly the 29 documented public function names", () => {
+    expect(PUBLIC_FUNCTIONS.size).toBe(29);
   });
 
   it("all listed functions are individually verified", () => {
@@ -80,9 +80,10 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
       "getFacilityDetail", "listFacilities", "getProviderCMSData",
       "getLeadListMemberDetails",
       "getCountyIntelligence", "getAvailableStatesCounties", "getComprehensiveReport",
-      "searchProviders", "calculateOutreachScore", "analyzeReferralPathways",
-      "analyzeProviderNetwork", "getDMEProviders", "dmeEmailSearchStatus",
-      "validateProviderNPI", "verifyProviderEmail", "generateScheduledReport",
+      "searchProviders", "searchLocations", "calculateOutreachScore",
+      "analyzeReferralPathways", "analyzeProviderNetwork", "getDMEProviders",
+      "dmeEmailSearchStatus", "validateProviderNPI", "verifyProviderEmail",
+      "generateScheduledReport",
     ];
     for (const fn of expected) {
       expect(PUBLIC_FUNCTIONS.has(fn), `Expected "${fn}" to be in PUBLIC_FUNCTIONS`).toBe(true);

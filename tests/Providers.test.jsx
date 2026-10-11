@@ -10,7 +10,7 @@ import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 
 afterEach(cleanup);
 
-const applied = vi.hoisted(() => ({ textFilters: null, dateRange: null }));
+const applied = vi.hoisted(() => ({ textFilters: null, dateRange: null, stateOptions: null }));
 
 // ─── Module mocks ────────────────────────────────────────────────────────────
 
@@ -28,7 +28,9 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('../src/components/search/TypeAheadSearch', () => ({
   default: ({ value, onChange }) => <input aria-label="Search" value={value} onChange={(e) => onChange(e.target.value)} />,
 }));
-vi.mock('../src/components/filters/ProviderAdvancedFilters', () => ({ default: () => null }));
+vi.mock('../src/components/filters/ProviderAdvancedFilters', () => ({
+  default: ({ stateOptions }) => { applied.stateOptions = stateOptions; return null; },
+}));
 vi.mock('../src/components/filters/SortControl', () => ({ default: () => null }));
 vi.mock('../src/components/exports/ExportDialog', () => ({ default: () => null }));
 vi.mock('../src/components/filters/SavedFilterBar', () => ({ default: () => null }));
@@ -51,6 +53,7 @@ vi.mock('../src/components/territory/InteractiveProviderMap', () => ({ default: 
 
 import { useQuery } from '@tanstack/react-query';
 import Providers from '../src/pages/Providers';
+import { US_STATES } from '../src/lib/usStates';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -76,7 +79,7 @@ const makeIndividual = (npi, first, last) => ({
 function setupMocks({ providers = [], scores = [], locations = [], taxonomies = [], savedFilters = [] } = {}) {
   useQuery.mockImplementation(({ queryKey }) => {
     const key = Array.isArray(queryKey) ? queryKey[0] : queryKey;
-    if (key === 'providersPage') return { data: providers, isLoading: false };
+    if (key === 'providersPage') return { data: { providers }, isLoading: false };
     if (key === 'providersPageScores') return { data: scores, isLoading: false };
     if (key === 'providersPageLocations') return { data: locations, isLoading: false };
     if (key === 'providersPageTaxonomies') return { data: taxonomies, isLoading: false };
@@ -282,5 +285,29 @@ describe('Providers page – row selection labels', () => {
     expect(screen.getByRole('checkbox', { name: 'Select Ann Lee' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Select NPI 4444444444' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Select NPI 5555555555' })).toBeInTheDocument();
+  });
+});
+
+describe('Providers page – server search results', () => {
+  it("keeps the server's matches instead of re-filtering them in the browser", () => {
+    // "John Smith" matches no single name column, and the provider's PA
+    // location isn't among the capped locations loaded for the page.
+    setupMocks({ providers: [makeIndividual('6666666666', 'John', 'Smith')], locations: [] });
+    renderProviders('/Providers?q=john%20smith&state=PA');
+    expect(screen.getByText('Smith, John')).toBeInTheDocument();
+  });
+
+  it('offers every state while searching, not just those among the loaded locations', () => {
+    const locations = [{ npi: '6666666666', state: 'PA', location_type: 'Practice' }];
+    setupMocks({ providers: [makeIndividual('6666666666', 'John', 'Smith')], locations });
+    renderProviders('/Providers?q=smith');
+    const searching = applied.stateOptions.map((o) => o.value);
+    expect(searching).toContain('WY');
+    expect(searching).toHaveLength(US_STATES.length);
+    cleanup();
+
+    // The newest-providers view filters the loaded rows, so it offers their states.
+    renderProviders('/Providers');
+    expect(applied.stateOptions).toEqual([{ value: 'PA', label: 'PA' }]);
   });
 });

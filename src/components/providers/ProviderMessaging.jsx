@@ -8,6 +8,7 @@ import { MessageSquare, Send, Loader2, Sparkles, Calendar, Plus, X, CheckCircle2
 import { toast } from 'sonner';
 import { formatDateTimeET, formatDateET } from '../utils/dateUtils';
 import { useAuth } from '@/lib/AuthContext';
+import { pickPrimaryLocation } from '@/lib/locations';
 
 export default function ProviderMessaging({ provider, locations = [] }) {
   // Sending email from CareMetric is admin-only; everyone else drafts here and
@@ -31,7 +32,7 @@ export default function ProviderMessaging({ provider, locations = [] }) {
     : provider.organization_name || provider.npi;
 
   const providerEmail = provider.email;
-  const primaryLoc = locations.find(l => l.is_primary) || locations[0];
+  const primaryLoc = pickPrimaryLocation(locations);
 
   useEffect(() => {
     if (messagesEndRef.current) {

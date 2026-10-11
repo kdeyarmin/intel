@@ -25,6 +25,8 @@ import PageHeader from '../components/shared/PageHeader';
 import QueryErrorState from '../components/shared/QueryErrorState';
 import AddToLeadListDialog from '../components/leadlists/AddToLeadListDialog';
 import { useUrlState } from '@/hooks/useUrlState';
+import { US_STATES } from '@/lib/usStates';
+import { pickPrimaryLocation } from '@/lib/locations';
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -86,19 +88,23 @@ export default function Organizations() {
   // only the newest 500 loaded in the browser). With no search, show the
   // newest organizations.
   const isSearching = debouncedSearch.length >= 2;
-  const { data: providers = [], isLoading, isError, error: loadError, refetch, isPlaceholderData } = useQuery({
-    queryKey: ['organizationsPage', debouncedSearch],
+  // While searching, the state filter runs on the server across every
+  // organization; otherwise it filters the recent ones shown.
+  const searchState = isSearching && url.state !== 'all' ? url.state : null;
+  const { data: result, isLoading, isError, error: loadError, refetch, isPlaceholderData } = useQuery({
+    queryKey: ['organizationsPage', debouncedSearch, searchState],
     placeholderData: keepPreviousData,
     queryFn: async () => {
       if (isSearching) {
         const res = await base44.functions.invoke('searchProviders', {
-          q: debouncedSearch, entity_type: 'Organization', limit: SEARCH_LIMIT,
+          q: debouncedSearch, entity_type: 'Organization', limit: SEARCH_LIMIT, ...(searchState ? { state: searchState } : {}),
         });
-        return res.data?.providers || [];
+        return { providers: res.data?.providers || [], truncated: !!res.data?.truncated, mode: res.data?.mode, degraded: !!res.data?.degraded };
       }
-      return base44.entities.Provider.filter({ entity_type: 'Organization' }, '-created_date', RECENT_LIMIT);
+      return { providers: await base44.entities.Provider.filter({ entity_type: 'Organization' }, '-created_date', RECENT_LIMIT) };
     },
   });
+  const providers = useMemo(() => result?.providers ?? [], [result]);
 
   // Stable key of displayed NPIs so the scoped score fetch refetches with the list.
   const npiKey = useMemo(
@@ -179,8 +185,8 @@ export default function Organizations() {
   const hasActiveFilters = filters.statusFilter !== 'all' || filters.emailFilter !== 'all' || filters.stateFilter !== 'all';
 
   const stateOptions = useMemo(
-    () => [...new Set(locations.map(l => l.state).filter(Boolean))].sort(),
-    [locations],
+    () => (isSearching ? US_STATES : [...new Set(locations.map(l => l.state).filter(Boolean))].sort()),
+    [locations, isSearching],
   );
 
   const currentFilters = { searchTerm, ...filters };
@@ -253,13 +259,15 @@ export default function Organizations() {
         if (filters.emailFilter === 'has_email' && !p.email) return false;
         if (filters.emailFilter === 'no_email' && p.email) return false;
       }
-      if (filters.stateFilter !== 'all') {
+      // A search already filtered by state on the server, across every
+      // location; the loaded locations here are a capped sample.
+      if (filters.stateFilter !== 'all' && !searchState) {
         const locs = locationByNpi[p.npi] || [];
         if (!locs.some(l => l.state === filters.stateFilter)) return false;
       }
       return true;
     });
-  }, [providers, filters, locationByNpi]);
+  }, [providers, filters, locationByNpi, searchState]);
 
   const sortedProviders = useMemo(() => {
     if (sortField === 'default') return filteredProviders;
@@ -313,7 +321,7 @@ export default function Organizations() {
           isPlaceholderData
             ? 'Searching…'
             : isSearching
-            ? `${providers.length.toLocaleString()}${providers.length >= SEARCH_LIMIT ? '+' : ''} organization${providers.length === 1 ? '' : 's'} matching "${debouncedSearch}"`
+            ? `${providers.length.toLocaleString()}${result?.truncated ? '+' : ''} organization${providers.length === 1 ? '' : 's'} ${result?.mode === 'npi' ? 'with an NPI starting with' : result?.mode === 'contains' ? 'containing' : 'starting with'} "${debouncedSearch}"${searchState ? ` in ${searchState}` : ''}${result?.degraded ? ' (search indexes are still being built, so this may be slow or incomplete)' : ''}`
             : `Showing the ${providers.length.toLocaleString()} most recently added organizations — search by name or NPI to find others`
         }
         icon={Building2}
@@ -324,7 +332,7 @@ export default function Organizations() {
         <div className="flex flex-wrap gap-2">
           <ExportDialog
             data={sortedProviders.map(p => {
-              const loc = (locationByNpi[p.npi] || []).find(l => l.is_primary) || (locationByNpi[p.npi] || [])[0];
+              const loc = pickPrimaryLocation(locationByNpi[p.npi]);
               return {
                 npi: p.npi,
                 organization_name: p.organization_name || '',
@@ -408,7 +416,7 @@ export default function Organizations() {
                 value={searchTerm}
                 onChange={setSearchTerm}
                 suggestions={searchSuggestions}
-                placeholder="Search organizations..."
+                placeholder="Search organizations by any part of the name, or NPI"
                 onSuggestionSelect={handleSuggestionSelect}
                 className="flex-1"
               />
@@ -513,7 +521,7 @@ export default function Organizations() {
                     ) : (
                       sortedProviders.map(provider => {
                         const score = getScore(provider.npi);
-                        const provLoc = (locationByNpi[provider.npi] || []).find(l => l.is_primary) || (locationByNpi[provider.npi] || [])[0];
+                        const provLoc = pickPrimaryLocation(locationByNpi[provider.npi]);
                         return (
                           <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-900/5' : ''}>
                             <TableCell>

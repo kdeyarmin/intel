@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { User, MapPin, Phone, Printer, Stethoscope, Mail, Edit, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import EmailValidationBadge from '../emailBot/EmailValidationBadge';
+import { pickPrimaryLocation } from '@/lib/locations';
 
 export default function BasicProfile({ provider, taxonomy, locations }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -47,7 +48,7 @@ export default function BasicProfile({ provider, taxonomy, locations }) {
     updateMutation.mutate(editForm);
   };
 
-  const primaryLocation = locations?.find(l => l.is_primary) || locations?.[0];
+  const primaryLocation = pickPrimaryLocation(locations);
   const primaryTaxonomy = taxonomy?.find(t => t.is_primary) || taxonomy?.[0];
 
   const formatName = () => {

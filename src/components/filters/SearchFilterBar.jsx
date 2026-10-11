@@ -4,16 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, X } from 'lucide-react';
 
-export default function SearchFilterBar({ searchTerm, onSearchChange, filters = [], onReset }) {
+export default function SearchFilterBar({ searchTerm, onSearchChange, filters = [], onReset, placeholder = 'Search by name, NPI, or keyword...' }) {
   const hasActiveFilters = searchTerm || filters.some(f => f.value && f.value !== 'all');
 
   return (
     <div className="space-y-3">
       <div className="flex gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" aria-hidden="true" />
           <Input
-            placeholder="Search by name, NPI, or keyword..."
+            placeholder={placeholder}
+            aria-label={placeholder}
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9"

@@ -33,6 +33,8 @@ const QUICK_LINKS = [
 ];
 
 const isFullNpi = (q) => /^\d{10}$/.test(q);
+// "15213", "15213-1234", "Pittsburgh, PA".
+const isPlaceQuery = (q) => /^\d{5}(-?\d{4})?$/.test(q) || /^[A-Za-z .'-]{2,},\s*[A-Za-z]{2}$/.test(q);
 
 export default function GlobalSearchDialog({ open, onOpenChange }) {
   const navigate = useNavigate();
@@ -64,12 +66,26 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
   });
 
   // For an exact NPI, also show that provider's locations and CMS records.
-  const { data: locations = [], isFetching: fetchingLocations } = useQuery({
+  const { data: npiLocations = [], isFetching: fetchingNpiLocations } = useQuery({
     queryKey: ['globalSearchLocations', npiQuery],
     queryFn: () => base44.entities.ProviderLocation.filter({ npi: npiQuery }, undefined, 20),
     enabled: !!npiQuery,
     staleTime: 60000,
   });
+
+  // A ZIP or "City, ST" finds locations there.
+  const placeQuery = hasSearchTerm && !npiQuery && isPlaceQuery(debouncedQuery) ? debouncedQuery : null;
+  const { data: placeLocations = [], isFetching: fetchingPlaces } = useQuery({
+    queryKey: ['globalSearchPlaces', placeQuery],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('searchLocations', { q: placeQuery, limit: 8 });
+      return res.data?.locations || [];
+    },
+    enabled: !!placeQuery,
+    staleTime: 60000,
+  });
+  const locations = npiQuery ? npiLocations : placeLocations;
+  const fetchingLocations = fetchingNpiLocations || fetchingPlaces;
 
   const { data: utilizations = [], isFetching: fetchingUtil } = useQuery({
     queryKey: ['globalSearchUtil', npiQuery],
@@ -152,7 +168,7 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
         items.push({
           type: 'Location',
           label: `${l.address_1 || 'Unknown'}, ${l.city || ''} ${l.state || ''}`,
-          sublabel: `NPI: ${l.npi} • ${l.location_type || ''} ${l.is_primary ? '• Primary' : ''}`,
+          sublabel: `NPI: ${l.npi} • ${l.location_type || 'Location'}`,
           url: createPageUrl(`LocationDetail?id=${l.id}`),
           pageName: 'LocationDetail',
         });
