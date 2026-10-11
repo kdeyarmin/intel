@@ -67,6 +67,8 @@ describe("market rollup jobs", () => {
     expect(jobByName("county_market_profile")!.sql).toContain("rollup_county_hospital_sources");
     expect(jobByName("county_market_profile")!.sql).toContain("rollup_pac_market_share");
     expect(jobByName("referral_sources")!.sql).toContain("cms_order_referring");
+    // A clinician with no county isn't ranked against the others with none.
+    expect(jobByName("referral_sources")!.sql).toMatch(/CASE WHEN county_fips IS NOT NULL THEN rank\(\) OVER \(PARTITION BY county_fips/);
     expect(jobByName("referral_sources")!.sql).toContain("Bene_CC_PH_HF_NonIHD_V2_Pct");
   });
 
