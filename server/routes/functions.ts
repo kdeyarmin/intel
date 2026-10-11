@@ -816,6 +816,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleGenerateHyperPersonalizedMessages(req.body));
       }
       case "trackCampaignMetrics": {
+        // Admin-only (not in PUBLIC_FUNCTIONS): writes the rollup to the campaign row.
         const { handleTrackCampaignMetrics } = await import("../functions/outreach");
         return res.json(await handleTrackCampaignMetrics(req.body));
       }
@@ -857,6 +858,10 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
       case "getProviderCMSData": {
         const { handleGetProviderCMSData } = await import("../functions/facilityDetail");
         return res.json(await handleGetProviderCMSData(req.body));
+      }
+      case "getLeadListMemberDetails": {
+        const { handleGetLeadListMemberDetails } = await import("../functions/leadListDetails");
+        return res.json(await handleGetLeadListMemberDetails(req.body));
       }
 
       case "importAgentChat": {

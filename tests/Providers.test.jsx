@@ -5,8 +5,8 @@
  * leaving only the "View" button (link to ProviderDetail) for all providers.
  */
 import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 
 afterEach(cleanup);
 
@@ -25,7 +25,9 @@ vi.mock('@tanstack/react-query', () => ({
 }));
 
 // Stub complex child components.
-vi.mock('../src/components/search/TypeAheadSearch', () => ({ default: () => null }));
+vi.mock('../src/components/search/TypeAheadSearch', () => ({
+  default: ({ value, onChange }) => <input aria-label="Search" value={value} onChange={(e) => onChange(e.target.value)} />,
+}));
 vi.mock('../src/components/filters/ProviderAdvancedFilters', () => ({ default: () => null }));
 vi.mock('../src/components/filters/SortControl', () => ({ default: () => null }));
 vi.mock('../src/components/exports/ExportDialog', () => ({ default: () => null }));
@@ -211,6 +213,59 @@ describe('Providers page – filters kept in the URL', () => {
     renderProviders('/Providers?tf=%7Bnot-json');
     expect(applied.textFilters).toEqual([]);
     expect(applied.dateRange).toEqual({ preset: 'all', startDate: '', endDate: '' });
+  });
+});
+
+function UrlProbe() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  return (
+    <div>
+      <span data-testid="url-search">{location.search}</span>
+      <button onClick={() => navigate(`${location.pathname}?q=ortho`)}>open ortho link</button>
+      <button onClick={() => navigate(-1)}>go back</button>
+    </div>
+  );
+}
+
+const settleDebounce = () => act(() => new Promise((resolve) => setTimeout(resolve, 400)));
+
+describe('Providers page – search kept in the URL', () => {
+  function renderWithProbe(entries, index = entries.length - 1) {
+    setupMocks({ providers: [] });
+    return render(
+      <MemoryRouter initialEntries={entries} initialIndex={index}>
+        <Providers />
+        <UrlProbe />
+      </MemoryRouter>,
+    );
+  }
+  const urlSearch = () => screen.getByTestId('url-search').textContent;
+
+  it('takes the search from a same-page link instead of writing the old one back', async () => {
+    renderWithProbe(['/Providers?q=cardio']);
+    fireEvent.click(screen.getByRole('button', { name: 'open ortho link' }));
+    expect(urlSearch()).toBe('?q=ortho');
+    await settleDebounce();
+    expect(urlSearch()).toBe('?q=ortho');
+    expect(screen.getByRole('textbox', { name: 'Search' })).toHaveValue('ortho');
+  });
+
+  it('takes the search from Back', async () => {
+    renderWithProbe(['/Providers?q=cardio', '/Providers?q=ortho']);
+    fireEvent.click(screen.getByRole('button', { name: 'go back' }));
+    expect(urlSearch()).toBe('?q=cardio');
+    await settleDebounce();
+    expect(urlSearch()).toBe('?q=cardio');
+    expect(screen.getByRole('textbox', { name: 'Search' })).toHaveValue('cardio');
+  });
+
+  it('writes a typed search to the URL once typing settles', async () => {
+    renderWithProbe(['/Providers']);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search' }), { target: { value: ' neuro ' } });
+    expect(urlSearch()).toBe('');
+    await settleDebounce();
+    expect(urlSearch()).toBe('?q=neuro');
   });
 });
 

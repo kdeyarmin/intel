@@ -55,14 +55,33 @@ export const EMAIL_VERIFICATION_COLUMNS = [
  * the address is unchanged (ignoring case) or the update sets those fields
  * itself. Done in SQL against the stored address, so it holds without a read.
  */
-export function clearStaleEmailVerification(table: any, data: Record<string, any>): Record<string, any> {
+export function clearStaleEmailVerification<T extends Record<string, any>>(table: any, data: T): T {
   if (!("email" in data) || !table.email) return data;
-  const next = { ...data };
+  const next: Record<string, any> = { ...data };
   for (const col of EMAIL_VERIFICATION_COLUMNS) {
     if (col in next || !table[col]) continue;
-    next[col] = sql`CASE WHEN lower(coalesce(${table.email}, '')) IS DISTINCT FROM lower(coalesce(${data.email ?? null}::text, '')) THEN NULL ELSE ${table[col]} END`;
+    next[col] = sql`CASE WHEN ${emailChanged(table, data.email)} THEN NULL ELSE ${table[col]} END`;
   }
-  return next;
+  return next as T;
+}
+
+const emailChanged = (table: any, email: unknown) =>
+  sql`lower(coalesce(${table.email}, '')) IS DISTINCT FROM lower(coalesce(${email ?? null}::text, ''))`;
+
+/**
+ * For writers that set a provider's email together with their own unchecked
+ * guess at its status (the AI email search). A different address loses the
+ * old verification, as above. The same address keeps a stored DNS check
+ * (email_analyzed_at set) rather than having its status replaced by a guess.
+ */
+export function unverifiedEmailUpdate<T extends Record<string, any>>(table: any, data: T): T {
+  const next: Record<string, any> = clearStaleEmailVerification(table, data);
+  if (!("email" in data) || !table.email) return next as T;
+  for (const col of ["email_validation_status", "email_validation_reason"]) {
+    if (!(col in data) || !table[col]) continue;
+    next[col] = sql`CASE WHEN ${emailChanged(table, data.email)} OR ${table.email_analyzed_at} IS NULL THEN ${data[col] ?? null}::text ELSE ${table[col]} END`;
+  }
+  return next as T;
 }
 
 const FILTER_OPERATORS = new Set(["$in", "$nin", "$gt", "$gte", "$lt", "$lte", "$ne", "$like", "$exists"]);

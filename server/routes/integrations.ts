@@ -6,8 +6,10 @@ import crypto from "crypto";
 import { authMiddleware, adminOnly, AuthRequest } from "../middleware/auth";
 import { rateLimit } from "../middleware/rateLimit";
 import { CLAUDE_MODELS } from "../lib/aiModels";
-import { getMailerStatus, sendMail } from "../lib/mailer";
+import { sendMail } from "../lib/mailer";
 import { isSuppressed } from "../lib/suppressions";
+import { sendingRequirements, withComplianceFooter } from "../functions/outreach";
+import { textToHtml } from "../functions/outreachHelpers";
 
 // Only models the app actually uses may be requested. Prevents a caller from
 // forcing the most expensive model or an arbitrary/invalid one.
@@ -91,23 +93,27 @@ router.post("/ai/invoke", authMiddleware, rateLimit("ai_invoke", 60, 60_000), as
   }
 });
 
-// Direct (1:1) email. Outreach sending is admin-only, so this is too; regular
-// users get a mailto: link in the UI instead. Suppressed addresses (people who
-// unsubscribed or bounced) are never emailed.
+// Direct (1:1) email to a provider. Outreach sending is admin-only, so this is
+// too; regular users get a mailto: link in the UI instead. Like campaign mail it
+// needs the postal address and unsubscribe URL configured, carries the
+// unsubscribe footer and headers, and never goes to a suppressed address.
 router.post("/email/send", authMiddleware, adminOnly, rateLimit("email_send", 100, 60_000), async (req: AuthRequest, res: Response) => {
   try {
     const { to, from, subject, body, html } = req.body;
     if (!to || !subject) return res.status(400).json({ message: "to and subject are required" });
+    // One recipient: the unsubscribe link is issued for that address.
+    if (typeof to !== "string") return res.status(400).json({ message: "to must be a single email address" });
 
-    const status = getMailerStatus();
-    if (!status.configured) {
-      return res.status(503).json({ message: "Email sending isn't configured", detail: `Missing ${status.missing.join(", ")}.` });
+    const missing = sendingRequirements();
+    if (missing.length > 0) {
+      return res.status(503).json({ message: "Email sending isn't configured", detail: `Missing ${missing.join(", ")}.` });
     }
-    if (await isSuppressed(String(to))) {
+    if (await isSuppressed(to)) {
       return res.status(409).json({ message: "This address has unsubscribed or bounced", detail: "CareMetric won't email it again." });
     }
 
-    await sendMail({ to, from, subject, text: body || "", html: html || body || "" });
+    const mail = withComplianceFooter(to, { text: body || "", html: html || textToHtml(body || "") });
+    await sendMail({ to, from, subject, ...mail });
     res.json({ success: true, message: "Email sent" });
   } catch (e: any) {
     console.error("[Email Send Error]", e.message);

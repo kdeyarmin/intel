@@ -323,3 +323,64 @@ describe("migration 0006_provider_facility_matches", () => {
     }
   });
 });
+
+// ─── 0004: campaign sending (suppressions, tracking, score details) ───────────
+
+describe("migration 0004_outreach_sending", () => {
+  const sql = readMigration("0004_outreach_sending.sql");
+  const schema = readSchema();
+  const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+
+  it("is registered in the drizzle journal after 0003", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const entry = journal.entries.find((e: { tag: string }) => e.tag === "0004_outreach_sending");
+    const prev = journal.entries.find((e: { tag: string }) => e.tag === "0003_entity_field_sync");
+    expect(entry).toBeDefined();
+    expect(entry.when).toBeGreaterThan(prev.when);
+  });
+
+  it("is idempotent: every statement is IF NOT EXISTS", () => {
+    expect(statements.length).toBeGreaterThan(0);
+    for (const stmt of statements) {
+      expect(stmt).toMatch(/^(CREATE TABLE IF NOT EXISTS|ALTER TABLE "\w+" ADD COLUMN IF NOT EXISTS|CREATE INDEX IF NOT EXISTS) /);
+    }
+  });
+
+  it("creates email_suppressions as the schema declares it", () => {
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "email_suppressions"');
+    expect(sql).toContain('"email" varchar(255) PRIMARY KEY NOT NULL');
+    expect(sql).toContain('"reason" varchar(50)');
+    expect(sql).toContain('"source" varchar(50)');
+    expect(sql).toContain('"created_date" timestamp DEFAULT now()');
+    expect(schema).toContain('pgTable("email_suppressions"');
+    expect(schema).toContain('email: varchar("email", { length: 255 }).primaryKey()');
+    expect(schema).toContain('reason: varchar("reason", { length: 50 })');
+    expect(schema).toContain('source: varchar("source", { length: 50 })');
+  });
+
+  it("adds the tracking and score columns, each declared in the schema", () => {
+    const added = [...sql.matchAll(/ALTER TABLE "(\w+)" ADD COLUMN IF NOT EXISTS "(\w+)" ([\w()]+);/g)]
+      .map(([, table, column, type]) => `${table}.${column} ${type}`);
+    expect(added).toEqual([
+      "outreach_messages.responded_at timestamp",
+      "outreach_messages.provider_message_id varchar(255)",
+      "providers.ai_outreach_strategy text",
+      "providers.ai_engagement_factors jsonb",
+      "providers.ai_outreach_scored_at timestamp",
+    ]);
+    expect(schema).toContain('responded_at: timestamp("responded_at")');
+    expect(schema).toContain('provider_message_id: varchar("provider_message_id", { length: 255 })');
+    expect(schema).toContain('ai_outreach_strategy: text("ai_outreach_strategy")');
+    expect(schema).toContain('ai_engagement_factors: jsonb("ai_engagement_factors")');
+    expect(schema).toContain('ai_outreach_scored_at: timestamp("ai_outreach_scored_at")');
+  });
+
+  it("adds the partial pending-by-email index, matching the schema", () => {
+    expect(sql).toContain(
+      `CREATE INDEX IF NOT EXISTS "messages_pending_email_idx" ON "outreach_messages" (lower("recipient_email")) WHERE "status" = 'pending';`,
+    );
+    expect(schema).toContain(
+      'index("messages_pending_email_idx").on(sql`lower(${table.recipient_email})`).where(sql`${table.status} = \'pending\'`)',
+    );
+  });
+});

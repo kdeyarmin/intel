@@ -16,6 +16,7 @@ const FLAG_LABELS = {
   role_account: 'Shared mailbox',
   free_email: 'Free email provider',
   opted_out: 'Opted out',
+  spam_complaint: 'Marked as spam',
   bounced: 'Bounced before',
   no_mx: 'No mail servers',
   null_mx: 'Accepts no mail',
