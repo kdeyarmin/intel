@@ -7,6 +7,7 @@ import { pagesConfig } from './pages.config.js'
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound.jsx';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { BusinessLineProvider } from '@/lib/BusinessLineContext';
 import Login from '@/pages/Login';
 import PendingApproval from '@/components/auth/PendingApproval';
 import SessionUnavailable from '@/components/auth/SessionUnavailable';
@@ -166,6 +167,7 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
+        <BusinessLineProvider>
         <QueryClientProvider client={queryClientInstance}>
           <ConfirmProvider>
             <Router>
@@ -175,6 +177,7 @@ function App() {
           </ConfirmProvider>
           <Toaster richColors closeButton position="top-right" />
         </QueryClientProvider>
+        </BusinessLineProvider>
       </AuthProvider>
     </ErrorBoundary>
   )

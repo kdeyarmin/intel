@@ -27,9 +27,9 @@
   },
   "summary": {
     "section_count": 9,
-    "topic_count": 36,
-    "text_character_count": 19004,
-    "canonical_sha256": "2f21f6ba13d9bf4f5d54edd707a2403c9ff4c895094e1cf11f0055aea42f613d"
+    "topic_count": 37,
+    "text_character_count": 20801,
+    "canonical_sha256": "5a9c8ec424467bd9f061231adb56f1a486001b2e3bfbf36e46eaefc243b9d7f4"
   },
   "sections": [
     {
@@ -53,8 +53,8 @@
         },
         {
           "heading": "Finding your way",
-          "text": "The sidebar has five sections: **Overview**, **Directory**, **Analytics**, **Sales & Outreach** and **Administration** (admins only). Related pages share one sidebar entry and switch with tabs at the top of the page — for example **Territory & County**, or **Data Center** with its Dataset catalog and Import monitor.\n\nPress **Ctrl+K** (⌘K on a Mac) anywhere to search. On the directory pages (Providers, Organizations, Locations, Facilities), Territory & County, Referral Network and Lead Lists, filters and tabs are kept in the page address, so you can bookmark or share the view and Back returns to it. Other pages, such as the Lead Builder, start fresh each visit. Old links to pages that moved still work.",
-          "sha256": "f93da2a09e37aba894725f56942aa3da995c415de737283d689c9b341cae33cc"
+          "text": "The sidebar has five sections: **Overview**, **Directory**, **Analytics**, **Sales & Outreach** and **Administration** (admins only). Related pages share one sidebar entry and switch with tabs at the top of the page — for example **Territory & County**, or **Data Center** with its Dataset catalog and Import monitor.\n\nThe **Business** menu on the Dashboard and in the sidebar picks a line of business: home health, hospice, nursing home, personal care home, hospital, or DME. Reports, facilities, the county view, the market table, and call sheets then open on that line. **All lines** shows everything again.\n\nPress **Ctrl+K** (⌘K on a Mac) anywhere to search. On the directory pages (Providers, Organizations, Locations, Facilities), Territory & County, Referral Network and Lead Lists, filters and tabs are kept in the page address, so you can bookmark or share the view and Back returns to it. Other pages, such as the Lead Builder, start fresh each visit. Old links to pages that moved still work.",
+          "sha256": "552d188574e2dd4c9b14383a7f8cdce02e3024882bd22aa19e8cfd65bdcbb210"
         }
       ]
     },
@@ -157,8 +157,8 @@
         },
         {
           "heading": "Reports and analytics",
-          "text": "**Reports** builds reports from your data, saves them and emails them on a schedule to up to 25 people with an active account (or an address on a domain an admin has approved); the schedule's preview and its last-run note say who was left out. **Analytics** has trend and comparison views and a dashboard builder. **Utilization** explores Medicare services and payments by provider.",
-          "sha256": "1fabbcb78b6ecac80554beffd2194d0df6be670135c8dd2dfcd7ef0e21eb5638"
+          "text": "**Reports** is a catalog of named briefs. **Expansion** ranks counties for home health, hospice, or skilled nursing, including where use rose while billing providers did not. **Acquisition** lists the largest agencies, hospices, or nursing homes located in a state, with census and payer mix for nursing homes. **Hospital relationships** shows which hospitals discharge a county’s residents and how their Medicare spend splits across those settings. **Referral development** is the clinician call list for home health or hospice. Open a county from an expansion report for the hospitals and providers already there. **Builder** still saves charts and emails them on a schedule to up to 25 people with an active account (or an address on a domain an admin has approved). **Analytics** has trend and comparison views. **Utilization** explores Medicare services and payments by provider.",
+          "sha256": "3957e2482d5366ff7107ed3af5cf8ce4e33b09315c6cb2fe37cdc587ff80eacf"
         }
       ]
     },
@@ -170,6 +170,11 @@
           "heading": "Lead lists",
           "text": "Lead lists hold the providers you're working, each with a status (New, Contacted, Qualified, Not a fit). Add providers from any provider page, from search results, from the AI Assistant, or with the Lead Builder. Open a list to update statuses or export it; owners can also start a campaign from it.",
           "sha256": "ae04cc225d90a1d460d4b98504f43ce6024d6926208a5d6294902928be31fc82"
+        },
+        {
+          "heading": "Call sheets",
+          "text": "**Lead Lists › Call sheets** is the working list for a county. Create a sheet, then add the hospitals, home health agencies, hospices, nursing homes, clinicians, DME suppliers and licensed homes in that county. Each account keeps a status (Not scheduled, Call, Visit, or Account), a next date and your notes. **Schedule** shows the calls and visits. **Chart of accounts** shows the ones you marked Account. Print the view you are on. Adding the same accounts again does not erase notes.\n\n**Lead Lists › Marketing** is the book you keep month to month. Add an account, then the administrator, director of nursing, business office, social services and the other people you call. Log a visit, a call or a note, schedule the next visit, and log each referral without a patient name. Mark a referral admitted or lost. **Month end** shows sales calls, calls per referral, the share of referrals that became admissions, who referred more or less than the month before, and who to put on next month’s schedule.",
+          "sha256": "ef997615a4725af1c84b46a8b60d1e3d2d192afc21956c042cb8e5a83c3eb1c2"
         },
         {
           "heading": "Lead Builder",

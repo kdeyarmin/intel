@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import MarketFreshness from '../components/market/MarketFreshness';
+import { useBusinessLine } from '@/lib/BusinessLineContext';
 
 // The columns shown by default; the rest are in the CSV and the metric picker.
 const DEFAULT_COLUMNS = ['benes', 'ma_penetration', 'benes_85_plus', 'hha_users_pct', 'hospice_users_pct', 'snf_users_pct', 'snf_facilities', 'hospitals_serving'];
@@ -30,7 +31,13 @@ const NO_COLUMNS = 'none';
 export default function MarketIntelligence() {
   const [url, setUrl] = useUrlState(URL_DEFAULTS);
   const [adding, setAdding] = useState('');
-  const columns = useMemo(() => (url.cols === NO_COLUMNS ? [] : url.cols.split(',').filter((k) => LAYER_BY_KEY[k])), [url.cols]);
+  const { profile } = useBusinessLine();
+  const [everyLine, setEveryLine] = useState(false);
+  const columns = useMemo(() => {
+    const focused = profile && !everyLine && url.cols === DEFAULT_COLUMNS.join(',');
+    const raw = focused ? profile.marketColumns.join(',') : url.cols;
+    return raw === NO_COLUMNS ? [] : raw.split(',').filter((k) => LAYER_BY_KEY[k]);
+  }, [url.cols, profile, everyLine]);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['countyMarketLayer', url.state, 'all'],
@@ -74,7 +81,12 @@ export default function MarketIntelligence() {
           <BarChart3 className="w-6 h-6 text-teal-400" aria-hidden="true" />
           Market Intelligence
         </h1>
-        <p className="text-sm text-slate-400 mt-1">Every county in a state side by side: Medicare demand, Medicare Advantage, post-acute use and supply, and where residents are hospitalized.</p>
+        <p className="text-sm text-slate-400 mt-1">{profile && !everyLine ? profile.blurb : 'Every county in a state side by side: Medicare demand, Medicare Advantage, post-acute use and supply, and where residents are hospitalized.'}</p>
+        {profile && (
+          <button type="button" className="mt-1 text-xs text-cyan-400 hover:underline" onClick={() => setEveryLine((v) => !v)}>
+            {everyLine ? `Show only ${profile.label}` : 'Show every column'}
+          </button>
+        )}
       </div>
       <ComplianceDisclaimer variant="market" />
 

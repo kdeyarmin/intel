@@ -55,7 +55,7 @@ describe('sidebar', () => {
     expect(userPages).toEqual([
       'Dashboard', 'AIAssistant', 'Help',
       'Providers', 'Organizations', 'Locations', 'Facilities',
-      'AdvancedAnalytics', 'CMSAnalytics', 'Utilization', 'ReferralNetworkIntelligence', 'TerritoryIntelligence', 'CustomReports',
+      'AdvancedAnalytics', 'CMSAnalytics', 'Utilization', 'ReferralNetworkIntelligence', 'TerritoryIntelligence', 'MarketBriefs',
       'LeadLists',
     ]);
     expect(getVisibleNavSections('user').map((s) => s.label)).not.toContain('Administration');

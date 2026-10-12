@@ -39,7 +39,7 @@ const newestFirst = (rows) => [...rows].sort((a, b) => b.id - a.id);
 
 const { base44 } = vi.hoisted(() => ({ base44: { entities: {}, functions: {}, auth: {} } }));
 vi.mock('@/api/base44Client', () => ({ base44 }));
-vi.mock('@/lib/AuthContext', () => ({ useAuth: () => ({ user: { role: 'user' } }) }));
+vi.mock('@/lib/AuthContext', () => ({ useAuth: () => ({ user: { role: 'user' } }), useOptionalAuth: () => ({ user: { role: 'user' } }) }));
 vi.mock('../src/components/shared/PageHeader', () => ({ default: () => null }));
 vi.mock('../src/components/leadlists/LeadListAnalytics', () => ({ default: () => null }));
 // Its export helpers fetch a logo over the network when imported.

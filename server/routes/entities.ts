@@ -1,9 +1,9 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db";
-import { tableMap, leadListMembers, outreachCampaigns } from "../db/schema";
+import { tableMap, leadListMembers, outreachCampaigns, callSheetAccounts, crmContacts, crmActivities, crmReferrals } from "../db/schema";
 import { eq, desc, asc, sql, getTableColumns, and, inArray } from "drizzle-orm";
 import { authMiddleware, AuthRequest, SessionPrincipal, isOrgAdmin, isPlatformAdmin } from "../middleware/auth";
-import { leadLists } from "../db/schema";
+import { leadLists, callSheets, crmAccounts } from "../db/schema";
 import {
   InvalidFieldValueError,
   JSONB_OVERFLOW,
@@ -59,6 +59,12 @@ const AUDIT_ENTITY = "AuditEvent";
 export const USER_WRITABLE_ENTITIES = new Set([
   "LeadList",
   "LeadListMember",
+  "CallSheet",
+  "CallSheetAccount",
+  "CrmAccount",
+  "CrmContact",
+  "CrmActivity",
+  "CrmReferral",
   "CustomReport",
   "ScheduledReport",
   "ScheduledExport",
@@ -83,13 +89,17 @@ export const ORG_ADMIN_ENTITIES = new Set([
 // LeadListMember belongs to its list and CampaignSequenceStep to its campaign,
 // so they are scoped through lead_lists and outreach_campaigns.
 export const ORG_SCOPED_ENTITIES = new Set([
-  "LeadList", "SavedFilter", "CustomReport", "ScheduledReport", "ScheduledExport", "AnalyticsDashboard",
+  "LeadList", "CallSheet", "CrmAccount", "SavedFilter", "CustomReport", "ScheduledReport", "ScheduledExport", "AnalyticsDashboard",
   "OutreachCampaign", "OutreachMessage", "CampaignTemplate", "CampaignTask", "DataQualityAlert", AUDIT_ENTITY,
 ]);
 
 /** Entities that belong to a parent row (the key to it, the parent's table, and its columns), scoped through the parent's organization. */
 const PARENT_SCOPED: Record<string, { key: string; parent: any; label: string }> = {
   LeadListMember: { key: "list_id", parent: leadLists, label: "lead list" },
+  CallSheetAccount: { key: "sheet_id", parent: callSheets, label: "call sheet" },
+  CrmContact: { key: "account_id", parent: crmAccounts, label: "account" },
+  CrmActivity: { key: "account_id", parent: crmAccounts, label: "account" },
+  CrmReferral: { key: "account_id", parent: crmAccounts, label: "account" },
   CampaignSequenceStep: { key: "campaign_id", parent: outreachCampaigns, label: "campaign" },
 };
 
@@ -156,6 +166,12 @@ function columnsOf(table: any): Set<string> {
 // non-existent column, so it deleted members of *every* list).
 const CASCADE_DELETES: Record<string, Array<{ table: any; column: string }>> = {
   LeadList: [{ table: leadListMembers, column: "list_id" }],
+  CallSheet: [{ table: callSheetAccounts, column: "sheet_id" }],
+  CrmAccount: [
+    { table: crmContacts, column: "account_id" },
+    { table: crmActivities, column: "account_id" },
+    { table: crmReferrals, column: "account_id" },
+  ],
 };
 
 function sendDroppedFields(res: Response, entityName: string, dropped: string[]) {

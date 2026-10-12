@@ -16,7 +16,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { US_STATES } from '@/lib/usStates';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import CountyMarketProfile from '../components/market/CountyMarketProfile';
+import { CountyReferenceCard } from '../components/market/MarketReferenceCards';
 import HospitalSourcesTable from '../components/market/HospitalSourcesTable';
+import { useBusinessLine } from '@/lib/BusinessLineContext';
 import PacCompetitorsTable from '../components/market/PacCompetitorsTable';
 import ReferralSourcesTable from '../components/market/ReferralSourcesTable';
 
@@ -70,7 +72,11 @@ function Kpi({ icon: Icon, label, value, sub, color }) {
 export default function CountyIntelligence() {
   const [url, setUrl] = useUrlState(URL_DEFAULTS);
   const [showAll, setShowAll] = useState({});
+  const [everyLine, setEveryLine] = useState(false);
+  const { profile } = useBusinessLine();
   const toggle = (k) => setShowAll((s) => ({ ...s, [k]: !s[k] }));
+  const tabs = TABS.filter((t) => t.value === 'overview' || everyLine || !profile || profile.countyTabs.includes(t.value));
+  const tab = tabs.some((t) => t.value === url.tab) ? url.tab : 'overview';
 
   const { data: counties, isLoading: loadingCounties } = useQuery({
     queryKey: ['geoCounties', url.state],
@@ -181,12 +187,17 @@ export default function CountyIntelligence() {
             </p>
           )}
 
-          <Tabs value={url.tab} onValueChange={(tab) => setUrl({ tab })}>
+          <Tabs value={tab} onValueChange={(next) => setUrl({ tab: next })}>
             <TabsList className="bg-slate-800/50 mb-4 h-auto flex flex-wrap">
-              {TABS.map((t) => (
+              {tabs.map((t) => (
                 <TabsTrigger key={t.value} value={t.value} className="gap-1.5 text-xs"><t.icon className="w-3.5 h-3.5" aria-hidden="true" /> {t.label}</TabsTrigger>
               ))}
             </TabsList>
+            {profile && (
+              <button type="button" className="mb-3 text-xs text-cyan-400 hover:underline" onClick={() => setEveryLine((v) => !v)}>
+                {everyLine ? `Show only ${profile.label}` : 'Show every part of the county'}
+              </button>
+            )}
 
             <TabsContent value="overview" className="mt-0 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -365,13 +376,16 @@ export default function CountyIntelligence() {
               <TabsContent key={tab} value={tab} className="mt-0 space-y-4">
                 <ComplianceDisclaimer variant="market" />
                 {tab === 'referrals' ? (
-                  <ReferralSourcesTable state={url.state} countyFips={data.county.fips} countyName={data.county.name} />
+                  <ReferralSourcesTable key={`${everyLine ? 'all' : (profile?.referralSetting || 'all')}:${url.county}`} state={url.state} countyFips={data.county.fips} countyName={data.county.name} initialSetting={everyLine ? 'all' : (profile?.referralSetting || 'all')} />
                 ) : marketError ? (
                   <p className="text-sm text-red-400" role="alert">Couldn't load the market data: {marketErr?.message}</p>
                 ) : loadingMarket || !market ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-label="Loading market">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
                 ) : tab === 'market' ? (
-                  <CountyMarketProfile profile={market.profile} vintages={market.vintages} rollups={market.rollups} countyName={data.county.name} />
+                  <>
+                    <CountyMarketProfile profile={market.profile} vintages={market.vintages} rollups={market.rollups} countyName={data.county.name} line={everyLine ? null : profile} />
+                    <CountyReferenceCard reference={market.reference} line={everyLine ? null : profile} />
+                  </>
                 ) : tab === 'hospitals' ? (
                   <HospitalSourcesTable sources={market.hospital_sources} rollups={market.rollups} countyName={data.county.name} />
                 ) : (

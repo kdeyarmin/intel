@@ -45,6 +45,8 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "getCountyMarketLayer",
   "getReferralSources",
   "getServiceAreaOverlap",
+  "getStateMarketLeaders",
+  "getMarketRoster",
   // Read-only for non-admins: no AI call and nothing saved (see the handler).
   "calculateOutreachScore",
   // Runs or previews a saved report schedule (any user can create schedules);
