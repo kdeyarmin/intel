@@ -3,6 +3,8 @@ import { db } from "../db";
 import { tableMap, leadListMembers, outreachCampaigns, callSheetAccounts, crmContacts, crmActivities, crmReferrals } from "../db/schema";
 import { eq, desc, asc, sql, getTableColumns, and, inArray } from "drizzle-orm";
 import { authMiddleware, AuthRequest, SessionPrincipal, isOrgAdmin, isPlatformAdmin } from "../middleware/auth";
+import { onRuleCreated } from "../functions/onRuleCreated";
+import { autoCategorizeProvider } from "../functions/autoCategorizeProvider";
 import { leadLists, callSheets, crmAccounts } from "../db/schema";
 import {
   InvalidFieldValueError,
@@ -395,6 +397,20 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     if (!(await stampOrg(entityName, data, req, res))) return;
 
     const [row] = (await db.insert(table).values(data).returning()) as any[];
+
+    // Entity hook (Base44: ColumnMappingRule:create / DataCleaningRule:create).
+    // Never blocks the response; the hook itself never throws.
+    if (entityName === "ColumnMappingRule" || entityName === "DataCleaningRule") {
+      const ruleType = entityName === "ColumnMappingRule" ? "columnMapping" : "dataCleaning";
+      onRuleCreated(row as { id: number; [k: string]: any }, ruleType).catch((err) =>
+        console.warn(`[entities] onRuleCreated hook failed for ${entityName}:`, err)
+      );
+    }
+
+    if (entityName === "Provider") {
+      void autoCategorizeProvider(row); // fire-and-forget; hook never throws; AI paused by default = no-op
+    }
+
     res.status(201).json(decorateRow(entityName, row));
   } catch (e: any) {
     if (e instanceof InvalidFieldValueError) return res.status(400).json({ message: e.message });

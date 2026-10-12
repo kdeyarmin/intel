@@ -442,6 +442,75 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         const { handleAnalyzeImportedDataset } = await import("../functions/analyzeImportedDataset");
         return res.json(await handleAnalyzeImportedDataset(req.body, req.user));
       }
+      case "checkCMSDataApiUrls": {
+        const { handleCheckCmsDataApiUrls } = await import("../functions/checkCMSDataApiUrls");
+        return res.json(await handleCheckCmsDataApiUrls(req.body, req.user));
+      }
+      case "testCMSOffset": {
+        const { handleTestCmsOffset } = await import("../functions/testCMSOffset");
+        return res.json(await handleTestCmsOffset(req.body, req.user));
+      }
+      case "findEmail": {
+        const { handleFindEmail } = await import("../functions/findEmail");
+        return res.json(await handleFindEmail(req.body, req.user));
+      }
+      case "aiProjectAnalysis": {
+        const { handleAiProjectAnalysis } = await import("../functions/aiProjectAnalysis");
+        return res.json(await handleAiProjectAnalysis(req.body, req.user));
+      }
+      case "autoFixImports": {
+        const { consumeToken } = await import("../middleware/rateLimit");
+        if (!consumeToken(`maint:autoFixImports:${req.user?.id ?? "anon"}`, 6, 60_000)) {
+          return res.status(429).json({ message: "Maintenance task rate limit exceeded. Try again in a minute." });
+        }
+        const { runAutoFixImports } = await import("../functions/autoFixImports");
+        return res.json({ success: true, worker: await runAutoFixImports() });
+      }
+      case "onImportBatchCompleted": {
+        const { onImportBatchCompleted } = await import("../functions/onImportBatchCompleted");
+        const { db } = await import("../db");
+        const { importBatches } = await import("../db/schema");
+        const { eq } = await import("drizzle-orm");
+        const batchId = Number(req.body?.batch_id);
+        if (!batchId) return res.status(400).json({ message: "batch_id is required" });
+        const [batch] = await db.select().from(importBatches).where(eq(importBatches.id, batchId)).limit(1);
+        if (!batch) return res.status(404).json({ message: `Batch #${batchId} not found` });
+        await onImportBatchCompleted(batch); // never throws; no-ops unless completed
+        return res.json({ ok: true, message: `Dependency evaluation ran for batch #${batchId}` });
+      }
+      case "onImportBatchFailed": {
+        const { db } = await import("../db");
+        const { importBatches } = await import("../db/schema");
+        const { eq } = await import("drizzle-orm");
+        const batchId = Number(req.body?.batchId);
+        if (!batchId) return res.status(400).json({ message: "batchId is required" });
+        const [batch] = await db.select().from(importBatches).where(eq(importBatches.id, batchId)).limit(1);
+        if (!batch) return res.status(404).json({ message: "Batch not found" });
+        const { onImportBatchFailed } = await import("../functions/onImportBatchFailed");
+        await onImportBatchFailed(batch);
+        return res.json({ success: true, batchId });
+      }
+      case "onRuleCreated": {
+        const { onRuleCreated } = await import("../functions/onRuleCreated");
+        const rule = req.body?.rule ?? { id: 0 };
+        const ruleType = req.body?.ruleType === "dataCleaning" ? "dataCleaning" : "columnMapping";
+        await onRuleCreated(rule, ruleType as "columnMapping" | "dataCleaning");
+        return res.json({ success: true });
+      }
+      case "autoCategorizeProvider": {
+        // Manual backfill path: when AI_FEATURES_ENABLED is eventually flipped, everything
+        // created while paused still lacks ai_category.
+        const { autoCategorizeProvider } = await import("../functions/autoCategorizeProvider");
+        const npi = String(req.body?.npi || "").trim();
+        if (!/^\d{10}$/.test(npi)) return res.status(400).json({ message: "A 10-digit npi is required" });
+        const { db } = await import("../db");
+        const { providers } = await import("../db/schema");
+        const { eq } = await import("drizzle-orm");
+        const rows = await db.select().from(providers).where(eq(providers.npi, npi)).limit(1);
+        if (!rows[0]) return res.status(404).json({ message: "Provider not found" });
+        await autoCategorizeProvider(rows[0]);
+        return res.json({ success: true });
+      }
       case "getFacilityDetail": {
         const { handleGetFacilityDetail } = await import("../functions/facilityDetail");
         return res.json(await handleGetFacilityDetail(req.body));
