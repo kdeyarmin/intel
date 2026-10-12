@@ -3,16 +3,19 @@
  * server/routes/functions.ts and the RECONCILABLE_FIELDS allowlist in
  * server/functions/reconciliation.ts.
  *
- * PUBLIC_FUNCTIONS / isFunctionAuthorized are imported from
+ * PUBLIC_FUNCTIONS / isFunctionAllowedFor are imported from
  * server/lib/functionAcl.ts; RECONCILABLE_FIELDS is module-private, so its
  * logic is replicated here verbatim.
  */
 import { describe, it, expect } from "vitest";
-import { PUBLIC_FUNCTIONS, isFunctionAuthorized } from "../server/lib/functionAcl";
+import { PUBLIC_FUNCTIONS, isFunctionAllowedFor } from "../server/lib/functionAcl";
 
 // ─── PUBLIC_FUNCTIONS (imported from the real module) ─────────────────────────
 
-const isAuthorized = isFunctionAuthorized;
+// The dispatcher gates on isFunctionAllowedFor(functionName, user); the role
+// string stands in for a signed-in user with that role.
+const isAuthorized = (functionName: string, role: string | undefined) =>
+  isFunctionAllowedFor(functionName, role === undefined ? undefined : { role });
 
 // ─── FIELDS_TO_COMPARE + RECONCILABLE_FIELDS (replicated from reconciliation.ts) ─
 

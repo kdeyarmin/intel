@@ -175,6 +175,12 @@ export function memoryOrgRepo(users: UserRow[]): OrgRepo & { orgs: MemoryOrg[]; 
       existing.org_role = orgRole;
       return true;
     },
+    async removeMember(orgId, userId) {
+      const i = members.findIndex((m) => m.org_id === orgId && m.user_id === userId);
+      if (i < 0) return false;
+      members.splice(i, 1);
+      return true;
+    },
     async seatUsage(orgId) {
       const ids = new Set(members.filter((m) => m.org_id === orgId).map((m) => m.user_id));
       const used = users.filter((u) => ids.has(u.id) && ["active", "invited", "pending"].includes(u.status)).length;

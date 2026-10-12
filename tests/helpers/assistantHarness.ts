@@ -68,6 +68,23 @@ export function memoryAssistantStore(): AssistantStore & {
       turns.push(row);
       return clone(row);
     },
+    async interruptStaleTurns(conversationId: number, staleMs: number) {
+      const cutoff = Date.now() - staleMs;
+      let n = 0;
+      for (const t of turns) {
+        if (t.conversation_id === conversationId && t.status === "running" && new Date(t.created_at as any).getTime() < cutoff) {
+          Object.assign(t, { status: "interrupted", error: "The server stopped before this answer finished.", finished_at: nowIso() });
+          n++;
+        }
+      }
+      return n;
+    },
+    async interruptTurn(conversationId: number, turnId: number) {
+      const t = turns.find((x) => x.id === turnId && x.conversation_id === conversationId && x.status === "running");
+      if (!t) return false;
+      Object.assign(t, { status: "interrupted", error: "Marked as stopped.", finished_at: nowIso() });
+      return true;
+    },
     async countTurns(conversationId: number) {
       return turns.filter((t) => t.conversation_id === conversationId).length;
     },
@@ -145,7 +162,7 @@ export const toolCall = (calls: Array<{ id: string; name: string; input: unknown
 export const withStop = (m: any, stop_reason: string) => ({ ...m, stop_reason });
 
 /** What a scripted stream does: return a message, or throw while streaming. */
-export type Step = any | { throw: unknown } | { hang: true; partial?: string; usage?: Record<string, number>; outputSoFar?: number };
+export type Step = any | { throw: unknown; partial?: string } | { hang: true; partial?: string; usage?: Record<string, number>; outputSoFar?: number };
 
 function eventsFor(m: any): any[] {
   const out: any[] = [{ type: "message_start", message: { ...m, content: [], stop_reason: null } }];
@@ -177,7 +194,15 @@ export function scriptedStreams(steps: Step[]): { factory: StreamFactory; calls:
     let final: Promise<any>;
     return {
       async *[Symbol.asyncIterator]() {
-        if (step && "throw" in step) throw step.throw;
+        if (step && "throw" in step) {
+          // Optionally stream some text first, like a mid-stream API failure.
+          if (typeof (step as any).partial === "string" && (step as any).partial) {
+            yield { type: "message_start", message: { id: "msg_part", type: "message", role: "assistant", content: [], usage: {} } } as any;
+            yield { type: "content_block_start", index: 0, content_block: { type: "text", text: "", citations: null } } as any;
+            yield { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: (step as any).partial } } as any;
+          }
+          throw step.throw;
+        }
         if (step && "hang" in step) {
           // What the API reports before the user stops it: input at the start,
           // output so far in a delta.
