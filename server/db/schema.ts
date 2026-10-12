@@ -1523,7 +1523,7 @@ export const crmAccounts = pgTable("crm_accounts", {
   phone: varchar("phone", { length: 50 }),
   // Whose book of business this account sits on. NULL = unclaimed.
   // Claims define book membership only; reports attribute work by row user_id.
-  claimed_by_user_id: integer("claimed_by_user_id"),
+  claimed_by_user_id: integer("claimed_by_user_id").references(() => users.id, { onDelete: "set null" }),
   claimed_at: timestamp("claimed_at"),
   created_date: timestamp("created_date").defaultNow(),
   updated_date: timestamp("updated_date").defaultNow(),
@@ -1551,7 +1551,7 @@ export const crmContacts = pgTable("crm_contacts", {
 export const crmActivities = pgTable("crm_activities", {
   id: serial("id").primaryKey(),
   account_id: integer("account_id").notNull(),
-  user_id: integer("user_id"),
+  user_id: integer("user_id").references(() => users.id, { onDelete: "set null" }),
   kind: varchar("kind", { length: 20 }).notNull(),
   activity_date: varchar("activity_date", { length: 10 }).notNull(),
   done: boolean("done").notNull().default(true),
@@ -1569,7 +1569,7 @@ export const crmActivities = pgTable("crm_activities", {
 export const crmReferrals = pgTable("crm_referrals", {
   id: serial("id").primaryKey(),
   account_id: integer("account_id").notNull(),
-  user_id: integer("user_id"),
+  user_id: integer("user_id").references(() => users.id, { onDelete: "set null" }),
   received_on: varchar("received_on", { length: 10 }).notNull(),
   outcome: varchar("outcome", { length: 20 }).notNull().default("open"),
   admitted_on: varchar("admitted_on", { length: 10 }),
