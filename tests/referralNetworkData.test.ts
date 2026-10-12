@@ -88,6 +88,8 @@ describe("node details", () => {
 const queries: Array<{ sql: string; params: any[] }> = [];
 let referralRows: any[] = [];
 let hasData = true;
+// A lead list of organization 7.
+const leadListRows = [{ id: 17, org_id: 7, name: "Riverbend priority referrers" }];
 // Every location row per provider; the fake applies the handler's documented
 // preference (a practice in the scoped state, then any practice) to them.
 let locationRows: Array<{ npi: string; location_type: string; city: string; state: string }> = [];
@@ -105,6 +107,11 @@ vi.mock("../server/db", () => {
       if (/^SET |^RESET /.test(sql)) return { rows: [] };
       if (sql.includes("referred_to_npi IS NOT NULL LIMIT 1")) return { rows: hasData ? [{ "?column?": 1 }] : [] };
       if (sql.includes("FROM provider_locations WHERE state = $1")) return { rows: [{ npi: "1000000001" }, { npi: "1000000002" }] };
+      if (sql.includes("FROM lead_lists WHERE id = $1")) {
+        // Like the real table: a lookup that names the organization finds only its lists, one that doesn't finds any.
+        return { rows: leadListRows.filter((l) => l.id === params[0] && (!sql.includes("org_id = $2") || l.org_id === params[1])) };
+      }
+      if (sql.includes("FROM lead_list_members WHERE list_id = $1")) return { rows: [{ npi: "1000000001" }, { npi: "1000000002" }] };
       if (sql.includes("FROM cms_referrals") && sql.includes("WHERE npi = ANY($1) AND referred_to_npi IS NOT NULL")) {
         return { rows: referralRows.filter((r) => params[0].includes(r.npi) && r.referred_to_npi) };
       }
@@ -199,6 +206,37 @@ describe("handleGetReferralNetworkData", () => {
     expect(r.scope).toMatchObject({ type: "provider", npi: "1000000001" });
     expect(r.nodes.map((n: any) => n.npi).sort()).toEqual(["1000000001", "1000000002", "1000000003", "1000000004"]);
     expect(queries.some((q) => q.sql.includes("WHERE npi = ANY($1) AND referred_to_npi = ANY($1)"))).toBe(true);
+  });
+
+  describe("a lead list belongs to one organization", () => {
+    it("builds the network of a list in the caller's own organization", async () => {
+      const { handleGetReferralNetworkData } = await import("../server/functions/referralNetwork");
+      const r = await handleGetReferralNetworkData({ lead_list_id: 17 }, { id: 1, orgId: 7 });
+      expect(r.scope).toMatchObject({ type: "lead_list", lead_list_id: 17, label: 'Lead list "Riverbend priority referrers"' });
+      const lookup = queries.find((q) => q.sql.includes("FROM lead_lists WHERE id = $1"))!;
+      expect(lookup.params).toEqual([17, 7]);
+    });
+
+    it("answers 404 for another organization's list, as for one that doesn't exist, and reads none of its members", async () => {
+      const { handleGetReferralNetworkData } = await import("../server/functions/referralNetwork");
+      await expect(handleGetReferralNetworkData({ lead_list_id: 17 }, { id: 2, orgId: 8 })).rejects.toMatchObject({ status: 404 });
+      await expect(handleGetReferralNetworkData({ lead_list_id: 9999 }, { id: 2, orgId: 8 })).rejects.toMatchObject({ status: 404 });
+      expect(queries.some((q) => q.sql.includes("FROM lead_list_members"))).toBe(false);
+    });
+
+    it("answers 404 for a caller in no organization", async () => {
+      const { handleGetReferralNetworkData } = await import("../server/functions/referralNetwork");
+      await expect(handleGetReferralNetworkData({ lead_list_id: 17 }, { id: 3, orgId: null })).rejects.toMatchObject({ status: 404 });
+      await expect(handleGetReferralNetworkData({ lead_list_id: 17 }, { id: 3 })).rejects.toMatchObject({ status: 404 });
+    });
+
+    it("doesn't hand one organization's cached network to another that asks for the same list id", async () => {
+      const { handleGetReferralNetworkData } = await import("../server/functions/referralNetwork");
+      await handleGetReferralNetworkData({ lead_list_id: 17 }, { id: 1, orgId: 7 });
+      const again = await handleGetReferralNetworkData({ lead_list_id: 17 }, { id: 1, orgId: 7 });
+      expect(again.cached).toBe(true);
+      await expect(handleGetReferralNetworkData({ lead_list_id: 17 }, { id: 2, orgId: 8 })).rejects.toMatchObject({ status: 404 });
+    });
   });
 
   it("limits how often one person builds networks", async () => {

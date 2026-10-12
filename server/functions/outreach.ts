@@ -151,6 +151,12 @@ async function prepareLocked(client: any, campaignId: number, user: Caller | und
 
   let npis: string[] = [];
   if (campaign.target_list_id) {
+    // The list must be the campaign's own organization's. target_list_id is an ordinary column an owner can
+    // set to any number, and reading another organization's list would copy its members, their emails
+    // included, into this organization's messages: an id from another organization answers 404, like one
+    // that doesn't exist.
+    const { rows: [ownList] } = await client.query("SELECT id FROM lead_lists WHERE id = $1 AND org_id = $2", [campaign.target_list_id, campaign.org_id]);
+    if (!ownList) throw new HttpError(404, "Lead list not found. Choose one of your organization's lead lists for this campaign.");
     // One over the cap, to tell "exactly the cap" from "too many".
     const { rows } = await client.query(
       "SELECT DISTINCT npi FROM lead_list_members WHERE list_id = $1 AND npi IS NOT NULL LIMIT $2",

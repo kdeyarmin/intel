@@ -2,15 +2,23 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { DEFAULT_SCORING_RULES } from '@/lib/scoringRules';
 
+// The rows of a stored breakdown are keyed by the scoring rule's type (server/lib/leadScoring.ts), so the labels
+// come from the same rule list the Scoring Rules page shows. The older keys are what scores computed before the
+// server job stored.
 const componentLabels = {
-  specialty_match: 'Specialty Match',
+  ...Object.fromEntries(DEFAULT_SCORING_RULES.map((rule) => [rule.rule_type, rule.name])),
   medicare_status: 'Medicare Status',
-  patient_volume: 'Patient Volume',
   referral_signals: 'Referral Activity',
   group_size: 'Group Size',
   geography: 'Geography',
 };
+
+/** A row's label: the rule's name, or the key read as words for a rule type this list doesn't know. */
+export function breakdownLabel(key) {
+  return componentLabels[key] || String(key).replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+}
 
 export default function ScoreBreakdown({ score, breakdown, reasons }) {
   if (!breakdown) return null;
@@ -21,7 +29,7 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
         <CardTitle>CareMetric Fit Score</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {score && (
+        {score != null && (
           <div className="flex items-center gap-4 pb-4 border-b">
             <div className="text-5xl font-bold text-teal-400">{score}</div>
             <div className="text-slate-400">
@@ -36,7 +44,7 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
           return (
             <div key={key} className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{componentLabels[key]}</span>
+                <span className="text-sm font-medium">{breakdownLabel(key)}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-slate-400">{data.value}/100</span>
                   <Badge variant="outline" className="text-xs">
@@ -45,7 +53,7 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Progress value={percentage} className="h-2 flex-1" aria-label={componentLabels[key] || key} />
+                <Progress value={percentage} className="h-2 flex-1" aria-label={breakdownLabel(key)} />
                 <span className="text-xs text-slate-400 w-12 text-right">
                   {data.weight}% wt
                 </span>
