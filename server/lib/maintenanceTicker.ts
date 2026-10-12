@@ -34,7 +34,9 @@ export async function runTick(pool: any, log: Pick<Console, "log" | "warn"> = co
     if (!locked) return "skipped"; // another instance is ticking
     const { handleRunScheduledImports } = await import("../functions/scheduledImports");
     const r: any = await handleRunScheduledImports();
-    log.log(`[maintenance tick] checked ${r?.checked ?? 0} schedule(s), started ${r?.processed ?? 0}; ${(r?.maintenance || []).filter((w: any) => !w.ok).length} worker(s) reported a problem`);
+    // A worker that exceeded the reporting budget is still running (timedOut),
+    // not broken: don't count it as a problem.
+    log.log(`[maintenance tick] checked ${r?.checked ?? 0} schedule(s), started ${r?.processed ?? 0}; ${(r?.maintenance || []).filter((w: any) => !w.ok && !w.timedOut).length} worker(s) reported a problem`);
     return "ran";
   } catch (e: any) {
     log.warn("[maintenance tick] failed:", e?.message || e);
