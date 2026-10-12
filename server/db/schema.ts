@@ -1521,11 +1521,16 @@ export const crmAccounts = pgTable("crm_accounts", {
   name: text("name").notNull(),
   city: varchar("city", { length: 100 }),
   phone: varchar("phone", { length: 50 }),
+  // Whose book of business this account sits on. NULL = unclaimed.
+  // Claims define book membership only; reports attribute work by row user_id.
+  claimed_by_user_id: integer("claimed_by_user_id"),
+  claimed_at: timestamp("claimed_at"),
   created_date: timestamp("created_date").defaultNow(),
   updated_date: timestamp("updated_date").defaultNow(),
 }, (table) => [
   uniqueIndex("crm_accounts_org_key_uq").on(table.org_id, table.account_type, table.account_key),
   index("crm_accounts_org_idx").on(table.org_id),
+  index("crm_accounts_claimed_idx").on(table.claimed_by_user_id),
 ]);
 
 export const crmContacts = pgTable("crm_contacts", {
@@ -1541,10 +1546,12 @@ export const crmContacts = pgTable("crm_contacts", {
 ]);
 
 // A visit or call the marketer made or scheduled, or a note. `done` is false
-// for something still on the schedule.
+// for something still on the schedule. `user_id` is the marketer who logged it
+// (stamped on create); NULL means logged before attribution existed.
 export const crmActivities = pgTable("crm_activities", {
   id: serial("id").primaryKey(),
   account_id: integer("account_id").notNull(),
+  user_id: integer("user_id"),
   kind: varchar("kind", { length: 20 }).notNull(),
   activity_date: varchar("activity_date", { length: 10 }).notNull(),
   done: boolean("done").notNull().default(true),
@@ -1552,12 +1559,17 @@ export const crmActivities = pgTable("crm_activities", {
   created_date: timestamp("created_date").defaultNow(),
 }, (table) => [
   index("crm_activities_account_idx").on(table.account_id, table.activity_date),
+  index("crm_activities_user_idx").on(table.user_id),
 ]);
 
 // A referral the account sent. No patient name. outcome: open, admitted, lost.
+// `user_id` is the marketer who logged it (stamped on create); NULL means
+// logged before attribution existed. A referral is an admission only when
+// outcome is 'admitted' (admitted_on set): the patient is under your care.
 export const crmReferrals = pgTable("crm_referrals", {
   id: serial("id").primaryKey(),
   account_id: integer("account_id").notNull(),
+  user_id: integer("user_id"),
   received_on: varchar("received_on", { length: 10 }).notNull(),
   outcome: varchar("outcome", { length: 20 }).notNull().default("open"),
   admitted_on: varchar("admitted_on", { length: 10 }),
@@ -1565,6 +1577,7 @@ export const crmReferrals = pgTable("crm_referrals", {
   created_date: timestamp("created_date").defaultNow(),
 }, (table) => [
   index("crm_referrals_account_idx").on(table.account_id, table.received_on),
+  index("crm_referrals_user_idx").on(table.user_id),
 ]);
 
 export const emailSuppressions = pgTable("email_suppressions", {
