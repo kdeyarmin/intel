@@ -5,6 +5,7 @@
 // (tests/fixtures/cms/rows/<import_type>.json).
 import crypto from "crypto";
 import { stateCodeOf } from "../lib/stateNames";
+import { derivedStateOf } from "../lib/rowState";
 import {
   cmsDmeByReferring,
   cmsFacilityAffiliation,
@@ -281,7 +282,8 @@ export function mapGeoVariation(row: any, ctx: MapContext) {
     data_year, geo_level, geo_code,
     age_level: str(row.BENE_AGE_LVL, 10) || "All",
     geo_desc: str(row.BENE_GEO_DESC ?? row.STATE, 200),
-    state: geo_level === "National" ? null : str(row.STATE ?? row.BENE_STATE_ABRVTN, 2),
+    // The county file has no state column: the state is in the geography ("PA-Allegheny", or the FIPS code).
+    state: geo_level === "National" ? null : str(row.STATE ?? row.BENE_STATE_ABRVTN, 2) ?? derivedStateOf(row),
     benes: int(row.BENES_TOTAL_CNT ?? row.BENES_FFS_CNT),
     ma_benes: int(row.BENES_MA_CNT),
     ma_participation_rate: num(row.MA_PRTCPTN_RATE),

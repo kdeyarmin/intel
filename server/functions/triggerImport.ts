@@ -17,6 +17,7 @@ import { recordSourceFile } from "../lib/datasetRegistry";
 import { getTableColumns } from "drizzle-orm";
 import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
 import { stateCodeOf } from "../lib/stateNames";
+import { derivedStateOf, stateFilterUnsupportedMessage, stateProbe } from "../lib/rowState";
 
 // Shared with the NPPES file importer; re-exported for the callers that import them from here.
 export { mergeRetryParams, endedWithoutFinishing };
@@ -117,7 +118,10 @@ export const IMPORT_TYPE_URLS: Record<string, string> = {
   rural_health_clinic_enrollments: "https://data.cms.gov/data-api/v1/dataset/3b7e7659-067e-41ea-8e36-f9ee2036e1f6/data",
   rural_health_clinic_all_owners: "https://data.cms.gov/data-api/v1/dataset/ab03c9bc-0c22-4ca4-b032-21dd3408210d/data",
   nursing_home_chain_performance: "https://data.cms.gov/data-api/v1/dataset/97ecfad1-d3f1-4d42-b774-d74661d830bc/data",
-  medicare_geographic_variation: "https://data.cms.gov/data-api/v1/dataset/8e989bc0-2260-49a7-9c6d-8e9e10af7cea/data",
+  // "Medicare Geographic Variation - by National, State & County" (Original Medicare, 2014 onward). The id this
+  // used to pin, 8e989bc0, is the Medicare Advantage national and state file: no counties and none of the
+  // spending, readmission or ER measures the county profile reads.
+  medicare_geographic_variation: "https://data.cms.gov/data-api/v1/dataset/6219697b-8f6c-4164-bed4-cd9317c58ebc/data",
   pbj_daily_nurse_staffing: "https://data.cms.gov/data-api/v1/dataset/7e0d53ba-8f02-4c66-98a5-14a1c997c50d/data",
   pbj_daily_nonnurse_staffing: "https://data.cms.gov/data-api/v1/dataset/b497431a-5b57-42c0-9016-90105b51841e/data",
   snf_enrollments: "https://data.cms.gov/data-api/v1/dataset/5f2c306f-3b1c-42cd-b037-187b2ce22126/data",
@@ -277,7 +281,7 @@ const CMS_DATASET_CATALOG = [
   { id: "medicare_spending_by_drug_d", title: "Medicare Part D Spending by Drug", description: "Medicare Part D drug spending data including total spending, claims, and beneficiary counts.", category: "Medicare Programs", records: "~14.3K", priority: "low" },
   { id: "medicare_spending_by_drug_b", title: "Medicare Part B Spending by Drug", description: "Medicare Part B drug spending and utilization data.", category: "Medicare Programs", records: "~734", priority: "low" },
   { id: "medicare_telehealth_trends", title: "Medicare Telehealth Trends", description: "Telehealth utilization trends including visit counts, provider adoption, and specialty breakdown across Medicare.", category: "Medicare Programs", records: "~50K", priority: "medium" },
-  { id: "medicare_geographic_variation", title: "Medicare Geographic Variation", description: "Medicare spending and utilization variation data at the national and state level including per-capita costs.", category: "Medicare Programs", records: "~60", priority: "medium" },
+  { id: "medicare_geographic_variation", title: "Medicare Geographic Variation", description: "Original Medicare spending and utilization for the nation, every state and every county, 2014 onward: standardized per-capita spending by setting, readmissions, ER visits, Medicare Advantage participation. Feeds the county market profile.", category: "Medicare Programs", records: "~37K", priority: "medium" },
 
   { id: "facility_affiliation", title: "Facility Affiliation Data", description: "Links between individual clinicians and the facilities or group practices where they provide services.", category: "Doctors & Clinicians", records: "~3M", priority: "high" },
 
@@ -796,6 +800,17 @@ export function parseFilterList(value: unknown): string[] {
   return [...new Set(items)];
 }
 
+/**
+ * The state a CMS row belongs to: its own state column, else the state its CCN was issued in or its FIPS code
+ * names (Hospital Service Area, facility affiliations and Medicare Geographic Variation have no state column).
+ * Null when it names none, as in Order & Referring, which is keyed by NPI alone. Exported for unit testing.
+ */
+export function stateOfRow(row: any): string | null {
+  const raw = String(firstField(row, FILTER_STATE_FIELDS) ?? "").trim();
+  if (raw) return stateCodeOf(raw) ?? raw.toUpperCase();
+  return derivedStateOf(row);
+}
+
 // Build a row predicate from the optional npi_filter / state_filter inputs, or
 // null when neither is set (so callers can skip filtering entirely). NPIs are
 // compared digits-only; states case-insensitively. `stateOptional` is for files
@@ -819,8 +834,7 @@ export function buildImportRowFilter(
       if (!npi || !npis.has(npi)) return false;
     }
     if (states.size > 0) {
-      const raw = String(firstField(row, FILTER_STATE_FIELDS) ?? "").trim();
-      const st = raw ? stateCodeOf(raw) ?? raw.toUpperCase() : "";
+      const st = stateOfRow(row) ?? "";
       if (st ? !states.has(st) : !opts.stateOptional) return false;
     }
     return true;
@@ -874,6 +888,16 @@ export function mapSharedPatientPatternRow(row: any, year: number, batchId: numb
 }
 
 /**
+ * Care Compare's hospital files name a hospital by `facility_id`, its CMS Certification Number, and have no other
+ * id column. Without it a row has no provider_id: the Hospitals list skips it and its Facility page can't be opened.
+ */
+const HOSPITAL_FACILITY_ID_TYPES: ReadonlySet<string> = new Set([
+  "hospital_general_info", "hospital_readmissions", "hospital_complications", "hospital_infections", "hospital_value_based_purchasing",
+  "hospital_hcahps_survey", "hospital_timely_effective_care", "hospital_unplanned_visits", "hospital_imaging_efficiency",
+  "hospital_spending_per_beneficiary", "hospital_spending_by_claim", "hospital_hac_reduction",
+]);
+
+/**
  * Compute a stable statistical identifier for a dataset row based on the dataset's import type.
  *
  * The returned identifier is derived from one or more dataset fields according to the import type
@@ -920,7 +944,7 @@ function deriveStatisticalId(row: any, importType: string, index?: number): stri
     id = row.npi || row.NPI || null;
   } else if (importType === "clinician_group_measures" || importType === "clinician_group_experience") {
     id = row.org_pac_id || row.Org_PAC_ID || null;
-  } else if (importType === "hospital_hcahps_survey" || importType === "hospital_timely_effective_care" || importType === "hospital_unplanned_visits" || importType === "hospital_imaging_efficiency" || importType === "hospital_spending_per_beneficiary" || importType === "hospital_spending_by_claim" || importType === "hospital_hac_reduction") {
+  } else if (HOSPITAL_FACILITY_ID_TYPES.has(importType)) {
     id = row.facility_id || row.Facility_ID || row.provider_id || row.Provider_ID || null;
   } else if (importType === "hospital_psychiatric_facility" || importType === "ambulatory_surgical_center" || importType === "hospital_joint_replacement") {
     id = row.cms_certification_number_ccn || row.facility_id || row.ccn || null;
@@ -1100,7 +1124,7 @@ export function rowDataYear(row: any, fallbackYear?: number | string | null): st
   return fallbackYear != null && String(fallbackYear).trim() ? String(fallbackYear).trim().slice(0, 10) : null;
 }
 
-function mapMedicareFacilityRow(row: any, importType: string, batchId: number, year?: number | string | null) {
+export function mapMedicareFacilityRow(row: any, importType: string, batchId: number, year?: number | string | null) {
   const statId = deriveStatisticalId(row, importType);
   const statName = deriveStatisticalName(row, importType);
 
@@ -1138,6 +1162,7 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number, y
       row.practiceaddress1 ||
       row.Rndrng_Prvdr_St1 || row.Suplr_Prvdr_St1 || row.Rfrg_Prvdr_St1 ||
       row.Prscrbr_St1 || row.Hosp_Address ||
+      row.address ||
       null,
     city:
       row.citytown || row["City/Town"] ||
@@ -1629,6 +1654,9 @@ export async function handleAutoImportCMSData(params: any) {
     let pagesSinceProgressUpdate = 0;
     let pagesSincePauseCheck = 0;
     const errors: any[] = [];
+    // A state_filter that no row can satisfy (the dataset names no state, by column, CCN or FIPS code) would read
+    // every page and import nothing. Watch the first rows and stop with the reason instead.
+    let stateCheck = rowFilter && parseFilterList(state_filter).length > 0 && !TYPED_ROUTES[import_type]?.stateFromParams ? stateProbe(stateOfRow) : null;
 
     let pageCount = 0;
     while (hasMore && pageCount < MAX_PAGES) {
@@ -1743,6 +1771,31 @@ export async function handleAutoImportCMSData(params: any) {
       if (rows.length === 0) {
         hasMore = false;
         break;
+      }
+
+      if (stateCheck) {
+        const verdict = stateCheck.page(rows);
+        if (verdict === "ok") {
+          stateCheck = null;
+        } else if (verdict === "unsupported" || (rows.length < PAGE_SIZE && stateCheck.exhaustedWithoutState())) {
+          const errMsg = stateFilterUnsupportedMessage(import_type, state_filter);
+          console.error(`[AutoImportCMS] ${errMsg}`);
+          errors.push({ offset, message: errMsg });
+          await safeImportQuery(
+            () => db.update(importBatches).set({
+              status: "failed",
+              imported_rows: totalInserted,
+              skipped_rows: totalSkipped + rows.length,
+              total_rows: totalFetched + rows.length,
+              error_samples: errors.slice(-5),
+              retry_params: mergeRetryParams({ ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped }),
+              updated_date: new Date(),
+            }).where(eq(importBatches.id, batch_id)),
+            undefined, `fail on unusable state_filter ${import_type}`
+          );
+          await endedWithoutFinishing(import_type, batch_id, "failed", errMsg);
+          return;
+        }
       }
 
       // Apply the optional npi_filter / state_filter to this page. Pagination

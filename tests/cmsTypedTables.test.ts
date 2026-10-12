@@ -86,12 +86,30 @@ describe("Monthly Enrollment", () => {
 });
 
 describe("Geographic Variation", () => {
-  it("infers the level from the code in the older file layout and keeps every numeric column", () => {
-    const { rows: out } = mapAll("medicare_geographic_variation");
-    expect(out[0]).toMatchObject({ data_year: "2016", geo_level: "State", geo_code: "02", state: "AK", ma_benes: 573, avg_age: 74, dual_pct: 0.1902, snf_stays_per_1000: 57.5916, er_visits_per_1000: 401.3962 });
-    expect((out[0].metrics as any).IP_STAYS_PER_1000_BENES).toBe(209.4241);
-    const newer = TYPED_ROUTES.medicare_geographic_variation.map({ YEAR: "2024", BENE_GEO_LVL: "County", BENE_GEO_CD: "42003", BENE_GEO_DESC: "PA - Allegheny", BENE_AGE_LVL: "All", BENES_TOTAL_CNT: "250000", MA_PRTCPTN_RATE: "0.61", TOT_MDCR_STDZD_PYMT_PC: "11234.5", ACUTE_HOSP_READMSN_PCT: "0.17" }, ctx)!;
-    expect(newer).toMatchObject({ geo_level: "County", geo_code: "42003", benes: 250000, ma_participation_rate: 0.61, std_per_capita_total: 11234.5, readmission_rate: 0.17 });
+  it("maps the national, state and county rows of the Original Medicare file, reading the state from the geography", () => {
+    const { rows: out, dropped } = mapAll("medicare_geographic_variation");
+    expect(dropped).toBe(0);
+    expect(out.map((r) => [r.geo_level, r.geo_code, r.state])).toEqual([["National", "", null], ["State", "42", "PA"], ["County", "42003", "PA"]]);
+    expect(out[2]).toMatchObject({
+      data_year: "2024", age_level: "All", geo_desc: "PA-Allegheny", benes: 290959, ma_benes: 188458, ma_participation_rate: 0.7484, dual_pct: 0.0944, avg_age: 73,
+      std_per_capita_total: 11978.3, std_per_capita_snf: 606.26, std_per_capita_hha: 555.57, std_per_capita_hospice: 461.61,
+      readmission_rate: 0.189, er_visits_per_1000: 583.4031, snf_stays_per_1000: 49.4246,
+    });
+    // The county file carries no risk score.
+    expect(out[2].avg_hcc_score).toBeNull();
+    expect((out[2].metrics as any).IP_MDCR_STDZD_PYMT_PC).toBeGreaterThan(0);
+  });
+
+  it("still reads the older Medicare Advantage layout: level from the code, state from its column", () => {
+    const older = TYPED_ROUTES.medicare_geographic_variation.map({ YEAR: "2016", STATE: "AK", BENE_GEO_CD: "02", BENES_MA_CNT: "573", BENE_AVG_AGE: "74", BENE_DUAL_PCT: "0.1902", IP_STAYS_PER_1000_BENES: "209.4241", SNF_STAYS_PER_1000_BENES: "57.5916", ER_VISITS_PER_1000_BENES: "401.3962" }, ctx)!;
+    expect(older).toMatchObject({ data_year: "2016", geo_level: "State", geo_code: "02", state: "AK", ma_benes: 573, avg_age: 74, dual_pct: 0.1902, snf_stays_per_1000: 57.5916, er_visits_per_1000: 401.3962 });
+    expect((older.metrics as any).IP_STAYS_PER_1000_BENES).toBe(209.4241);
+  });
+
+  it("takes a county's state from its FIPS code when the description is missing or spaced differently", () => {
+    const base = { YEAR: "2024", BENE_GEO_LVL: "County", BENE_AGE_LVL: "All", BENES_TOTAL_CNT: "250000" };
+    expect(TYPED_ROUTES.medicare_geographic_variation.map({ ...base, BENE_GEO_CD: "42003", BENE_GEO_DESC: "PA - Allegheny" }, ctx)).toMatchObject({ geo_code: "42003", state: "PA" });
+    expect(TYPED_ROUTES.medicare_geographic_variation.map({ ...base, BENE_GEO_CD: "39035" }, ctx)).toMatchObject({ geo_code: "39035", state: "OH" });
   });
 });
 
