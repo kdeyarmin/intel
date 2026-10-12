@@ -776,6 +776,18 @@ async function processQueueWorkerWithRestart(dryRun: boolean) {
 }
 
 export async function handleNppesCrawler(payload: any, user: any) {
+  // Base44 wraps the whole Deno.serve handler in try/catch and returns a 500
+  // JSON payload on crash. Without this wrapper an unhandled throw inside the
+  // dispatcher would escape to Express's default error handler.
+  try {
+    return await handleNppesCrawlerInner(payload || {}, user);
+  } catch (e: any) {
+    console.error("[Crawler] handleNppesCrawler crash:", e.message);
+    return { error: e.message };
+  }
+}
+
+async function handleNppesCrawlerInner(payload: any, user: any) {
   const { action = "process_queue", states = [], region, concurrency, skip_completed = true, dry_run = false, entity_type, taxonomy_description, city, postal_code, item_ids, batch_id } = payload;
 
   if (action === "cleanup_orphans") {
