@@ -45,10 +45,11 @@ export function applyAssistantEvent(draft, event, data) {
     case 'retry': {
       // The server re-asks the model; drop what the failed attempt streamed:
       // its text, progress notes and tool calls that never got a result.
+      // The failed attempt was still billed, so keep a counter the UI shows.
       let cut = items.length;
       const fromAttempt = (it) => it.type === 'text' || it.type === 'progress' || (it.type === 'tool' && it.ok == null);
       while (cut > 0 && fromAttempt(items[cut - 1])) cut -= 1;
-      return { ...draft, items: items.slice(0, cut) };
+      return { ...draft, items: items.slice(0, cut), retries: (draft.retries || 0) + 1 };
     }
     case 'done':
       return { ...draft, status: data.status === 'complete' ? 'done' : data.status, error: data.error || null };

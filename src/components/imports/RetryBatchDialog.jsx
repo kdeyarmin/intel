@@ -71,15 +71,18 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
         retryParams.resume_from = batch.imported_rows || 0;
       }
 
-      // Build invoke params — triggerImport will create the batch, we don't create one here
+      // Resume the failed batch in place (batch_id), the same path the
+      // auto-retry worker uses — no new batch row, no split history, and the
+      // per-type active-import guard sees one batch, not two.
       const invokeParams = {
         import_type: batch.import_type,
         file_url: batch.file_url || undefined,
         dry_run: dryRun,
         year: batch.data_year || undefined,
-        // Retry tracking
+        batch_id: batch.id,
+        // Retry tracking (the server increments retry_count on the in-place path)
         retry_of: batch.id,
-        retry_count: currentRetryCount + 1,
+        retry_count: currentRetryCount,
         retry_tags: [...new Set([...(batch.tags || []).filter(t => t !== 'retry'), 'retry'])],
         category: batch.category || undefined,
       };
@@ -87,6 +90,7 @@ export default function RetryBatchDialog({ batch, open, onOpenChange, onRetrySta
       // Pass range params for ZIP-based or paginated imports
       if (retryMode === 'row_range') {
         invokeParams.row_offset = rowOffset ? Number(rowOffset) : 0;
+        invokeParams.resume_offset = rowOffset ? Number(rowOffset) : 0;
         invokeParams.row_limit = rowLimit ? Number(rowLimit) : undefined;
       } else if (retryMode === 'resume') {
         invokeParams.resume_offset = batch.imported_rows || 0;

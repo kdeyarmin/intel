@@ -1,4 +1,5 @@
 import { latestReferralSnapshot } from '@/lib/referralSummary';
+import { latestUtilizationTotals } from './utilizationTotals';
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Users, DollarSign, Activity, GitBranch, MapPin, Stethoscope } from 'lucide-react';
@@ -20,7 +21,9 @@ function KPI({ title, value, icon: Icon, color, bgColor }) {
 }
 
 export default function ProviderKPIRow({ utilizations = [], referrals = [], locations = [], _taxonomies = [], score }) {
-  const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+  // Utilization rows are per-HCPCS slices: the KPIs sum every row from the
+  // latest data year instead of reading a single arbitrary row.
+  const latestUtil = latestUtilizationTotals(utilizations);
   const latestRef = latestReferralSnapshot(referrals);
 
   const fmt = (v) => {
