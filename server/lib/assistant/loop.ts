@@ -183,7 +183,17 @@ export async function runAssistantTurn(input: RunTurnInput): Promise<TurnResult>
       message = await stream.finalMessage();
       jsonRetries = 0;
     } catch (e) {
-      await Promise.resolve(charge(seen)).catch((err) => console.warn("[assistant] couldn't record usage:", err?.message || err));
+      let meterFailed = false;
+      try {
+        await Promise.resolve(charge(seen));
+      } catch (err: any) {
+        console.warn("[assistant] couldn't record usage:", err?.message || err);
+        meterFailed = true;
+      }
+      if (meterFailed) {
+        if (partialText) await input.persist("assistant", [{ type: "text", text: partialText }]);
+        return done("error", "Usage couldn't be recorded, so this answer stopped before more was spent.");
+      }
       if (input.signal.aborted || e instanceof Anthropic.APIUserAbortError) {
         // Keep what was shown so the user still sees it; the turn is never replayed.
         if (partialText) await input.persist("assistant", [{ type: "text", text: partialText }]);
@@ -212,13 +222,22 @@ export async function runAssistantTurn(input: RunTurnInput): Promise<TurnResult>
 
     rounds += 1;
     // The final message's usage is authoritative; fall back to what streamed.
-    // Usage logging must never fail a delivered turn: the answer is already
-    // persisted above, so a logging failure is logged and the turn completes.
-    await Promise.resolve(charge(message.usage ?? seen)).catch((err) => console.warn("[assistant] couldn't record usage:", err?.message || err));
+    // A failed meter write must not fail open: the text already delivered is
+    // kept, but no further model or tool round runs against an unchanged budget.
+    let meterFailed = false;
+    try {
+      await Promise.resolve(charge(message.usage ?? seen));
+    } catch (err: any) {
+      console.warn("[assistant] couldn't record usage:", err?.message || err);
+      meterFailed = true;
+    }
 
     // Verbatim, including thinking and fallback blocks: the next request replays it as is.
     await input.persist("assistant", message.content as unknown[]);
     messages.push({ role: "assistant", content: message.content as unknown as ContentBlockParam[] });
+    if (meterFailed) {
+      return done("error", "Usage couldn't be recorded, so this answer stopped before more was spent.");
+    }
 
     const toolUses = message.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
     switch (message.stop_reason) {

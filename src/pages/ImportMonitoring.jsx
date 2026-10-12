@@ -1130,7 +1130,7 @@ function ImportHistoryView({ batches, formatTimestamp }) {
           </CardContent>
         </Card>
       </div>
-      <p className="text-[11px] text-slate-500">Totals cover the 100 most recent imports only — they are partial, not lifetime figures.</p>
+      <p className="text-[11px] text-slate-400">Totals cover the 100 most recent imports only — they are partial, not lifetime figures.</p>
 
       {/* Filters */}
       <Card className="bg-[#141d30] border-slate-700/50">

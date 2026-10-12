@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 export interface ConversationRow {
   id: number;
   user_id: number;
+  org_id?: number | null;
   title: string | null;
   created_at: string | Date;
   updated_at: string | Date;
@@ -61,12 +62,12 @@ export interface NewAction {
 }
 
 export interface AssistantStore {
-  /** Newest first; `before` continues after the last row of the previous page. */
-  listConversations(userId: number, limit: number, before?: { updatedAt: string; id: number } | null): Promise<ConversationRow[]>;
+  /** Newest first; `before` continues after the last row of the previous page. Scoped to the caller's current organization. */
+  listConversations(userId: number, orgId: number | null, limit: number, before?: { updatedAt: string; id: number } | null): Promise<ConversationRow[]>;
   createConversation(userId: number, title?: string | null, orgId?: number | null): Promise<ConversationRow>;
-  getConversation(id: number, userId: number): Promise<ConversationRow | null>;
-  renameConversation(id: number, userId: number, title: string): Promise<ConversationRow | null>;
-  deleteConversation(id: number, userId: number): Promise<boolean>;
+  getConversation(id: number, userId: number, orgId: number | null): Promise<ConversationRow | null>;
+  renameConversation(id: number, userId: number, orgId: number | null, title: string): Promise<ConversationRow | null>;
+  deleteConversation(id: number, userId: number, orgId: number | null): Promise<boolean>;
   loadTranscript(conversationId: number): Promise<{ turns: TurnRow[]; messages: MessageRow[]; actions: ActionRow[] }>;
   /**
    * Starts a turn unless the user already has one running in any conversation
@@ -80,8 +81,13 @@ export interface AssistantStore {
    * dead turn can't report running:true forever.
    */
   interruptStaleTurns(conversationId: number, staleMs: number): Promise<number>;
-  /** Marks one running turn interrupted (the user's "mark as stopped"). False when it wasn't running. */
-  interruptTurn(conversationId: number, turnId: number): Promise<boolean>;
+  /**
+   * Marks one running turn interrupted when it is older than `staleMs` (the
+   * process serving it is gone). A turn that is still young is left running:
+   * only the request that owns it can stop it. "still_active" when it is
+   * running but not yet stale.
+   */
+  interruptTurn(conversationId: number, turnId: number, staleMs: number): Promise<"stopped" | "not_running" | "still_active">;
   countTurns(conversationId: number): Promise<number>;
   appendMessage(conversationId: number, turnId: number, role: string, content: unknown[]): Promise<void>;
   finishTurn(turnId: number, status: string, error: string | null, usage: unknown): Promise<void>;
@@ -90,9 +96,9 @@ export interface AssistantStore {
   /** Proposals the user decided on that the model hasn't been told about yet. */
   unreportedDecisions(conversationId: number): Promise<ActionRow[]>;
   markReported(actionIds: string[]): Promise<void>;
-  /** Single use: locks the proposal, runs `apply` in the same transaction, then marks it confirmed. */
-  confirmAction(actionId: string, userId: number, apply: (client: any, action: ActionRow) => Promise<unknown>): Promise<DecisionResult>;
-  cancelAction(actionId: string, userId: number): Promise<DecisionResult>;
+  /** Single use: locks the proposal, runs `apply` in the same transaction, then marks it confirmed. The proposal's conversation must belong to `orgId`. */
+  confirmAction(actionId: string, userId: number, orgId: number | null, apply: (client: any, action: ActionRow) => Promise<unknown>): Promise<DecisionResult>;
+  cancelAction(actionId: string, userId: number, orgId: number | null): Promise<DecisionResult>;
   usageToday(userId: number): Promise<number>;
   addUsage(userId: number, units: number, orgId?: number | null): Promise<void>;
 }
@@ -100,30 +106,37 @@ export interface AssistantStore {
 export function createPgAssistantStore(pool: any): AssistantStore {
   const q = async (text: string, values: unknown[] = []) => (await pool.query(text, values)).rows;
 
-  async function decide(actionId: string, userId: number): Promise<ActionRow | undefined> {
-    return (await q("SELECT * FROM assistant_actions WHERE id = $1 AND user_id = $2", [actionId, userId]))[0];
+  async function decide(actionId: string, userId: number, orgId: number | null): Promise<ActionRow | undefined> {
+    return (await q(
+      `SELECT a.* FROM assistant_actions a
+        JOIN assistant_conversations c ON c.id = a.conversation_id
+        WHERE a.id = $1 AND a.user_id = $2 AND c.org_id IS NOT DISTINCT FROM $3`,
+      [actionId, userId, orgId],
+    ))[0];
   }
 
+  const orgScope = "org_id IS NOT DISTINCT FROM $2";
+
   return {
-    listConversations: (userId, limit, before) => before
+    listConversations: (userId, orgId, limit, before) => before
       ? q(`SELECT id, user_id, title, created_at, updated_at FROM assistant_conversations
-            WHERE user_id = $1 AND (updated_at, id) < ($3::timestamptz, $4) ORDER BY updated_at DESC, id DESC LIMIT $2`, [userId, limit, before.updatedAt, before.id])
-      : q("SELECT id, user_id, title, created_at, updated_at FROM assistant_conversations WHERE user_id = $1 ORDER BY updated_at DESC, id DESC LIMIT $2", [userId, limit]),
+            WHERE user_id = $1 AND org_id IS NOT DISTINCT FROM $2 AND (updated_at, id) < ($4::timestamptz, $5) ORDER BY updated_at DESC, id DESC LIMIT $3`, [userId, orgId, limit, before.updatedAt, before.id])
+      : q(`SELECT id, user_id, title, created_at, updated_at FROM assistant_conversations WHERE user_id = $1 AND ${orgScope} ORDER BY updated_at DESC, id DESC LIMIT $3`, [userId, orgId, limit]),
 
     async createConversation(userId, title, orgId) {
       return (await q("INSERT INTO assistant_conversations (user_id, org_id, title) VALUES ($1, $2, $3) RETURNING *", [userId, orgId ?? null, title || null]))[0];
     },
 
-    async getConversation(id, userId) {
-      return (await q("SELECT * FROM assistant_conversations WHERE id = $1 AND user_id = $2", [id, userId]))[0] || null;
+    async getConversation(id, userId, orgId) {
+      return (await q("SELECT * FROM assistant_conversations WHERE id = $1 AND user_id = $2 AND org_id IS NOT DISTINCT FROM $3", [id, userId, orgId]))[0] || null;
     },
 
-    async renameConversation(id, userId, title) {
-      return (await q("UPDATE assistant_conversations SET title = $3, updated_at = now() WHERE id = $1 AND user_id = $2 RETURNING *", [id, userId, title]))[0] || null;
+    async renameConversation(id, userId, orgId, title) {
+      return (await q("UPDATE assistant_conversations SET title = $4, updated_at = now() WHERE id = $1 AND user_id = $2 AND org_id IS NOT DISTINCT FROM $3 RETURNING *", [id, userId, orgId, title]))[0] || null;
     },
 
-    async deleteConversation(id, userId) {
-      return (await q("DELETE FROM assistant_conversations WHERE id = $1 AND user_id = $2 RETURNING id", [id, userId])).length > 0;
+    async deleteConversation(id, userId, orgId) {
+      return (await q("DELETE FROM assistant_conversations WHERE id = $1 AND user_id = $2 AND org_id IS NOT DISTINCT FROM $3 RETURNING id", [id, userId, orgId])).length > 0;
     },
 
     async loadTranscript(conversationId) {
@@ -185,14 +198,21 @@ export function createPgAssistantStore(pool: any): AssistantStore {
       return rows.length;
     },
 
-    async interruptTurn(conversationId, turnId) {
+    async interruptTurn(conversationId, turnId, staleMs) {
       const rows = await q(
         `UPDATE assistant_turns SET status = 'interrupted', finished_at = now(),
            error = 'Marked as stopped.'
-         WHERE id = $2 AND conversation_id = $1 AND status = 'running' RETURNING id`,
+         WHERE id = $2 AND conversation_id = $1 AND status = 'running'
+           AND created_at < now() - ($3 || ' milliseconds')::interval
+         RETURNING id`,
+        [conversationId, turnId, String(staleMs)],
+      );
+      if (rows.length > 0) return "stopped";
+      const current = await q(
+        "SELECT status FROM assistant_turns WHERE id = $2 AND conversation_id = $1",
         [conversationId, turnId],
       );
-      return rows.length > 0;
+      return current[0]?.status === "running" ? "still_active" : "not_running";
     },
 
     async countTurns(conversationId) {
@@ -216,7 +236,12 @@ export function createPgAssistantStore(pool: any): AssistantStore {
     },
 
     async finishTurn(turnId, status, error, usage) {
-      await q("UPDATE assistant_turns SET status = $2, error = $3, usage = $4::jsonb, finished_at = now() WHERE id = $1", [turnId, status, error, JSON.stringify(usage ?? null)]);
+      // A stop that already marked the turn interrupted must not be overwritten
+      // by a request that is still finishing on another instance.
+      await q(
+        "UPDATE assistant_turns SET status = $2, error = $3, usage = $4::jsonb, finished_at = now() WHERE id = $1 AND status = 'running'",
+        [turnId, status, error, JSON.stringify(usage ?? null)],
+      );
     },
 
     async touchConversation(id, titleIfUnset) {
@@ -239,11 +264,17 @@ export function createPgAssistantStore(pool: any): AssistantStore {
       if (actionIds.length) await q("UPDATE assistant_actions SET reported_at = now() WHERE id = ANY($1)", [actionIds]);
     },
 
-    async confirmAction(actionId, userId, apply) {
+    async confirmAction(actionId, userId, orgId, apply) {
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
-        const { rows } = await client.query("SELECT * FROM assistant_actions WHERE id = $1 AND user_id = $2 FOR UPDATE", [actionId, userId]);
+        const { rows } = await client.query(
+          `SELECT a.* FROM assistant_actions a
+            JOIN assistant_conversations c ON c.id = a.conversation_id
+            WHERE a.id = $1 AND a.user_id = $2 AND c.org_id IS NOT DISTINCT FROM $3
+            FOR UPDATE OF a`,
+          [actionId, userId, orgId],
+        );
         const action: ActionRow | undefined = rows[0];
         let failure: DecisionResult | null = null;
         if (!action) failure = { ok: false, reason: "not_found" };
@@ -268,13 +299,17 @@ export function createPgAssistantStore(pool: any): AssistantStore {
       }
     },
 
-    async cancelAction(actionId, userId) {
+    async cancelAction(actionId, userId, orgId) {
       const rows = await q(
-        "UPDATE assistant_actions SET status = 'cancelled', decided_at = now() WHERE id = $1 AND user_id = $2 AND status = 'proposed' RETURNING *",
-        [actionId, userId],
+        `UPDATE assistant_actions AS a SET status = 'cancelled', decided_at = now()
+          FROM assistant_conversations c
+          WHERE a.conversation_id = c.id AND a.id = $1 AND a.user_id = $2 AND a.status = 'proposed'
+            AND c.org_id IS NOT DISTINCT FROM $3
+          RETURNING a.*`,
+        [actionId, userId, orgId],
       );
       if (rows[0]) return { ok: true, action: rows[0] };
-      const existing = await decide(actionId, userId);
+      const existing = await decide(actionId, userId, orgId);
       return existing ? { ok: false, reason: "already_decided", action: existing } : { ok: false, reason: "not_found" };
     },
 

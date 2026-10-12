@@ -35,7 +35,7 @@ export default function ProviderKPIRow({ utilizations = [], referrals = [], loca
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      <KPI title="Beneficiaries" value={fmt(latestUtil?.total_medicare_beneficiaries)} icon={Users} color="text-blue-400" bgColor="bg-blue-900/20" />
+      <KPI title="Code-level benes" value={fmt(latestUtil?.code_level_beneficiaries)} icon={Users} color="text-blue-400" bgColor="bg-blue-900/20" />
       <KPI title="Services" value={fmt(latestUtil?.total_services)} icon={Activity} color="text-teal-400" bgColor="bg-teal-900/20" />
       <KPI title="Medicare Pay" value={latestUtil?.total_medicare_payment ? `$${fmt(latestUtil.total_medicare_payment)}` : '—'} icon={DollarSign} color="text-emerald-400" bgColor="bg-emerald-900/20" />
       <KPI title="Shared Encounters" value={fmt(latestRef?.total_referrals)} icon={GitBranch} color="text-violet-400" bgColor="bg-violet-900/20" />

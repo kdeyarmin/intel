@@ -1,6 +1,6 @@
 import { db, pool } from "../db";
 import { medicareFacilities, medicareFacilitiesRaw, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals, leadScores, cmsOrderReferring, rollupReferralSources } from "../db/schema";
-import { eq, sql, and, ilike, inArray, desc, asc } from "drizzle-orm";
+import { eq, sql, and, inArray, desc, asc } from "drizzle-orm";
 import { providerReference, facilityDme, facilityDrgs } from "./marketReference";
 
 const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
@@ -105,7 +105,7 @@ async function resolveLinkedFacilityCcn(f: any) {
   const group = getFacilityTypeGroup(f.facility_type || "");
   const groupTypes = group ? FACILITY_TYPE_GROUPS[group] : null;
   if (!groupTypes || !f.facility_name || !f.state) return { ...f, resolved_ccn: false };
-  const needle = String(f.facility_name).replace(/[%_\\]/g, (c) => `\\${c}`);
+  const name = String(f.facility_name).trim();
   const rows = await db.select({
     provider_id: medicareFacilities.provider_id,
     facility_name: medicareFacilities.facility_name,
@@ -118,17 +118,27 @@ async function resolveLinkedFacilityCcn(f: any) {
     .where(and(
       inArray(medicareFacilities.facility_type, groupTypes),
       eq(medicareFacilities.state, String(f.state).toUpperCase()),
-      ilike(medicareFacilities.facility_name, `%${needle}%`),
+      // Exact name, so (facility_type, facility_name) can serve the lookup.
+      // A leading-wildcard ILIKE cannot, and it also pulls in unrelated rows.
+      eq(medicareFacilities.facility_name, name),
     ))
     .limit(25)
     .catch(() => [] as any[]);
   const isCcn = (id: any) => !!id && !/^\d{10}$/.test(String(id));
   const norm = (s: any) => String(s || "").toLowerCase().trim();
-  const name = norm(f.facility_name);
-  const pick =
-    rows.find((r: any) => isCcn(r.provider_id) && norm(r.facility_name) === name && norm(r.city) === norm(f.city)) ||
-    rows.find((r: any) => isCcn(r.provider_id) && norm(r.facility_name) === name) ||
-    rows.find((r: any) => isCcn(r.provider_id));
+  const wanted = norm(name);
+  const ccnRows = rows.filter((r: any) => isCcn(r.provider_id) && norm(r.facility_name) === wanted);
+  const distinct = (list: any[]) => [...new Set(list.map((r) => String(r.provider_id)))];
+  const cityRows = f.city ? ccnRows.filter((r: any) => norm(r.city) === norm(f.city)) : [];
+  const cityIds = distinct(cityRows);
+  const nameIds = distinct(ccnRows);
+  // A unique city+name CCN, or a single exact-name CCN. Anything ambiguous
+  // (including the first fuzzy CCN in the state) stays unresolved.
+  const pick = cityIds.length === 1
+    ? cityRows.find((r: any) => String(r.provider_id) === cityIds[0])
+    : nameIds.length === 1
+      ? ccnRows.find((r: any) => String(r.provider_id) === nameIds[0])
+      : null;
   if (!pick?.provider_id) return { ...f, resolved_ccn: false };
   return {
     provider_id: pick.provider_id,

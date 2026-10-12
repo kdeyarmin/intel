@@ -17,7 +17,7 @@ export function memoryAssistantStore(): AssistantStore & {
 
   const store = {
     conversations, turns, messages, actions, usage,
-    async listConversations(userId: number, limit: number, before?: { updatedAt: string; id: number } | null) {
+    async listConversations(userId: number, orgId: number | null, limit: number, before?: { updatedAt: string; id: number } | null) {
       const key = (c: ConversationRow) => [new Date(c.updated_at as any).getTime(), c.id] as const;
       const older = (c: ConversationRow) => {
         if (!before) return true;
@@ -25,25 +25,25 @@ export function memoryAssistantStore(): AssistantStore & {
         const bt = new Date(before.updatedAt).getTime();
         return t < bt || (t === bt && id < before.id);
       };
-      return conversations.filter((c) => c.user_id === userId && older(c))
+      return conversations.filter((c) => c.user_id === userId && (c.org_id ?? null) === orgId && older(c))
         .sort((a, b) => key(b)[0] - key(a)[0] || b.id - a.id).slice(0, limit).map(clone);
     },
-    async createConversation(userId: number, title?: string | null) {
-      const row = { id: ids.conv++, user_id: userId, title: title || null, created_at: nowIso(), updated_at: nowIso() };
+    async createConversation(userId: number, title?: string | null, orgId?: number | null) {
+      const row = { id: ids.conv++, user_id: userId, org_id: orgId ?? null, title: title || null, created_at: nowIso(), updated_at: nowIso() };
       conversations.push(row);
       return clone(row);
     },
-    async getConversation(id: number, userId: number) {
-      return clone(conversations.find((c) => c.id === id && c.user_id === userId) ?? null);
+    async getConversation(id: number, userId: number, orgId: number | null) {
+      return clone(conversations.find((c) => c.id === id && c.user_id === userId && (c.org_id ?? null) === orgId) ?? null);
     },
-    async renameConversation(id: number, userId: number, title: string) {
-      const c = conversations.find((x) => x.id === id && x.user_id === userId);
+    async renameConversation(id: number, userId: number, orgId: number | null, title: string) {
+      const c = conversations.find((x) => x.id === id && x.user_id === userId && (x.org_id ?? null) === orgId);
       if (!c) return null;
       c.title = title;
       return clone(c);
     },
-    async deleteConversation(id: number, userId: number) {
-      const i = conversations.findIndex((c) => c.id === id && c.user_id === userId);
+    async deleteConversation(id: number, userId: number, orgId: number | null) {
+      const i = conversations.findIndex((c) => c.id === id && c.user_id === userId && (c.org_id ?? null) === orgId);
       if (i === -1) return false;
       conversations.splice(i, 1);
       for (const list of [turns, messages, actions] as any[]) {
@@ -79,11 +79,12 @@ export function memoryAssistantStore(): AssistantStore & {
       }
       return n;
     },
-    async interruptTurn(conversationId: number, turnId: number) {
-      const t = turns.find((x) => x.id === turnId && x.conversation_id === conversationId && x.status === "running");
-      if (!t) return false;
+    async interruptTurn(conversationId: number, turnId: number, staleMs: number) {
+      const t = turns.find((x) => x.id === turnId && x.conversation_id === conversationId);
+      if (!t || t.status !== "running") return "not_running" as const;
+      if (new Date(t.created_at as any).getTime() >= Date.now() - staleMs) return "still_active" as const;
       Object.assign(t, { status: "interrupted", error: "Marked as stopped.", finished_at: nowIso() });
-      return true;
+      return "stopped" as const;
     },
     async countTurns(conversationId: number) {
       return turns.filter((t) => t.conversation_id === conversationId).length;
@@ -95,7 +96,7 @@ export function memoryAssistantStore(): AssistantStore & {
     },
     async finishTurn(turnId: number, status: string, error: string | null, u: unknown) {
       const t = turns.find((x) => x.id === turnId);
-      if (t) Object.assign(t, { status, error, usage: u, finished_at: nowIso() });
+      if (t && t.status === "running") Object.assign(t, { status, error, usage: u, finished_at: nowIso() });
     },
     async touchConversation(id: number, titleIfUnset?: string | null) {
       const c = conversations.find((x) => x.id === id);
@@ -117,18 +118,20 @@ export function memoryAssistantStore(): AssistantStore & {
     async markReported(actionIds: string[]) {
       for (const a of actions) if (actionIds.includes(a.id)) a.reported_at = nowIso();
     },
-    async confirmAction(actionId: string, userId: number, apply: (client: any, action: ActionRow) => Promise<unknown>): Promise<DecisionResult> {
+    async confirmAction(actionId: string, userId: number, orgId: number | null, apply: (client: any, action: ActionRow) => Promise<unknown>): Promise<DecisionResult> {
       const a = actions.find((x) => x.id === actionId && x.user_id === userId);
-      if (!a) return { ok: false, reason: "not_found" };
+      const conv = a ? conversations.find((c) => c.id === a.conversation_id) : undefined;
+      if (!a || !conv || (conv.org_id ?? null) !== orgId) return { ok: false, reason: "not_found" };
       if (a.status !== "proposed") return { ok: false, reason: "already_decided", action: clone(a) };
       if (new Date(a.expires_at).getTime() <= Date.now()) return { ok: false, reason: "expired", action: clone(a) };
       const result = await apply({ fake: true }, clone(a));
       Object.assign(a, { status: "confirmed", decided_at: nowIso(), result });
       return { ok: true, action: clone(a) };
     },
-    async cancelAction(actionId: string, userId: number): Promise<DecisionResult> {
+    async cancelAction(actionId: string, userId: number, orgId: number | null): Promise<DecisionResult> {
       const a = actions.find((x) => x.id === actionId && x.user_id === userId);
-      if (!a) return { ok: false, reason: "not_found" };
+      const conv = a ? conversations.find((c) => c.id === a.conversation_id) : undefined;
+      if (!a || !conv || (conv.org_id ?? null) !== orgId) return { ok: false, reason: "not_found" };
       if (a.status !== "proposed") return { ok: false, reason: "already_decided", action: clone(a) };
       Object.assign(a, { status: "cancelled", decided_at: nowIso() });
       return { ok: true, action: clone(a) };

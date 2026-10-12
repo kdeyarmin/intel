@@ -36,7 +36,8 @@ describe('saveProvidersToLeadList', () => {
       { list_id: 7, npi: '3', status: 'New' },
     ]);
     expect(rows.some((r) => 'lead_list_id' in r)).toBe(false);
-    expect(LeadList.update).toHaveBeenCalledWith(7, { member_count: 3 });
+    expect(LeadList.update).not.toHaveBeenCalled();
+    expect(result.list.member_count).toBe(3);
     expect(result).toMatchObject({ added: 3, skipped: 0, truncated: 0 });
   });
 
@@ -48,7 +49,8 @@ describe('saveProvidersToLeadList', () => {
 
     expect(LeadListMember.filter).toHaveBeenCalledWith({ list_id: 4, id: { $gt: 0 } }, 'id', 5000);
     expect(LeadListMember.bulkCreate).toHaveBeenCalledWith([{ list_id: 4, npi: '2', status: 'New' }]);
-    expect(LeadList.update).toHaveBeenCalledWith(4, { member_count: 3 });
+    expect(LeadList.update).not.toHaveBeenCalled();
+    expect(result.list.member_count).toBe(3);
     expect(result).toMatchObject({ added: 1, skipped: 1 });
   });
 
@@ -62,7 +64,8 @@ describe('saveProvidersToLeadList', () => {
 
     expect(LeadListMember.filter).toHaveBeenLastCalledWith({ list_id: 4, id: { $gt: 5000 } }, 'id', 5000);
     expect(LeadListMember.bulkCreate).toHaveBeenCalledWith([{ list_id: 4, npi: 'new', status: 'New' }]);
-    expect(LeadList.update).toHaveBeenCalledWith(4, { member_count: 5002 });
+    expect(LeadList.update).not.toHaveBeenCalled();
+    expect(result.list.member_count).toBe(5002);
     expect(result).toMatchObject({ added: 1, skipped: 1 });
   });
 

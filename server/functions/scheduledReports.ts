@@ -169,11 +169,14 @@ async function saveRunState(id: number, patch: Record<string, unknown>) {
  */
 async function runAndSend(row: any, { advance = true }: { advance?: boolean } = {}) {
   const now = new Date();
-  await assertScheduleOrgBillable(row.org_id);
   const nextRun = (cfg: any) => (advance
     ? { next_run_at: computeNextReportRun(cfg, now).toISOString(), schedule_signature: scheduleSignature(cfg) }
     : {});
   try {
+    // Inside the state-recording path: a 402 must still write last_run_status
+    // and advance next_run_at, instead of leaving the short lease the due
+    // loop already stored.
+    await assertScheduleOrgBillable(row.org_id);
     const report = await buildReport(row);
     const { allowed, blocked, overflow } = await allowedRecipients(row.recipients);
     if (!allowed.length) {
@@ -216,12 +219,14 @@ async function runAndSend(row: any, { advance = true }: { advance?: boolean } = 
     return { status, emails_sent: sent, skipped_recipients: blocked, overflow_recipients: overflow, failures, rows: report.rows.length };
   } catch (e: any) {
     const cfg = settings(row);
+    const skipped = e?.status === 402 || e?.code === "subscription_inactive";
     await saveRunState(row.id, {
       last_run_at: now.toISOString(),
-      last_run_status: "failed",
+      last_run_status: skipped ? "skipped" : "failed",
       last_run_summary: String(e?.message || e).slice(0, 500),
       ...nextRun(cfg),
     });
+    if (skipped) return { status: "skipped" as const, emails_sent: 0, skipped_recipients: [] as string[], overflow_recipients: [] as string[], failures: [] as string[], rows: 0 };
     throw e;
   }
 }

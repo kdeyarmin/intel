@@ -14,7 +14,6 @@ import LeadResultsTable from '../components/leadlists/LeadResultsTable';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import PageHeader from '../components/shared/PageHeader';
 import { countExport, exportCSV } from '../components/exports/exportUtils';
-import { listMembers as fetchStoredMembers } from '../components/leadlists/leadListService';
 import { HIGH_INTENSITY_THRESHOLD } from '@/lib/scoringRules';
 import { toast } from 'sonner';
 
@@ -228,16 +227,6 @@ export default function LeadListBuilder() {
       setListName('');
       setListDescription('');
     } catch (error) {
-      // A failed chunk commits its predecessors, so the count set at creation
-      // would be inflated: recompute it from what is actually stored.
-      try {
-        const stored = await fetchStoredMembers(newList.id);
-        if (stored.length !== memberBatch.length) {
-          await base44.entities.LeadList.update(newList.id, { member_count: stored.length });
-        }
-      } catch {
-        // best-effort: the error toast below is the news that matters
-      }
       toast.error(`Failed to save list: ${error.message}`);
     }
   };

@@ -38,8 +38,8 @@ export class SubscriptionError extends Error {
   }
 }
 
-/** Statuses under which an organization may use the market data. */
-export const USABLE_ORG_STATUSES = new Set(["trial", "active", "past_due"]);
+/** Statuses under which an organization may read the market data. Canceled keeps that read-only access; spending is a separate, narrower check (BILLABLE_ORG_STATUSES). */
+export const USABLE_ORG_STATUSES = new Set(["trial", "active", "past_due", "canceled"]);
 
 /**
  * Statuses under which an organization may incur costs (AI calls, paid email,

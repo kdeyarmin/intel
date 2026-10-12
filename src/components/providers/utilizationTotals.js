@@ -28,7 +28,10 @@ export function sumUtilizationYear(utilizations = [], year) {
   const sum = (k) => rows.reduce((t, r) => t + num(r[k]), 0);
   return {
     year,
-    total_medicare_beneficiaries: sum('total_medicare_beneficiaries'),
+    // total_unique_benes is unique only inside one HCPCS row. Summing it is
+    // not a provider-level unique count, so it is not exposed as one.
+    total_medicare_beneficiaries: null,
+    code_level_beneficiaries: sum('total_medicare_beneficiaries'),
     total_services: sum('total_services'),
     total_medicare_payment: sum('total_medicare_payment'),
     total_submitted_charges: sum('total_submitted_charges'),

@@ -2,7 +2,7 @@
 // function ACL split and the Stripe event handler.
 import { describe, expect, it } from "vitest";
 import { normalizeTerritory, orgNameFor, slugify } from "../server/lib/orgs";
-import { assertTerritory, entitledCounties, inTerritory, isUnrestricted, needsTerritoryChoice, SubscriptionError, TerritoryError } from "../server/lib/entitlements";
+import { assertBillableOrg, assertTerritory, entitledCounties, inTerritory, isUnrestricted, needsTerritoryChoice, SubscriptionError, TerritoryError } from "../server/lib/entitlements";
 import { DEFAULT_QUOTAS, quotaLimit } from "../server/lib/orgQuota";
 import { isFunctionAllowedFor, OWNER_FUNCTIONS, PLATFORM_FUNCTIONS, PUBLIC_FUNCTIONS } from "../server/lib/functionAcl";
 import { applyStripeEvent, billingAuditEntries, billingView, buildCheckoutParams, mapSubscriptionStatus, periodEnd, planForPrice, priceIdFor, territoryForPlan } from "../server/lib/billing";
@@ -74,7 +74,13 @@ describe("territory entitlements", () => {
       expect(e.status).toBe(403);
       expect(e.message).toMatch(/Adams County, OH is outside your plan/);
     }
-    expect(() => assertTerritory({ ...statePlan, orgStatus: "canceled" }, { state: "PA" })).toThrow(SubscriptionError);
+    // Canceled organizations keep read-only access inside their territory.
+    // A status that is not usable still cannot read. Billing stays narrower:
+    // canceled cannot spend.
+    expect(() => assertTerritory({ ...statePlan, orgStatus: "canceled" }, { state: "PA" })).not.toThrow();
+    expect(() => assertTerritory({ ...statePlan, orgStatus: "canceled" }, { state: "OH" })).toThrow(TerritoryError);
+    expect(() => assertTerritory({ ...statePlan, orgStatus: "incomplete" }, { state: "PA" })).toThrow(SubscriptionError);
+    expect(() => assertBillableOrg({ status: "canceled" })).toThrow(SubscriptionError);
     expect(() => assertTerritory({ ...statePlan, orgStatus: "canceled", isPlatformAdmin: true }, { state: "PA" })).not.toThrow();
   });
 });

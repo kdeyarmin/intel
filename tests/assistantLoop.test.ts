@@ -200,6 +200,18 @@ describe("runAssistantTurn", () => {
     expect(result.usage).toMatchObject({ input_tokens: 5000, output_tokens: 900, requests: 1 });
   });
 
+  it("stops further model requests when usage cannot be recorded, and keeps the delivered text", async () => {
+    const onUsage = vi.fn(async () => { throw new Error("db down"); });
+    const { input, calls, persisted } = setup([
+      toolCall([{ id: "toolu_1", name: "list_lead_lists", input: {} }]),
+      text("never sent"),
+    ], { onUsage });
+    const result = await runAssistantTurn(input);
+    expect(result).toMatchObject({ status: "error", error: expect.stringMatching(/usage couldn't be recorded/i) });
+    expect(calls).toHaveLength(1);
+    expect(persisted.some((p) => p.role === "assistant")).toBe(true);
+  });
+
   it("charges each completed request once", async () => {
     const onUsage = vi.fn();
     const { input } = setup([text("Done.")], { onUsage });

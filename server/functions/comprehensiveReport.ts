@@ -1,6 +1,5 @@
 import { pool } from "../db";
-import { assertTerritory, type EntitledUser } from "../lib/entitlements";
-import { isOrgAdmin } from "../lib/roles";
+import { assertTerritory, isUnrestricted, TerritoryError, type EntitledUser } from "../lib/entitlements";
 
 async function safeQuery(client: any, text: string, params: any[] = []) {
   try {
@@ -146,14 +145,18 @@ export async function handleGetComprehensiveReport(payload: any, user?: Entitled
       }));
     }
 
-    // A restricted plan sees a provider only in its territory; owners and
-    // platform admins see everything. Checked against the practice location
-    // (else the facility), like the market views check a place.
-    if (!isOrgAdmin(user)) {
+    // A restricted plan sees a provider only in its territory. Platform admins
+    // and plans that cover everything see every report; an organization owner
+    // is not exempt. Without a location to check, a restricted plan is refused
+    // rather than shown the report.
+    if (!isUnrestricted(user)) {
       const place = result.locations.find((l: any) => l.location_type === "Practice" && validState(l.state))
         ?? result.locations.find((l: any) => validState(l.state))
         ?? facRows.find((f: any) => validState(f.state));
-      if (place) assertTerritory(user, { state: validState(place.state) });
+      if (!place) {
+        throw new TerritoryError("This provider's location isn't in the data, so a plan that covers specific places can't open this report.");
+      }
+      assertTerritory(user, { state: validState(place.state) });
     }
 
     // Aggregate totals and distinct years from the full table — not from the

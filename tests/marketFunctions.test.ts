@@ -262,7 +262,8 @@ describe("territory entitlements", () => {
   const lucasPack = plan("county_pack", { states: [], county_fips: ["39095"] });
   const paPlan = plan("state", { states: ["PA"], county_fips: [] });
   const unchosen = plan("county_pack", { states: [], county_fips: [] });
-  const lapsed = plan("state", { states: ["PA"], county_fips: [] }, "canceled");
+  // canceled keeps read-only access. A status outside USABLE_ORG_STATUSES does not.
+  const lapsed = plan("state", { states: ["PA"], county_fips: [] }, "incomplete");
   const national = plan("national", { states: [], county_fips: [] });
 
   // A restricted query carries the plan's counties and state prefixes as $3 and $4; the fake applies them like the SQL does.

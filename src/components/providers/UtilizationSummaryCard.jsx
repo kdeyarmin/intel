@@ -19,7 +19,6 @@ export default function UtilizationSummaryCard({ utilizations = [] }) {
 
     const totalPayments = utilizations.reduce((s, u) => s + (u.total_medicare_payment || 0), 0);
     const totalServices = utilizations.reduce((s, u) => s + (u.total_services || 0), 0);
-    const totalBeneficiaries = utilizations.reduce((s, u) => s + (u.total_medicare_beneficiaries || 0), 0);
 
     const yoyPayment = prev && prev.total_medicare_payment > 0
       ? ((latest.total_medicare_payment - prev.total_medicare_payment) / prev.total_medicare_payment * 100).toFixed(1)
@@ -28,11 +27,7 @@ export default function UtilizationSummaryCard({ utilizations = [] }) {
       ? ((latest.total_services - prev.total_services) / prev.total_services * 100).toFixed(1)
       : null;
 
-    const avgPaymentPerBene = latest.total_medicare_beneficiaries > 0
-      ? latest.total_medicare_payment / latest.total_medicare_beneficiaries
-      : 0;
-
-    return { latest, yearSpan, totalPayments, totalServices, totalBeneficiaries, yoyPayment, yoyServices, avgPaymentPerBene, years };
+    return { latest, yearSpan, totalPayments, totalServices, yoyPayment, yoyServices, years };
   }, [utilizations]);
 
   if (!summary) return null;
@@ -95,8 +90,8 @@ export default function UtilizationSummaryCard({ utilizations = [] }) {
             <p className="text-lg font-bold text-emerald-400">{fmt(summary.totalPayments)}</p>
           </div>
           <div className="p-3 rounded-lg bg-violet-900/20">
-            <p className="text-[10px] text-violet-400 font-medium mb-0.5">Avg $/Beneficiary</p>
-            <p className="text-lg font-bold text-violet-400">{fmt(Math.round(summary.avgPaymentPerBene))}</p>
+            <p className="text-[10px] text-violet-400 font-medium mb-0.5">Code-level benes ({summary.latest?.year})</p>
+            <p className="text-lg font-bold text-violet-400">{fmtN(summary.latest?.code_level_beneficiaries || 0)}</p>
           </div>
         </div>
         <div className="flex gap-1.5 mt-3 flex-wrap">

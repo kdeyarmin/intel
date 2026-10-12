@@ -126,13 +126,13 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
             total_rows: rp.total_rows || batch.imported_rows || 0,
           });
         } catch (invokeErr) {
-          await base44.entities.ImportBatch.update(batch.id, { status: prevStatus }).catch(() => {});
+          await base44.entities.ImportBatch.update(batch.id, { status: prevStatus, expected_status: 'processing' }).catch(() => {});
           throw invokeErr;
         }
       } else {
-        // triggerImport flips the batch to 'processing' itself on a successful
-        // invoke (the crawler's batch_resume does the same). Flipping here
-        // first would strand the batch in 'processing' when the invoke fails.
+        // triggerImport flips the batch to 'processing' itself only while it
+        // still has the status we saw. A stale resume then gets a 409 instead
+        // of reviving a batch that already finished.
         const offset = batch.retry_params?.resume_offset || batch.imported_rows || 0;
         await base44.functions.invoke('triggerImport', {
           import_type: batch.import_type,
@@ -140,6 +140,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
           batch_id: batch.id,
           resume_offset: offset,
           year: batch.data_year,
+          expected_status: batch.status,
         });
       }
 

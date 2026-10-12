@@ -25,6 +25,7 @@ import { adminOnly, authMiddleware, AuthRequest } from "../middleware/auth";
 import { clientIp, rateLimit } from "../middleware/rateLimit";
 import { isPlatformAdmin } from "../lib/roles";
 import type { UserRepo } from "../lib/userRepo";
+import { LastOwnerError } from "../lib/orgs";
 
 class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -88,7 +89,7 @@ export function createAdminUsersRouter(deps: AccountDeps) {
     try {
       await fn(req as AuthRequest, res);
     } catch (e: any) {
-      if (e instanceof HttpError) return res.status(e.status).json({ message: e.message });
+      if (e instanceof HttpError || e instanceof LastOwnerError) return res.status(e.status).json({ message: e.message });
       console.error("[admin/users] Failed:", e?.message || e);
       res.status(500).json({ message: process.env.NODE_ENV === "production" ? "Something went wrong. Please try again." : e?.message });
     }

@@ -25,7 +25,8 @@ export default function SystemStatusPanel({ batches }) {
     // 24h. There is no failed_at column, so the last write is the failure-time
     // proxy; completions use completed_at.
     const finishedAt = (b) => {
-      const ts = b.status === 'failed' ? b.updated_date : (b.completed_at || b.updated_date);
+      const failedLike = b.status === 'failed' || b.status === 'completed_with_errors';
+      const ts = failedLike ? b.updated_date : (b.completed_at || b.updated_date);
       const t = ts ? new Date(ts).getTime() : NaN;
       return Number.isNaN(t) ? null : t;
     };
@@ -34,7 +35,9 @@ export default function SystemStatusPanel({ batches }) {
       return t !== null && now - t < 86400000;
     };
     const completed24h = batches.filter(b => b.status === 'completed' && finishedIn24h(b));
-    const failed24h = batches.filter(b => b.status === 'failed' && finishedIn24h(b));
+    // completed_with_errors is a terminal incomplete import. Leaving it out of
+    // both sides overstates the success rate.
+    const failed24h = batches.filter(b => (b.status === 'failed' || b.status === 'completed_with_errors') && finishedIn24h(b));
 
     // Avg duration for completed batches
     const durations = completed24h

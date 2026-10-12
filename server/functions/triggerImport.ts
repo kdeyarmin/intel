@@ -486,6 +486,35 @@ export async function recordImportFailureAlert(batchId: number, importType: stri
   }
 }
 
+/** Pausing/cancelling are the statuses the UI writes; the worker must acknowledge them as the terminal state. */
+function acknowledgedStop(status: unknown): "paused" | "cancelled" | null {
+  if (status === "paused" || status === "pausing") return "paused";
+  if (status === "cancelled" || status === "cancelling") return "cancelled";
+  return null;
+}
+
+const RESUMABLE_BATCH_STATUSES = ["validating", "paused", "pausing", "failed", "cancelled", "completed_with_errors"];
+
+/**
+ * Move a resumed batch to processing only while it is still resumable.
+ * When the caller passes `expectedStatus`, that exact status is required, so
+ * a stale Resume click cannot revive a batch that finished or changed since
+ * the row was rendered. Zero matching rows is a 409, and no worker starts.
+ */
+async function claimResume(batchId: number, patch: Record<string, unknown>, expectedStatus: unknown) {
+  const expected = typeof expectedStatus === "string" && expectedStatus ? expectedStatus : null;
+  if (expected && !RESUMABLE_BATCH_STATUSES.includes(expected)) {
+    throw { status: 409, message: `Batch ${batchId} is no longer resumable (it finished or was already resumed).` };
+  }
+  const where = expected
+    ? and(eq(importBatches.id, batchId), eq(importBatches.status, expected))
+    : and(eq(importBatches.id, batchId), inArray(importBatches.status, RESUMABLE_BATCH_STATUSES));
+  const rows = await db.update(importBatches).set(patch as any).where(where).returning({ id: importBatches.id });
+  if (!rows.length) {
+    throw { status: 409, message: `Batch ${batchId} is no longer resumable (it finished or was already resumed).` };
+  }
+}
+
 export async function handleTriggerImport(payload: any, user: any) {
   if (!user || !(user.role === "admin" || user.isPlatformAdmin)) {
     throw { status: 403, message: "Forbidden: Admin access required" };
@@ -499,7 +528,7 @@ export async function handleTriggerImport(payload: any, user: any) {
 }
 
 async function startImport(payload: any) {
-  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter, headers, license_type } = payload;
+  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter, headers, license_type, expected_status } = payload;
 
   if (!raw_import_type) {
     throw { status: 400, message: "Missing required field: import_type" };
@@ -593,21 +622,11 @@ async function startImport(payload: any) {
     const fileName = url.split("/").pop() || import_type;
     let activeBatchId: number;
     if (batch_id) {
-      // Same claim as the CMS resume path: never resurrect a finished batch.
-      const [claimed] = await db.update(importBatches).set({
+      await claimResume(batch_id, {
         status: "processing", paused_by: null, cancel_reason: null, cancelled_at: null, error_samples: null,
         retry_params: mergeRetryParams({ file_url: url, import_type, resume_offset: resume_offset || 0, retry_of, retry_count: (retry_count || 0) + 1, retry_tags }),
         updated_date: new Date(),
-      }).where(and(
-        eq(importBatches.id, batch_id),
-        inArray(importBatches.status, [
-        // "validating": pre-created by the import wizard, not yet started.
-        "validating", "paused", "pausing", "failed", "cancelled", "completed_with_errors",
-      ]),
-      )).returning({ id: importBatches.id });
-      if (!claimed) {
-        throw { status: 409, message: `Batch ${batch_id} is no longer resumable (it finished or was already resumed).` };
-      }
+      }, expected_status);
       activeBatchId = batch_id;
     } else {
       const { batch, conflict } = await insertBatchAtomically(import_type, {
@@ -678,12 +697,7 @@ async function startImport(payload: any) {
   const effAsOf = importAsOf({ inherited: inheritedAsOf, temporalEnd: version?.temporalEnd, stated: statedAsOf, catalogModified: version?.catalogModified });
 
   if (batch_id) {
-    // Claim the batch for this resume: only a paused/pausing/failed/cancelled,
-    // MAX_PAGES-capped, or pre-created ("validating") batch may move to
-    // "processing". A batch that finished, or was already resumed between the
-    // click and this invoke, is left alone instead of being resurrected into
-    // a duplicate import loop.
-    const [claimed] = await db.update(importBatches).set({
+    await claimResume(batch_id, {
       status: "processing",
       paused_by: null,
       cancel_reason: null,
@@ -691,16 +705,7 @@ async function startImport(payload: any) {
       error_samples: null,
       retry_params: mergeRetryParams({ year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter, headers: effHeaders, license_type: effLicenseType, as_of: effAsOf }),
       updated_date: new Date(),
-    }).where(and(
-      eq(importBatches.id, batch_id),
-      inArray(importBatches.status, [
-        // "validating": pre-created by the import wizard, not yet started.
-        "validating", "paused", "pausing", "failed", "cancelled", "completed_with_errors",
-      ]),
-    )).returning({ id: importBatches.id });
-    if (!claimed) {
-      throw { status: 409, message: `Batch ${batch_id} is no longer resumable (it finished or was already resumed).` };
-    }
+    }, expected_status);
     activeBatchId = batch_id;
   } else {
     const { batch, conflict } = await insertBatchAtomically(import_type, {
@@ -1129,13 +1134,11 @@ async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | n
       () => db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1),
       [] as any[], `pause check ${import_type}`,
     );
-    const finalStatus = current?.status === "pausing" ? "paused"
-      : current?.status === "cancelling" ? "cancelled"
-      : current?.status;
-    if (current && (finalStatus === "paused" || finalStatus === "cancelled")) {
-      console.log(`[CsvImport] Import ${import_type} ${finalStatus} by user at row ${totalFetched}`);
-      await saveProgress({ status: finalStatus });
-      await endedWithoutFinishing(import_type, batch_id, finalStatus);
+    const stop = acknowledgedStop(current?.status);
+    if (stop) {
+      console.log(`[CsvImport] Import ${import_type} ${current.status} by user at row ${totalFetched}; settling to ${stop}`);
+      await saveProgress({ status: stop });
+      await endedWithoutFinishing(import_type, batch_id, stop);
       return true;
     }
     return false;
@@ -1240,25 +1243,21 @@ export async function handleAutoImportCMSData(params: any) {
           () => db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1),
           [] as any[], `pause check ${import_type}`
         );
-        // 'pausing'/'cancelling' are the UI's intermediate states: the worker
-        // acknowledges them here by writing the final status.
-        const stopStatus = currentBatch?.status === "pausing" ? "paused"
-          : currentBatch?.status === "cancelling" ? "cancelled"
-          : currentBatch?.status;
-        if (currentBatch && (stopStatus === "paused" || stopStatus === "cancelled")) {
-          console.log(`[AutoImportCMS] Import ${import_type} ${stopStatus} by user at offset ${offset}`);
+        const stop = acknowledgedStop(currentBatch?.status);
+        if (stop) {
+          console.log(`[AutoImportCMS] Import ${import_type} ${currentBatch.status} by user at offset ${offset}; settling to ${stop}`);
           await safeImportQuery(
             () => db.update(importBatches).set({
-              status: stopStatus,
+              status: stop,
               imported_rows: totalInserted,
               skipped_rows: totalSkipped,
               total_rows: totalFetched,
               retry_params: mergeRetryParams({ ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped }),
               updated_date: new Date(),
             }).where(eq(importBatches.id, batch_id)),
-            undefined, `save progress on ${stopStatus}`
+            undefined, `save progress on ${stop}`
           );
-          await endedWithoutFinishing(import_type, batch_id, stopStatus);
+          await endedWithoutFinishing(import_type, batch_id, stop);
           return;
         }
       }

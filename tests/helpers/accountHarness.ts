@@ -9,6 +9,7 @@ import type { AccountDeps } from "../../server/lib/accountDeps";
 import type { AuditEntry } from "../../server/lib/audit";
 import type { MailMessage } from "../../server/lib/mailer";
 import type { Membership, OrgRepo } from "../../server/lib/orgs";
+import { LastOwnerError } from "../../server/lib/orgs";
 import type { TokenRow, UserRepo } from "../../server/lib/userRepo";
 import { invalidateSessionUser, setSessionUserLoader } from "../../server/lib/sessionUsers";
 import { createAuthRouter } from "../../server/routes/auth";
@@ -148,6 +149,26 @@ export function memoryOrgRepo(users: UserRow[]): OrgRepo & { orgs: MemoryOrg[]; 
   const members: { org_id: number; user_id: number; org_role: string }[] = [];
   const nameOf = (orgId: number) => orgs.find((o) => o.id === orgId)?.name ?? "";
   const toMembership = (m: { org_id: number; user_id: number; org_role: string }): Membership => ({ ...m, org_name: nameOf(m.org_id) });
+  const orgLocks = new Map<number, Promise<unknown>>();
+  const withOrgLock = async <T>(orgId: number, fn: () => Promise<T> | T): Promise<T> => {
+    const prev = orgLocks.get(orgId) ?? Promise.resolve();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const run = prev.then(fn, fn);
+    orgLocks.set(orgId, gate);
+    try {
+      return await run;
+    } finally {
+      release();
+    }
+  };
+  const refuseLastOwner = (orgId: number, userId: number, nextRole: "owner" | "member" | null) => {
+    const target = members.find((m) => m.org_id === orgId && m.user_id === userId);
+    if (!target || target.org_role !== "owner") return;
+    if (nextRole === "owner") return;
+    const owners = members.filter((m) => m.org_id === orgId && m.org_role === "owner");
+    if (owners.length <= 1) throw new LastOwnerError();
+  };
   return {
     orgs,
     members,
@@ -170,16 +191,22 @@ export function memoryOrgRepo(users: UserRow[]): OrgRepo & { orgs: MemoryOrg[]; 
       else members.push({ org_id: orgId, user_id: userId, org_role: orgRole });
     },
     async setMemberRole(orgId, userId, orgRole) {
-      const existing = members.find((m) => m.org_id === orgId && m.user_id === userId);
-      if (!existing) return false;
-      existing.org_role = orgRole;
-      return true;
+      return withOrgLock(orgId, () => {
+        const existing = members.find((m) => m.org_id === orgId && m.user_id === userId);
+        if (!existing) return false;
+        refuseLastOwner(orgId, userId, orgRole);
+        existing.org_role = orgRole;
+        return true;
+      });
     },
     async removeMember(orgId, userId) {
-      const i = members.findIndex((m) => m.org_id === orgId && m.user_id === userId);
-      if (i < 0) return false;
-      members.splice(i, 1);
-      return true;
+      return withOrgLock(orgId, () => {
+        const i = members.findIndex((m) => m.org_id === orgId && m.user_id === userId);
+        if (i < 0) return false;
+        refuseLastOwner(orgId, userId, null);
+        members.splice(i, 1);
+        return true;
+      });
     },
     async seatUsage(orgId) {
       const ids = new Set(members.filter((m) => m.org_id === orgId).map((m) => m.user_id));

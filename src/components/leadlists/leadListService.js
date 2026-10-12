@@ -30,8 +30,8 @@ export async function listMemberNpis(listId) {
 
 /**
  * Add providers to a lead list, creating the list first when `listId` is not
- * given. Skips NPIs already on the list and keeps `member_count` equal to the
- * number of members actually stored.
+ * given. Skips NPIs already on the list. member_count is recomputed on the
+ * server in the same transaction as the insert, so this does not write it.
  *
  * @returns {Promise<{ list: object, added: number, skipped: number, truncated: number }>}
  */
@@ -67,26 +67,16 @@ export async function saveProvidersToLeadList({
 
   const existing = new Set(existingRows);
   const toAdd = capped.filter((npi) => !existing.has(npi));
-  try {
-    for (let i = 0; i < toAdd.length; i += CHUNK_SIZE) {
-      await base44.entities.LeadListMember.bulkCreate(
-        toAdd.slice(i, i + CHUNK_SIZE).map((npi) => ({ list_id: list.id, npi, status: 'New' })),
-      );
-    }
-  } catch (e) {
-    // A failed chunk commits its predecessors, so the arithmetic below would
-    // lie: recompute the count from what is actually stored, then rethrow.
-    const actual = await listMemberNpis(list.id).catch(() => null);
-    if (actual && actual.length !== list.member_count) {
-      await base44.entities.LeadList.update(list.id, { member_count: actual.length }).catch(() => {});
-    }
-    throw e;
+  for (let i = 0; i < toAdd.length; i += CHUNK_SIZE) {
+    await base44.entities.LeadListMember.bulkCreate(
+      toAdd.slice(i, i + CHUNK_SIZE).map((npi) => ({ list_id: list.id, npi, status: 'New' })),
+    );
   }
 
-  const memberCount = existingRows.length + toAdd.length;
-  if (memberCount !== list.member_count) {
-    list = await base44.entities.LeadList.update(list.id, { member_count: memberCount });
-  }
-
-  return { list, added: toAdd.length, skipped: capped.length - toAdd.length, truncated };
+  return {
+    list: { ...list, member_count: existingRows.length + toAdd.length },
+    added: toAdd.length,
+    skipped: capped.length - toAdd.length,
+    truncated,
+  };
 }

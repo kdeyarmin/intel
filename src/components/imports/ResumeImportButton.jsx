@@ -42,7 +42,10 @@ export default function ResumeImportButton({ batch, onResumed }) {
             cancel_reason: "",
             expected_status: prevStatus,
           });
-        } catch (__) { /* best-effort: the worker still runs */ }
+        } catch (updateErr) {
+          // The batch changed (often a 409). Do not start the worker.
+          throw updateErr;
+        }
 
         try {
           const rp = batch.retry_params || {};
@@ -54,7 +57,7 @@ export default function ResumeImportButton({ batch, onResumed }) {
             total_rows: rp.total_rows || batch.imported_rows || 0,
           });
         } catch (invokeErr) {
-          await base44.entities.ImportBatch.update(batch.id, { status: prevStatus }).catch(() => {});
+          await base44.entities.ImportBatch.update(batch.id, { status: prevStatus, expected_status: 'processing' }).catch(() => {});
           throw invokeErr;
         }
 
@@ -72,6 +75,7 @@ export default function ResumeImportButton({ batch, onResumed }) {
           resume_offset: offset,
           dry_run: batch.dry_run,
           batch_id: batch.id,
+          expected_status: batch.status,
         });
 
         toast.success(`Resuming import from row ${offset.toLocaleString()}`);

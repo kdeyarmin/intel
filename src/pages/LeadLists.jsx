@@ -194,6 +194,7 @@ function firstByNpi(rows, prefer) {
 }
 
 function ViewListDialog({ listId, listName }) {
+  const queryClient = useQueryClient();
   const [leads, setLeads] = useState([]);
   const [loadError, setLoadError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -267,10 +268,9 @@ function ViewListDialog({ listId, listName }) {
     try {
       await base44.entities.LeadListMember.delete(memberId);
       setLeads(prev => prev.filter(l => l.member.id !== memberId));
-      // member_count is recomputed from what is actually stored, not derived
-      // from the old value: concurrent edits would otherwise drift it.
-      const remaining = await listMembers(listId);
-      await base44.entities.LeadList.update(listId, { member_count: remaining.length });
+      // The server recomputes member_count in the delete transaction. A
+      // client list-then-update races with other adds and deletes.
+      queryClient.invalidateQueries({ queryKey: ['leadLists'] });
     } catch (err) {
       toast.error(`Couldn't remove provider: ${err.message}`);
     }

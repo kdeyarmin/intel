@@ -101,7 +101,7 @@ export default function AssistantTurn({ turn, conversationId, live = false, onRe
             </p>
           )}
           {turn.retries > 0 && (
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-slate-400">
               Retried {turn.retries}× after an error — each attempt counts toward today’s assistant usage.
             </p>
           )}

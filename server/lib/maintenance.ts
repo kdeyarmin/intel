@@ -134,6 +134,7 @@ export async function runAutoResumePausedImports(): Promise<WorkerResult> {
           dry_run: batch.dry_run,
           resume_offset: offset,
           batch_id: batch.id,
+          expected_status: "paused",
         }, SYSTEM_ADMIN_USER);
 
         resumed.push({ id: batch.id, type: batch.import_type, offset, attempt: autoResumeCount + 1 });
@@ -232,6 +233,7 @@ export async function runAutoRetryFailedImports(): Promise<WorkerResult> {
           retry_count: nextAttempt,
           retry_tags: ["auto_retry_failed"],
           batch_id: batch.id,
+          expected_status: "failed",
         }, SYSTEM_ADMIN_USER);
 
         retried.push({ id: batch.id, type: batch.import_type, attempt: nextAttempt });

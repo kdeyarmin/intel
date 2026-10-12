@@ -30,6 +30,33 @@ import publicRoutes from "./routes/public";
 // Arbitrary; distinct from TICK_LOCK (maintenanceTicker) and the migration lock.
 const IMPORT_RECOVERY_LOCK = 4206921;
 
+/** Holds a per-batch advisory lock until `release`. A failed claim means another instance already owns that recovery. */
+async function claimImportBatch(batchId: number): Promise<{ release: () => Promise<void> } | null> {
+  const client = await dbPool.connect();
+  try {
+    const { rows } = await client.query(
+      "SELECT pg_try_advisory_lock(hashtext('import-batch:' || $1::text)) AS ok",
+      [String(batchId)],
+    );
+    if (!rows[0]?.ok) {
+      client.release();
+      return null;
+    }
+    let released = false;
+    return {
+      release: async () => {
+        if (released) return;
+        released = true;
+        await client.query("SELECT pg_advisory_unlock_all()").catch(() => {});
+        client.release();
+      },
+    };
+  } catch {
+    client.release();
+    return null;
+  }
+}
+
 const app = express();
 
 // Which X-Forwarded-For hops to believe when working out a client's address
@@ -235,6 +262,16 @@ app.listen(PORT, "0.0.0.0", async () => {
             );
           }
 
+          const crawlerClaims: Array<{ release: () => Promise<void> }> = [];
+          for (const batch of allCrawlerIds) {
+            const claim = await claimImportBatch(batch.id);
+            if (claim) crawlerClaims.push(claim);
+            else console.log(`  - Crawler batch ${batch.id} already being recovered`);
+          }
+          if (crawlerClaims.length !== allCrawlerIds.length) {
+            console.log(`[CareMetric API] Another instance owns crawler recovery; not scheduling a second resume`);
+            await Promise.all(crawlerClaims.map((c) => c.release()));
+          } else {
           setTimeout(async () => {
             try {
               const { handleNppesCrawler, startCrawlerWatchdog } = await import("./functions/nppesCrawler");
@@ -243,8 +280,24 @@ app.listen(PORT, "0.0.0.0", async () => {
               startCrawlerWatchdog();
             } catch (e: any) {
               console.error(`[CareMetric API] NPPES auto-resume failed:`, e.message);
+            } finally {
+              await Promise.all(crawlerClaims.map((c) => c.release()));
             }
           }, 5000);
+          }
+        }
+
+        // Batches left in an intermediate pause/cancel state when the process
+        // died never got their worker's acknowledgment. Settle them even when
+        // nothing is still processing — otherwise a crash that left only
+        // pausing/cancelling rows never reaches this code.
+        for (const [from, to] of [["pausing", "paused"], ["cancelling", "cancelled"]] as const) {
+          const settled = await safeStartupQuery(
+            () => db.update(importBatches).set({ status: to, updated_date: new Date() })
+              .where(eq(importBatches.status, from)).returning({ id: importBatches.id }),
+            [] as any[], `settle ${from} batches`
+          );
+          for (const b of settled) console.log(`  - Batch ${b.id} settled ${from} -> ${to} (interrupted ${from})`);
         }
 
         if (cmsActive.length > 0) {
@@ -253,18 +306,6 @@ app.listen(PORT, "0.0.0.0", async () => {
           const { handleImportNPPESFlatFile } = await import("./functions/importNPPESFlatFile");
           const { handleImportNPPESFile } = await import("./functions/importNPPESFile");
           const { planRecovery } = await import("./lib/importRecovery");
-
-          // Batches left in an intermediate pause/cancel state when the process
-          // died never got their worker's acknowledgment: settle them to the
-          // final state the user asked for instead of resuming them.
-          for (const [from, to] of [["pausing", "paused"], ["cancelling", "cancelled"]] as const) {
-            const settled = await safeStartupQuery(
-              () => db.update(importBatches).set({ status: to, updated_date: new Date() })
-                .where(eq(importBatches.status, from)).returning({ id: importBatches.id }),
-              [] as any[], `settle ${from} batches`
-            );
-            for (const b of settled) console.log(`  - Batch ${b.id} settled ${from} -> ${to} (interrupted ${from})`);
-          }
 
           for (let i = 0; i < cmsActive.length; i++) {
             const batch = cmsActive[i] as any;
@@ -282,10 +323,17 @@ app.listen(PORT, "0.0.0.0", async () => {
               continue;
             }
 
+            const claim = await claimImportBatch(batch.id);
+            if (!claim) {
+              console.log(`  - Batch ${batch.id} already being recovered; skipping`);
+              continue;
+            }
             await db.update(importBatches).set({ updated_date: new Date() }).where(eq(importBatches.id, batch.id));
             const run = plan.action === "nppes_flat_file" ? handleImportNPPESFlatFile : plan.action === "nppes_file" ? handleImportNPPESFile : handleAutoImportCMSData;
             setTimeout(() => {
-              run(plan.params as any).catch((e: any) => console.error(`[CareMetric API] Batch ${batch.id} resume failed:`, e.message));
+              Promise.resolve(run(plan.params as any))
+                .catch((e: any) => console.error(`[CareMetric API] Batch ${batch.id} resume failed:`, e.message))
+                .finally(() => { claim.release(); });
             }, 10000 + i * 5000);
             console.log(`  - Batch ${batch.id} (${batch.import_type}) resuming from ${plan.action === "nppes_flat_file" ? `byte ${plan.params.byte_offset}` : `offset ${plan.params.resume_offset}`} (delay ${10 + i * 5}s)`);
           }

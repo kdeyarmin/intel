@@ -28,8 +28,8 @@ export default function AdvancedAnalytics() {
   // upgrade notice and never loads them (mirrors server TERRITORY_PLANS in
   // server/lib/entitlements.ts). Unknown user/plan defaults to the full
   // view, matching the server's isUnrestricted.
-  const territoryLimited = !!user && !user.is_platform_admin
-    && !!user.plan_code && ['county_pack', 'state'].includes(user.plan_code);
+  const territoryLimited = !!user && !user.isPlatformAdmin
+    && !!user.planCode && ['county_pack', 'state'].includes(user.planCode);
   // Don't fire the national lists until the plan is known.
   const mayLoad = !isLoadingAuth && !territoryLimited;
 
