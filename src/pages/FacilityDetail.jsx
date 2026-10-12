@@ -396,35 +396,28 @@ function LinkedProviderCard({ linked, navigate, config }) {
   );
 }
 
-function FacilitySummaryCard({ data, financials, facilityTypes, config }) {
+export function FacilitySummaryCard({ data, financials, facilityTypes, config }) {
   const totalRecords = Object.values(data.by_type || {}).reduce((sum, arr) => sum + arr.length, 0);
+  // Payments, charges, discharges and days of care come from inpatient files. A nursing home, hospice or agency
+  // has none, and four tiles of "$0" and "0" would read as real zeros.
+  const tiles = [
+    { label: 'Total Payments', icon: DollarSign, value: formatCurrency(financials.totalPayments), amount: financials.totalPayments },
+    { label: 'Total Charges', icon: DollarSign, value: formatCurrency(financials.totalCharges), amount: financials.totalCharges },
+    { label: 'Discharges', icon: Activity, value: formatNumber(financials.totalDischarges), amount: financials.totalDischarges },
+    { label: 'Days of Care', icon: Calendar, value: formatNumber(financials.totalDaysOfCare), amount: financials.totalDaysOfCare },
+  ];
+  const showFinancials = tiles.some((t) => Number(t.amount) > 0);
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      <Card className="bg-slate-800/50 border-slate-700/50">
-        <CardContent className="py-3 px-4">
-          <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1"><DollarSign className="w-3 h-3" />Total Payments</div>
-          <div className="text-lg font-bold text-slate-100">{formatCurrency(financials.totalPayments)}</div>
-        </CardContent>
-      </Card>
-      <Card className="bg-slate-800/50 border-slate-700/50">
-        <CardContent className="py-3 px-4">
-          <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1"><DollarSign className="w-3 h-3" />Total Charges</div>
-          <div className="text-lg font-bold text-slate-100">{formatCurrency(financials.totalCharges)}</div>
-        </CardContent>
-      </Card>
-      <Card className="bg-slate-800/50 border-slate-700/50">
-        <CardContent className="py-3 px-4">
-          <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1"><Activity className="w-3 h-3" />Discharges</div>
-          <div className="text-lg font-bold text-slate-100">{formatNumber(financials.totalDischarges)}</div>
-        </CardContent>
-      </Card>
-      <Card className="bg-slate-800/50 border-slate-700/50">
-        <CardContent className="py-3 px-4">
-          <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1"><Calendar className="w-3 h-3" />Days of Care</div>
-          <div className="text-lg font-bold text-slate-100">{formatNumber(financials.totalDaysOfCare)}</div>
-        </CardContent>
-      </Card>
+      {showFinancials && tiles.map(({ label, icon: Icon, value }) => (
+        <Card key={label} className="bg-slate-800/50 border-slate-700/50">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1"><Icon className="w-3 h-3" />{label}</div>
+            <div className="text-lg font-bold text-slate-100">{value}</div>
+          </CardContent>
+        </Card>
+      ))}
       <Card className="bg-slate-800/50 border-slate-700/50">
         <CardContent className="py-3 px-4">
           <div className="flex items-center gap-1.5 text-slate-400 text-[10px] mb-1"><Layers className="w-3 h-3" />Data Sources</div>
