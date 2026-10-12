@@ -363,7 +363,7 @@ async function insertBatchAtomically(
 }
 
 /** After a complete, unfiltered import of a snapshot dataset, the rows the release no longer lists come out (in the background). */
-function retireSnapshotRows(importType: string, batchId: number, opts: { dry_run?: boolean; npi_filter?: unknown; state_filter?: unknown }) {
+function retireSnapshotRows(importType: string, batchId: number, opts: { dry_run?: boolean; npi_filter?: unknown; state_filter?: unknown; errors?: number }) {
   import("../lib/snapshotRetire")
     .then(({ retiresSnapshot, retireStaleSnapshotRows }) => (retiresSnapshot(importType, opts) ? retireStaleSnapshotRows(importType, batchId) : null))
     .catch((err) => console.warn(`[triggerImport] retiring stale ${importType} rows:`, err?.message));
@@ -1518,7 +1518,7 @@ async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | n
     );
     console.log(`[CsvImport] Completed ${import_type}: rows=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
     await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: totalFetched, dataYear: year, note: dry_run ? "dry run" : `file ${String(file_url).split("/").pop()}` }).catch(() => {});
-    retireSnapshotRows(import_type, batch_id, { dry_run, npi_filter, state_filter });
+    retireSnapshotRows(import_type, batch_id, { dry_run, npi_filter, state_filter, errors: errors.length });
   } catch (e: any) {
     console.error(`[CsvImport] Fatal error:`, e.message);
     await saveProgress({ status: "failed", error_samples: [{ message: e.message, phase: "csv_import" }] });
@@ -1747,7 +1747,7 @@ export async function handleAutoImportCMSData(params: any) {
     );
     console.log(`[AutoImportCMS] Completed ${import_type}: fetched=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
     await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: totalFetched, dataYear: year, note: dry_run ? "dry run" : null }).catch(() => {});
-    retireSnapshotRows(import_type, batch_id, { dry_run, npi_filter, state_filter });
+    retireSnapshotRows(import_type, batch_id, { dry_run, npi_filter, state_filter, errors: errors.length });
     if (import_type === "cms_order_referring" && !dry_run) {
       // The eligibility rows that used to land in cms_referrals come out now
       // that the typed table holds this release; long on a big table, so it

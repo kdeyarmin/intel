@@ -4,9 +4,26 @@
 // affiliation that ended, would stay in the table and keep counting in the
 // coverage and referral-source rollups. After a complete, unfiltered import
 // the rows that batch didn't write have left the source and are removed here,
-// in short chunks.
+// in short chunks. "Didn't write" means written by an older batch: the next
+// import can start while this runs, and the rows it upserts carry a newer id.
 import { pool } from "../db";
 import { TYPED_ROUTES } from "../functions/cmsTypedTables";
+
+/** A table whose rows a complete release replaces. `key` is the unique column rows are deleted by (default `id`). */
+export type SnapshotSpec = { table: string; scope?: { column: string; value: string }; key?: string };
+
+/**
+ * Snapshot datasets that aren't typed routes. Order & Referring is a complete list per release: an NPI the
+ * release no longer lists is no longer eligible to order, and without this it would stay eligible forever.
+ */
+const EXTRA_SNAPSHOTS: Record<string, SnapshotSpec> = {
+  cms_order_referring: { table: "cms_order_referring", key: "npi" },
+};
+
+const snapshotOf = (importType: string): SnapshotSpec | undefined => TYPED_ROUTES[importType]?.snapshot ?? EXTRA_SNAPSHOTS[importType];
+
+// Rows older than the batch (or from before batches were tracked): the only ones a release can have dropped.
+const OLDER = "(import_batch_id IS NULL OR import_batch_id < $1)";
 
 export const RETIRE_CHUNK = 20_000;
 
@@ -26,9 +43,13 @@ export function decideRetire(kept: number, stale: number): RetireDecision {
 
 export interface RetireResult { retired: number; kept: number; stale: number; skipped?: string }
 
-/** Whether an import of this type and shape covers the whole dataset (and so can retire rows). */
-export function retiresSnapshot(importType: string, opts: { dry_run?: boolean; npi_filter?: unknown; state_filter?: unknown }): boolean {
-  return !!TYPED_ROUTES[importType]?.snapshot && !opts.dry_run && !opts.npi_filter && !opts.state_filter;
+/**
+ * Whether an import of this type and shape covers the whole dataset (and so can retire rows). A page that
+ * failed to write (`errors`) leaves its rows with the previous batch's id, where they would read as dropped
+ * from the release: any error means the write wasn't complete and nothing is retired.
+ */
+export function retiresSnapshot(importType: string, opts: { dry_run?: boolean; npi_filter?: unknown; state_filter?: unknown; errors?: number }): boolean {
+  return !!snapshotOf(importType) && !opts.dry_run && !opts.npi_filter && !opts.state_filter && !(Number(opts.errors) > 0);
 }
 
 export async function retireStaleSnapshotRows(
@@ -36,17 +57,19 @@ export async function retireStaleSnapshotRows(
   batchId: number,
   opts: { db?: Pick<typeof pool, "query">; log?: Pick<Console, "log" | "warn">; chunk?: number } = {},
 ): Promise<RetireResult> {
-  const snap = TYPED_ROUTES[importType]?.snapshot;
+  const snap = snapshotOf(importType);
   if (!snap) return { retired: 0, kept: 0, stale: 0, skipped: "not a snapshot dataset" };
   const db = opts.db ?? pool;
   const log = opts.log ?? console;
   const chunk = opts.chunk ?? RETIRE_CHUNK;
   const scope = snap.scope ? ` AND ${snap.scope.column} = $2` : "";
   const scopeParams = snap.scope ? [snap.scope.value] : [];
+  const key = snap.key ?? "id";
 
+  // Rows from a newer batch are neither stale nor this batch's: they belong to an import that started since.
   const { rows: [c] } = await db.query(
-    `SELECT count(*) FILTER (WHERE import_batch_id = $1)::int AS kept,
-            count(*) FILTER (WHERE import_batch_id IS DISTINCT FROM $1)::int AS stale
+    `SELECT count(*) FILTER (WHERE import_batch_id >= $1)::int AS kept,
+            count(*) FILTER (WHERE ${OLDER})::int AS stale
        FROM ${snap.table} WHERE true${scope}`,
     [batchId, ...scopeParams],
   );
@@ -60,9 +83,11 @@ export async function retireStaleSnapshotRows(
 
   let retired = 0;
   for (;;) {
+    // The outer statement repeats the predicate: a row picked by the subquery that an import upserts before
+    // the delete reaches it is re-checked against its new version and kept.
     const res = await db.query(
-      `DELETE FROM ${snap.table} WHERE id IN (
-         SELECT id FROM ${snap.table} WHERE import_batch_id IS DISTINCT FROM $1${scope} LIMIT ${Math.max(1, Math.floor(chunk))}
+      `DELETE FROM ${snap.table} WHERE ${OLDER}${scope} AND ${key} IN (
+         SELECT ${key} FROM ${snap.table} WHERE ${OLDER}${scope} LIMIT ${Math.max(1, Math.floor(chunk))}
        )`,
       [batchId, ...scopeParams],
     );

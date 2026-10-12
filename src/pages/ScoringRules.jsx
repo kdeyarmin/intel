@@ -12,7 +12,7 @@ import PageHeader from '../components/shared/PageHeader';
 import { useConfirm } from '@/components/shared/ConfirmDialog';
 import { toast } from 'sonner';
 import PageTabs from '@/components/layout/PageTabs';
-import { CONDITION_FIELDS, parseList } from '@/lib/scoringRules';
+import { CONDITION_FIELDS, conditionList, parseList } from '@/lib/scoringRules';
 import { SPECIALTY_GROUPS } from '@/lib/specialtyGroups';
 
 // The score is computed on the server (server/lib/leadScoring.ts) for every
@@ -62,7 +62,7 @@ export default function ScoringRules() {
   const startEdit = (rule) => {
     const fields = CONDITION_FIELDS[rule.rule_type] || [];
     const conditions = {};
-    for (const f of fields) conditions[f.key] = (rule.conditions?.[f.key] || []).join(', ');
+    for (const f of fields) conditions[f.key] = conditionList(rule, f.key).join(', ');
     setEditingRule({ id: rule.id, rule_type: rule.rule_type, weight: rule.weight, conditions });
   };
 
@@ -269,7 +269,7 @@ export default function ScoringRules() {
                     ) : (
                       fields.map(f => (
                         <div key={f.key}>
-                          <span className="text-slate-300">{f.label}:</span> {(rule.conditions?.[f.key] || []).length ? (rule.conditions[f.key]).join(', ') : 'none'}
+                          <span className="text-slate-300">{f.label}:</span> {conditionList(rule, f.key).length ? conditionList(rule, f.key).join(', ') : 'none'}
                         </div>
                       ))
                     )}
