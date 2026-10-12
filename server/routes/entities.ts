@@ -1,8 +1,9 @@
 import { Router, Request, Response } from "express";
-import { db } from "../db";
-import { tableMap, leadListMembers, outreachCampaigns, callSheetAccounts, crmContacts, crmActivities, crmReferrals } from "../db/schema";
+import { db } from "../db";import { tableMap, leadListMembers, outreachMessages, callSheetAccounts, crmContacts, crmActivities, crmReferrals } from "../db/schema";
 import { eq, desc, asc, sql, getTableColumns, and, inArray } from "drizzle-orm";
 import { authMiddleware, AuthRequest, SessionPrincipal, isOrgAdmin, isPlatformAdmin } from "../middleware/auth";
+import { orgAccessTier } from "../lib/entitlements";
+import { consumeQuota } from "../lib/orgQuota";
 import { leadLists, callSheets, crmAccounts, users } from "../db/schema";
 import {
   InvalidFieldValueError,
@@ -20,7 +21,10 @@ import {
 
 const router = Router();
 
-// Entirely off-limits to the entity router (handled via dedicated routes only).
+// Entirely off-limits to the entity router. User is handled via dedicated
+// routes only. (CampaignSequenceStep and CampaignTask were dead scaffolding
+// here until migration 0034 dropped their tables; with no table left in the
+// schema they now answer 404 as unknown entities, like anything unmapped.)
 const BLOCKED_ENTITIES = new Set(["User"]);
 
 // The platform's own operation: imports and their schedules, the crawler,
@@ -79,18 +83,15 @@ export const USER_WRITABLE_ENTITIES = new Set([
 export const ORG_ADMIN_ENTITIES = new Set([
   "OutreachCampaign",
   "OutreachMessage",
-  "CampaignSequenceStep",
-  "CampaignTask",
   "CampaignTemplate",
 ]);
 
 // Customer-owned entities (migration 0020): every read and write is limited
 // to the caller's organization, and a created row is stamped with it.
-// LeadListMember belongs to its list and CampaignSequenceStep to its campaign,
-// so they are scoped through lead_lists and outreach_campaigns.
+// LeadListMember belongs to its list, so it is scoped through lead_lists.
 export const ORG_SCOPED_ENTITIES = new Set([
   "LeadList", "CallSheet", "CrmAccount", "SavedFilter", "CustomReport", "ScheduledReport", "ScheduledExport", "AnalyticsDashboard",
-  "OutreachCampaign", "OutreachMessage", "CampaignTemplate", "CampaignTask", "DataQualityAlert", AUDIT_ENTITY,
+  "OutreachCampaign", "OutreachMessage", "CampaignTemplate", "DataQualityAlert", AUDIT_ENTITY,
 ]);
 
 /** Entities that belong to a parent row (the key to it, the parent's table, and its columns), scoped through the parent's organization. */
@@ -100,7 +101,6 @@ const PARENT_SCOPED: Record<string, { key: string; parent: any; label: string }>
   CrmContact: { key: "account_id", parent: crmAccounts, label: "account" },
   CrmActivity: { key: "account_id", parent: crmAccounts, label: "account" },
   CrmReferral: { key: "account_id", parent: crmAccounts, label: "account" },
-  CampaignSequenceStep: { key: "campaign_id", parent: outreachCampaigns, label: "campaign" },
 };
 
 // Platform administrators read these across every organization, and the platform's own rows (the server writes
@@ -172,6 +172,9 @@ const CASCADE_DELETES: Record<string, Array<{ table: any; column: string }>> = {
     { table: crmActivities, column: "account_id" },
     { table: crmReferrals, column: "account_id" },
   ],
+  // A deleted campaign takes its queued/sent messages with it; without this
+  // they were orphaned.
+  OutreachCampaign: [{ table: outreachMessages, column: "campaign_id" }],
 };
 
 function sendDroppedFields(res: Response, entityName: string, dropped: string[]) {
@@ -186,9 +189,15 @@ function isProd() {
 
 function safeError(res: Response, e: any, label: string) {
   console.error(`[entities] ${label} failed:`, e?.message || e);
-  return res.status(500).json({
-    message: isProd() ? "An internal error occurred. Please try again." : (e?.message || "Internal error"),
-  });
+  // Deliberate HTTP errors (e.g. the 429 QuotaError from the for_export gate
+  // below) keep their status and machine-readable code, mirroring the
+  // functions dispatcher; unexpected failures stay a plain 500.
+  const status = typeof e?.status === "number" ? e.status : 500;
+  const body: Record<string, unknown> = {
+    message: status === 500 && isProd() ? "An internal error occurred. Please try again." : (e?.message || "Internal error"),
+  };
+  if (e?.status && typeof e?.code === "string") body.code = e.code;
+  return res.status(status).json(body);
 }
 
 type Caller = Pick<SessionPrincipal, "role" | "orgRole" | "isPlatformAdmin">;
@@ -230,6 +239,23 @@ function requireWriteAccess(req: AuthRequest, res: Response, entityName: string)
   res.status(403).json({
     message: "Forbidden",
     detail: ORG_ADMIN_ENTITIES.has(entityName) ? "Admin access is required to modify this resource." : "Only platform administrators can modify this resource.",
+  });
+  return false;
+}
+
+/**
+ * The dunning ladder's last rung (orgAccessTier in lib/entitlements): a
+ * billing-only organization — canceled, or past_due for 14+ days — can sign
+ * in and use the Billing page, but the data API is closed to it until it
+ * pays. Platform administrators operate the platform, not a subscription.
+ */
+function requireOrgAccess(req: AuthRequest, res: Response): boolean {
+  if (isPlatformAdmin(req.user) || !req.user?.orgStatus) return true;
+  if (orgAccessTier({ status: req.user.orgStatus, billingStatusSince: req.user.orgBillingStatusSince }) !== "billing_only") return true;
+  res.status(402).json({
+    message: "Your organization's subscription has lapsed.",
+    code: "subscription_inactive",
+    detail: "An owner can update payment on the Billing page to restore access.",
   });
   return false;
 }
@@ -321,6 +347,14 @@ router.get("/:entity", authMiddleware, async (req: AuthRequest, res: Response) =
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireReadAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
+
+    // Export-sized reads are metered server-side (A5.2): for_export consumes
+    // one export from the daily quota before any rows are read, so the count
+    // cannot be skipped client-side.
+    if (req.query.for_export === "true") {
+      await consumeQuota(req.user, "exports");
+    }
 
     const sort = req.query.sort as string;
     const limit = Math.min(parseInt(req.query.limit as string) || 100, 10000);
@@ -342,9 +376,15 @@ router.post("/:entity/filter", authMiddleware, async (req: AuthRequest, res: Res
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireReadAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
 
     const { filters = {}, sort, limit: reqLimit } = req.body;
     const limit = Math.min(reqLimit || 100, 10000);
+
+    // Export-sized reads are metered server-side (A5.2), same as GET above.
+    if (req.body.for_export === true) {
+      await consumeQuota(req.user, "exports");
+    }
 
     const where = withOrg(buildWhereClause(table, filters, String(req.params.entity)), orgCondition(req.params.entity, table, req));
     const orderBy = buildOrderBy(table, sort, req.params.entity);
@@ -366,6 +406,7 @@ router.get("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireReadAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
 
     const idNum = parseId(req.params.id);
     if (idNum === null) return res.status(400).json({ message: "Invalid id" });
@@ -383,6 +424,7 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireWriteAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
 
     const entityName = req.params.entity;
     const split = splitWriteData(entityName, columnsOf(table), sanitizeWriteData(entityName, toSnakeKeys(req.body)));
@@ -409,6 +451,7 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireWriteAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
 
     const items = req.body.items || req.body;
     if (!Array.isArray(items)) return res.status(400).json({ message: "Expected array of items" });
@@ -449,11 +492,18 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireWriteAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
 
     const idNum = parseId(req.params.id);
     if (idNum === null) return res.status(400).json({ message: "Invalid id" });
 
     const entityName = req.params.entity;
+    // Optimistic-concurrency guard for status transitions (e.g. ImportBatch
+    // pause/cancel/resume): the client passes the status it acted on as
+    // `expected_status`; the update only applies while the row still has it.
+    // Extracted before sanitizeWriteData, which would otherwise drop it — or
+    // worse, stash it in the entity's config JSONB overflow column.
+    const expectedStatus = req.body?.expected_status ?? req.body?.expectedStatus;
     const split = splitWriteData(entityName, columnsOf(table), sanitizeWriteData(entityName, toSnakeKeys(req.body)));
     let data: Record<string, any> = coerceRowValues(table, split.data);
     delete data.id;
@@ -483,8 +533,17 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
       }
     }
 
-    const [row] = (await db.update(table).set(data).where(withOrg(eq(table.id, idNum), orgCondition(entityName, table, req))).returning()) as any[];
-    if (!row) return res.status(404).json({ message: "Not found" });
+    const statusCol = (table as any).status;
+    const whereClause = expectedStatus != null && statusCol
+      ? and(withOrg(eq(table.id, idNum), orgCondition(entityName, table, req)), eq(statusCol, String(expectedStatus)))
+      : withOrg(eq(table.id, idNum), orgCondition(entityName, table, req));
+    const [row] = (await db.update(table).set(data).where(whereClause).returning()) as any[];
+    if (!row) {
+      if (expectedStatus != null && statusCol) {
+        return res.status(409).json({ message: "Conflict", detail: "The record changed since you loaded it; refresh and try again." });
+      }
+      return res.status(404).json({ message: "Not found" });
+    }
     res.json(decorateRow(entityName, row));
   } catch (e: any) {
     if (e instanceof InvalidFieldValueError) return res.status(400).json({ message: e.message });
@@ -497,6 +556,7 @@ router.delete("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Resp
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireWriteAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
 
     const idNum = parseId(req.params.id);
     if (idNum === null) return res.status(400).json({ message: "Invalid id" });
