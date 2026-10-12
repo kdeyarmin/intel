@@ -439,8 +439,8 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleCalculateOutreachScore(req.body, req.user));
       }
       case "analyzeImportedDataset": {
-        const { handleAnalyzeImportedDataset } = await import("../functions/stubs");
-        return res.json(await handleAnalyzeImportedDataset(req.body));
+        const { handleAnalyzeImportedDataset } = await import("../functions/analyzeImportedDataset");
+        return res.json(await handleAnalyzeImportedDataset(req.body, req.user));
       }
       case "getFacilityDetail": {
         const { handleGetFacilityDetail } = await import("../functions/facilityDetail");

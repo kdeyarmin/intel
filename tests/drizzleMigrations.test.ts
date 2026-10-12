@@ -265,6 +265,7 @@ describe("migration 0003_entity_field_sync", () => {
 describe.each([
   ["0004_outreach_sending", "0003_entity_field_sync"],
   ["0005_email_verification", "0004_outreach_sending"],
+  ["0030_import_batch_ai_analysis", "0029_marketing_crm"],
 ])("migration %s", (tag, previous) => {
   const sql = readMigration(`${tag}.sql`);
   const schema = readSchema();
