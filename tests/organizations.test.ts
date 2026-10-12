@@ -2,7 +2,7 @@
 // function ACL split and the Stripe event handler.
 import { describe, expect, it } from "vitest";
 import { normalizeTerritory, orgNameFor, slugify } from "../server/lib/orgs";
-import { assertBillableOrg, assertTerritory, entitledCounties, inTerritory, isUnrestricted, needsTerritoryChoice, SubscriptionError, TerritoryError } from "../server/lib/entitlements";
+import { assertOrgAccess, assertTerritory, entitledCounties, inTerritory, isUnrestricted, needsTerritoryChoice, orgAccessTier, PAST_DUE_READONLY_MS, SubscriptionError, TerritoryError } from "../server/lib/entitlements";
 import { DEFAULT_QUOTAS, quotaLimit } from "../server/lib/orgQuota";
 import { isFunctionAllowedFor, OWNER_FUNCTIONS, PLATFORM_FUNCTIONS, PUBLIC_FUNCTIONS } from "../server/lib/functionAcl";
 import { applyStripeEvent, billingAuditEntries, billingView, buildCheckoutParams, mapSubscriptionStatus, periodEnd, planForPrice, priceIdFor, territoryForPlan } from "../server/lib/billing";
@@ -74,14 +74,60 @@ describe("territory entitlements", () => {
       expect(e.status).toBe(403);
       expect(e.message).toMatch(/Adams County, OH is outside your plan/);
     }
-    // Canceled organizations keep read-only access inside their territory.
-    // A status that is not usable still cannot read. Billing stays narrower:
-    // canceled cannot spend.
-    expect(() => assertTerritory({ ...statePlan, orgStatus: "canceled" }, { state: "PA" })).not.toThrow();
-    expect(() => assertTerritory({ ...statePlan, orgStatus: "canceled" }, { state: "OH" })).toThrow(TerritoryError);
-    expect(() => assertTerritory({ ...statePlan, orgStatus: "incomplete" }, { state: "PA" })).toThrow(SubscriptionError);
-    expect(() => assertBillableOrg({ status: "canceled" })).toThrow(SubscriptionError);
+    expect(() => assertTerritory({ ...statePlan, orgStatus: "canceled" }, { state: "PA" })).toThrow(SubscriptionError);
     expect(() => assertTerritory({ ...statePlan, orgStatus: "canceled", isPlatformAdmin: true }, { state: "PA" })).not.toThrow();
+  });
+});
+
+describe("the dunning ladder (orgAccessTier)", () => {
+  const now = new Date("2026-10-12T12:00:00Z");
+  const daysAgo = (d: number) => new Date(now.getTime() - d * 24 * 60 * 60 * 1000);
+
+  it("grants full access to trial and active organizations, and to accounts with no organization", () => {
+    expect(orgAccessTier({ status: "trial" }, now)).toBe("full");
+    expect(orgAccessTier({ status: "active" }, now)).toBe("full");
+    expect(orgAccessTier({ status: null }, now)).toBe("full");
+    expect(orgAccessTier(undefined, now)).toBe("full");
+    expect(orgAccessTier(null, now)).toBe("full");
+  });
+
+  it("keeps a recently past_due organization read-only for 14 days", () => {
+    expect(orgAccessTier({ status: "past_due", billingStatusSince: daysAgo(0) }, now)).toBe("readonly");
+    expect(orgAccessTier({ status: "past_due", billingStatusSince: daysAgo(13) }, now)).toBe("readonly");
+    expect(orgAccessTier({ status: "past_due", billingStatusSince: new Date(now.getTime() - PAST_DUE_READONLY_MS + 1) }, now)).toBe("readonly");
+    // An unknown clock start never escalates: the ladder needs a proven age.
+    expect(orgAccessTier({ status: "past_due", billingStatusSince: null }, now)).toBe("readonly");
+    expect(orgAccessTier({ status: "past_due" }, now)).toBe("readonly");
+    expect(orgAccessTier({ status: "past_due", billingStatusSince: "not a date" }, now)).toBe("readonly");
+  });
+
+  it("drops a past_due organization to billing-only at 14 days, and a canceled one at once", () => {
+    expect(orgAccessTier({ status: "past_due", billingStatusSince: new Date(now.getTime() - PAST_DUE_READONLY_MS) }, now)).toBe("billing_only");
+    expect(orgAccessTier({ status: "past_due", billingStatusSince: daysAgo(30) }, now)).toBe("billing_only");
+    expect(orgAccessTier({ status: "canceled", billingStatusSince: daysAgo(0) }, now)).toBe("billing_only");
+    expect(orgAccessTier({ status: "canceled" }, now)).toBe("billing_only");
+  });
+
+  it("assertOrgAccess throws the 402 subscription error only for billing-only organizations", () => {
+    expect(() => assertOrgAccess({ status: "active" }, now)).not.toThrow();
+    expect(() => assertOrgAccess({ status: "past_due", billingStatusSince: daysAgo(3) }, now)).not.toThrow();
+    try {
+      assertOrgAccess({ status: "canceled" }, now);
+      expect.unreachable();
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(SubscriptionError);
+      expect(e.status).toBe(402);
+      expect(e.code).toBe("subscription_inactive");
+      expect(e.message).toMatch(/Billing page/);
+    }
+    expect(() => assertOrgAccess({ status: "past_due", billingStatusSince: daysAgo(14) }, now)).toThrow(SubscriptionError);
+  });
+
+  it("territory reads follow the ladder: recent past_due reads, lapsed past_due is refused", () => {
+    const plan = { territory: { states: ["PA"], county_fips: [] as string[] } };
+    expect(() => assertTerritory({ ...plan, orgStatus: "past_due", orgBillingStatusSince: daysAgo(2) }, { state: "PA" })).not.toThrow();
+    expect(() => assertTerritory({ ...plan, orgStatus: "past_due", orgBillingStatusSince: daysAgo(14) }, { state: "PA" })).toThrow(SubscriptionError);
+    expect(() => assertTerritory({ ...plan, orgStatus: "past_due", orgBillingStatusSince: daysAgo(20), isPlatformAdmin: true }, { state: "PA" })).not.toThrow();
   });
 });
 
@@ -231,6 +277,28 @@ describe("billing", () => {
     expect(await applyStripeEvent({ type: "customer.subscription.updated", data: { object: { customer: "cus_9", status: "past_due", id: "sub_2", items: { data: [{ price: { id: "price_x" } }] }, current_period_end: 1_800_000_000 } } }, db)).toEqual({ handled: true, org_id: 3, status: "past_due" });
     expect(await applyStripeEvent({ type: "invoice.paid", data: { object: { customer: "cus_unknown" } } }, db)).toEqual({ handled: false });
     expect(await applyStripeEvent({ type: "charge.refunded", data: { object: { customer: "cus_9" } } }, db)).toEqual({ handled: false });
+  });
+
+  it("stamps billing_status_since on every status transition, from the event's time, without new parameters", async () => {
+    const cases: Array<[string, any, number]> = [
+      ["checkout.session.completed", { customer: "cus_9", subscription: "sub_9", metadata: { org_id: "3", plan_code: "state" } }, 8],
+      ["customer.subscription.updated", { customer: "cus_9", id: "sub_9", status: "past_due", items: { data: [{ price: { id: "price_x" } }] } }, 10],
+      ["customer.subscription.deleted", { customer: "cus_9", id: "sub_9" }, 2],
+      ["invoice.payment_failed", { customer: "cus_9", subscription: "sub_9" }, 2],
+      ["invoice.paid", { customer: "cus_9", subscription: "sub_9" }, 2],
+    ];
+    for (const [type, object, paramCount] of cases) {
+      const db = fakeDb({ 3: { id: 3, stripe_customer_id: "cus_9", stripe_subscription_id: "sub_9" } });
+      const r = await applyStripeEvent({ type, created: 1_790_000_000, data: { object } }, db, quiet);
+      expect(r.handled, type).toBe(true);
+      const [update] = updates(db);
+      // The clock moves only when the status actually changes (SQL CASE over the
+      // row's current status), stamped with the event time the update already carries.
+      expect(update.sql, type).toContain("billing_status_since = CASE WHEN status IS DISTINCT FROM");
+      expect(update.sql, type).toContain("ELSE billing_status_since END");
+      expect(update.params, type).toHaveLength(paramCount);
+      expect(update.params[update.params.length - 1], type).toEqual(new Date(1_790_000_000 * 1000));
+    }
   });
 
   it("applies a subscription update to the plan its price belongs to (including prices set in the environment), with the period end from the item", async () => {

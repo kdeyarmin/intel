@@ -17,6 +17,8 @@ let me = 0;
 let other = 0;
 // Accounts without an organization (the loader gives them no membership).
 const withoutOrg = new Set<number>();
+// Accounts whose organization is past due (the loader reports it in arrears).
+const pastDueOrg = new Set<number>();
 const emailOf = (id: number) => `user${id}@example.com`;
 
 let server: Server;
@@ -46,7 +48,7 @@ beforeEach(async () => {
   me = ++lastUserId;
   other = ++lastUserId;
   setSessionUserLoader(async (id) => (id <= lastUserId
-    ? { id, email: emailOf(id), role: "user", status: "active", token_version: 0, full_name: null, ...(withoutOrg.has(id) ? {} : { org_id: 2, org_role: "member", org_name: "Riverbend Hospice", org_status: "active" }) }
+    ? { id, email: emailOf(id), role: "user", status: "active", token_version: 0, full_name: null, ...(withoutOrg.has(id) ? {} : { org_id: 2, org_role: "member", org_name: "Riverbend Hospice", org_status: pastDueOrg.has(id) ? "past_due" : "active" }) }
     : null));
   const app = express();
   app.use(express.json());
@@ -104,6 +106,19 @@ describe("assistant routes", () => {
     expect((await call(other, "DELETE", `/conversations/${mine.id}`)).status).toBe(404);
     expect((await call(other, "POST", `/conversations/${mine.id}/messages`, { text: "hi" })).status).toBe(404);
     expect((await call(me, "DELETE", `/conversations/${mine.id}`)).status).toBe(204);
+  });
+
+  it("blocks the assistant for a past_due organization until it pays", async () => {
+    pastDueOrg.add(me);
+    const conv = (await call(me, "POST", "/conversations")).body.conversation;
+    const s = script([text("should never be generated")]);
+    const r = await call(me, "POST", `/conversations/${conv.id}/messages`, { text: "hi" });
+    expect(r.status).toBe(402);
+    expect(r.body.code).toBe("subscription_inactive");
+    expect(r.body.message).toMatch(/Billing page/);
+    // No model call was made and no turn was started.
+    expect(s.calls).toHaveLength(0);
+    expect((await call(me, "GET", `/conversations/${conv.id}`)).body.running).toBe(false);
   });
 
   it("says when the assistant isn't configured", async () => {
