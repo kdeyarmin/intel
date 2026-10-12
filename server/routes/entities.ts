@@ -1,8 +1,8 @@
 import { Router, Request, Response } from "express";
-import { db } from "../db";
-import { tableMap, leadListMembers, outreachCampaigns, callSheetAccounts, crmContacts, crmActivities, crmReferrals } from "../db/schema";
+import { db } from "../db";import { tableMap, leadListMembers, outreachCampaigns, outreachMessages, callSheetAccounts, crmContacts, crmActivities, crmReferrals } from "../db/schema";
 import { eq, desc, asc, sql, getTableColumns, and, inArray } from "drizzle-orm";
 import { authMiddleware, AuthRequest, SessionPrincipal, isOrgAdmin, isPlatformAdmin } from "../middleware/auth";
+import { consumeQuota } from "../lib/orgQuota";
 import { leadLists, callSheets, crmAccounts } from "../db/schema";
 import {
   InvalidFieldValueError,
@@ -20,8 +20,12 @@ import {
 
 const router = Router();
 
-// Entirely off-limits to the entity router (handled via dedicated routes only).
-const BLOCKED_ENTITIES = new Set(["User"]);
+// Entirely off-limits to the entity router. User is handled via dedicated
+// routes only. CampaignSequenceStep and CampaignTask are dead scaffolding —
+// nothing in the codebase writes those tables (verified by grep) — so they
+// answer 404 here until a migration drops them (created by
+// drizzle/0000_cute_nemesis.sql and 0020_organizations.sql).
+const BLOCKED_ENTITIES = new Set(["User", "CampaignSequenceStep", "CampaignTask"]);
 
 // The platform's own operation: imports and their schedules, the crawler,
 // connectors, reconciliation, background tasks and validation rules. They hold
@@ -172,6 +176,10 @@ const CASCADE_DELETES: Record<string, Array<{ table: any; column: string }>> = {
     { table: crmActivities, column: "account_id" },
     { table: crmReferrals, column: "account_id" },
   ],
+  // A deleted campaign takes its queued/sent messages with it; without this
+  // they were orphaned (the sequence-step and task tables are dead
+  // scaffolding with no writers, so there is nothing to cascade there).
+  OutreachCampaign: [{ table: outreachMessages, column: "campaign_id" }],
 };
 
 function sendDroppedFields(res: Response, entityName: string, dropped: string[]) {
@@ -186,9 +194,15 @@ function isProd() {
 
 function safeError(res: Response, e: any, label: string) {
   console.error(`[entities] ${label} failed:`, e?.message || e);
-  return res.status(500).json({
-    message: isProd() ? "An internal error occurred. Please try again." : (e?.message || "Internal error"),
-  });
+  // Deliberate HTTP errors (e.g. the 429 QuotaError from the for_export gate
+  // below) keep their status and machine-readable code, mirroring the
+  // functions dispatcher; unexpected failures stay a plain 500.
+  const status = typeof e?.status === "number" ? e.status : 500;
+  const body: Record<string, unknown> = {
+    message: status === 500 && isProd() ? "An internal error occurred. Please try again." : (e?.message || "Internal error"),
+  };
+  if (e?.status && typeof e?.code === "string") body.code = e.code;
+  return res.status(status).json(body);
 }
 
 type Caller = Pick<SessionPrincipal, "role" | "orgRole" | "isPlatformAdmin">;
@@ -322,6 +336,13 @@ router.get("/:entity", authMiddleware, async (req: AuthRequest, res: Response) =
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireReadAccess(req, res, req.params.entity)) return;
 
+    // Export-sized reads are metered server-side (A5.2): for_export consumes
+    // one export from the daily quota before any rows are read, so the count
+    // cannot be skipped client-side.
+    if (req.query.for_export === "true") {
+      await consumeQuota(req.user, "exports");
+    }
+
     const sort = req.query.sort as string;
     const limit = Math.min(parseInt(req.query.limit as string) || 100, 10000);
     const offset = parseInt(req.query.offset as string) || 0;
@@ -345,6 +366,11 @@ router.post("/:entity/filter", authMiddleware, async (req: AuthRequest, res: Res
 
     const { filters = {}, sort, limit: reqLimit } = req.body;
     const limit = Math.min(reqLimit || 100, 10000);
+
+    // Export-sized reads are metered server-side (A5.2), same as GET above.
+    if (req.body.for_export === true) {
+      await consumeQuota(req.user, "exports");
+    }
 
     const where = withOrg(buildWhereClause(table, filters, String(req.params.entity)), orgCondition(req.params.entity, table, req));
     const orderBy = buildOrderBy(table, sort, req.params.entity);
@@ -448,6 +474,12 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     if (idNum === null) return res.status(400).json({ message: "Invalid id" });
 
     const entityName = req.params.entity;
+    // Optimistic-concurrency guard for status transitions (e.g. ImportBatch
+    // pause/cancel/resume): the client passes the status it acted on as
+    // `expected_status`; the update only applies while the row still has it.
+    // Extracted before sanitizeWriteData, which would otherwise drop it — or
+    // worse, stash it in the entity's config JSONB overflow column.
+    const expectedStatus = req.body?.expected_status ?? req.body?.expectedStatus;
     const split = splitWriteData(entityName, columnsOf(table), sanitizeWriteData(entityName, toSnakeKeys(req.body)));
     let data: Record<string, any> = coerceRowValues(table, split.data);
     delete data.id;
@@ -473,8 +505,17 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
       }
     }
 
-    const [row] = (await db.update(table).set(data).where(withOrg(eq(table.id, idNum), orgCondition(entityName, table, req))).returning()) as any[];
-    if (!row) return res.status(404).json({ message: "Not found" });
+    const statusCol = (table as any).status;
+    const whereClause = expectedStatus != null && statusCol
+      ? and(withOrg(eq(table.id, idNum), orgCondition(entityName, table, req)), eq(statusCol, String(expectedStatus)))
+      : withOrg(eq(table.id, idNum), orgCondition(entityName, table, req));
+    const [row] = (await db.update(table).set(data).where(whereClause).returning()) as any[];
+    if (!row) {
+      if (expectedStatus != null && statusCol) {
+        return res.status(409).json({ message: "Conflict", detail: "The record changed since you loaded it; refresh and try again." });
+      }
+      return res.status(404).json({ message: "Not found" });
+    }
     res.json(decorateRow(entityName, row));
   } catch (e: any) {
     if (e instanceof InvalidFieldValueError) return res.status(400).json({ message: e.message });
