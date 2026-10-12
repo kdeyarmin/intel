@@ -178,20 +178,20 @@ export default function CallSheets() {
             <h2 className="text-sm font-semibold text-slate-200">New call sheet</h2>
             <div className="space-y-1">
               <Label htmlFor="sheet-name">Name</Label>
-              <Input id="sheet-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Allegheny home health, fall" />
+              <Input id="sheet-name" aria-label="Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Allegheny home health, fall" />
             </div>
             <div className="flex flex-wrap gap-3">
               <div className="space-y-1">
-                <Label>State</Label>
+                <Label htmlFor="sheet-state">State</Label>
                 <Select value={state} onValueChange={(value) => { setState(value); setCounty(''); }}>
-                  <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="sheet-state" className="w-28"><SelectValue /></SelectTrigger>
                   <SelectContent>{US_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>County</Label>
+                <Label htmlFor="sheet-county">County</Label>
                 <Select value={county || undefined} onValueChange={setCounty}>
-                  <SelectTrigger className="w-52"><SelectValue placeholder="County" /></SelectTrigger>
+                  <SelectTrigger id="sheet-county" className="w-52"><SelectValue placeholder="County" /></SelectTrigger>
                   <SelectContent>{countyList.map((c) => <SelectItem key={c.fips} value={c.fips}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
@@ -232,6 +232,7 @@ export default function CallSheets() {
                 <label key={kind.id} className="flex items-center gap-1.5 text-xs text-slate-200">
                   <input
                     type="checkbox"
+                    aria-label={kind.label}
                     checked={kinds.has(kind.id)}
                     onChange={() => setKinds((current) => {
                       const next = new Set(current);
@@ -289,17 +290,17 @@ export default function CallSheets() {
                       <td className="py-2 pr-3 whitespace-nowrap">{row.phone || '—'}</td>
                       <td className="py-2 pr-3">
                         <span className="hidden print:inline">{STATUS_LABEL[row.status] || row.status}</span>
-                        <select className="print:hidden bg-slate-900 border border-slate-700 rounded px-1 py-1" value={row.status || 'new'} onChange={(e) => saveAccount(row, { status: e.target.value })}>
+                        <select aria-label={`Status for ${row.name}`} className="print:hidden bg-slate-900 border border-slate-700 rounded px-1 py-1" value={row.status || 'new'} onChange={(e) => saveAccount(row, { status: e.target.value })}>
                           {SHEET_STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                         </select>
                       </td>
                       <td className="py-2 pr-3">
                         <span className="hidden print:inline">{row.next_date || ''}</span>
-                        <input className="print:hidden bg-slate-900 border border-slate-700 rounded px-1 py-1" type="date" value={row.next_date || ''} onChange={(e) => saveAccount(row, { next_date: e.target.value || null })} />
+                        <input aria-label={`Next date for ${row.name}`} className="print:hidden bg-slate-900 border border-slate-700 rounded px-1 py-1" type="date" value={row.next_date || ''} onChange={(e) => saveAccount(row, { next_date: e.target.value || null })} />
                       </td>
                       <td className="py-2 pr-3 min-w-[12rem]">
                         <p className="hidden print:block whitespace-pre-wrap">{row.notes}</p>
-                        <Textarea className="print:hidden min-h-[2.5rem] text-xs" defaultValue={row.notes || ''} key={`${row.id}:${row.notes || ''}`} onBlur={(e) => { if (e.target.value !== (row.notes || '')) saveAccount(row, { notes: e.target.value }); }} />
+                        <Textarea aria-label={`Notes for ${row.name}`} className="print:hidden min-h-[2.5rem] text-xs" defaultValue={row.notes || ''} key={`${row.id}:${row.notes || ''}`} onBlur={(e) => { if (e.target.value !== (row.notes || '')) saveAccount(row, { notes: e.target.value }); }} />
                       </td>
                       <td className="py-2 print:hidden">
                         <button type="button" className="text-slate-500 hover:text-red-400" onClick={() => removeAccount(row)} aria-label={`Remove ${row.name}`}>Remove</button>

@@ -200,17 +200,17 @@ export default function MarketBriefs() {
 
       <div className="flex flex-wrap items-end gap-3 print:hidden">
         <div className="space-y-1">
-          <Label>State</Label>
+          <Label htmlFor="brief-state">State</Label>
           <Select value={url.state || undefined} onValueChange={(state) => setUrl({ state, county: '' })}>
-            <SelectTrigger className="w-28"><SelectValue placeholder="State" /></SelectTrigger>
+            <SelectTrigger id="brief-state" className="w-28"><SelectValue placeholder="State" /></SelectTrigger>
             <SelectContent>{US_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         {spec?.needs === 'county' && (
           <div className="space-y-1">
-            <Label>County</Label>
+            <Label htmlFor="brief-county">County</Label>
             <Select value={url.county || undefined} onValueChange={(county) => setUrl({ county })} disabled={!url.state}>
-              <SelectTrigger className="w-52"><SelectValue placeholder="County" /></SelectTrigger>
+              <SelectTrigger id="brief-county" className="w-52"><SelectValue placeholder="County" /></SelectTrigger>
               <SelectContent>{countyList.map((c) => <SelectItem key={c.fips} value={c.fips}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -264,9 +264,9 @@ export default function MarketBriefs() {
           {layer && (
             <Section title="Largest counties">
               <div className="print:hidden">
-                <Label>Sort</Label>
+                <Label htmlFor="brief-sort">Sort</Label>
                 <Select value={SORTS.some((s) => s.id === url.sort) ? url.sort : 'users'} onValueChange={(sort) => setUrl({ sort })}>
-                  <SelectTrigger className="mt-1 w-56"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="brief-sort" className="mt-1 w-56"><SelectValue /></SelectTrigger>
                   <SelectContent>{SORTS.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>

@@ -129,16 +129,16 @@ function Book({ report, activities, month, onOpen, onAdded, onFail }) {
   return (
     <div className="space-y-4">
       <form onSubmit={add} className="grid gap-2 sm:grid-cols-[1fr_10rem_8rem_auto] items-end rounded-lg border border-slate-800 bg-slate-900/40 p-3">
-        <label className="block text-xs text-slate-400">Account
-          <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 bg-slate-950 border-slate-700" placeholder="Facility or physician" required />
+        <label className="block text-xs text-slate-400" htmlFor="crm-account-name">Account
+          <Input id="crm-account-name" aria-label="Account name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 bg-slate-950 border-slate-700" placeholder="Facility or physician" required />
         </label>
         <label className="block text-xs text-slate-400">Type
           <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Account type" className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-100">
             {ACCOUNT_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
         </label>
-        <label className="block text-xs text-slate-400">City
-          <Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1 bg-slate-950 border-slate-700" />
+        <label className="block text-xs text-slate-400" htmlFor="crm-account-city">City
+          <Input id="crm-account-city" aria-label="City" value={city} onChange={(e) => setCity(e.target.value)} className="mt-1 bg-slate-950 border-slate-700" />
         </label>
         <Button type="submit" disabled={saving} className="bg-cyan-700 hover:bg-cyan-800">{saving ? 'Adding…' : 'Add'}</Button>
       </form>
@@ -352,8 +352,8 @@ function Account({ account, contacts, activities, referrals, onChange, onFail })
       </section>
 
       <section className="space-y-2 rounded-lg border border-slate-800 p-3">
-        <label className="block text-xs text-slate-400">Note (no patient name)
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100" />
+        <label className="block text-xs text-slate-400" htmlFor="crm-note">Note (no patient name)
+          <textarea id="crm-note" aria-label="Note" value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100" />
         </label>
         <div className="flex flex-wrap gap-2">
           <Button type="button" className="bg-cyan-700 hover:bg-cyan-800" onClick={() => log('visit', true)}>Visited today</Button>

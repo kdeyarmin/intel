@@ -26,6 +26,11 @@ export function consumeToken(key: string, max: number, windowMs: number): boolea
   return consumeTokenState(key, max, windowMs).allowed;
 }
 
+/** Tests only. The limiter is process-wide, so a file that signs in as one user more than `max` times in a window would fail for the limit rather than the behavior it is checking. */
+export function clearRateLimits(): void {
+  buckets.clear();
+}
+
 function consumeTokenState(key: string, max: number, windowMs: number): { allowed: boolean; retryMs: number } {
   const now = Date.now();
   sweep(now);
