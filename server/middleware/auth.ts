@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { getSessionUser } from "../lib/sessionUsers";
+import { isOrgAdmin, isPlatformAdmin } from "../lib/roles";
 
 let JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -14,8 +15,25 @@ if (!JWT_SECRET) {
 
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+export interface SessionPrincipal {
+  id: number;
+  email: string;
+  role: string;
+  full_name?: string;
+  status?: string;
+  /** Platform admins operate the shared data and see every organization. */
+  isPlatformAdmin?: boolean;
+  orgId?: number | null;
+  orgRole?: string | null;
+  orgName?: string | null;
+  orgStatus?: string | null;
+  planCode?: string | null;
+  territory?: { states: string[]; county_fips: string[] } | null;
+  termsAcceptedAt?: string | null;
+}
+
 export interface AuthRequest extends Request {
-  user?: { id: number; email: string; role: string; full_name?: string; status?: string };
+  user?: SessionPrincipal;
 }
 
 /**
@@ -77,7 +95,14 @@ async function authenticate(req: AuthRequest, res: Response, next: NextFunction,
   if (user.status === "pending" && !allowPending) {
     return res.status(403).json({ message: "Awaiting approval", code: "account_pending", detail: "An administrator needs to approve your account first." });
   }
-  req.user = { id: user.id, email: user.email, role: user.role, full_name: user.full_name || undefined, status: user.status };
+  req.user = {
+    id: user.id, email: user.email, role: user.role, full_name: user.full_name || undefined, status: user.status,
+    // The admin role and the flag are one thing (the Users screen keeps them together); either grants it.
+    isPlatformAdmin: !!user.is_platform_admin || user.role === "admin",
+    orgId: user.org_id ?? null, orgRole: user.org_role ?? null, orgName: user.org_name ?? null, orgStatus: user.org_status ?? null,
+    planCode: user.plan_code ?? null, territory: (user.territory as any) ?? null,
+    termsAcceptedAt: user.terms_accepted_at ? new Date(user.terms_accepted_at).toISOString() : null,
+  };
   next();
 }
 
@@ -91,9 +116,19 @@ export function authAllowPending(req: AuthRequest, res: Response, next: NextFunc
   return authenticate(req, res, next, true);
 }
 
+export { isPlatformAdmin, isOrgAdmin };
+
 export function adminOnly(req: AuthRequest, res: Response, next: NextFunction) {
-  if (!req.user || req.user.role !== "admin") {
+  if (!isOrgAdmin(req.user)) {
     return res.status(403).json({ message: "Forbidden", detail: "Admin access required." });
+  }
+  next();
+}
+
+/** Operating the shared data (imports, crawler, maintenance, cross-organization administration). */
+export function platformAdminOnly(req: AuthRequest, res: Response, next: NextFunction) {
+  if (!isPlatformAdmin(req.user)) {
+    return res.status(403).json({ message: "Forbidden", detail: "Platform administrator access required." });
   }
   next();
 }

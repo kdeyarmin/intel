@@ -277,4 +277,113 @@ describe("getTerritoryData", () => {
     expect(r.providers.length).toBeGreaterThan(0);
     expect(db.queries.some((q) => q.sql.includes("SELECT DISTINCT npi FROM provider_locations"))).toBe(false);
   });
+
+  describe("with a plan's territory", () => {
+    const plan = (planCode: string, territory: { states: string[]; county_fips: string[] }, orgStatus = "active") => ({ role: "user", orgRole: "member", planCode, territory, orgStatus });
+
+    it("keeps the all-states sample for plans that cover everything (national, platform admins, no user)", async () => {
+      const { handleGetTerritoryData } = await import("../server/functions/territory");
+      for (const user of [plan("national", { states: [], county_fips: [] }), { role: "admin" }, { role: "user", isPlatformAdmin: true }, null, undefined]) {
+        expect(((await handleGetTerritoryData({ state: "ALL", limit: 3 }, user as any)) as any).scope.state, JSON.stringify(user)).toBe("ALL");
+      }
+    });
+
+    it("refuses the all-states sample to a county pack or a state plan: it spans places they haven't bought", async () => {
+      const { handleGetTerritoryData } = await import("../server/functions/territory");
+      db.queries.length = 0;
+      for (const user of [plan("county_pack", { states: [], county_fips: ["42003"] }), plan("state", { states: ["PA"], county_fips: [] })]) {
+        await expect(handleGetTerritoryData({ state: "ALL", limit: 3 }, user)).rejects.toMatchObject({ status: 403, code: "outside_territory", message: expect.stringMatching(/National plan/) });
+      }
+      // No provider queries ran for the refused requests.
+      expect(db.queries.filter((q) => /FROM provider_locations|FROM providers/.test(q.sql))).toEqual([]);
+    });
+
+    describe("a county pack, whose plan covers some of a state's counties", () => {
+      const pack = plan("county_pack", { states: [], county_fips: ["42003"] });
+      // Providers 1 and 3 practice in ZIP areas of the pack's county or Butler County's: 15213 is Allegheny's, 16059 is mostly Butler's.
+      const located = (sql: string, params: any[]) => {
+        if (sql.includes("CROSS JOIN LATERAL")) return [
+          { npi: "1000000001", location_type: "Practice", city: "Pittsburgh", state: "PA", zip: "15213" },
+          { npi: "1000000003", location_type: "Practice", city: "Butler", state: "PA", zip: "16059" },
+        ];
+        if (sql.includes("SELECT DISTINCT npi FROM provider_locations")) return (params[0] as string[]).map((npi) => ({ npi }));
+        return undefined;
+      };
+
+      it("is answered from its counties' ZIP areas in SQL, not from the whole state", async () => {
+        const base = db.answer;
+        db.answer = (sql, params) => located(sql, params) ?? base(sql, params);
+        const { handleGetTerritoryData } = await import("../server/functions/territory");
+        const r: any = await handleGetTerritoryData({ state: "PA", limit: 2 }, pack);
+        // Allegheny's ZIP areas are the ones mostly in it: 16059 is 30% Allegheny, 70% Butler.
+        const zipFilter = db.queries.find((q) => q.sql.includes("left(zip, 5) = ANY($2)") && q.sql.includes("SELECT DISTINCT npi"));
+        expect(zipFilter?.params[1]).toEqual(["15213", "15222"]);
+        expect(db.queries.some((q) => q.sql.includes("AND state = $2 AND location_type = 'Practice'"))).toBe(false);
+        // The provider the state-wide sample would have shown, in Butler County, isn't theirs.
+        expect(r.providers.map((p: any) => p.npi)).toEqual(["1000000001"]);
+        // The location shown is one in their ZIP areas when the provider has several.
+        const loc = db.queries.find((q) => q.sql.includes("CROSS JOIN LATERAL"))!;
+        expect(loc.sql).toMatch(/ORDER BY \(location_type = 'Practice' AND left\(zip, 5\) = ANY\(\$3::text\[\]\)\) DESC NULLS LAST/);
+        expect(loc.params[2]).toEqual(["15213", "15222"]);
+        // The density covers their counties only, read for their ZIP areas only.
+        const density = db.queries.find((q) => q.sql.includes("FROM rollup_zip_locations"))!;
+        expect(density.params[0]).toEqual(["15213", "15222"]);
+        expect(r.counties.map((c: any) => c.fips)).toEqual(["42003"]);
+        // And not the state's size.
+        expect(r.scope.approx_locations_in_state).toBeNull();
+      });
+
+      it("narrows a specialty search and the fill-up of the sample to the same ZIP areas", async () => {
+        const base = db.answer;
+        db.answer = (sql, params) => {
+          if (sql.includes("FROM provider_taxonomies") && sql.includes("LIKE")) return [{ npi: "1000000001", taxonomy_code: "207RC0000X", taxonomy_description: "Cardiology" }];
+          return located(sql, params) ?? base(sql, params);
+        };
+        const { handleGetTerritoryData } = await import("../server/functions/territory");
+        await handleGetTerritoryData({ state: "PA", specialty_group: "cardiology", limit: 5 }, pack);
+        expect(db.queries.find((q) => q.sql.includes("left(zip, 5) = ANY($2)") && q.sql.includes("SELECT DISTINCT npi"))?.params[1]).toEqual(["15213", "15222"]);
+        db.queries.length = 0;
+        await handleGetTerritoryData({ state: "PA", limit: 50, entity_type: "Individual" }, pack);
+        const fill = db.queries.find((q) => q.sql.startsWith("SELECT npi FROM provider_locations"))!;
+        expect(fill.sql).toContain("AND left(zip, 5) = ANY($3)");
+        expect(fill.params).toEqual([150, "PA", ["15213", "15222"]]);
+      });
+
+      it("never reads a state plan's cached, state-wide answer", async () => {
+        const base = db.answer;
+        db.answer = (sql, params) => located(sql, params) ?? base(sql, params);
+        const { handleGetTerritoryData } = await import("../server/functions/territory");
+        const whole: any = await handleGetTerritoryData({ state: "PA", limit: 2, entity_type: "Individual" }, plan("state", { states: ["PA"], county_fips: [] }));
+        expect(whole.providers).toHaveLength(2);
+        expect(whole.counties.map((c: any) => c.fips)).toEqual(["42003", "42019"]);
+        const mine: any = await handleGetTerritoryData({ state: "PA", limit: 2, entity_type: "Individual" }, pack);
+        expect(mine.providers.map((p: any) => p.npi)).toEqual(["1000000001"]);
+        expect(mine.counties.map((c: any) => c.fips)).toEqual(["42003"]);
+        // And the state plan's own answer is still there, whole.
+        expect(((await handleGetTerritoryData({ state: "PA", limit: 2, entity_type: "Individual" }, plan("state", { states: ["PA"], county_fips: [] }))) as any).providers).toHaveLength(2);
+      });
+
+      it("covers nothing, not the state, while the Census geography isn't loaded", async () => {
+        db.answer = (sql) => (sql.includes("geo_") || sql.includes("FROM geo_meta") ? [] : undefined);
+        resetGeoCache();
+        const { handleGetTerritoryData } = await import("../server/functions/territory");
+        const r: any = await handleGetTerritoryData({ state: "PA", limit: 2 }, plan("county_pack", { states: [], county_fips: ["42019"] }));
+        // No ZIP areas to search: the filters get an empty list, which matches nobody.
+        const zipFilters = db.queries.filter((q) => q.sql.includes("left(zip, 5) = ANY("));
+        expect(zipFilters.length).toBeGreaterThan(0);
+        for (const q of zipFilters) {
+          const lists = q.params.filter((p: unknown) => Array.isArray(p) && p.every((x) => /^\d{5}$/.test(String(x))));
+          expect(lists).toEqual([[]]);
+        }
+        expect(r.providers).toEqual([]);
+      });
+    });
+
+    it("still answers a state inside the plan, and refuses one outside it", async () => {
+      const { handleGetTerritoryData } = await import("../server/functions/territory");
+      const pack = plan("county_pack", { states: [], county_fips: ["42003"] });
+      expect(((await handleGetTerritoryData({ state: "PA", limit: 2 }, pack)) as any).scope.state).toBe("PA");
+      await expect(handleGetTerritoryData({ state: "OH", limit: 2 }, pack)).rejects.toMatchObject({ status: 403, code: "outside_territory" });
+    });
+  });
 });

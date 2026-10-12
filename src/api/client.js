@@ -207,10 +207,10 @@ export const base44 = {
       return result;
     },
 
-    async signup(email, password, full_name) {
+    async signup(email, password, full_name, { organization_name, accept_terms } = {}) {
       const result = await request("/auth/signup", {
         method: "POST",
-        body: JSON.stringify({ email, password, full_name }),
+        body: JSON.stringify({ email, password, full_name, organization_name, accept_terms }),
       });
       resetAuthExpired();
       return result;
@@ -273,6 +273,17 @@ export const base44 = {
       revokeSessions: (id) => request(`/admin/users/${id}/revoke-sessions`, { method: "POST" }),
       remove: (id) => request(`/admin/users/${id}`, { method: "DELETE" }),
     },
+  },
+
+  // Billing and the organization's plan (server/routes/billing.ts).
+  billing: {
+    plans: () => request("/billing/plans"),
+    status: () => request("/billing/status"),
+    checkout: (plan_code) => request("/billing/checkout", { method: "POST", body: JSON.stringify({ plan_code }) }),
+    portal: () => request("/billing/portal", { method: "POST" }),
+    setTerritory: (territory) => request("/billing/territory", { method: "PATCH", body: JSON.stringify(territory) }),
+    /** Counts an export against today's quota; throws a 429 ApiError when it is used up. */
+    countExport: () => request("/billing/usage/export", { method: "POST" }),
   },
 
   // Best-effort audit trail for the user's own actions (exports, imports,

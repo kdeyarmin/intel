@@ -12,6 +12,7 @@ import LeadListFilters from '../components/leadlists/LeadListFilters';
 import LeadResultsTable from '../components/leadlists/LeadResultsTable';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import PageHeader from '../components/shared/PageHeader';
+import { countExport, exportCSV } from '../components/exports/exportUtils';
 import { toast } from 'sonner';
 
 const MAX_LIST_MEMBERS = 1000;
@@ -210,7 +211,14 @@ export default function LeadListBuilder() {
   };
 
   const handleExportCSV = async () => {
-    // Log export to audit trail (best-effort; never throws).
+    // Counts against the organization's daily export allowance, like every export.
+    const quota = await countExport();
+    if (!quota.ok) {
+      toast.error(quota.message);
+      return;
+    }
+
+    // Log export to audit trail (best-effort; never throws). Only exports that happen are logged.
     await base44.audit.record('export', {
       action: 'csv_export',
       entity: 'lead_list',
@@ -219,7 +227,11 @@ export default function LeadListBuilder() {
       filters,
     });
 
-    const headers = ['NPI', 'Name', 'Specialty', 'City', 'State', 'ZIP', 'Phone', 'Score', 'Patient Fingerprint'];
+    const fields = [
+      { key: 'npi', label: 'NPI' }, { key: 'name', label: 'Name' }, { key: 'specialty', label: 'Specialty' }, { key: 'city', label: 'City' },
+      { key: 'state', label: 'State' }, { key: 'zip', label: 'ZIP' }, { key: 'phone', label: 'Phone' }, { key: 'score', label: 'Score' },
+      { key: 'fingerprint', label: 'Patient Fingerprint' },
+    ];
     const rows = filteredResults.map(result => {
       const { provider, location, taxonomy, score, utilization } = result;
       const name = provider.entity_type === 'Organization' 
@@ -230,27 +242,21 @@ export default function LeadListBuilder() {
       const intensity = volume > 0 ? (utilization?.total_services || 0) / volume : 0;
       const fingerprint = volume >= 300 ? 'High Volume' : intensity >= 10 ? 'Complex Care' : 'Standard';
 
-      return [
-        provider.npi,
+      return {
+        npi: provider.npi,
         name,
-        taxonomy?.[0]?.taxonomy_description || '',
-        location?.city || '',
-        location?.state || '',
-        location?.zip || '',
-        location?.phone || '',
-        score?.score || 0,
+        specialty: taxonomy?.[0]?.taxonomy_description || '',
+        city: location?.city || '',
+        state: location?.state || '',
+        zip: location?.zip || '',
+        phone: location?.phone || '',
+        score: score?.score || 0,
         fingerprint,
-      ];
+      };
     });
 
-    const csv = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `lead-list-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // The source line every export carries goes on this one too.
+    exportCSV(rows, fields, `lead-list-${new Date().toISOString().split('T')[0]}`);
   };
 
   const handleStatusChange = async (npi, newStatus) => {

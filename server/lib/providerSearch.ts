@@ -213,6 +213,8 @@ export function mergeResults(results: Array<{ query: SearchQuery; rows: any[] }>
 export const STATE_FILTER_SQL = "SELECT DISTINCT npi FROM provider_locations WHERE npi = ANY($1) AND state = $2";
 /** The same, counting only practice locations (a mailing address there doesn't count). */
 export const PRACTICE_STATE_FILTER_SQL = "SELECT DISTINCT npi FROM provider_locations WHERE npi = ANY($1) AND state = $2 AND location_type = 'Practice'";
+/** The NPIs among $1 with a practice location in one of the ZIP areas $2 (a plan that covers some counties of a state). */
+export const PRACTICE_ZIP_FILTER_SQL = "SELECT DISTINCT npi FROM provider_locations WHERE npi = ANY($1) AND location_type = 'Practice' AND left(zip, 5) = ANY($2)";
 export const ENTITY_FILTER_SQL = "SELECT npi FROM providers WHERE npi = ANY($1) AND entity_type = $2";
 
 export interface ProviderSearchResult {
@@ -269,14 +271,16 @@ export function specialtyPatterns(input: { group?: string | null; taxonomyCode?:
  */
 export async function searchBySpecialty(
   client: any,
-  input: { group?: string | null; taxonomyCode?: string | null; state?: string | null; entityType?: string | null; limit?: number; practiceOnly?: boolean },
+  input: { group?: string | null; taxonomyCode?: string | null; state?: string | null; entityType?: string | null; limit?: number; practiceOnly?: boolean; zips?: string[] | null },
 ): Promise<{ providers: any[]; truncated: boolean; scanned: number } | null> {
   const patterns = specialtyPatterns(input);
   if (!patterns) return null;
   const limit = clampSearchLimit(input.limit);
   const state = normalizeStateFilter(input.state);
   const entity = normalizeEntityFilter(input.entityType);
-  const filtered = !!(state || entity);
+  // `zips` narrows to practice locations in those ZIP areas (a county pack's counties), whatever the state.
+  const zips = input.zips ?? null;
+  const filtered = !!(state || entity || zips);
   const where = patterns.map((_, i) => `taxonomy_code LIKE $${i + 1}`).join(" OR ");
   const { rows: candidates } = await client.query(
     `SELECT npi, taxonomy_code, taxonomy_description FROM provider_taxonomies
@@ -290,7 +294,11 @@ export async function searchBySpecialty(
   for (let i = 0; i < candidates.length && found.length <= limit; i += SPECIALTY_CHUNK) {
     let chunk = candidates.slice(i, i + SPECIALTY_CHUNK);
     scanned += chunk.length;
-    if (state) {
+    if (zips) {
+      const { rows: inZips } = await client.query(PRACTICE_ZIP_FILTER_SQL, [chunk.map((r: any) => r.npi), zips]);
+      const keep = new Set(inZips.map((r: any) => r.npi));
+      chunk = chunk.filter((r: any) => keep.has(r.npi));
+    } else if (state) {
       const { rows: inState } = await client.query(input.practiceOnly ? PRACTICE_STATE_FILTER_SQL : STATE_FILTER_SQL, [chunk.map((r: any) => r.npi), state]);
       const keep = new Set(inState.map((r: any) => r.npi));
       chunk = chunk.filter((r: any) => keep.has(r.npi));

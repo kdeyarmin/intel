@@ -659,6 +659,74 @@ describe("migration 0019_acs_and_licensed_facilities", () => {
   });
 });
 
+describe("migration 0020_organizations", () => {
+  const sql = readMigration("0020_organizations.sql");
+  const schema = readSchema();
+  const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+
+  it("creates the organization tables, adds org_id columns and backfills, all idempotently", () => {
+    for (const stmt of statements) {
+      expect(stmt).toMatch(/^(CREATE (TABLE|INDEX) IF NOT EXISTS "|ALTER TABLE "\w+" ADD COLUMN IF NOT EXISTS "|INSERT INTO "(plans|organizations|organization_members)" [\s\S]*ON CONFLICT[\s\S]*DO NOTHING|SELECT setval\('organizations_id_seq'|UPDATE "\w+" SET "(org_id|is_platform_admin)" = (1|true) WHERE)/);
+    }
+    const tables = [...sql.matchAll(/CREATE TABLE IF NOT EXISTS "(\w+)"/g)].map((m) => m[1]);
+    expect(tables).toEqual(["organizations", "organization_members", "plans", "org_usage"]);
+    for (const table of tables) expect(schema, table).toContain(`pgTable("${table}"`);
+  });
+
+  it("gives every customer-owned table an org_id, backfilled to the legacy organization, with an index", () => {
+    const added = [...sql.matchAll(/ALTER TABLE "(\w+)" ADD COLUMN IF NOT EXISTS "org_id"/g)].map((m) => m[1]);
+    expect(added).toEqual([
+      "lead_lists", "saved_filters", "custom_reports", "scheduled_reports", "scheduled_exports", "analytics_dashboards", "scoring_rules",
+      "outreach_campaigns", "outreach_messages", "campaign_templates", "campaign_tasks", "data_quality_alerts", "audit_events",
+      "assistant_conversations", "assistant_actions", "assistant_usage",
+    ]);
+    // The assistant's actions and usage are read per user, never per organization, so they carry no org index.
+    const unindexed = new Set(["assistant_actions", "assistant_usage"]);
+    for (const table of added) {
+      expect(sql, table).toContain(`UPDATE "${table}" SET "org_id" = 1 WHERE "org_id" IS NULL`);
+      if (!unindexed.has(table)) expect(sql, table).toMatch(new RegExp(`CREATE INDEX IF NOT EXISTS "${table}_org_idx" ON "${table}" \\("org_id"`));
+      // The schema declares the column on the same table.
+      const start = schema.indexOf(`pgTable("${table}"`);
+      expect(start, table).toBeGreaterThan(-1);
+      expect(schema.slice(start, schema.indexOf("});", start)), table).toContain('org_id: integer("org_id")');
+    }
+    for (const col of ["is_platform_admin", "terms_accepted_at", "terms_version"]) expect(sql).toContain(`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "${col}"`);
+    expect(sql).toContain(`UPDATE "users" SET "is_platform_admin" = true WHERE "role" = 'admin'`);
+  });
+
+  it("keeps constraint and index names within Postgres's 63-character limit", () => {
+    for (const [, name] of sql.matchAll(/(?:CONSTRAINT|INDEX IF NOT EXISTS)\s+"([^"]+)"/g)) expect(name.length, name).toBeLessThanOrEqual(63);
+  });
+
+  it("is registered in the drizzle journal after 0019", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const tags = journal.entries.map((e: { tag: string }) => e.tag);
+    expect(tags.indexOf("0020_organizations")).toBe(tags.indexOf("0019_acs_and_licensed_facilities") + 1);
+    const whens = journal.entries.map((e: { when: number }) => e.when);
+    expect(whens[whens.length - 1]).toBeGreaterThan(whens[whens.length - 2]);
+  });
+});
+
+describe("migration 0021_billing_event_guard", () => {
+  const sql = readMigration("0021_billing_event_guard.sql");
+
+  it("adds the Stripe event time to organizations, idempotently, and the schema declares it", () => {
+    const statements = sql.replace(/^--.*$/gm, "").split(";").map((x) => x.trim()).filter(Boolean);
+    expect(statements).toEqual(['ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "stripe_event_at" timestamp']);
+    const schema = readSchema();
+    const start = schema.indexOf('pgTable("organizations"');
+    expect(schema.slice(start, schema.indexOf("});", start))).toContain('stripe_event_at: timestamp("stripe_event_at")');
+  });
+
+  it("is registered in the drizzle journal after 0020, later than it", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const tags = journal.entries.map((e: { tag: string }) => e.tag);
+    expect(tags.indexOf("0021_billing_event_guard")).toBe(tags.indexOf("0020_organizations") + 1);
+    const at = (tag: string) => journal.entries.find((e: { tag: string }) => e.tag === tag).when;
+    expect(at("0021_billing_event_guard")).toBeGreaterThan(at("0020_organizations"));
+  });
+});
+
 describe("migration 0012_assistant", () => {
   const sql = readMigration("0012_assistant.sql");
   const schema = readSchema();

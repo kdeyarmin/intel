@@ -27,7 +27,7 @@ function highlightText(text, term) {
 /** `locked`: search keeps the section open, so the header doesn't toggle. */
 export default function HelpSection({ section, topics = section.content, expanded, onToggle, searchTerm, locked = false }) {
   const Icon = section.icon;
-  const role = useOptionalAuth()?.user?.role;
+  const user = useOptionalAuth()?.user;
 
   return (
     <Card id={section.id} className="bg-[#141d30] border-slate-700/50 overflow-hidden">
@@ -65,7 +65,7 @@ export default function HelpSection({ section, topics = section.content, expande
               ">
                 <ReactMarkdown>{toMarkdown(searchTerm ? highlightText(item.text, searchTerm) : item.text)}</ReactMarkdown>
               </div>
-              {item.page && canAccessPage(item.page, role) && (
+              {item.page && canAccessPage(item.page, user) && (
                 <Link
                   to={createPageUrl(item.page)}
                   className="mt-2 inline-flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 hover:underline"

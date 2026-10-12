@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Download } from 'lucide-react';
 import { DATASET_CONFIG } from './reportConfig';
-import { exportCSV, exportExcel, exportPDF } from '../exports/exportUtils';
+import { toast } from 'sonner';
+import { countExport, exportCSV, exportExcel, exportPDF } from '../exports/exportUtils';
 
 function fmt(n) {
   if (n === null || n === undefined) return '—';
@@ -32,9 +33,18 @@ export default function ReportDataTable({ chartData, config }) {
 
   const getFileName = () => (config.name || 'report').replace(/\s+/g, '_');
 
-  const handleExportCSV = () => exportCSV(chartData, getFields(), getFileName());
-  const handleExportExcel = () => exportExcel(chartData, getFields(), getFileName());
-  const handleExportPDF = () => exportPDF(chartData, getFields(), getFileName(), config.name || 'Report');
+  // Every export counts against the organization's daily allowance before a file is built.
+  const counted = (build) => async () => {
+    const quota = await countExport();
+    if (!quota.ok) {
+      toast.error(quota.message);
+      return;
+    }
+    await build();
+  };
+  const handleExportCSV = counted(() => exportCSV(chartData, getFields(), getFileName()));
+  const handleExportExcel = counted(() => exportExcel(chartData, getFields(), getFileName()));
+  const handleExportPDF = counted(() => exportPDF(chartData, getFields(), getFileName(), config.name || 'Report'));
 
   return (
     <Card>

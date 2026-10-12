@@ -49,6 +49,21 @@ describe('PageTabs', () => {
     const { container } = renderAt('/Providers', <PageTabs current="Providers" />);
     expect(container.querySelector('nav')).toBeNull();
   });
+
+  it("shows an organization's owner the admin tabs that are theirs, and a platform admin all of them", () => {
+    auth.value = { user: { role: 'user', orgRole: 'owner' } };
+    renderAt('/Billing', <PageTabs current="Billing" />);
+    expect(screen.getAllByRole('link').map((l) => l.textContent)).toEqual(['Users', 'Billing', 'Security audit']);
+    cleanup();
+    auth.value = { user: { role: 'admin' } };
+    renderAt('/Billing', <PageTabs current="Billing" />);
+    expect(screen.getAllByRole('link').map((l) => l.textContent)).toEqual(['Users', 'Billing', 'Scoring rules', 'Security audit']);
+    cleanup();
+    auth.value = { user: { role: 'user', orgRole: 'member' } };
+    const { container } = renderAt('/Billing', <PageTabs current="Billing" />);
+    expect(container.querySelector('nav')).toBeNull();
+    auth.value = { user: { role: 'user' } };
+  });
 });
 
 describe('Facilities', () => {

@@ -12,7 +12,8 @@ import {
 } from "../server/lib/accounts";
 import { parseTrustProxy } from "../server/lib/trustProxy";
 import { seedAdmin } from "../server/lib/adminSeed";
-import { memoryUserRepo } from "./helpers/accountHarness";
+import { LEGACY_ORG_ID } from "../server/lib/orgs";
+import { memoryOrgRepo, memoryUserRepo } from "./helpers/accountHarness";
 
 describe("normalizeEmail", () => {
   it("trims and lower-cases", () => {
@@ -101,6 +102,40 @@ describe("seedAdmin", () => {
     expect(await seedAdmin(repo, { env, hashPassword, verifyPassword })).toEqual({ outcome: "seeded", email: "boss@example.com" });
     expect(repo.users[0]).toMatchObject({ role: "admin", status: "active", approved_by: "system" });
     expect((await seedAdmin(repo, { env, hashPassword, verifyPassword })).outcome).toBe("exists");
+  });
+
+  it("makes the first admin a platform admin and an owner of the first organization", async () => {
+    const repo = memoryUserRepo();
+    const orgs = memoryOrgRepo(repo.users);
+    const env = { ADMIN_EMAIL: "boss@example.com", ADMIN_PASSWORD: "s3cret-pass" } as any;
+    await seedAdmin(repo, { env, hashPassword, verifyPassword, orgs });
+    const admin = repo.users[0];
+    expect(admin).toMatchObject({ role: "admin", is_platform_admin: true });
+    expect(orgs.members).toEqual([{ org_id: LEGACY_ORG_ID, user_id: admin.id, org_role: "owner" }]);
+  });
+
+  it("gives an admin created before organizations existed a membership on the next start, once", async () => {
+    const repo = memoryUserRepo();
+    const orgs = memoryOrgRepo(repo.users);
+    await repo.create({ email: "boss@example.com", password_hash: "h:s3cret-pass", full_name: null, role: "admin", status: "active" });
+    const env = { ADMIN_EMAIL: "boss@example.com", ADMIN_PASSWORD: "s3cret-pass" } as any;
+    expect((await seedAdmin(repo, { env, hashPassword, verifyPassword, orgs })).outcome).toBe("exists");
+    expect((await seedAdmin(repo, { env, hashPassword, verifyPassword, orgs })).outcome).toBe("exists");
+    expect(orgs.members).toHaveLength(1);
+    // Someone already in another organization keeps it.
+    orgs.members.length = 0;
+    orgs.orgs.push({ id: 2, name: "Other", status: "active", seat_limit: 3, plan_code: null, territory: { states: [], county_fips: [] } });
+    orgs.members.push({ org_id: 2, user_id: repo.users[0].id, org_role: "member" });
+    await seedAdmin(repo, { env, hashPassword, verifyPassword, orgs });
+    expect(orgs.members).toEqual([{ org_id: 2, user_id: repo.users[0].id, org_role: "member" }]);
+  });
+
+  it("flags a restored admin as a platform admin too", async () => {
+    const repo = memoryUserRepo();
+    await repo.create({ email: "boss@example.com", password_hash: "h:s3cret-pass", full_name: null, role: "user", status: "pending" });
+    const env = { ADMIN_EMAIL: "boss@example.com", ADMIN_PASSWORD: "s3cret-pass" } as any;
+    expect((await seedAdmin(repo, { env, hashPassword, verifyPassword })).outcome).toBe("restored");
+    expect(repo.users[0]).toMatchObject({ role: "admin", is_platform_admin: true, status: "active" });
   });
 
   it("needs ADMIN_PASSWORD in production", async () => {

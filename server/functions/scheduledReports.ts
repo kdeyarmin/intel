@@ -8,6 +8,7 @@ import { pool } from "../db";
 import { tableMap } from "../db/schema";
 import { getMailerStatus, sendMail } from "../lib/mailer";
 import { CLAUDE_MODELS } from "../lib/aiModels";
+import { isPlatformAdmin } from "../lib/roles";
 import {
   aggregateReport,
   buildReportCsv,
@@ -201,10 +202,12 @@ async function runAndSend(row: any, { advance = true }: { advance?: boolean } = 
   }
 }
 
-async function loadSchedule(id: unknown) {
+/** The schedule, which must belong to the caller's organization (another organization's answers 404, like a missing one). */
+async function loadSchedule(id: unknown, user?: { orgId?: number | null }) {
   const reportId = Number(id);
   if (!Number.isInteger(reportId)) throw new HttpError(400, "report_id is required.");
-  const { rows } = await pool.query("SELECT * FROM scheduled_reports WHERE id = $1", [reportId]);
+  if (user?.orgId == null) throw new HttpError(403, "Your account isn't part of an organization yet.");
+  const { rows } = await pool.query("SELECT * FROM scheduled_reports WHERE id = $1 AND org_id = $2", [reportId, user.orgId]);
   if (!rows[0]) throw new HttpError(404, "Scheduled report not found.");
   return rows[0];
 }
@@ -295,14 +298,14 @@ export async function handleRunDueScheduledReports() {
   };
 }
 
-export async function handleGenerateScheduledReport(payload: any, user?: { role?: string }) {
+export async function handleGenerateScheduledReport(payload: any, user?: { role?: string; isPlatformAdmin?: boolean; orgId?: number | null }) {
   const action = String(payload?.action || "run_single");
   if (action === "run_all_due") {
-    if (user?.role !== "admin") throw new HttpError(403, "Only admins can run all due reports.");
+    if (!isPlatformAdmin(user)) throw new HttpError(403, "Only platform admins can run all due reports.");
     return handleRunDueScheduledReports();
   }
   if (action === "preview") {
-    const row = await loadSchedule(payload?.report_id);
+    const row = await loadSchedule(payload?.report_id, user);
     const report = await buildReport(row);
     const { allowed, blocked, overflow } = await allowedRecipients(row.recipients);
     return {
@@ -326,7 +329,7 @@ export async function handleGenerateScheduledReport(payload: any, user?: { role?
   if (action === "run_single") {
     const missing = mailerMissing();
     if (missing) return missing;
-    const row = await loadSchedule(payload?.report_id);
+    const row = await loadSchedule(payload?.report_id, user);
     const r = await runAndSend(row, { advance: false });
     if (r.emails_sent === 0) {
       return { success: false, error: `The report ran but no email was delivered. ${r.failures.join("; ")}`.trim() };

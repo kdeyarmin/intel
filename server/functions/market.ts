@@ -17,6 +17,7 @@ import { specialtyGroupFor } from "../lib/specialtyGroups";
 import { providerName } from "../lib/territory";
 import { rollupStatus } from "../lib/rollups/runner";
 import { MARKET_JOBS } from "../lib/rollups/market";
+import { assertTerritory, entitledCounties, inTerritory, isUnrestricted, territoryScope, TerritoryError, type EntitledUser } from "../lib/entitlements";
 
 export const PAC_SETTINGS = ["snf", "hha", "hospice", "irf", "ltch"] as const;
 export type PacSetting = (typeof PAC_SETTINGS)[number];
@@ -187,6 +188,17 @@ function guard<T>(fn: () => Promise<T>): Promise<T> {
   });
 }
 
+/**
+ * A facility's market is its county's, so the facility's own place decides whether a plan covers it. A place
+ * that can't be told (no state, no county) can't be checked, and a restricted plan doesn't get it.
+ */
+function assertFacilityTerritory(user: EntitledUser | null | undefined, place: { state?: string | null; county_fips?: string | null; county_name?: string | null }) {
+  assertTerritory(user, place);
+  if (!isUnrestricted(user) && !place.state && !place.county_fips) {
+    throw new TerritoryError("This facility's location isn't known, so it can't be checked against your plan's territory.");
+  }
+}
+
 const shareRow = (r: any) => ({
   ccn: r.ccn, benes: num(r.benes), stays: num(r.stays), days: num(r.days), payment: num(r.payment), dual_pct: num(r.dual_pct),
   risk_score: num(r.risk_score), share: num(r.share_benes), rank: num(r.rank), providers_in_market: num(r.providers_in_market),
@@ -202,9 +214,10 @@ const mixRow = (r: any) => r ? ({
 }) : null;
 
 /** The county's market: profile, hospital sources, post-acute competitors and trends, agency coverage. */
-export async function handleGetCountyMarket(payload: any) {
+export async function handleGetCountyMarket(payload: any, user?: EntitledUser | null) {
   const { state, index, county, counties } = await resolveCountyArg(payload);
   if (!county) return { state, needsCounty: true, counties };
+  assertTerritory(user, { state, county_fips: county.fips, county_name: county.name });
   const fips = county.fips;
   return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
     const [profile, sources, competitors, trends, coverage] = await Promise.all([
@@ -282,7 +295,7 @@ export async function handleGetCountyMarket(payload: any) {
 }
 
 /** Where a hospital's inpatients live: ZIP areas and counties with cases and shares. */
-export async function handleGetHospitalCatchment(payload: any) {
+export async function handleGetHospitalCatchment(payload: any, user?: EntitledUser | null) {
   const ccn = ccnOf(payload?.ccn);
   if (!ccn) throw new HttpError(400, "A CMS certification number (ccn) is required.");
   const index = await getGeoIndex(pool);
@@ -291,17 +304,22 @@ export async function handleGetHospitalCatchment(payload: any) {
     const wanted = payload?.data_year ? String(payload.data_year) : years[0];
     const year = years.includes(wanted) ? wanted : years[0] ?? null;
     // The ZIP list is the busiest CATCHMENT_ZIPS areas; the totals and the county split
-    // are aggregated over every ZIP area of the hospital, not just the ones listed.
+    // are aggregated over every ZIP area of the hospital, not just the ones listed. A plan that covers only
+    // some places sees patient origins only in those places, narrowed in SQL so the busiest-first limits
+    // apply within them (the hospital's own total stays the denominator of every share).
+    const scope = territoryScope(user);
+    const inScope = "(county_fips = ANY($3::text[]) OR left(county_fips, 2) = ANY($4::text[]))";
+    const scopeParams = scope ? [scope.counties, scope.statePrefixes] : [];
     const [zips, totals, byCounty, mix, names] = await Promise.all([
       year ? client.query(
         `SELECT zip5, county_fips, cases, days, charges, share_of_hospital FROM rollup_hospital_catchment
-          WHERE ccn = $1 AND data_year = $2 ORDER BY cases DESC NULLS LAST, zip5 LIMIT ${CATCHMENT_ZIPS}`, [ccn, year]) : { rows: [] },
+          WHERE ccn = $1 AND data_year = $2${scope ? ` AND ${inScope}` : ""} ORDER BY cases DESC NULLS LAST, zip5 LIMIT ${CATCHMENT_ZIPS}`, [ccn, year, ...scopeParams]) : { rows: [] },
       year ? client.query(
-        "SELECT COALESCE(sum(cases), 0)::bigint AS cases, count(*)::int AS zips FROM rollup_hospital_catchment WHERE ccn = $1 AND data_year = $2", [ccn, year]) : { rows: [] },
+        `SELECT COALESCE(sum(cases), 0)::bigint AS cases, ${scope ? `count(*) FILTER (WHERE ${inScope})::int` : "count(*)::int"} AS zips FROM rollup_hospital_catchment WHERE ccn = $1 AND data_year = $2`, [ccn, year, ...scopeParams]) : { rows: [] },
       year ? client.query(
         `SELECT county_fips, sum(cases)::bigint AS cases, sum(days)::bigint AS days, count(*)::int AS zips FROM rollup_hospital_catchment
-          WHERE ccn = $1 AND data_year = $2 AND county_fips IS NOT NULL
-          GROUP BY county_fips ORDER BY sum(cases) DESC NULLS LAST, county_fips LIMIT ${CATCHMENT_COUNTIES}`, [ccn, year]) : { rows: [] },
+          WHERE ccn = $1 AND data_year = $2 AND county_fips IS NOT NULL${scope ? ` AND ${inScope}` : ""}
+          GROUP BY county_fips ORDER BY sum(cases) DESC NULLS LAST, county_fips LIMIT ${CATCHMENT_COUNTIES}`, [ccn, year, ...scopeParams]) : { rows: [] },
       client.query("SELECT * FROM rollup_hospital_discharge_mix WHERE ccn = $1 ORDER BY data_year DESC LIMIT 1", [ccn]),
       facilityNames(client, [ccn]),
     ]);
@@ -317,11 +335,14 @@ export async function handleGetHospitalCatchment(payload: any) {
       return { county_fips: r.county_fips, name: c?.name ?? null, state: c?.state ?? null, cases, days: num(r.days) ?? 0, zips: Number(r.zips) || 0, share: total ? cases / total : null };
     });
     const n = names.get(ccn);
+    const hospitalState = n?.state ?? mix.rows[0]?.state ?? null;
+    // A hospital is covered by where it is (its patients' origins were already narrowed to the plan above).
+    assertFacilityTerritory(user, { state: hospitalState });
     return {
       ccn,
       name: n?.name ?? mix.rows[0]?.facility_name ?? null,
       city: n?.city ?? null,
-      state: n?.state ?? mix.rows[0]?.state ?? null,
+      state: hospitalState,
       data_year: year,
       years,
       total_cases: total,
@@ -336,7 +357,7 @@ export async function handleGetHospitalCatchment(payload: any) {
 }
 
 /** A post-acute provider's position in its county and state market, its trend and (for agencies) the counties it serves. */
-export async function handleGetFacilityMarket(payload: any) {
+export async function handleGetFacilityMarket(payload: any, user?: EntitledUser | null) {
   const ccn = ccnOf(payload?.ccn);
   const setting = String(payload?.setting ?? "").toLowerCase() as PacSetting;
   if (!ccn) throw new HttpError(400, "A CMS certification number (ccn) is required.");
@@ -350,6 +371,7 @@ export async function handleGetFacilityMarket(payload: any) {
     const countyRow = own.find((r: any) => r.geo_level === "county" && r.data_year === latestYear);
     const stateRow = own.find((r: any) => r.geo_level === "state" && r.data_year === latestYear);
     const countyFips = countyRow?.geo_code ?? null;
+    assertFacilityTerritory(user, { state: countyRow?.state ?? stateRow?.state ?? stateRow?.geo_code ?? own[0]?.state ?? null, county_fips: countyFips, county_name: countyFips ? countyName(index, countyFips) : null });
     const [market, marketTrend, coverage] = await Promise.all([
       countyFips ? client.query(
         `SELECT * FROM rollup_pac_market_share WHERE setting = $1 AND geo_level = 'county' AND geo_code = $2 AND data_year = $3 ORDER BY rank LIMIT 100`,
@@ -383,7 +405,8 @@ export async function handleGetFacilityMarket(payload: any) {
         data_year: r.data_year, benes: num(r.benes), share: num(r.share_benes), rank: num(r.rank),
         market_benes: num(trendBy.get(String(r.data_year))?.benes), market_providers: num(trendBy.get(String(r.data_year))?.providers),
       })).sort((a: any, b: any) => String(a.data_year).localeCompare(String(b.data_year))),
-      coverage: coverage.rows.map((r: any) => ({ county_fips: r.county_fips, county_name: countyName(index, r.county_fips), state: index.counties.get(r.county_fips)?.state ?? null, zips_served: Number(r.zips_served), county_zips: Number(r.county_zips), share_of_county_zips: num(r.share_of_county_zips) })),
+      // An agency may serve counties beyond the plan's territory; those stay out of a restricted plan's view.
+      coverage: coverage.rows.filter((r: any) => isUnrestricted(user) || inTerritory(user, { county_fips: r.county_fips })).map((r: any) => ({ county_fips: r.county_fips, county_name: countyName(index, r.county_fips), state: index.counties.get(r.county_fips)?.state ?? null, zips_served: Number(r.zips_served), county_zips: Number(r.county_zips), share_of_county_zips: num(r.share_of_county_zips) })),
       rollups: await marketRollupFreshness(),
     };
   }));
@@ -392,15 +415,20 @@ export async function handleGetFacilityMarket(payload: any) {
 const VINTAGE_KEYS = ["enrollment", "saturation", "variation", "hospital_service_area", "pac_utilization", "acs", "licensed"];
 
 /** One metric for every county in a state (for a choropleth), or with `all` every metric (for the county table). */
-export async function handleGetCountyMarketLayer(payload: any) {
+export async function handleGetCountyMarketLayer(payload: any, user?: EntitledUser | null) {
   const state = normalizeStateFilter(payload?.state);
   if (!state) throw new HttpError(400, "Pick a state.");
+  assertTerritory(user, { state });
+  // A county pack sees its counties only; a state or national plan sees them all.
+  const allowed = entitledCounties(user, state);
+  const keep = (rows: any[]) => (allowed ? rows.filter((r: any) => allowed.includes(r.county_fips)) : rows);
   if (payload?.all === true) {
     return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
       const cols = Object.values(LAYER_METRICS).map((m) => m.column);
-      const { rows } = await client.query(
+      const { rows: all } = await client.query(
         `SELECT county_fips, county_name, ${cols.join(", ")}, as_of FROM rollup_county_market_profile WHERE state = $1 ORDER BY county_name`, [state],
       );
+      const rows = keep(all);
       const vintages: Record<string, unknown> = {};
       for (const k of VINTAGE_KEYS) vintages[k] = rows.find((r: any) => r.as_of?.[k])?.as_of?.[k] ?? null;
       return {
@@ -415,9 +443,10 @@ export async function handleGetCountyMarketLayer(payload: any) {
   const def = LAYER_METRICS[metric];
   if (!def) throw new HttpError(400, `metric must be one of ${Object.keys(LAYER_METRICS).join(", ")}.`);
   return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
-    const { rows } = await client.query(
+    const { rows: all } = await client.query(
       `SELECT county_fips, county_name, ${def.column} AS value, as_of FROM rollup_county_market_profile WHERE state = $1 ORDER BY county_name`, [state],
     );
+    const rows = keep(all);
     const vintage = rows.find((r: any) => r.as_of?.[def.vintage])?.as_of?.[def.vintage] ?? null;
     return {
       state, metric, label: def.label, format: def.format, vintage,
@@ -429,7 +458,7 @@ export async function handleGetCountyMarketLayer(payload: any) {
 }
 
 /** Top likely referral sources (clinicians) in a county or state, with the components behind the index. */
-export async function handleGetReferralSources(payload: any) {
+export async function handleGetReferralSources(payload: any, user?: EntitledUser | null) {
   const state = normalizeStateFilter(payload?.state);
   if (!state) throw new HttpError(400, "Pick a state.");
   const index = await getGeoIndex(pool);
@@ -437,6 +466,8 @@ export async function handleGetReferralSources(payload: any) {
   if ((payload?.county_fips || payload?.county) && (!county || county.state !== state)) {
     return { state, needsCounty: true, counties: countiesForState(index, state).map((c) => ({ fips: c.fips, name: c.name })) };
   }
+  assertTerritory(user, county ? { state, county_fips: county.fips, county_name: county.name } : { state });
+  const stateCounties = county ? null : entitledCounties(user, state);
   const setting = ["hha", "hospice", "dme"].includes(String(payload?.setting)) ? String(payload.setting) : null;
   const group = typeof payload?.specialty_group === "string" && payload.specialty_group !== "all" ? payload.specialty_group : null;
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number(payload?.limit) || TOP));
@@ -445,9 +476,14 @@ export async function handleGetReferralSources(payload: any) {
     const where = [county ? "county_fips = $1" : "state = $1"];
     if (setting) where.push(`${setting}_eligible = true`);
     // One row more than the window, to know whether the ranked list goes on past it.
+    const params: unknown[] = [county ? county.fips : state, fetch + 1];
+    if (stateCounties) {
+      params.push(stateCounties);
+      where.push(`county_fips = ANY($${params.length})`);
+    }
     const { rows: fetched } = await client.query(
       `SELECT * FROM rollup_referral_sources WHERE ${where.join(" AND ")} ORDER BY referral_index DESC, benes DESC NULLS LAST, npi LIMIT $2`,
-      [county ? county.fips : state, fetch + 1],
+      params,
     );
     const rows = fetched.slice(0, fetch);
     const beyondWindow = fetched.length > fetch;
@@ -490,9 +526,10 @@ export async function handleGetReferralSources(payload: any) {
 }
 
 /** Home health agencies or hospices serving a county, with how much of it (and how many other counties) each covers. */
-export async function handleGetServiceAreaOverlap(payload: any) {
+export async function handleGetServiceAreaOverlap(payload: any, user?: EntitledUser | null) {
   const { state, index, county, counties } = await resolveCountyArg(payload);
   if (!county) return { state, needsCounty: true, counties };
+  assertTerritory(user, { state, county_fips: county.fips, county_name: county.name });
   const setting = String(payload?.setting ?? "hha").toLowerCase();
   if (setting !== "hha" && setting !== "hospice") throw new HttpError(400, "setting must be hha or hospice.");
   return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {

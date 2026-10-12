@@ -13,6 +13,8 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [organizationName, setOrganizationName] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -21,7 +23,13 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const account = isSignup ? await signup(email, password, fullName) : await login(email, password);
+      if (isSignup && !acceptTerms) {
+        setError('Accept the Terms of Service and Privacy Policy to create an account.');
+        return;
+      }
+      const account = isSignup
+        ? await signup(email, password, fullName, { organization_name: organizationName, accept_terms: acceptTerms })
+        : await login(email, password);
       if (account?.status === 'pending') {
         navigate('/pending', { replace: true });
         return;
@@ -61,7 +69,7 @@ export default function Login() {
 
           {isSignup && !error && (
             <div className="mb-4 p-3 bg-cyan-900/30 border border-cyan-500/30 rounded-lg text-cyan-300 text-sm" role="status">
-              New accounts need an administrator's approval before they can see any data.
+              Your account starts an organization you own, with a free trial. An administrator reviews new accounts before they can sign in; you'll be emailed when yours is approved.
             </div>
           )}
 
@@ -90,6 +98,23 @@ export default function Login() {
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   placeholder="Enter your full name"
+                />
+              </div>
+            )}
+
+            {isSignup && (
+              <div>
+                <label id="login-org-label" htmlFor="login-org" className="block text-sm font-medium text-slate-300 mb-1">Organization</label>
+                <input
+                  id="login-org"
+                  aria-labelledby="login-org-label"
+                  autoComplete="organization"
+                  type="text"
+                  value={organizationName}
+                  onChange={(e) => setOrganizationName(e.target.value)}
+                  maxLength={120}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  placeholder="Your facility or company name"
                 />
               </div>
             )}
@@ -131,9 +156,27 @@ export default function Login() {
               </div>
             )}
 
+            {isSignup && (
+              <div className="flex items-start gap-2">
+                <input
+                  id="login-accept-terms"
+                  aria-labelledby="login-accept-terms-label"
+                  type="checkbox"
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-700 text-cyan-600 focus:ring-cyan-500"
+                />
+                <label id="login-accept-terms-label" htmlFor="login-accept-terms" className="text-xs text-slate-300">
+                  I accept the <Link to="/terms" className="text-cyan-400 hover:text-cyan-300">Terms of Service</Link> and{' '}
+                  <Link to="/privacy" className="text-cyan-400 hover:text-cyan-300">Privacy Policy</Link>, and have read how the{' '}
+                  <Link to="/data-use" className="text-cyan-400 hover:text-cyan-300">data</Link> may be used.
+                </label>
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (isSignup && !acceptTerms)}
               className="w-full py-2.5 bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
             >
               {loading ? (
@@ -157,6 +200,11 @@ export default function Login() {
             </button>
           </div>
         </main>
+        <nav aria-label="Legal" className="mt-6 flex justify-center gap-4 text-xs text-slate-400">
+          <Link to="/terms" className="hover:text-slate-200">Terms</Link>
+          <Link to="/privacy" className="hover:text-slate-200">Privacy</Link>
+          <Link to="/data-use" className="hover:text-slate-200">Data sources</Link>
+        </nav>
       </div>
     </div>
   );

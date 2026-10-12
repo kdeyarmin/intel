@@ -2,7 +2,8 @@ import React, { useId, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, Calendar } from 'lucide-react';
-import { exportCSV, exportExcel, exportPDF, exportJSON, pickFields } from './exportUtils';
+import { toast } from 'sonner';
+import { countExport, exportCSV, exportExcel, exportPDF, exportJSON, pickFields } from './exportUtils';
 import ExportFormatSelector from './ExportFormatSelector';
 import ColumnSelector from './ColumnSelector';
 import ScheduleExportForm from './ScheduleExportForm';
@@ -25,6 +26,13 @@ export default function ExportDialog({ data, fields, fileName, title, dateField,
 
   const handleExport = async () => {
     setExporting(true);
+    // Exports count against the organization's daily quota; a 429 means it is used up.
+    const quota = await countExport();
+    if (!quota.ok) {
+      setExporting(false);
+      toast.error(quota.message);
+      return;
+    }
     let rows = data;
     if (dateField) {
       rows = applyDateRangeFilter(rows, dateField, dateRange);

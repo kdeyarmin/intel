@@ -5,6 +5,7 @@ import path from "path";
 import crypto from "crypto";
 import { authMiddleware, adminOnly, AuthRequest } from "../middleware/auth";
 import { rateLimit } from "../middleware/rateLimit";
+import { consumeQuota, QuotaError } from "../lib/orgQuota";
 import { CLAUDE_MODELS } from "../lib/aiModels";
 import { sendMail } from "../lib/mailer";
 import { isSuppressed } from "../lib/suppressions";
@@ -54,6 +55,14 @@ router.post("/ai/invoke", authMiddleware, rateLimit("ai_invoke", 60, 60_000), as
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return res.status(500).json({ message: "ANTHROPIC_API_KEY not configured" });
+
+    // Each organization has a daily allowance of AI requests (its plan's quota).
+    try {
+      await consumeQuota(req.user, "ai_calls");
+    } catch (e: any) {
+      if (e instanceof QuotaError) return res.status(429).json({ message: e.message, code: e.code, kind: e.kind, limit: e.limit });
+      throw e;
+    }
 
     // Reject unknown models rather than silently passing them to the API.
     const resolvedModel = model && ALLOWED_MODELS.has(model) ? model : CLAUDE_MODELS.SONNET;
@@ -113,10 +122,13 @@ router.post("/email/send", authMiddleware, adminOnly, rateLimit("email_send", 10
       return res.status(409).json({ message: "This address has unsubscribed or bounced", detail: "CareMetric won't email it again." });
     }
 
+    // An owner's email counts against the organization's daily allowance, like campaign mail.
+    await consumeQuota(req.user, "emails_sent");
     const mail = withComplianceFooter(to, { text: body || "", html: html || textToHtml(body || "") });
     await sendMail({ to, from, subject, ...mail });
     res.json({ success: true, message: "Email sent" });
   } catch (e: any) {
+    if (e instanceof QuotaError) return res.status(429).json({ message: e.message, code: e.code, kind: e.kind, limit: e.limit });
     console.error("[Email Send Error]", e.message);
     res.status(500).json({ message: e.message });
   }

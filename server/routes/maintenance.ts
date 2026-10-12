@@ -1,6 +1,6 @@
 import { Router, Response, NextFunction } from "express";
 import crypto from "crypto";
-import { AuthRequest, authMiddleware, adminOnly } from "../middleware/auth";
+import { AuthRequest, authMiddleware, platformAdminOnly } from "../middleware/auth";
 import { rateLimit } from "../middleware/rateLimit";
 import { handleRunScheduledImports } from "../functions/scheduledImports";
 import {
@@ -48,7 +48,8 @@ function maintenanceAuth(req: AuthRequest, res: Response, next: NextFunction) {
   if (token && provided && timingSafeEqualStr(provided, token)) {
     return next();
   }
-  return authMiddleware(req, res, () => adminOnly(req, res, next));
+  // Maintenance runs the platform's own workers: a platform administrator, not an organization's owner.
+  return authMiddleware(req, res, () => platformAdminOnly(req, res, next));
 }
 
 router.post("/:task", rateLimit("maintenance", 60, 60_000), maintenanceAuth, async (req: AuthRequest, res: Response) => {

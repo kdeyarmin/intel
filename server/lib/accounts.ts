@@ -32,6 +32,10 @@ export interface UserRow {
   disabled_reason: string | null;
   password_changed_at: Date | null;
   created_date: Date | null;
+  /** Operates the shared data and sees every organization (migration 0020). */
+  is_platform_admin?: boolean;
+  terms_accepted_at?: Date | null;
+  terms_version?: string | null;
 }
 
 /** Trimmed, lower-cased email, or null when it isn't a plausible address. */
@@ -71,12 +75,14 @@ export function publicUser(u: UserRow) {
     full_name: u.full_name,
     role: u.role || "user",
     status: u.status,
+    is_platform_admin: !!u.is_platform_admin || u.role === "admin",
   };
 }
 
 export function adminUserView(u: UserRow) {
   return {
     ...publicUser(u),
+    terms_accepted_at: u.terms_accepted_at ?? null,
     last_login_at: u.last_login_at,
     approved_at: u.approved_at,
     approved_by: u.approved_by,

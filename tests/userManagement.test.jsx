@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 
 afterEach(cleanup);
 
@@ -10,15 +11,17 @@ vi.mock('@/lib/AuthContext', () => ({
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const { confirmMock, api } = vi.hoisted(() => {
+const { confirmMock, api, USERS } = vi.hoisted(() => {
+  const org = { org_id: 1, org_name: 'Test organization' };
   const USERS = [
-    { id: 1, email: 'admin@example.com', full_name: 'Ada', role: 'admin', status: 'active', created_date: '2026-01-01' },
-    { id: 2, email: 'new@example.com', full_name: 'Newt', role: 'user', status: 'pending', created_date: '2026-10-01' },
-    { id: 3, email: 'rep@example.com', full_name: 'Rex', role: 'user', status: 'active', created_date: '2026-02-01' },
-    { id: 4, email: 'gone@example.com', full_name: null, role: 'user', status: 'disabled', disabled_reason: 'Left', created_date: '2026-03-01' },
+    { id: 1, email: 'admin@example.com', full_name: 'Ada', role: 'admin', status: 'active', created_date: '2026-01-01', ...org, org_role: 'owner' },
+    { id: 2, email: 'new@example.com', full_name: 'Newt', role: 'user', status: 'pending', created_date: '2026-10-01', ...org, org_role: 'member' },
+    { id: 3, email: 'rep@example.com', full_name: 'Rex', role: 'user', status: 'active', created_date: '2026-02-01', ...org, org_role: 'member' },
+    { id: 4, email: 'gone@example.com', full_name: null, role: 'user', status: 'disabled', disabled_reason: 'Left', created_date: '2026-03-01', ...org, org_role: 'member' },
   ];
   const api = {
-    list: vi.fn(() => Promise.resolve({ users: USERS, email_enabled: false })),
+    // A platform admin's view: every organization, no seat limit of its own.
+    list: vi.fn(() => Promise.resolve({ users: USERS, email_enabled: false, platform_admin: true, organization: null })),
     activity: vi.fn(() => Promise.resolve({ events: [{ id: 9, action: 'signup', user_email: 'new@example.com', details: { target_email: 'new@example.com' }, created_date: '2026-10-01T10:00:00Z' }] })),
     approve: vi.fn(() => Promise.resolve({ user: { ...USERS[1], status: 'active' }, emailed: false })),
     enable: vi.fn(() => Promise.resolve({})),
@@ -41,7 +44,9 @@ function renderIt() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <UserManagement />
+      <MemoryRouter>
+        <UserManagement />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -50,6 +55,22 @@ describe('UserManagement', () => {
   beforeEach(() => {
     for (const fn of Object.values(api)) fn.mockClear();
     confirmMock.mockClear();
+  });
+
+  it('tells a platform admin that they approve new sign-ups (or payment does), not an owner', async () => {
+    // A self-serve sign-up starts its own organization, so no owner can see it: the wrong approver in this line left it waiting.
+    renderIt();
+    await screen.findByRole('table');
+    expect(screen.getByText(/New sign-ups wait here until you approve them or they subscribe/)).toBeInTheDocument();
+    expect(screen.queryByText(/until an owner approves/)).toBeNull();
+  });
+
+  it('tells an owner nothing about approving sign-ups: their organization\'s people are invited, not approved', async () => {
+    api.list.mockImplementationOnce(() => Promise.resolve({ users: USERS, email_enabled: true, platform_admin: false, organization: { name: 'Acme Homes', seats: { used: 2, limit: 5 } } }));
+    renderIt();
+    await screen.findByRole('table');
+    expect(screen.getByText(/People in Acme Homes\./)).toBeInTheDocument();
+    expect(screen.queryByText(/approves them|you approve them/)).toBeNull();
   });
 
   it('opens on the people waiting for approval, and approves one', async () => {
@@ -72,7 +93,27 @@ describe('UserManagement', () => {
     const table = screen.getByRole('table');
     expect(within(table).getByText('(you)')).toBeInTheDocument();
     expect(within(table).queryByRole('button', { name: /More actions/ })).not.toBeInTheDocument();
-    expect(within(table).getByRole('combobox', { name: 'Role for admin@example.com' })).toBeDisabled();
+    expect(within(table).getByRole('combobox', { name: 'Organization role for admin@example.com' })).toBeDisabled();
+    expect(within(table).getByRole('combobox', { name: 'Platform role for admin@example.com' })).toBeDisabled();
+  });
+
+  it("shows an organization's owner their own people and seats, without platform roles", async () => {
+    api.list.mockResolvedValueOnce({
+      users: USERS.filter((u) => u.id !== 1),
+      email_enabled: false,
+      platform_admin: false,
+      organization: { id: 1, name: 'Test organization', seats: { used: 3, limit: 3 } },
+    });
+    renderIt();
+    const table = await screen.findByRole('table');
+    expect(screen.getByText(/People in Test organization/)).toBeInTheDocument();
+    expect(screen.getAllByText(/3 of 3 seats used/).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: /^All 3/ }));
+    expect(within(table).getByRole('combobox', { name: 'Organization role for rep@example.com' })).toBeEnabled();
+    expect(within(table).queryByRole('combobox', { name: /Platform role/ })).not.toBeInTheDocument();
+    // The seat limit is reached: no more invites until the plan grows.
+    expect(screen.getByRole('button', { name: /Create invite/ })).toBeDisabled();
+    expect(screen.getByRole('link', { name: 'upgrade the plan' })).toHaveAttribute('href', '/Billing');
   });
 
   it('shows why a disabled account was disabled and can enable it', async () => {
@@ -90,7 +131,7 @@ describe('UserManagement', () => {
     await screen.findByRole('table');
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ivy@example.com' } });
     fireEvent.click(screen.getByRole('button', { name: /Create invite/ }));
-    await waitFor(() => expect(api.invite).toHaveBeenCalledWith({ email: 'ivy@example.com', full_name: '', role: 'user' }));
+    await waitFor(() => expect(api.invite).toHaveBeenCalledWith({ email: 'ivy@example.com', full_name: '', role: 'user', org_role: 'member' }));
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByRole('textbox', { name: 'One-time link' })).toHaveValue('https://app.example.com/reset-password?token=abc');
     expect(within(dialog).getByText(/Send this to ivy@example.com yourself/)).toBeInTheDocument();

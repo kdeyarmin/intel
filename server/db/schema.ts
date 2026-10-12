@@ -20,6 +20,11 @@ export const users = pgTable("users", {
   disabled_at: timestamp("disabled_at"),
   disabled_reason: text("disabled_reason"),
   password_changed_at: timestamp("password_changed_at"),
+  // Platform admins run the data operations (imports, crawler, maintenance)
+  // and see every organization; org owners administer their own.
+  is_platform_admin: boolean("is_platform_admin").notNull().default(false),
+  terms_accepted_at: timestamp("terms_accepted_at"),
+  terms_version: varchar("terms_version", { length: 20 }),
   created_date: timestamp("created_date").defaultNow(),
   updated_date: timestamp("updated_date").defaultNow(),
 }, (table) => [
@@ -30,6 +35,7 @@ export const users = pgTable("users", {
 
 // AI Assistant (server/lib/assistant, migration 0012). Owner-only; not exposed via tableMap.
 export const assistantConversations = pgTable("assistant_conversations", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 200 }),
@@ -72,6 +78,7 @@ export const assistantMessages = pgTable("assistant_messages", {
 
 // Writes the assistant proposed. Nothing happens until the owner confirms.
 export const assistantActions = pgTable("assistant_actions", {
+  org_id: integer("org_id"),
   id: varchar("id", { length: 36 }).primaryKey(),
   conversation_id: integer("conversation_id").notNull().references(() => assistantConversations.id, { onDelete: "cascade" }),
   turn_id: integer("turn_id").notNull().references(() => assistantTurns.id, { onDelete: "cascade" }),
@@ -92,6 +99,7 @@ export const assistantActions = pgTable("assistant_actions", {
 ]);
 
 export const assistantUsage = pgTable("assistant_usage", {
+  org_id: integer("org_id"),
   user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   day: date("day").notNull(),
   units: bigint("units", { mode: "number" }).notNull().default(0),
@@ -354,6 +362,67 @@ export const licensedFacilities = pgTable("licensed_facilities", {
   uniqueIndex("uq_licensed_facilities").on(table.state, table.license_type, table.facility_key),
   index("idx_licensed_facilities_county").on(table.county_fips, table.license_type),
   index("idx_licensed_facilities_state_type").on(table.state, table.license_type),
+]);
+
+// Organizations (migration 0020): one per customer. Not exposed via tableMap;
+// managed through server/routes/billing.ts and the admin routes.
+export const organizations = pgTable("organizations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: varchar("slug", { length: 80 }).notNull().unique(),
+  // trial | active | past_due | canceled | disabled
+  status: varchar("status", { length: 20 }).notNull().default("trial"),
+  plan_code: varchar("plan_code", { length: 40 }),
+  stripe_customer_id: varchar("stripe_customer_id", { length: 80 }),
+  stripe_subscription_id: varchar("stripe_subscription_id", { length: 80 }),
+  subscription_status: varchar("subscription_status", { length: 40 }),
+  trial_ends_at: timestamp("trial_ends_at"),
+  current_period_end: timestamp("current_period_end"),
+  seat_limit: integer("seat_limit").notNull().default(3),
+  /** { states: ["PA"], county_fips: ["42003"] }; both empty means unrestricted. */
+  territory: jsonb("territory").notNull().default({ states: [], county_fips: [] }),
+  quotas: jsonb("quotas"),
+  sender: jsonb("sender"),
+  terms_version: varchar("terms_version", { length: 20 }),
+  /** When the last Stripe event applied to this row happened; an older event is ignored (server/lib/billing.ts). */
+  stripe_event_at: timestamp("stripe_event_at"),
+  created_date: timestamp("created_date").defaultNow(),
+  updated_date: timestamp("updated_date").defaultNow(),
+});
+
+export const organizationMembers = pgTable("organization_members", {
+  org_id: integer("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  user_id: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  org_role: varchar("org_role", { length: 20 }).notNull().default("member"),
+  created_date: timestamp("created_date").defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.org_id, table.user_id] }),
+  index("organization_members_user_idx").on(table.user_id),
+]);
+
+export const plans = pgTable("plans", {
+  code: varchar("code", { length: 40 }).primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  stripe_price_id: varchar("stripe_price_id", { length: 80 }),
+  monthly_price_cents: integer("monthly_price_cents"),
+  seat_limit: integer("seat_limit").notNull().default(3),
+  territory_scope: varchar("territory_scope", { length: 20 }).notNull().default("county_pack"),
+  max_counties: integer("max_counties"),
+  features: jsonb("features"),
+  active: boolean("active").notNull().default(true),
+  sort_order: integer("sort_order").notNull().default(0),
+});
+
+export const orgUsage = pgTable("org_usage", {
+  org_id: integer("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  day: date("day").notNull(),
+  ai_calls: integer("ai_calls").notNull().default(0),
+  ai_tokens: bigint("ai_tokens", { mode: "number" }).notNull().default(0),
+  exports: integer("exports").notNull().default(0),
+  emails_sent: integer("emails_sent").notNull().default(0),
+}, (table) => [
+  primaryKey({ columns: [table.org_id, table.day] }),
 ]);
 
 // Census geography (2020), loaded from server/data/census. Not exposed via tableMap.
@@ -648,6 +717,7 @@ export const dataQualityScans = pgTable("data_quality_scans", {
 });
 
 export const dataQualityAlerts = pgTable("data_quality_alerts", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   scan_id: integer("scan_id"),
   alert_type: varchar("alert_type", { length: 100 }),
@@ -697,6 +767,7 @@ export const dataCleaningRules = pgTable("data_cleaning_rules", {
 });
 
 export const outreachCampaigns = pgTable("outreach_campaigns", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }),
   description: text("description"),
@@ -725,6 +796,7 @@ export const outreachCampaigns = pgTable("outreach_campaigns", {
 ]);
 
 export const outreachMessages = pgTable("outreach_messages", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   campaign_id: integer("campaign_id"),
   npi: varchar("npi", { length: 20 }),
@@ -753,6 +825,7 @@ export const outreachMessages = pgTable("outreach_messages", {
 ]);
 
 export const campaignTemplates = pgTable("campaign_templates", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }),
   subject_template: text("subject_template"),
@@ -765,6 +838,7 @@ export const campaignTemplates = pgTable("campaign_templates", {
 });
 
 export const leadLists = pgTable("lead_lists", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }),
   description: text("description"),
@@ -889,6 +963,7 @@ export const enrichmentRecords = pgTable("enrichment_records", {
 ]);
 
 export const auditEvents = pgTable("audit_events", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   event_type: varchar("event_type", { length: 100 }),
   user_email: varchar("user_email", { length: 255 }),
@@ -901,6 +976,7 @@ export const auditEvents = pgTable("audit_events", {
 });
 
 export const analyticsDashboards = pgTable("analytics_dashboards", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }),
   description: text("description"),
@@ -914,6 +990,7 @@ export const analyticsDashboards = pgTable("analytics_dashboards", {
 });
 
 export const scoringRules = pgTable("scoring_rules", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }),
   description: text("description"),
@@ -926,6 +1003,7 @@ export const scoringRules = pgTable("scoring_rules", {
 });
 
 export const campaignTasks = pgTable("campaign_tasks", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }),
   description: text("description"),
@@ -1091,6 +1169,7 @@ export const campaignSequenceSteps = pgTable("campaign_sequence_steps", {
 });
 
 export const savedFilters = pgTable("saved_filters", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }),
   page: varchar("page", { length: 100 }),
@@ -1102,6 +1181,7 @@ export const savedFilters = pgTable("saved_filters", {
 });
 
 export const scheduledReports = pgTable("scheduled_reports", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }),
   report_type: varchar("report_type", { length: 100 }),
@@ -1115,6 +1195,7 @@ export const scheduledReports = pgTable("scheduled_reports", {
 });
 
 export const scheduledExports = pgTable("scheduled_exports", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }),
   export_type: varchar("export_type", { length: 100 }),
@@ -1132,6 +1213,7 @@ export const scheduledExports = pgTable("scheduled_exports", {
 });
 
 export const customReports = pgTable("custom_reports", {
+  org_id: integer("org_id"),
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }),
   description: text("description"),

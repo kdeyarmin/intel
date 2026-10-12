@@ -4,11 +4,14 @@ import bcrypt from "bcryptjs";
 import { appBaseUrl, normalizeEmail } from "./accounts";
 import { recordAudit, type AuditWriter } from "./audit";
 import { getMailerStatus, sendMail, type MailMessage } from "./mailer";
+import { pgOrgRepo, type OrgRepo } from "./orgs";
 import { publishSessionUserChange } from "./sessionUsers";
 import { pgUserRepo, type UserRepo } from "./userRepo";
 
 export interface AccountDeps {
   repo: UserRepo;
+  /** Organizations and seats (migration 0020). */
+  orgs: OrgRepo;
   audit: AuditWriter;
   sendMail(msg: MailMessage): Promise<unknown>;
   mailerConfigured(): boolean;
@@ -27,6 +30,7 @@ export const BCRYPT_COST = 10;
 export function defaultAccountDeps(pool: any): AccountDeps {
   return {
     repo: pgUserRepo(pool),
+    orgs: pgOrgRepo(pool),
     audit: recordAudit,
     sendMail,
     mailerConfigured: () => getMailerStatus().configured,
@@ -39,7 +43,7 @@ export function defaultAccountDeps(pool: any): AccountDeps {
 }
 
 /** Sends without letting a mail failure break the request that triggered it. */
-export async function sendQuietly(deps: AccountDeps, msg: MailMessage, label: string): Promise<boolean> {
+export async function sendQuietly(deps: Pick<AccountDeps, "mailerConfigured" | "sendMail">, msg: MailMessage, label: string): Promise<boolean> {
   if (!deps.mailerConfigured()) return false;
   try {
     await deps.sendMail(msg);

@@ -10,6 +10,7 @@ import { normalizeStateFilter } from "../lib/providerSearch";
 import { parseMoney } from "../lib/rollups/core";
 import { pickScore, providerName } from "../lib/territory";
 import { LISTING_PRIMARY_TYPES, getFacilityTypeGroup } from "./facilityDetail";
+import { assertTerritory, type EntitledUser } from "../lib/entitlements";
 
 // Practice locations read per county. Larger counties are summarised from a
 // sample of this many (and the ZIP rollup gives the full count).
@@ -31,7 +32,7 @@ class HttpError extends Error {
   }
 }
 
-export async function handleGetCountyIntelligence(payload: any) {
+export async function handleGetCountyIntelligence(payload: any, user?: EntitledUser | null) {
   const state = normalizeStateFilter(payload?.state);
   if (!state) throw new HttpError(400, "Pick a state.");
   const index = await getGeoIndex(pool);
@@ -42,6 +43,7 @@ export async function handleGetCountyIntelligence(payload: any) {
   if (!county || county.state !== state) {
     return { state, needsCounty: true, counties: countiesForState(index, state).map((c) => ({ fips: c.fips, name: c.name })) };
   }
+  assertTerritory(user, { state, county_fips: county.fips, county_name: county.name });
   const zctas = countyZctas(index, county.fips, MIN_ZCTA_SHARE);
 
   try {

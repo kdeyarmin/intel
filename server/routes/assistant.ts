@@ -19,7 +19,7 @@ export interface AssistantRouterDeps {
   toolDeps: ToolDeps;
   /** Null when no Anthropic credentials are configured. */
   createStream: () => StreamFactory | null;
-  createLeadList: (client: any, input: { name: string; description: string | null; npis: string[]; createdBy: string; filterCriteria: Record<string, unknown> }) => Promise<CreatedLeadList>;
+  createLeadList: (client: any, input: { name: string; description: string | null; npis: string[]; createdBy: string; filterCriteria: Record<string, unknown>; orgId: number }) => Promise<CreatedLeadList>;
   audit: AuditWriter;
   now?: () => number;
 }
@@ -152,7 +152,7 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
         createStream,
         persist: (role, content) => store.appendMessage(conv.id, turn.id, role, content),
         emit: (event, data) => sse.send(event, data),
-        toolContext: { userId: user.id, conversationId: conv.id, turnId: turn.id, deps: deps.toolDeps },
+        toolContext: { userId: user.id, user, conversationId: conv.id, turnId: turn.id, deps: deps.toolDeps },
         signal: controller.signal,
         onUsage: (u) => store.addUsage(user.id, usageUnits(u)),
         // Each further model call re-checks the daily budget.
@@ -193,9 +193,12 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
     const actionId = String(req.params.id);
     if (!/^[0-9a-f-]{36}$/i.test(actionId)) return res.status(404).json({ message: "That proposal wasn't found." });
     try {
+      if (user.orgId == null) return res.status(403).json({ message: "Your account isn't part of an organization yet, so it has no place to keep a lead list." });
+      const orgId = user.orgId;
       const result = await store.confirmAction(actionId, user.id, async (client, action) => {
         const p = action.payload || {};
         const created = await deps.createLeadList(client, {
+          orgId,
           name: p.name,
           description: p.description || null,
           npis: Array.isArray(p.npis) ? p.npis : [],
@@ -213,6 +216,7 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
           entity_id: result.action.result?.list_id ?? null,
           details: { proposal_id: actionId, members: result.action.result?.member_count ?? 0 },
           ip_address: clientIp(req),
+          org_id: user.orgId,
         });
       }
       sendDecision(res, result);

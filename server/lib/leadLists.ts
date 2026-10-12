@@ -11,6 +11,8 @@ export interface NewLeadList {
   npis: string[];
   createdBy: string;
   filterCriteria?: Record<string, unknown> | null;
+  /** The organization that owns the list: lists are scoped to it, so one without cannot be seen. */
+  orgId: number;
 }
 
 export interface CreatedLeadList {
@@ -36,9 +38,9 @@ export async function createLeadListWithMembers(client: any, input: NewLeadList)
   const npis = all.slice(0, MAX_LEAD_LIST_MEMBERS);
 
   const { rows } = await client.query(
-    `INSERT INTO lead_lists (name, description, filter_criteria, member_count, created_by)
-     VALUES ($1, $2, $3, $4, $5) RETURNING id, name`,
-    [name, input.description ?? null, input.filterCriteria ?? null, npis.length, input.createdBy],
+    `INSERT INTO lead_lists (name, description, filter_criteria, member_count, created_by, org_id)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name`,
+    [name, input.description ?? null, input.filterCriteria ?? null, npis.length, input.createdBy, input.orgId],
   );
   const list = rows[0];
   if (npis.length) {

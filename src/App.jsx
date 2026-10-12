@@ -12,6 +12,7 @@ import PendingApproval from '@/components/auth/PendingApproval';
 import SessionUnavailable from '@/components/auth/SessionUnavailable';
 import ForgotPassword from '@/components/auth/ForgotPassword';
 import ResetPassword from '@/components/auth/ResetPassword';
+import { DataUsePage, PrivacyPage, TermsPage } from '@/components/auth/LegalPages';
 import { ConfirmProvider } from '@/components/shared/ConfirmDialog';
 import PageErrorBoundary from '@/components/shared/PageErrorBoundary';
 import { buildLoginUrl } from '@/lib/returnUrl';
@@ -98,7 +99,7 @@ const ProtectedRoute = ({ children, pageName }) => {
     return <Navigate to="/pending" replace />;
   }
 
-  if (pageName && !canAccessPage(pageName, user?.role)) {
+  if (pageName && !canAccessPage(pageName, user)) {
     return <DeniedPage pageName={pageName} />;
   }
 
@@ -128,6 +129,9 @@ const AuthenticatedApp = () => {
       <Route path="/pending" element={<PendingApproval />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/data-use" element={<DataUsePage />} />
       <Route path="/" element={
         <ProtectedRoute pageName={mainPageKey}>
           <LayoutWrapper currentPageName={mainPageKey}>

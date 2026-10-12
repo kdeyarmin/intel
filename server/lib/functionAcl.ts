@@ -58,7 +58,56 @@ export const PUBLIC_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "analyzeProviderNetwork",
 ]);
 
+/**
+ * What an organization's owner may call beyond the public functions: the
+ * campaign work their Campaigns page does (it sends mail and spends their
+ * quota). A positive list, so a function added later is denied to owners until
+ * someone lists it here on purpose.
+ */
+export const OWNER_FUNCTIONS: ReadonlySet<string> = new Set<string>([
+  "generateHyperPersonalizedMessages", "trackCampaignMetrics", "saveCampaignOutcomes", "prepareCampaignMessages", "sendCampaignMessages",
+]);
+
+/**
+ * Functions that operate the platform's shared data (imports, the crawler,
+ * maintenance, rollups, scoring, token-spending enrichment of shared provider
+ * records). Only platform admins may call them; an organization's owner
+ * administers their own organization, not the data every customer shares.
+ * Every function the dispatcher serves is public, an owner's or listed here
+ * (tests/functionsDispatch.test.ts), so adding one is an explicit decision.
+ */
+export const PLATFORM_FUNCTIONS: ReadonlySet<string> = new Set<string>([
+  "triggerImport", "importNPPESFlatFile", "importAgentChat", "predictImportFormat", "analyzeImportedDataset",
+  "testCMSApiConnector", "testCMSUrl", "nppesCrawler", "manageCrawlerRetries",
+  "runScheduledImports", "runScheduledImportsFanout", "runMaintenanceFanout", "autoResumePausedImports", "autoRetryFailedImports",
+  "cancelStalledImports", "cleanupAllImports", "runDueScheduledReports",
+  "cleanProviderData", "reconcileProviderData", "matchProvidersToLocations", "runDataQualityScan",
+  "loadCensusGeography", "refreshRollups", "getLeadScoringStatus", "recalculateLeadScores",
+  "enrichBulkServerSide", "proactiveScanServerSide", "enrichmentJobStart", "enrichmentJobStop", "intelJobStart", "intelJobStop",
+  "startDMEEmailSearch", "stopDMEEmailSearch", "bulkVerifyEmails", "emailSearchBot",
+  "enrichProviderWithAI", "enrichProviderDEAData", "enrichProviderMedicareData", "enrichProviderThirdParty",
+]);
+
 /** The dispatcher's gate: public functions for any signed-in user, everything else admin-only. */
 export function isFunctionAuthorized(functionName: string, role: string | undefined): boolean {
   return PUBLIC_FUNCTIONS.has(functionName) || role === "admin";
+}
+
+export interface FunctionCaller {
+  role?: string;
+  orgRole?: string | null;
+  isPlatformAdmin?: boolean;
+}
+
+/**
+ * With organizations: public functions for everyone, the campaign functions
+ * for an organization's owners, and everything else (listed or not) for
+ * platform admins only.
+ */
+export function isFunctionAllowedFor(functionName: string, user: FunctionCaller | null | undefined): boolean {
+  if (PUBLIC_FUNCTIONS.has(functionName)) return true;
+  if (!user) return false;
+  // The admin role and the platform-admin flag are one thing (see isPlatformAdmin in middleware/auth.ts).
+  if (user.isPlatformAdmin || user.role === "admin") return true;
+  return user.orgRole === "owner" && OWNER_FUNCTIONS.has(functionName);
 }

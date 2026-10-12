@@ -13,7 +13,7 @@ export default function PageTabs({ current }) {
   const user = useOptionalAuth()?.user;
   const group = getPageGroup(current);
   if (!group) return null;
-  const pages = group.pages.filter(({ page }) => canAccessPage(page, user?.role));
+  const pages = group.pages.filter(({ page }) => canAccessPage(page, user));
   if (pages.length < 2) return null;
   return (
     <nav aria-label={group.label} className="mb-4 -mt-1 overflow-x-auto">

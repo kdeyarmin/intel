@@ -16,6 +16,7 @@ import {
 import { sendQuietly, type AccountDeps } from "../lib/accountDeps";
 import { ACCOUNT_EVENT } from "../lib/audit";
 import { resetEmail, signupPendingEmail } from "../lib/accountEmails";
+import { orgNameFor, TERMS_VERSION } from "../lib/orgs";
 import { authAllowPending, authMiddleware, cookieOptions, generateToken, AuthRequest } from "../middleware/auth";
 import { clientIp, consumeToken, ipRateLimit } from "../middleware/rateLimit";
 
@@ -73,8 +74,10 @@ export function createAuthRouter(deps: AccountDeps) {
   const passwordMatches = async (password: string, hash: string) =>
     (await deps.verifyPassword(password, hash)) && Buffer.byteLength(password, "utf8") <= MAX_PASSWORD_BYTES;
 
-  const audit = (req: Request, action: string, actorEmail: string | null, target: Pick<UserRow, "id" | "email"> | null, details: Record<string, unknown> = {}) =>
-    deps.audit({
+  // Account events carry the target's organization, so its owners see them on their activity feed.
+  const audit = async (req: Request, action: string, actorEmail: string | null, target: Pick<UserRow, "id" | "email"> | null, details: Record<string, unknown> = {}) => {
+    const orgId = typeof details.org_id === "number" ? details.org_id : target ? (await deps.orgs.membershipOf(target.id).catch(() => null))?.org_id ?? null : null;
+    return deps.audit({
       event_type: ACCOUNT_EVENT,
       action,
       user_email: actorEmail,
@@ -82,7 +85,9 @@ export function createAuthRouter(deps: AccountDeps) {
       entity_id: target?.id ?? null,
       details: { target_email: target?.email ?? null, ...details },
       ip_address: clientIp(req),
+      org_id: orgId,
     });
+  };
 
   router.get("/options", (_req, res) => {
     res.json({ emailReset: deps.mailerConfigured() && !!deps.baseUrl() });
@@ -97,21 +102,40 @@ export function createAuthRouter(deps: AccountDeps) {
       const taken = { message: "An account with this email already exists", detail: "Sign in instead, or reset your password." };
       if (email === deps.reservedEmail()) return res.status(409).json(taken);
       if ((await repo.findByEmail(email)).length > 0) return res.status(409).json(taken);
+      if (req.body?.accept_terms !== true) {
+        return res.status(400).json({ message: "Accept the Terms of Service and Privacy Policy to create an account", code: "terms_required" });
+      }
 
+      const full_name = cleanName(req.body?.full_name);
+      const now = new Date();
       let user: UserRow;
       try {
         user = await repo.create({
           email,
           password_hash: await deps.hashPassword(req.body.password),
-          full_name: cleanName(req.body?.full_name),
+          full_name,
           role: "user",
           status: "pending",
+          terms_accepted_at: now,
+          terms_version: TERMS_VERSION,
         });
       } catch (e: any) {
         if (e?.code === "23505") return res.status(409).json(taken);
         throw e;
       }
-      await audit(req, "signup", email, user);
+      // Each signup starts its own organization (in trial) with this person as
+      // its owner; the account itself still waits for approval or a checkout.
+      // If the organization can't be made, the account goes too: one stranded
+      // without an organization could neither work nor sign up again.
+      let org: { id: number; name: string };
+      try {
+        org = await deps.orgs.createWithOwner({ name: orgNameFor({ organization_name: req.body?.organization_name, email, full_name }), ownerUserId: user.id, termsVersion: TERMS_VERSION });
+      } catch (e) {
+        await repo.delete(user.id, { ifStatus: ["pending"] }).catch(() => {});
+        throw e;
+      }
+      deps.onUserChanged(user.id);
+      await audit(req, "signup", email, user, { org_id: org.id, organization: org.name, terms_version: TERMS_VERSION });
       // Signed in so the "awaiting approval" screen can watch for approval.
       setSessionCookie(res, user);
       res.status(201).json(publicUser(user));
@@ -119,7 +143,7 @@ export function createAuthRouter(deps: AccountDeps) {
       const base = deps.baseUrl();
       if (base && deps.mailerConfigured()) {
         const admins = await repo.activeAdmins().catch(() => [] as UserRow[]);
-        for (const admin of admins) await sendQuietly(deps, signupPendingEmail(admin.email, user, base), "Signup notice");
+        for (const admin of admins) await sendQuietly(deps, signupPendingEmail(admin.email, { ...user, organization: org.name }, base), "Signup notice");
       }
     } catch (e: any) {
       if (!res.headersSent) serverError(res, e, "Signup");

@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "9c7599b1b7ed8dbdcf6ea975f7970a81423afdb1",
+    "ref": "9a08ea694a60fd5e46407923e954989e66f9b497",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -27,9 +27,9 @@
   },
   "summary": {
     "section_count": 9,
-    "topic_count": 34,
-    "text_character_count": 15684,
-    "canonical_sha256": "775a78c9f29b07454778dd3e2456b68d3d1a75ef187fd7408929cd13f1a0d14d"
+    "topic_count": 36,
+    "text_character_count": 17742,
+    "canonical_sha256": "d4c303b1e5204d1858dec23aec1fa33e3aa9528017c783b3eed83ff16bf9877d"
   },
   "sections": [
     {
@@ -43,8 +43,8 @@
         },
         {
           "heading": "Your account",
-          "text": "New accounts need an administrator's approval: after signing up you'll see a waiting screen until an admin approves you. Admins can also invite people by link.\n\nThere are two roles:\n• **User** — the directory, facilities, analytics, territory, AI Assistant, reports and lead lists.\n• **Admin** — everything, plus data imports, the NPPES crawler, campaigns, provider intelligence, scoring rules and user management.\n\nForgot your password? Use **Forgot password** on the sign-in page (when email is set up) or ask an admin for a reset link. **Account** at the bottom of the sidebar changes your password or signs you out on every device.",
-          "sha256": "e7bbc9f8de53d48728937777512fb72c5ba933bb040dc84e8149ec5ddb62cf2e"
+          "text": "New accounts need approval: after signing up you'll see a waiting screen until an administrator approves you. Owners invite the people in their own organization, by link.\n\nThere are three roles:\n• **Member** — the directory, facilities, analytics, territory, AI Assistant, reports and lead lists.\n• **Owner** — a member who also manages the organization: its people, plan and billing, security audit and campaigns.\n• **Platform admin** (CareMetric staff) — everything, plus data imports, the NPPES crawler, provider intelligence, scoring rules and every organization's accounts.\n\nForgot your password? Use **Forgot password** on the sign-in page (when email is set up) or ask an owner for a reset link. **Account** at the bottom of the sidebar changes your password or signs you out on every device.",
+          "sha256": "ad4c590ea7fea11046ff711b3a364e70c516e800299fba36da619886f8864940"
         },
         {
           "heading": "What data is this and how fresh is it?",
@@ -168,8 +168,8 @@
       "topics": [
         {
           "heading": "Lead lists",
-          "text": "Lead lists hold the providers you're working, each with a status (New, Contacted, Qualified, Not a fit). Add providers from any provider page, from search results, from the AI Assistant, or with the Lead Builder. Open a list to update statuses or export it; admins can also start a campaign from it.",
-          "sha256": "e5bf4a7bc75aeee6650c48d285ddc6262982947096b9713e078354a8face6347"
+          "text": "Lead lists hold the providers you're working, each with a status (New, Contacted, Qualified, Not a fit). Add providers from any provider page, from search results, from the AI Assistant, or with the Lead Builder. Open a list to update statuses or export it; owners can also start a campaign from it.",
+          "sha256": "ae04cc225d90a1d460d4b98504f43ce6024d6926208a5d6294902928be31fc82"
         },
         {
           "heading": "Lead Builder",
@@ -177,9 +177,9 @@
           "sha256": "e85e323a3b876335565e256e69b5f2fd4da40c5fa58f6652622df88036f01f18"
         },
         {
-          "heading": "Campaigns (admin)",
-          "text": "Create email campaigns for a lead list, review and send them, and track deliveries, opens, clicks, responses and bounces. Sending is admin-only, and every email carries an unsubscribe link that is honoured automatically.",
-          "sha256": "8956d2012c18414bce8cd2d44bde75660144c3a701da2c6b070d9399d79a66c2"
+          "heading": "Campaigns (owners)",
+          "text": "Owners create email campaigns for a lead list, review and send them, and track deliveries, opens, clicks, responses and bounces. Only owners (and platform admins) can send; members don't see Campaigns. Every email carries an unsubscribe link that is honoured automatically.",
+          "sha256": "2159762a0454598f6ddd914c49367f20e03aeee88cb32dbba5990819e69f672e"
         },
         {
           "heading": "Provider intelligence (admin)",
@@ -235,9 +235,14 @@
       "title": "Administration",
       "topics": [
         {
-          "heading": "Users",
-          "text": "Under **Admin Settings → Users**: approve or remove people waiting for approval, invite people by link, change roles, disable or re-enable accounts, create password reset links and sign someone out everywhere. You can't change your own account here, and the last active admin can't be removed. Account activity is recorded.",
-          "sha256": "721df89a2784ec717644a10eedabf3b70d001646982923ee99de368907347b12"
+          "heading": "Users and your organization",
+          "text": "Every account belongs to an organization: the one created when its first owner signed up. Under **Admin Settings → Users** an owner sees their organization's people: invite people by link (up to the plan's seat limit), make someone an owner or a member, disable or re-enable accounts, create password reset links and sign someone out everywhere. Owners manage people, billing and campaigns; members use everything else. You can't change your own account here. Account activity is recorded.\n\nPlatform admins (CareMetric staff) see every organization, approve new sign-ups (one that subscribes is approved by its payment), run imports and maintenance, and are the only ones who can make other platform admins.",
+          "sha256": "1d845913fc9619be9dcc2bfb64590580ad98be3f2a6877cf1c3ebfc2e152f0ae"
+        },
+        {
+          "heading": "Plan, billing and territory",
+          "text": "Under **Admin Settings → Billing** an owner sees the organization's plan and status, the trial or billing period, seats used, and today's usage against the plan's quotas (AI requests, exports and outreach emails per day). Choose or change a plan with secure checkout, or open the billing portal for payment methods and invoices. A county pack covers a chosen set of counties and a state plan one state: pick them here, and the County, Market, Territory and referral-source views answer only for that territory (anything else says it is outside the plan, and until an owner has chosen the places those views stay locked). Changing plans updates the subscription in place; the difference is prorated on the next invoice. New organizations start with a free trial; a failed payment shows as payment due until it is fixed.",
+          "sha256": "6daa45568b0b4668364da54398adab97e68fb656c28d4f0103118727c3a983d3"
         },
         {
           "heading": "Scoring rules",
@@ -251,8 +256,13 @@
         },
         {
           "heading": "Security audit",
-          "text": "Under **Admin Settings → Security audit**: sign-ins, account changes, exports and other recorded actions, with filters.",
-          "sha256": "565e0715d93acaa17bf086da6e67b7f994280f2470c8b8ae300cbf22cd1466a1"
+          "text": "Under **Admin Settings → Security audit**: sign-ins, account changes, exports and other recorded actions for your organization, with filters.",
+          "sha256": "7aec237e2b6dbe341e9f2f842e6833aec55ab805dafc3be111cd49356f8f1a04"
+        },
+        {
+          "heading": "Terms, privacy and data use",
+          "text": "Signing up accepts the Terms of Service and Privacy Policy, linked from the sign-in page (/terms, /privacy). The data-use page (/data-use) lists every source behind the app and what the figures are: CareMetric analytics derived from public CMS, NPPES and Census files (never presented as CMS data), Medicare fee-for-service only unless noted, counts under 11 suppressed, no patient-level data, and shared-patient patterns that are not confirmed referrals. Every export carries that source line. Use the data for your own organization's research and outreach within your plan's territory; don't resell or republish it.",
+          "sha256": "1b5c52086b9aa92f258eb3dccd54a2f30faa0c67144b473269074d4f12b1b22c"
         }
       ]
     }

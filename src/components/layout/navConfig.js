@@ -6,7 +6,10 @@ import {
 
 // Single source of truth for the sidebar and for page-level access control.
 // `roles` lists who may open a page; ProtectedRoute and global search both
-// consult it, so hiding a page from the nav also blocks it by URL.
+// consult it, so hiding a page from the nav also blocks it by URL. Roles:
+// 'user' (anyone in an organization), 'owner' (administers their own
+// organization: people, billing, campaigns) and 'admin' (platform admins,
+// who operate the shared data and see every organization).
 export const NAV_SECTIONS = [
   {
     label: 'Overview',
@@ -41,7 +44,7 @@ export const NAV_SECTIONS = [
     items: [
       { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'user'] },
       { name: 'Intelligence', icon: Brain, page: 'ProviderIntelligence', roles: ['admin'] },
-      { name: 'Campaigns', icon: Megaphone, page: 'ProviderOutreach', roles: ['admin'] },
+      { name: 'Campaigns', icon: Megaphone, page: 'ProviderOutreach', roles: ['admin', 'owner'] },
     ]
   },
   {
@@ -53,7 +56,7 @@ export const NAV_SECTIONS = [
       { name: 'Reconciliation', icon: GitBranch, page: 'ReconciliationDashboard', roles: ['admin'] },
       { name: 'Data Quality', icon: Shield, page: 'DataQuality', roles: ['admin'] },
       { name: 'Provider Matching', icon: ClipboardCheck, page: 'ProviderLocationMatching', roles: ['admin'] },
-      { name: 'Admin Settings', icon: Settings, page: 'AdminSettings', roles: ['admin'] },
+      { name: 'Admin Settings', icon: Settings, page: 'AdminSettings', roles: ['admin', 'owner'] },
     ]
   },
 ];
@@ -92,12 +95,15 @@ export const PAGE_GROUPS = {
       { page: 'NPPESCrawlerSettings', label: 'Settings' },
     ],
   },
+  // A tab may name its own `roles`; without them it inherits its group's first page.
   admin: {
     label: 'Admin sections',
     pages: [
       { page: 'AdminSettings', label: 'Users' },
-      { page: 'ScoringRules', label: 'Scoring rules' },
-      { page: 'SecurityAudit', label: 'Security audit' },
+      { page: 'Billing', label: 'Billing', roles: ['admin', 'owner'] },
+      // Scoring rules are platform configuration (one scoring job serves every customer).
+      { page: 'ScoringRules', label: 'Scoring rules', roles: ['admin'] },
+      { page: 'SecurityAudit', label: 'Security audit', roles: ['admin', 'owner'] },
     ],
   },
 };
@@ -165,8 +171,41 @@ const NAV_ITEMS_BY_PAGE = new Map(
 );
 
 export function normalizeRole(role) {
-  return role === 'admin' ? 'admin' : 'user';
+  if (role === 'admin' || role === 'owner') return role;
+  return 'user';
 }
+
+/**
+ * The role a signed-in account acts with: 'admin' for platform admins (and
+ * the legacy admin role), 'owner' for an organization's owners, else 'user'.
+ * Accepts a role string as well, so callers may pass either.
+ */
+export function effectiveRole(userOrRole) {
+  if (typeof userOrRole === 'string' || userOrRole == null) return normalizeRole(userOrRole);
+  if (userOrRole.isPlatformAdmin || userOrRole.role === 'admin') return 'admin';
+  if (userOrRole.orgRole === 'owner') return 'owner';
+  return 'user';
+}
+
+/** What to call the role a session acts with, for the sidebar and account dialog. */
+export function roleLabel(userOrRole) {
+  const role = effectiveRole(userOrRole);
+  return role === 'admin' ? 'Platform admin' : role === 'owner' ? 'Owner' : 'Member';
+}
+
+// Pages that only name 'admin' are platform-level; everything an owner may
+// open names 'owner' too, and a platform admin may open everything. An owner
+// is a member of their organization as well, so a page for 'user' is theirs.
+function roleAllowed(roles, role) {
+  if (role === 'admin') return true;
+  if (role === 'owner') return roles.includes('owner') || roles.includes('user');
+  return roles.includes(role);
+}
+
+// The roles a tab names for itself (PAGE_GROUPS), by page.
+const TAB_ROLES = new Map(
+  Object.values(PAGE_GROUPS).flatMap((group) => group.pages.filter((p) => p.roles).map((p) => [p.page, p.roles])),
+);
 
 function getParentPage(page) {
   const current = LEGACY_REDIRECTS[page]?.page || page;
@@ -201,22 +240,24 @@ export function getPageLabel(page) {
   return own || parentName || page;
 }
 
-/** Whether a user with `role` may open `page`. Unknown pages are admin-only (default-deny). */
-export function canAccessPage(page, role) {
+/** Whether `user` (a session user, or a role string) may open `page`. Unknown pages are admin-only (default-deny). */
+export function canAccessPage(page, user) {
+  const role = effectiveRole(user);
+  const own = TAB_ROLES.get(LEGACY_REDIRECTS[page]?.page || page);
+  if (own) return roleAllowed(own, role);
   const navPage = getParentPage(page);
   const item = navPage ? NAV_ITEMS_BY_PAGE.get(navPage) : null;
-  const normalized = normalizeRole(role);
-  if (!item) return normalized === 'admin';
-  return item.roles.includes(normalized);
+  if (!item) return role === 'admin';
+  return roleAllowed(item.roles, role);
 }
 
-/** Sidebar sections filtered to what `role` may open. */
-export function getVisibleNavSections(role) {
-  const normalized = normalizeRole(role);
+/** Sidebar sections filtered to what `user` (a session user, or a role string) may open. */
+export function getVisibleNavSections(user) {
+  const role = effectiveRole(user);
   return NAV_SECTIONS
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => item.roles.includes(normalized)),
+      items: section.items.filter((item) => roleAllowed(item.roles, role)),
     }))
     .filter((section) => section.items.length > 0);
 }

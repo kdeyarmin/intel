@@ -3,9 +3,10 @@
 // density from the ZIP rollup. Index-backed IN queries only.
 import { pool } from "../db";
 import { withTimeoutClient, isStatementTimeout } from "../lib/pgClient";
-import { coordsFor, getGeoIndex, zipToCounty } from "../lib/geo";
+import { coordsFor, countyZctas, getGeoIndex, zipToCounty } from "../lib/geo";
 import { normalizeEntityType, specialtyGroupFor, specialtyGroupLabel } from "../lib/specialtyGroups";
-import { ENTITY_FILTER_SQL, PRACTICE_STATE_FILTER_SQL, normalizeStateFilter, searchBySpecialty } from "../lib/providerSearch";
+import { assertTerritory, entitledCounties, isUnrestricted, TerritoryError, type EntitledUser } from "../lib/entitlements";
+import { ENTITY_FILTER_SQL, PRACTICE_STATE_FILTER_SQL, PRACTICE_ZIP_FILTER_SQL, normalizeStateFilter, searchBySpecialty } from "../lib/providerSearch";
 import { countyDensity, pickScore, providerName, stateCountsFromStats, utilizationByNpi } from "../lib/territory";
 
 const DEFAULT_LIMIT = 500;
@@ -16,6 +17,8 @@ const SCORED_PAGE = 5000;
 const SCORED_SCAN_MAX = 100_000;
 const STATES_TTL_MS = 60 * 60 * 1000;
 const RESULT_TTL_MS = 5 * 60 * 1000;
+/** A ZIP area belongs to a county when at least this much of it lies there (the same rule as County Intelligence). */
+const MIN_ZCTA_SHARE = 0.5;
 
 let statesCache: { at: number; states: Array<{ state: string; approx: number | null }> } | null = null;
 const resultCache = new Map<string, { at: number; body: any }>();
@@ -55,9 +58,11 @@ async function ofEntity(client: any, npis: string[], entity: string | null): Pro
 /**
  * Highest lead scores first (in the state), then other practice locations in
  * the state. Scores are read in order a page at a time (idx_lead_scores_score_id)
- * and checked against the state and entity type, until the sample is full.
+ * and checked against the state and entity type, until the sample is full. With `zips`
+ * (a plan that covers some counties of the state) only providers practicing in those
+ * ZIP areas qualify.
  */
-async function chooseNpis(client: any, state: string | null, limit: number, entity: string | null = null): Promise<{ npis: string[]; scoredFirst: number }> {
+async function chooseNpis(client: any, state: string | null, limit: number, entity: string | null = null, zips: string[] | null = null): Promise<{ npis: string[]; scoredFirst: number }> {
   const top: string[] = [];
   const seen = new Set<string>();
   let after: { score: number; id: number } | null = null;
@@ -72,8 +77,8 @@ async function chooseNpis(client: any, state: string | null, limit: number, enti
     after = { score: rows[rows.length - 1].score, id: rows[rows.length - 1].id };
     const fresh = rows.map((r: any) => r.npi as string).filter((n: string) => !seen.has(n) && seen.add(n));
     let keep = fresh;
-    if (state && fresh.length) {
-      const { rows: inState } = await client.query(PRACTICE_STATE_FILTER_SQL, [fresh, state]);
+    if ((zips || state) && fresh.length) {
+      const { rows: inState } = zips ? await client.query(PRACTICE_ZIP_FILTER_SQL, [fresh, zips]) : await client.query(PRACTICE_STATE_FILTER_SQL, [fresh, state]);
       const ok = new Set(inState.map((r: any) => r.npi));
       keep = fresh.filter((n: string) => ok.has(n));
     }
@@ -88,8 +93,8 @@ async function chooseNpis(client: any, state: string | null, limit: number, enti
   const npis: string[] = [...top];
   if (npis.length < limit) {
     const { rows } = await client.query(
-      `SELECT npi FROM provider_locations WHERE location_type = 'Practice'${state ? " AND state = $2" : ""} LIMIT $1`,
-      state ? [limit * 3, state] : [limit * 3],
+      `SELECT npi FROM provider_locations WHERE location_type = 'Practice'${state ? " AND state = $2" : ""}${zips ? " AND left(zip, 5) = ANY($3)" : ""} LIMIT $1`,
+      zips ? [limit * 3, state, zips] : state ? [limit * 3, state] : [limit * 3],
     );
     const have = new Set(npis);
     const ofKind = await ofEntity(client, [...new Set(rows.map((r: any) => r.npi).filter(Boolean))] as string[], entity);
@@ -104,16 +109,27 @@ async function chooseNpis(client: any, state: string | null, limit: number, enti
   return { npis, scoredFirst: top.length };
 }
 
-export async function handleGetTerritoryData(payload: any) {
+export async function handleGetTerritoryData(payload: any, user?: EntitledUser | null) {
   const state = normalizeStateFilter(payload?.state === "ALL" ? null : payload?.state ?? "PA");
+  if (state && state !== "ALL") assertTerritory(user, { state });
+  else {
+    // The all-states sample spans the country: a plan that covers chosen places picks a state in them.
+    assertTerritory(user, {});
+    if (!isUnrestricted(user)) throw new TerritoryError("The all-states view is part of the National plan. Pick a state in your plan's territory.");
+  }
   const group = typeof payload?.specialty_group === "string" && payload.specialty_group !== "all" ? payload.specialty_group : null;
   const entity = payload?.entity_type === "Individual" || payload?.entity_type === "Organization" ? payload.entity_type : null;
   const limit = Math.min(Math.max(Math.floor(Number(payload?.limit)) || DEFAULT_LIMIT, 1), MAX_LIMIT);
-  const key = JSON.stringify([state, group, entity, limit]);
+  // A plan that covers some counties of the state (a County Pack) sees those counties only: the sample, the
+  // density and the cached answer are theirs, never the state's. null = the whole state.
+  const allowed = state ? entitledCounties(user, state) : null;
+  const key = JSON.stringify([state, group, entity, limit, allowed]);
   const hit = resultCache.get(key);
   if (hit && Date.now() - hit.at < RESULT_TTL_MS) return hit.body;
 
   const index = await getGeoIndex(pool);
+  // The ZIP areas that mostly lie in those counties (none, with the geography not loaded: nothing, not everything).
+  const zips = allowed ? [...new Set(allowed.flatMap((fips) => countyZctas(index, fips, MIN_ZCTA_SHARE)))] : null;
   try {
     const body = await withTimeoutClient(pool, "20s", async (client) => {
       const states = await availableStates(client);
@@ -124,30 +140,30 @@ export async function handleGetTerritoryData(payload: any) {
       if (group) {
         // Practice in the state, like the scored path: a mailing address there
         // would let in a provider who is then plotted at an out-of-state practice.
-        const found = await searchBySpecialty(client, { group, state, entityType: entity, limit, practiceOnly: true });
+        const found = await searchBySpecialty(client, { group, state, entityType: entity, limit, practiceOnly: true, zips });
         if (!found) throw new HttpError(400, "Unknown specialty.");
         npis = found.providers.map((p: any) => p.npi);
         truncated = found.truncated;
       } else {
-        ({ npis, scoredFirst } = await chooseNpis(client, state, limit, entity));
+        ({ npis, scoredFirst } = await chooseNpis(client, state, limit, entity, zips));
       }
 
       const [provs, taxes, locs, util, scores, zipCounts] = await Promise.all([
         npis.length ? client.query("SELECT npi, entity_type, first_name, last_name, organization_name, credential, ai_outreach_score FROM providers WHERE npi = ANY($1)", [npis]) : { rows: [] },
         npis.length ? client.query("SELECT npi, taxonomy_code, taxonomy_description FROM provider_taxonomies WHERE npi = ANY($1) AND is_primary = true", [npis]) : { rows: [] },
-        // One location per provider: the practice one in the state, else any
-        // practice one, else any (an index probe each; no shared cap).
+        // One location per provider: the practice one in the plan's ZIP areas (when it covers only some), else
+        // the practice one in the state, else any practice one, else any (an index probe each; no shared cap).
         npis.length ? client.query(
           `SELECT l.npi, l.location_type, l.address_1, l.city, l.state, l.zip
              FROM unnest($1::varchar[]) AS n(npi)
              CROSS JOIN LATERAL (
                SELECT npi, location_type, address_1, city, state, zip FROM provider_locations
                 WHERE npi = n.npi
-                ORDER BY (location_type = 'Practice' AND state IS NOT DISTINCT FROM $2) DESC NULLS LAST,
+                ORDER BY ${zips ? "(location_type = 'Practice' AND left(zip, 5) = ANY($3::text[])) DESC NULLS LAST,\n                         " : ""}(location_type = 'Practice' AND state IS NOT DISTINCT FROM $2) DESC NULLS LAST,
                          (location_type = 'Practice') DESC NULLS LAST,
                          id
                 LIMIT 1
-             ) l`, [npis, state]) : { rows: [] },
+             ) l`, zips ? [npis, state, zips] : [npis, state]) : { rows: [] },
         // Each provider's latest year, all of its rows.
         npis.length ? client.query(
           `WITH latest AS (
@@ -158,7 +174,7 @@ export async function handleGetTerritoryData(payload: any) {
         npis.length ? client.query("SELECT npi, score FROM lead_scores WHERE npi = ANY($1)", [npis]) : { rows: [] },
         state ? client.query(
           "SELECT zip5, practice_locations FROM rollup_zip_locations WHERE zip5 = ANY($1)",
-          [[...index.zctas].filter(([, z]) => z.state === state).map(([zcta]) => zcta)],
+          [zips ?? [...index.zctas].filter(([, z]) => z.state === state).map(([zcta]) => zcta)],
         ).catch(() => ({ rows: [] })) : { rows: [] },
       ]);
 
@@ -170,6 +186,7 @@ export async function handleGetTerritoryData(payload: any) {
       for (const l of locs.rows) (locsBy.get(l.npi) || locsBy.set(l.npi, []).get(l.npi)!).push(l);
       const utilBy = utilizationByNpi(util.rows);
 
+      const inPlan = (fips: string | null | undefined) => !allowed || (!!fips && allowed.includes(fips));
       const providers = npis.map((npi) => {
         const p: any = provBy.get(npi);
         const t: any = taxBy.get(npi);
@@ -204,7 +221,7 @@ export async function handleGetTerritoryData(payload: any) {
           totalServices: u?.services ?? null,
           dataYear: u?.dataYear ?? null,
         };
-      }).filter((p) => !entity || p.entityType === entity);
+      }).filter((p) => (!entity || p.entityType === entity) && inPlan(p.countyFips));
 
       const stateInfo = state ? states.find((s) => s.state === state) : null;
       return {
@@ -216,10 +233,11 @@ export async function handleGetTerritoryData(payload: any) {
             ? `${providers.length.toLocaleString("en-US")} ${specialtyGroupLabel(group)} providers in ${state || "all states"}${truncated ? " (a sample)" : ""}`
             : `${providers.length.toLocaleString("en-US")} providers in ${state || "all states"}: the ${scoredFirst.toLocaleString("en-US")} highest-scored first, then others`,
           sample_size: providers.length,
-          approx_locations_in_state: stateInfo?.approx ?? null,
+          // The state's size isn't the county pack's to see.
+          approx_locations_in_state: allowed ? null : stateInfo?.approx ?? null,
           truncated,
         },
-        counties: state && zipCounts.rows.length ? countyDensity(index, state, zipCounts.rows) : [],
+        counties: state && zipCounts.rows.length ? countyDensity(index, state, zipCounts.rows).filter((c) => inPlan(c.fips)) : [],
         geography: { loaded: index.counties.size > 0, vintage: index.vintage },
         generated_at: new Date().toISOString(),
       };

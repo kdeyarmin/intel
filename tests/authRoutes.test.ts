@@ -17,9 +17,9 @@ describe("signup", () => {
 
   it("creates a pending account, signs it in, and tells the admins", async () => {
     const c = h.client();
-    const r = await c.call("POST", "/api/auth/signup", { email: "  New.Person@Example.com ", password: "longenough", full_name: "New Person" });
+    const r = await c.call("POST", "/api/auth/signup", { email: "  New.Person@Example.com ", password: "longenough", full_name: "New Person", accept_terms: true });
     expect(r.status).toBe(201);
-    expect(r.body).toEqual({ id: 2, email: "new.person@example.com", full_name: "New Person", role: "user", status: "pending" });
+    expect(r.body).toEqual({ id: 2, is_platform_admin: false, email: "new.person@example.com", full_name: "New Person", role: "user", status: "pending" });
     expect(r.body.token).toBeUndefined();
     expect(r.setCookie).toMatch(/HttpOnly/i);
 
