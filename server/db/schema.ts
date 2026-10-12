@@ -689,6 +689,8 @@ export const importBatches = pgTable("import_batches", {
   paused_at: timestamp("paused_at"),
   completed_at: timestamp("completed_at"),
   retry_params: jsonb("retry_params"),
+  // The AI quality analysis the Imports panel shows (server/functions/analyzeImportedDataset.ts).
+  ai_analysis: jsonb("ai_analysis"),
   dry_run: boolean("dry_run").default(false),
   // The import schedule that started this batch (null for manual runs); the
   // completion sweep settles that schedule when the batch finishes.

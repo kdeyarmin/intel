@@ -903,7 +903,3 @@ export async function handleGenerateHyperPersonalizedMessages(_payload: any) {
   return notConfigured("Personalized message generation isn't available yet.");
 }
 
-export async function handleAnalyzeImportedDataset(payload: any) {
-  return notConfigured("AI dataset analysis isn't available yet.", { batch_id: payload.batch_id });
-}
-

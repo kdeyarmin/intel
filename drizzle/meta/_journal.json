@@ -162,6 +162,13 @@
       "when": 1791612427276,
       "tag": "0023_remaining_data_fixes",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791612527276,
+      "tag": "0024_import_batch_ai_analysis",
+      "breakpoints": true
     }
   ]
 }
