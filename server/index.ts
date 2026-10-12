@@ -1,5 +1,4 @@
 import express from "express";
-import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { eq, inArray } from "drizzle-orm";
@@ -16,6 +15,7 @@ import { createToolDeps } from "./lib/assistant/data";
 import { anthropicStreamFactory } from "./lib/assistant/anthropic";
 import { defaultAccountDeps } from "./lib/accountDeps";
 import { parseTrustProxy } from "./lib/trustProxy";
+import { corsPolicy } from "./lib/corsPolicy";
 import { authMiddleware } from "./middleware/auth";
 import entityRoutes from "./routes/entities";
 import integrationRoutes from "./routes/integrations";
@@ -31,31 +31,14 @@ const app = express();
 // (rate limits, audit IPs). See TRUST_PROXY in .env.example.
 app.set("trust proxy", parseTrustProxy(process.env.TRUST_PROXY));
 
-// In production the SPA is served same-origin, so cross-origin requests should be
-// limited to an explicit allowlist (ALLOWED_ORIGINS, comma-separated). In dev we
-// reflect the request origin for convenience (Vite on a different port).
+// In production the SPA is served same-origin: the API's own origin is always accepted, and a separate frontend
+// (or any other browser origin) has to be on ALLOWED_ORIGINS, comma-separated. In dev we reflect the request
+// origin for convenience (Vite on a different port). See server/lib/corsPolicy.ts.
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
-app.use(
-  cors({
-    credentials: true,
-    origin(origin, callback) {
-      if (process.env.NODE_ENV !== "production") return callback(null, true);
-      // Same-origin / non-browser requests have no Origin header.
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.length === 0) {
-        // In production with empty allowlist, reject cross-origin requests
-        return callback(new Error("Not allowed by CORS"));
-      }
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error("Not allowed by CORS"));
-    },
-  }),
-);
+app.use(corsPolicy({ production: process.env.NODE_ENV === "production", allowedOrigins }));
 // Needs the raw request body for signature checks, so it goes before express.json().
 app.use("/api/webhooks", webhookRoutes);
 app.use(express.json({ limit: "10mb" }));
@@ -112,7 +95,7 @@ const PORT = parseInt(process.env.PORT || process.env.API_PORT || "3001");
 app.listen(PORT, "0.0.0.0", async () => {
   console.log(`[CareMetric API] Server running on port ${PORT}`);
   if (process.env.NODE_ENV === "production" && allowedOrigins.length === 0) {
-    console.warn(`[CareMetric API] WARNING: ALLOWED_ORIGINS is not configured in production — cross-origin requests will be rejected. Set ALLOWED_ORIGINS to enable access from your frontend domain.`);
+    console.log("[CareMetric API] ALLOWED_ORIGINS is not set: browsers may call the API only from this server's own origin. Set it to allow a separate frontend domain.");
   }
 
   // Session changes (disable, role, sign out everywhere) reach this instance
