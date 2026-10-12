@@ -39,9 +39,10 @@
 //   Anthropic pattern (server/functions/outreach.ts `aiStrategy`): HAIKU,
 //   500 max tokens, JSON asked for in the prompt and parsed from the text
 //   block. The diagnosis prompt is the original's, verbatim. LLM use is gated
-//   on `process.env.AI_FEATURES_ENABLED !== "false"` (unset = today's
-//   behavior, LLM on). A failed / empty / unparseable LLM answer falls through
-//   to `ignored` — it never fails the run.
+//   on `process.env.AI_FEATURES_ENABLED === "true"` (opt-in, unified
+//   with the other AI modules; unset = LLM off). A failed / empty /
+//   unparseable LLM answer falls through to `ignored` — it never fails
+//   the run.
 
 import { db } from "../db";
 import { importBatches, auditEvents } from "../db/schema";
@@ -62,9 +63,9 @@ const MAX_BATCHES_PER_STATUS = 100;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
-// AI diagnosis is on unless explicitly paused, preserving the original's
-// always-diagnose behavior as the default.
-const AI_ENABLED = process.env.AI_FEATURES_ENABLED !== "false";
+// AI diagnosis is opt-in, unified with the other AI modules: it runs only
+// when AI_FEATURES_ENABLED is exactly "true".
+const AI_ENABLED = process.env.AI_FEATURES_ENABLED === "true";
 
 type RetryParams = Record<string, unknown>;
 
