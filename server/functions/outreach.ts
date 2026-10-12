@@ -8,6 +8,8 @@ import { pool } from "../db";
 import { inSequence } from "../lib/pgSequence";
 import { getMailerStatus, sendMail } from "../lib/mailer";
 import { consumeQuota } from "../lib/orgQuota";
+import { recordAudit } from "../lib/audit";
+import { assertBillableOrg } from "../lib/entitlements";
 import { isPlatformAdmin } from "../lib/roles";
 import { addSuppression, isSuppressed, loadSuppressed, normalizeEmail } from "../lib/suppressions";
 import { CLAUDE_MODELS } from "../lib/aiModels";
@@ -108,6 +110,17 @@ function orgOf(user: Caller | undefined): number {
 }
 
 /**
+ * The caller's organization must be billable before cost-incurring work. The
+ * functions dispatcher gates this too; the check lives here as well so the
+ * handler is safe however it is invoked.
+ */
+async function assertBillableCallerOrg(user: Caller | undefined): Promise<void> {
+  const orgId = orgOf(user);
+  const { rows } = await pool.query("SELECT status FROM organizations WHERE id = $1", [orgId]);
+  assertBillableOrg(rows[0] ? { status: rows[0].status } : undefined);
+}
+
+/**
  * The campaign, which must belong to the caller's organization: a campaign id
  * from another organization answers 404, exactly like one that doesn't exist.
  * (Platform administrators work in their own organization like everyone else.)
@@ -135,6 +148,20 @@ export async function handlePrepareCampaignMessages(payload: any, user?: Caller)
     try {
       const result = await prepareLocked(client, campaignId, user);
       await client.query("COMMIT");
+      // Best-effort and never throws, so auditing after the commit can't undo the prepare.
+      await recordAudit({
+        event_type: "campaign",
+        user_email: user?.email ?? null,
+        action: "prepare_campaign_messages",
+        entity_type: "outreach_campaign",
+        entity_id: campaignId,
+        details: {
+          messages_created: result.results.messages_created,
+          total_recipients: result.results.total_recipients,
+          skipped: result.results.skipped,
+        },
+        org_id: orgOf(user),
+      });
       return result;
     } catch (e) {
       await client.query("ROLLBACK").catch(() => {});
@@ -283,12 +310,24 @@ async function mapWithConcurrency<T>(items: T[], limit: number, fn: (item: T) =>
 }
 
 export async function handleSendCampaignMessages(payload: any, user?: Caller) {
+  // Sending email costs money: a past_due or canceled organization may not send.
+  await assertBillableCallerOrg(user);
   const campaignId = Number(payload?.campaign_id);
   if (!Number.isInteger(campaignId)) throw new HttpError(400, "campaign_id is required");
   const batchSize = Math.min(Math.max(Number(payload?.batch_size) || 50, 1), 100);
 
   const prepared = await withClient("15s", async (client) => {
-    await loadCampaign(client, campaignId, user);
+    const campaign = await loadCampaign(client, campaignId, user);
+    // The list may have been deleted after the messages were prepared, and
+    // sending never re-checked it: stop here instead of sending to a list
+    // that no longer exists.
+    if (campaign.target_list_id) {
+      const { rows: [list] } = await client.query(
+        "SELECT id FROM lead_lists WHERE id = $1 AND org_id = $2",
+        [campaign.target_list_id, campaign.org_id],
+      );
+      if (!list) throw new HttpError(404, "The lead list this campaign targets was deleted. Choose one of your organization's lead lists before sending.");
+    }
     const { rows: [{ count }] } = await client.query(
       "SELECT count(*)::int AS count FROM outreach_messages WHERE campaign_id = $1", [campaignId]);
     // Preparation never queues more than the cap; refuse a queue that does.
@@ -422,6 +461,16 @@ export async function handleSendCampaignMessages(payload: any, user?: Caller) {
   });
 
   const results = { ...outcome, remaining, messages_created: preparation?.results.messages_created ?? 0, skipped: preparation?.results.skipped };
+  // Best-effort: the send already happened, the audit only records it.
+  await recordAudit({
+    event_type: "campaign",
+    user_email: user?.email ?? null,
+    action: "send_campaign_messages",
+    entity_type: "outreach_campaign",
+    entity_id: campaignId,
+    details: { ...results, sendgrid_refused: rejected },
+    org_id: orgOf(user),
+  });
   if (rejected) {
     return {
       success: false,
@@ -461,6 +510,16 @@ export async function handleTrackCampaignMetrics(payload: any, user?: Caller) {
       "UPDATE outreach_campaigns SET metrics = COALESCE(metrics, '{}'::jsonb) || jsonb_build_object('delivery', $2::jsonb), updated_date = now() WHERE id = $1",
       [campaignId, JSON.stringify(metrics)],
     );
+    // Best-effort: the metrics were already stored.
+    await recordAudit({
+      event_type: "campaign",
+      user_email: user?.email ?? null,
+      action: "track_campaign_metrics",
+      entity_type: "outreach_campaign",
+      entity_id: campaignId,
+      details: { sent: metrics.sent, delivered: metrics.delivered, opened: metrics.opened, clicked: metrics.clicked, responded: metrics.responded, bounced: metrics.bounced, failed: metrics.failed },
+      org_id: orgOf(user),
+    });
     return {
       success: true,
       metrics,
@@ -491,6 +550,16 @@ export async function handleSaveCampaignOutcomes(payload: any, user?: Caller) {
     [campaignId, conversions, revenue, orgOf(user)],
   );
   if (!rows[0]) throw new HttpError(404, "Campaign not found");
+  // Best-effort: the outcomes were already stored.
+  await recordAudit({
+    event_type: "campaign",
+    user_email: user?.email ?? null,
+    action: "save_campaign_outcomes",
+    entity_type: "outreach_campaign",
+    entity_id: campaignId,
+    details: { conversions, revenue },
+    org_id: orgOf(user),
+  });
   return { success: true, metrics: rows[0].metrics };
 }
 
