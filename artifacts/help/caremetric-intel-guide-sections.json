@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "89dddbdfb582f8b6bf00b07032588fddbc41a79f",
+    "ref": "9a08ea694a60fd5e46407923e954989e66f9b497",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 36,
-    "text_character_count": 17689,
-    "canonical_sha256": "70c57f8dd2c4975321e7d54f7e4a5b0ced686bb5d843a3503e233b16bad7048e"
+    "text_character_count": 17742,
+    "canonical_sha256": "d4c303b1e5204d1858dec23aec1fa33e3aa9528017c783b3eed83ff16bf9877d"
   },
   "sections": [
     {
@@ -177,9 +177,9 @@
           "sha256": "e85e323a3b876335565e256e69b5f2fd4da40c5fa58f6652622df88036f01f18"
         },
         {
-          "heading": "Campaigns (admin)",
-          "text": "Create email campaigns for a lead list, review and send them, and track deliveries, opens, clicks, responses and bounces. Sending is admin-only, and every email carries an unsubscribe link that is honoured automatically.",
-          "sha256": "8956d2012c18414bce8cd2d44bde75660144c3a701da2c6b070d9399d79a66c2"
+          "heading": "Campaigns (owners)",
+          "text": "Owners create email campaigns for a lead list, review and send them, and track deliveries, opens, clicks, responses and bounces. Only owners (and platform admins) can send; members don't see Campaigns. Every email carries an unsubscribe link that is honoured automatically.",
+          "sha256": "2159762a0454598f6ddd914c49367f20e03aeee88cb32dbba5990819e69f672e"
         },
         {
           "heading": "Provider intelligence (admin)",
