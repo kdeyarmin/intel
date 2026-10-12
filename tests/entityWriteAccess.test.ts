@@ -17,7 +17,7 @@ const adminRole = { role: "admin", orgRole: "member" };
 
 describe("canWriteEntity", () => {
   it("lets an organization's owner, not a member, write its campaigns and what sending them uses", () => {
-    for (const entity of ["OutreachCampaign", "OutreachMessage", "CampaignSequenceStep", "CampaignTask", "CampaignTemplate"]) {
+    for (const entity of ["OutreachCampaign", "OutreachMessage", "CampaignTemplate"]) {
       expect(canWriteEntity(entity, member), entity).toBe(false);
       expect(canWriteEntity(entity, undefined), entity).toBe(false);
       expect(canWriteEntity(entity, owner), entity).toBe(true);
@@ -101,7 +101,7 @@ describe("how the entity sets fit together", () => {
   });
 
   it("scopes every entity members or owners write to their organization (directly or through a parent)", () => {
-    const throughParent = new Set(["LeadListMember", "CallSheetAccount", "CampaignSequenceStep", "CrmContact", "CrmActivity", "CrmReferral"]);
+    const throughParent = new Set(["LeadListMember", "CallSheetAccount", "CrmContact", "CrmActivity", "CrmReferral"]);
     for (const entity of [...USER_WRITABLE_ENTITIES, ...ORG_ADMIN_ENTITIES]) {
       expect(ORG_SCOPED_ENTITIES.has(entity) || throughParent.has(entity), entity).toBe(true);
     }

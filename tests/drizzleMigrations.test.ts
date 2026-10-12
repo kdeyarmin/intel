@@ -694,7 +694,9 @@ describe("migration 0020_organizations", () => {
     for (const table of added) {
       expect(sql, table).toContain(`UPDATE "${table}" SET "org_id" = 1 WHERE "org_id" IS NULL`);
       if (!unindexed.has(table)) expect(sql, table).toMatch(new RegExp(`CREATE INDEX IF NOT EXISTS "${table}_org_idx" ON "${table}" \\("org_id"`));
-      // The schema declares the column on the same table.
+      // The schema declares the column on the same table — except campaign_tasks,
+      // dropped as dead scaffolding by migration 0034, so it is no longer declared.
+      if (table === "campaign_tasks") continue;
       const start = schema.indexOf(`pgTable("${table}"`);
       expect(start, table).toBeGreaterThan(-1);
       expect(schema.slice(start, schema.indexOf("});", start)), table).toContain('org_id: integer("org_id")');
@@ -817,5 +819,68 @@ describe("migration 0012_assistant", () => {
     for (const table of ["assistant_conversations", "assistant_actions", "assistant_usage"]) {
       expect(sql).toContain(`CONSTRAINT "${table}_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade`);
     }
+  });
+});
+
+// ─── 0033-0035: paused_by renumber, dead campaign tables, dunning clock ─────
+
+describe("migration 0033_import_batches_paused_by", () => {
+  it("keeps the paused_by migration, renumbered after 0031 (0032 is PR #107's marketer attribution on main)", () => {
+    const sql = readMigration("0033_import_batches_paused_by.sql");
+    expect(sql).toContain('ALTER TABLE "import_batches" ADD COLUMN IF NOT EXISTS "paused_by" varchar(10)');
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const entry = journal.entries.find((e: { tag: string }) => e.tag === "0033_import_batches_paused_by");
+    const prev = journal.entries.find((e: { tag: string }) => e.tag === "0031_referral_hospice_state_index");
+    expect(entry).toBeTruthy();
+    expect(entry.idx).toBe(prev.idx + 2); // idx 32 belongs to 0032_crm_marketer_attribution, merged with PR #107
+    expect(entry.when).toBeGreaterThan(prev.when);
+  });
+});
+
+describe("migration 0034_drop_campaign_tables", () => {
+  const sql = readMigration("0034_drop_campaign_tables.sql");
+  const schema = readSchema();
+
+  it("drops both dead campaign tables, idempotently", () => {
+    expect(sql).toContain('DROP TABLE IF EXISTS "campaign_sequence_steps"');
+    expect(sql).toContain('DROP TABLE IF EXISTS "campaign_tasks"');
+  });
+
+  it("the schema no longer declares the dropped tables", () => {
+    expect(schema).not.toContain('pgTable("campaign_tasks"');
+    expect(schema).not.toContain('pgTable("campaign_sequence_steps"');
+  });
+
+  it("is registered in the drizzle journal after 0033, later than it", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const entry = journal.entries.find((e: { tag: string }) => e.tag === "0034_drop_campaign_tables");
+    const prev = journal.entries.find((e: { tag: string }) => e.tag === "0033_import_batches_paused_by");
+    expect(entry).toBeTruthy();
+    expect(entry.idx).toBe(prev.idx + 1);
+    expect(entry.when).toBeGreaterThan(prev.when);
+  });
+});
+
+describe("migration 0035_billing_status_since", () => {
+  const sql = readMigration("0035_billing_status_since.sql");
+  const schema = readSchema();
+
+  it("adds billing_status_since to organizations and backfills it from the last update", () => {
+    expect(sql).toContain('ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "billing_status_since" timestamp');
+    expect(sql).toContain('UPDATE "organizations" SET "billing_status_since" = COALESCE("updated_date", "created_date", now()) WHERE "billing_status_since" IS NULL');
+  });
+
+  it("the schema declares the column on organizations", () => {
+    const start = schema.indexOf('pgTable("organizations"');
+    expect(schema.slice(start, schema.indexOf("});", start))).toContain('billing_status_since: timestamp("billing_status_since")');
+  });
+
+  it("is registered in the drizzle journal after 0034, later than it", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const entry = journal.entries.find((e: { tag: string }) => e.tag === "0035_billing_status_since");
+    const prev = journal.entries.find((e: { tag: string }) => e.tag === "0034_drop_campaign_tables");
+    expect(entry).toBeTruthy();
+    expect(entry.idx).toBe(prev.idx + 1);
+    expect(entry.when).toBeGreaterThan(prev.when);
   });
 });

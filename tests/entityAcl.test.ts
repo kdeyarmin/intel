@@ -6,7 +6,7 @@ import { ORG_ADMIN_ENTITIES, PLATFORM_ONLY_ENTITIES, USER_WRITABLE_ENTITIES } fr
 
 describe("entity ACL", () => {
   it("keeps campaigns an owner's to change, like the Campaigns page and sending", () => {
-    for (const entity of ["OutreachCampaign", "OutreachMessage", "CampaignSequenceStep", "CampaignTask", "CampaignTemplate"]) {
+    for (const entity of ["OutreachCampaign", "OutreachMessage", "CampaignTemplate"]) {
       expect(USER_WRITABLE_ENTITIES.has(entity), entity).toBe(false);
       expect(ORG_ADMIN_ENTITIES.has(entity), entity).toBe(true);
     }
