@@ -193,6 +193,10 @@ describe("shouldRetryBatch", () => {
 
   it("skips the NPPES crawler (handled elsewhere)", () => {
     expect(shouldRetryBatch({ ...eligibleBatch, import_type: "nppes_registry" }, now).eligible).toBe(false);
+    // The file importers chain themselves and are recovered on startup, so the worker leaves them alone too.
+    for (const import_type of ["nppes_flat_file", "nppes_registry_file"]) {
+      expect(shouldRetryBatch({ ...eligibleBatch, import_type }, now), import_type).toEqual({ eligible: false, reason: "self_resuming_import_type" });
+    }
   });
 
   it("skips non-retryable errors", () => {

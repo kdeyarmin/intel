@@ -213,6 +213,23 @@ export function nextRetryDueAt(lastAttemptIso: string | Date | null | undefined,
   return new Date(last.getTime() + hours * 60 * 60 * 1000);
 }
 
+/**
+ * A processing/validating batch with no progress for this long is stalled. Two hours: the chunked
+ * CMS importer saves progress every few pages, so an hour of silence on a healthy import is
+ * possible only while a very large page is being written. The stall sweep (maintenance.ts) and
+ * the active-import guard in handleTriggerImport both use it, so a healthy import is never failed
+ * at one hour by one and left alone until two by the other.
+ */
+export const STALLED_AFTER_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Import types the retry and resume workers leave alone: their importers chain
+ * themselves and are recovered on startup, and a worker resuming them in place
+ * would restart them from row 0. The browser mirrors this set (src/components/
+ * imports/retryStatus.js) and the legacy Deno helpers do too: keep them in sync.
+ */
+export const SELF_RESUMING_IMPORT_TYPES: ReadonlySet<string> = new Set(["nppes_registry", "nppes_flat_file", "nppes_registry_file"]);
+
 export type RetryDecision =
   | { eligible: true; reason: "retryable_failure"; attemptCount: number }
   | { eligible: false; reason: string };
@@ -224,6 +241,9 @@ export function shouldRetryBatch(batch: Record<string, unknown>, now: Date = new
   if (batch.import_type === "nppes_registry") {
     // The NPPES crawler has its own retry path (watchdog + batch_resume).
     return { eligible: false, reason: "nppes_handled_elsewhere" };
+  }
+  if (SELF_RESUMING_IMPORT_TYPES.has(String(batch.import_type ?? ""))) {
+    return { eligible: false, reason: "self_resuming_import_type" };
   }
   const params = (batch.retry_params as Record<string, unknown> | undefined) ?? {};
   if (params.auto_retry_disabled === true) {
