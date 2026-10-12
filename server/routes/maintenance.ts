@@ -11,8 +11,9 @@ import {
 
 const router = Router();
 
-// Maintenance tasks for an external scheduler (e.g. a Railway cron job)
-// to drive import automation. Point the scheduler at:
+// Maintenance tasks for an external scheduler (e.g. a Replit Scheduled
+// Deployment or system cron) to drive import automation that the autoscale
+// runtime can't do reliably with an in-process timer. Point the scheduler at:
 //   POST /api/maintenance/runScheduledImports
 // with header `x-maintenance-token: $MAINTENANCE_TOKEN` on a cadence (e.g.
 // every 10 minutes). runScheduledImports also fans out to the other workers,
@@ -24,6 +25,10 @@ const TASKS = Object.assign(Object.create(null) as Record<string, (payload: any,
   autoRetryFailedImports: () => runAutoRetryFailedImports(),
   autoResumePausedImports: () => runAutoResumePausedImports(),
   cancelStalledImports: () => runCancelStalledImports(),
+  checkCmsDataApiUrls: async (payload: any, user: any) =>
+    (await import("../functions/checkCMSDataApiUrls")).handleCheckCmsDataApiUrls(payload, user),
+  autoFixImports: async () => (await import("../functions/autoFixImports")).runAutoFixImports(),
+  superviseNppesCrawler: async () => (await import("../functions/superviseNPPESCrawler")).runSuperviseNppesCrawler(),
   runDueScheduledReports: async () => (await import("../functions/scheduledReports")).handleRunDueScheduledReports(),
   refreshRollups: async (payload: any) => {
     const { pool } = await import("../db");
