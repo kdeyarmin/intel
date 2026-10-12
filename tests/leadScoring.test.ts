@@ -57,7 +57,7 @@ describe("normalizeRules", () => {
       { rule_type: "service_intensity", weight: 20, enabled: false },
       { rule_type: "geographic_priority", weight: 15, enabled: true, conditions: { states: "oh, pa", counties: ["42003"] } },
       { rule_type: "bogus", weight: 50 },
-      { rule_type: "behavioral_health", weight: "7" as any },
+      { rule_type: "behavioral_health", weight: "7" as any, enabled: true },
     ]);
     expect(rules.map((r) => [r.rule_type, r.weight])).toEqual([["patient_volume", 30], ["geographic_priority", 15], ["behavioral_health", 7]]);
     expect(resolveTerritory(rules)).toEqual({ states: ["OH", "PA"], counties: ["42003"] });
@@ -67,7 +67,7 @@ describe("normalizeRules", () => {
 
   it("falls back to the default territory, and rejects malformed codes", () => {
     expect(resolveTerritory(RULES)).toEqual({ states: ["PA"], counties: [] });
-    const rules = normalizeRules([{ rule_type: "geographic_priority", weight: 10, conditions: { states: ["Pennsylvania", "pa", "p"], counties: ["42003", "4200", "42-003"] } }]);
+    const rules = normalizeRules([{ rule_type: "geographic_priority", weight: 10, enabled: true, conditions: { states: ["Pennsylvania", "pa", "p"], counties: ["42003", "4200", "42-003"] } }]);
     expect(resolveTerritory(rules)).toEqual({ states: ["PA"], counties: ["42003"] });
   });
 });
@@ -125,42 +125,42 @@ describe("scoreProvider", () => {
   });
 
   it("uses the priority county, else the state, else little", () => {
-    const rules = normalizeRules([{ rule_type: "geographic_priority", weight: 100, conditions: { states: ["PA"], counties: ["42003"] } }]);
+    const rules = normalizeRules([{ rule_type: "geographic_priority", weight: 100, enabled: true, conditions: { states: ["PA"], counties: ["42003"] } }]);
     const at = (loc: any) => scoreProvider(base({ locations: loc ? [loc] : [] }), rules);
     expect(at({ state: "PA", county_fips: "42003", city: "Pittsburgh" }).score).toBe(100);
     expect(at({ state: "PA", county_fips: "42019", city: "Butler" }).score).toBe(70);
     expect(at({ state: "OH", county_fips: null, city: "Toledo" }).score).toBe(20);
     expect(at(null).score).toBe(20);
     // Without priority counties every in-state location is top priority.
-    expect(scoreProvider(base({ locations: [{ state: "pa", county_fips: null, city: null }] }), normalizeRules([{ rule_type: "geographic_priority", weight: 100, conditions: { states: ["PA"] } }])).score).toBe(100);
+    expect(scoreProvider(base({ locations: [{ state: "pa", county_fips: null, city: null }] }), normalizeRules([{ rule_type: "geographic_priority", weight: 100, enabled: true, conditions: { states: ["PA"] } }])).score).toBe(100);
   });
 
   it("steps patient volume and intensity on fixed cutoffs", () => {
-    const vol = normalizeRules([{ rule_type: "patient_volume", weight: 100 }]);
+    const vol = normalizeRules([{ rule_type: "patient_volume", weight: 100, enabled: true }]);
     expect([0, 10, 50, 200, 500].map((b) => scoreProvider(base({ beneficiaries: b }), vol).score)).toEqual([0, 25, 50, 75, 100]);
-    const int = normalizeRules([{ rule_type: "service_intensity", weight: 100 }]);
+    const int = normalizeRules([{ rule_type: "service_intensity", weight: 100, enabled: true }]);
     expect([0, 3, 4, 8, 12].map((per) => scoreProvider(base({ beneficiaries: 100, services: per * 100 }), int).score)).toEqual([0, 0, 40, 70, 100]);
   });
 
   it("counts Part B billing as participation when the NPI isn't on the Order & Referring list", () => {
-    const rules = normalizeRules([{ rule_type: "medicare_participation", weight: 100 }]);
+    const rules = normalizeRules([{ rule_type: "medicare_participation", weight: 100, enabled: true }]);
     expect(scoreProvider(base({ beneficiaries: 12 }), rules)).toMatchObject({ score: 100, reasons: ["Bills Medicare Part B", "12 Medicare beneficiaries"] });
     expect(scoreProvider(base({ orderReferring: { partb: true, dme: false, hha: false, pmd: false, hospice: false } }), rules)).toMatchObject({ score: 100, reasons: ["On the Medicare Order & Referring list"] });
     expect(scoreProvider(base(), rules).score).toBe(0);
   });
 
   it("treats specialty by group, with the groups configurable", () => {
-    const rules = normalizeRules([{ rule_type: "specialty_match", weight: 100, conditions: { groups: ["cardiology"] } }, { rule_type: "behavioral_health", weight: 0 }]);
+    const rules = normalizeRules([{ rule_type: "specialty_match", weight: 100, enabled: true, conditions: { groups: ["cardiology"] } }, { rule_type: "behavioral_health", weight: 0 }]);
     expect(scoreProvider(base({ specialtyGroup: "cardiology", specialtyLabel: "Cardiology" }), rules).score).toBe(100);
     expect(scoreProvider(base({ specialtyGroup: "family_medicine" }), rules).score).toBe(40);
-    const bh = normalizeRules([{ rule_type: "behavioral_health", weight: 100 }]);
+    const bh = normalizeRules([{ rule_type: "behavioral_health", weight: 100, enabled: true }]);
     expect(scoreProvider(base({ specialtyGroup: "psychiatry" }), bh).score).toBe(100);
     expect(scoreProvider(base({ specialtyGroup: "behavioral_health" }), bh).score).toBe(100);
     expect(scoreProvider(base({ specialtyGroup: "cardiology" }), bh).score).toBe(50);
   });
 
   it("prefers solo and small practices", () => {
-    const rules = normalizeRules([{ rule_type: "practice_type", weight: 100 }]);
+    const rules = normalizeRules([{ rule_type: "practice_type", weight: 100, enabled: true }]);
     const n = (k: number) => scoreProvider(base({ locations: Array.from({ length: k }, () => ({ state: "PA", county_fips: null, city: null })) }), rules);
     expect([1, 3, 5, 6].map((k) => n(k).score)).toEqual([100, 80, 60, 30]);
     expect(n(2).reasons).toContain("2 practice locations in the scored territory");
@@ -174,10 +174,14 @@ describe("scoreProvider", () => {
   });
 
   it("scales with the weights and stays within 0–100", () => {
+    // Weights are normalized to sum to 100: scaling every weight by a constant
+    // factor is a no-op, and no combination can exceed 100.
     const half = normalizeRules(DEFAULT_SCORING_RULES.map((d) => ({ ...d, weight: d.weight / 2 })) as any);
     const full = scoreProvider(base({ specialtyGroup: "psychiatry" }), RULES);
     const halved = scoreProvider(base({ specialtyGroup: "psychiatry" }), half);
-    expect(halved.score).toBe(Math.round(full.score / 2));
+    expect(halved.score).toBe(full.score);
     expect(Object.keys(full.breakdown)).toEqual(RULE_TYPES);
+    const over = normalizeRules(DEFAULT_SCORING_RULES.map((d) => ({ ...d, weight: d.weight * 3 })) as any);
+    expect(scoreProvider(base({ specialtyGroup: "psychiatry" }), over).score).toBe(full.score);
   });
 });

@@ -15,6 +15,14 @@ export function exportAttribution(date = new Date()) {
  * up, or the count itself failed (offline, server error, a database that
  * couldn't record it). A file is built only after a confirmed count, so the
  * allowance can't be dodged by blocking or breaking the request.
+ *
+ * This is the metering path for exports built from data the view already
+ * fetched. Exports that fetch an export-sized payload from the server instead
+ * set `for_export: true` on that request (see DMEProviderReport.jsx): the
+ * functions dispatcher and the entity router then consume the quota
+ * server-side before the handler runs, which cannot be skipped. window.print()
+ * exports keep this call as their only metering — printing can't be gated
+ * server-side.
  */
 export async function countExport() {
   try {

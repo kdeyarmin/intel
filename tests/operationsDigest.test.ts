@@ -172,8 +172,12 @@ describe("runCancelStalledImports", () => {
     ];
     const r = await runCancelStalledImports();
     expect(r).toMatchObject({ ok: true, details: { scanned: 2, cancelled: 1, skipped_crawler: 1 } });
-    expect(h.updates).toHaveLength(1);
-    expect(h.updates[0]).toMatchObject({ status: "failed" });
+    // Two intermediate-state settles (pausing->paused, cancelling->cancelled)
+    // run before the stall sweep; only the stalled batch fails.
+    expect(h.updates).toHaveLength(3);
+    const failed = h.updates.filter((u: any) => u.status === "failed");
+    expect(failed).toHaveLength(1);
+    expect(failed[0]).toMatchObject({ status: "failed" });
     // The registry would otherwise stay "importing" and hide newer releases of the dataset.
     expect(h.ended).toHaveBeenCalledTimes(1);
     expect(h.ended).toHaveBeenCalledWith("hospital_service_area", 5, "failed", expect.stringMatching(/stalled/));
@@ -185,7 +189,8 @@ describe("runCancelStalledImports", () => {
       { id: 7, import_type: "cms_order_referring", status: "processing", file_name: "oi.csv" },
     ];
     // The first batch resumed between the scan and its update (the update is conditional on it still being stalled).
-    h.updateRows = [[], [{ id: 7 }]];
+    // Two leading entries for the intermediate-state settles, which find nothing.
+    h.updateRows = [[], [], [], [{ id: 7 }]];
     const r = await runCancelStalledImports();
     expect(r).toMatchObject({ ok: true, details: { scanned: 2, cancelled: 1, cancelled_batches: [{ id: 7, type: "cms_order_referring" }] } });
     // Its dataset and schedule are not told it failed.

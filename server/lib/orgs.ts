@@ -87,8 +87,8 @@ export async function createOrgWithOwner(client: any, input: { name: string; own
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const slug = attempt === 0 ? base : `${base}-${Math.random().toString(36).slice(2, 6)}`;
     const { rows } = await client.query(
-      `INSERT INTO organizations (name, slug, status, plan_code, trial_ends_at, terms_version)
-       VALUES ($1, $2, 'trial', $3, $4, $5) ON CONFLICT (slug) DO NOTHING RETURNING *`,
+      `INSERT INTO organizations (name, slug, status, plan_code, trial_ends_at, terms_version, billing_status_since)
+       VALUES ($1, $2, 'trial', $3, $4, $5, now()) ON CONFLICT (slug) DO NOTHING RETURNING *`,
       [input.name, slug, input.planCode ?? null, trialEnds, input.termsVersion ?? null],
     );
     if (!rows[0]) continue;
@@ -134,6 +134,8 @@ export interface OrgRepo {
   membershipOf(userId: number): Promise<Membership | null>;
   addMember(orgId: number, userId: number, orgRole: "owner" | "member"): Promise<void>;
   setMemberRole(orgId: number, userId: number, orgRole: "owner" | "member"): Promise<boolean>;
+  /** Removes a user from an organization. True when a membership was removed. */
+  removeMember(orgId: number, userId: number): Promise<boolean>;
   seatUsage(orgId: number): Promise<{ used: number; limit: number }>;
 }
 
@@ -175,6 +177,10 @@ export function pgOrgRepo(db: any = pool): OrgRepo {
     },
     async setMemberRole(orgId, userId, orgRole) {
       const { rowCount } = await db.query("UPDATE organization_members SET org_role = $3 WHERE org_id = $1 AND user_id = $2", [orgId, userId, orgRole]);
+      return rowCount > 0;
+    },
+    async removeMember(orgId, userId) {
+      const { rowCount } = await db.query("DELETE FROM organization_members WHERE org_id = $1 AND user_id = $2", [orgId, userId]);
       return rowCount > 0;
     },
     seatUsage: (orgId) => seatUsage(orgId, db),
