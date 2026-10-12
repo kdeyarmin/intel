@@ -18,6 +18,8 @@ export interface SessionUser {
   org_role?: string | null;
   org_name?: string | null;
   org_status?: string | null;
+  /** When the organization's current billing status began (the dunning ladder's clock). */
+  org_billing_status_since?: Date | string | null;
   plan_code?: string | null;
   territory?: { states: string[]; county_fips: string[] } | null;
 }
@@ -31,7 +33,7 @@ async function defaultLoader(id: number): Promise<SessionUser | null> {
   const { pool } = await import("../db");
   const { rows } = await pool.query(
     `SELECT u.id, u.email, u.full_name, u.role, u.status, u.token_version, u.is_platform_admin, u.terms_accepted_at,
-            m.org_id, m.org_role, o.name AS org_name, o.status AS org_status, o.plan_code, o.territory
+            m.org_id, m.org_role, o.name AS org_name, o.status AS org_status, o.billing_status_since AS org_billing_status_since, o.plan_code, o.territory
        FROM users u
        LEFT JOIN LATERAL (SELECT org_id, org_role FROM organization_members WHERE user_id = u.id ORDER BY org_id LIMIT 1) m ON true
        LEFT JOIN organizations o ON o.id = m.org_id

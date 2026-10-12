@@ -8,7 +8,7 @@ import { AuthRequest, authMiddleware, isOrgAdmin } from "../middleware/auth";
 import { rateLimit } from "../middleware/rateLimit";
 import { appBaseUrl } from "../lib/accounts";
 import { recordAudit } from "../lib/audit";
-import { billingView, buildCheckoutParams, checkoutIdempotencyKey, priceIdFor, stripeConfigured, type PlanRow } from "../lib/billing";
+import { billingView, buildCheckoutParams, checkoutIdempotencyKey, mapSubscriptionStatus, periodEnd, priceIdFor, stripeConfigured, territoryForPlan, type PlanRow } from "../lib/billing";
 import { needsTerritoryChoice, stateFipsOf } from "../lib/entitlements";
 import { getOrg, normalizeTerritory, seatUsage } from "../lib/orgs";
 import { consumeQuota, QuotaError, usageToday } from "../lib/orgQuota";
@@ -48,7 +48,9 @@ router.get("/plans", async (_req, res) => {
 });
 
 router.get("/status", authMiddleware, async (req: AuthRequest, res: Response) => {
-  const orgId = needOrg(req, res);
+  // A platform admin may pass ?org_id= to inspect an organization's billing state.
+  const requested = Number(req.query.org_id);
+  const orgId = req.user?.isPlatformAdmin && Number.isInteger(requested) && requested > 0 ? requested : needOrg(req, res);
   if (!orgId) return;
   try {
     const [org, plans, seats, usage] = await Promise.all([getOrg(orgId), loadPlans(), seatUsage(orgId), usageToday(orgId).catch(() => null)]);
@@ -90,13 +92,25 @@ router.post("/checkout", authMiddleware, rateLimit("billing_checkout", 10, 60_00
       if (current && ["active", "trialing", "past_due"].includes(current.status)) {
         const item = current.items.data[0];
         if (item?.price?.id === priceId) return res.status(409).json({ message: `You're already on the ${plan.name} plan.` });
-        await stripe.subscriptions.update(current.id, {
+        const updatedSub = await stripe.subscriptions.update(current.id, {
           items: [{ id: item.id, price: priceId }],
           proration_behavior: "create_prorations",
           metadata: { org_id: String(orgId), plan_code: plan.code },
         });
         await recordAudit({ event_type: "billing", action: "plan_changed", user_email: req.user!.email, entity_type: "Organization", entity_id: orgId, details: { from: org.plan_code, to: plan.code }, org_id: orgId });
-        // The plan, seats and territory follow from Stripe's subscription.updated event.
+        // The new plan's seats, quotas and territory take effect immediately
+        // instead of staying stale until the webhook lands; the
+        // subscription.updated event reconciles afterwards.
+        await pool.query(
+          `UPDATE organizations SET plan_code = $2, status = $3, subscription_status = $4, seat_limit = $5,
+                  territory = $6::jsonb, current_period_end = COALESCE($7, current_period_end), updated_date = now()
+             WHERE id = $1`,
+          [orgId, plan.code, mapSubscriptionStatus(updatedSub.status), updatedSub.status ?? null, plan.seat_limit,
+            JSON.stringify(territoryForPlan(org.territory, plan)), periodEnd(updatedSub)],
+        );
+        const { publishSessionUserChange } = await import("../lib/sessionUsers");
+        const { rows: memberRows } = await pool.query("SELECT user_id FROM organization_members WHERE org_id = $1", [orgId]);
+        for (const r of memberRows) publishSessionUserChange(Number(r.user_id));
         return res.json({ changed: true, plan_code: plan.code });
       }
     }

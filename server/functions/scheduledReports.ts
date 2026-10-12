@@ -7,6 +7,8 @@ import { getTableColumns, getTableName } from "drizzle-orm";
 import { pool } from "../db";
 import { tableMap } from "../db/schema";
 import { getMailerStatus, sendMail } from "../lib/mailer";
+import { consumeQuota } from "../lib/orgQuota";
+import { assertBillableOrg } from "../lib/entitlements";
 import { CLAUDE_MODELS } from "../lib/aiModels";
 import { isPlatformAdmin } from "../lib/roles";
 import {
@@ -35,6 +37,18 @@ class HttpError extends Error {
   constructor(public status: number, message: string) {
     super(message);
   }
+}
+
+// Scheduled runs (the maintenance tick) have no user, only the schedule's
+// org: look its billing status up and fail closed on an unknown org, before
+// any billable work (AI summary, email sends) happens.
+async function assertScheduleOrgBillable(orgId: number | null | undefined): Promise<void> {
+  let status: string | undefined;
+  if (orgId) {
+    const { rows } = await pool.query("SELECT status FROM organizations WHERE id = $1", [orgId]);
+    status = rows[0]?.status ?? undefined;
+  }
+  assertBillableOrg(status === undefined ? undefined : { status });
 }
 
 const settings = (row: any) => ({ ...(row?.config || {}), name: row.name, recipients: row.recipients });
@@ -101,6 +115,12 @@ async function buildReport(row: any) {
   const rows = aggregateReport(source, config, ds);
   const metrics = metricKeys.map((key) => ({ key, label: ds.metrics.find((m) => m.key === key)?.label || humanize(key) }));
   const groupLabel = cfg.group_by ? ds.groupOptions.find((g) => g.key === cfg.group_by)?.label || humanize(cfg.group_by) : "Group";
+  // The AI summary is billable work: count it against the schedule's
+  // organization before calling, like outreach does. The local fallback
+  // summary costs nothing.
+  if (cfg.include_summary !== false && process.env.ANTHROPIC_API_KEY && rows.length > 0) {
+    await consumeQuota({ orgId: row.org_id }, "ai_calls");
+  }
   const summary = cfg.include_summary === false
     ? null
     : (await aiSummary(row.name, rows, metrics, groupLabel)) || summarizeReport(rows, metrics, groupLabel);
@@ -149,6 +169,7 @@ async function saveRunState(id: number, patch: Record<string, unknown>) {
  */
 async function runAndSend(row: any, { advance = true }: { advance?: boolean } = {}) {
   const now = new Date();
+  await assertScheduleOrgBillable(row.org_id);
   const nextRun = (cfg: any) => (advance
     ? { next_run_at: computeNextReportRun(cfg, now).toISOString(), schedule_signature: scheduleSignature(cfg) }
     : {});
@@ -160,6 +181,9 @@ async function runAndSend(row: any, { advance = true }: { advance?: boolean } = 
         ? `None of the recipients can receive reports (${BLOCKED_REASON()}): ${blocked.join(", ")}.`
         : "Add at least one recipient.");
     }
+    // The organization's daily email allowance covers the whole batch, like
+    // outreach: over it, nothing is sent and the run is recorded as failed.
+    await consumeQuota({ orgId: row.org_id }, "emails_sent", allowed.length);
     let sent = 0;
     const failures: string[] = [];
     for (const to of allowed) {
@@ -283,7 +307,10 @@ export async function handleRunDueScheduledReports() {
       const r = await runAndSend(claimed.rows[0]);
       results.push({ id: row.id, status: r.status });
     } catch (e: any) {
-      results.push({ id: row.id, status: "failed", error: String(e?.message || e).slice(0, 200) });
+      // A non-billable org's schedule is skipped, not failed: the owner sees
+      // the subscription message on the schedule itself.
+      const skipped = e?.status === 402 || e?.code === "subscription_inactive";
+      results.push({ id: row.id, status: skipped ? "skipped" : "failed", error: String(e?.message || e).slice(0, 200) });
     }
   }
   return {
@@ -306,6 +333,7 @@ export async function handleGenerateScheduledReport(payload: any, user?: { role?
   }
   if (action === "preview") {
     const row = await loadSchedule(payload?.report_id, user);
+    await assertScheduleOrgBillable(row.org_id);
     const report = await buildReport(row);
     const { allowed, blocked, overflow } = await allowedRecipients(row.recipients);
     return {

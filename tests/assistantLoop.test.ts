@@ -216,13 +216,28 @@ describe("runAssistantTurn", () => {
     expect((await runAssistantTurn(failing.input)).status).toBe("error");
   });
 
-  it("turns API errors into a sentence the user can act on, without retrying", async () => {
-    const err = new Anthropic.RateLimitError(429, { type: "error", error: { type: "rate_limit_error", message: "slow down" } }, "slow down", new Headers());
-    const { input, calls } = setup([{ throw: err }]);
+  it("marks rate-limited and 5xx turns retryable and keeps the partial answer", async () => {
+    const rateLimit = new Anthropic.RateLimitError(429, { type: "error", error: { type: "rate_limit_error", message: "slow down" } }, "slow down", new Headers());
+    const { input, calls, persisted } = setup([{ throw: rateLimit, partial: "Here are two cardio" }]);
     const result = await runAssistantTurn(input);
-    expect(result).toMatchObject({ status: "error", error: expect.stringMatching(/rate-limiting/) });
+    expect(result).toMatchObject({ status: "retryable", error: expect.stringMatching(/retry/i) });
     expect(calls).toHaveLength(1);
-    expect(apiErrorMessage(new Anthropic.AuthenticationError(401, undefined, "bad key", new Headers()))).toMatch(/ANTHROPIC_API_KEY/);
+    // The partial answer is preserved for display instead of discarded.
+    expect(persisted.map((p) => p.role)).toEqual(["user", "assistant"]);
+    expect(persisted[1].content).toEqual([{ type: "text", text: "Here are two cardio" }]);
+
+    const serverError = new Anthropic.APIError(503, { type: "error", error: { type: "api_error", message: "boom" } }, "boom", new Headers());
+    const again = setup([{ throw: serverError }]);
+    expect((await runAssistantTurn(again.input)).status).toBe("retryable");
+  });
+
+  it("still turns non-retryable API errors into an error sentence", async () => {
+    const auth = new Anthropic.AuthenticationError(401, undefined, "bad key", new Headers());
+    const { input, calls } = setup([{ throw: auth }]);
+    const result = await runAssistantTurn(input);
+    expect(result).toMatchObject({ status: "error" });
+    expect(result.error).toBe(apiErrorMessage(auth));
+    expect(calls).toHaveLength(1);
   });
 
   it("puts app news in a system message after the question", async () => {

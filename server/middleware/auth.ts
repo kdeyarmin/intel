@@ -7,7 +7,7 @@ import { isOrgAdmin, isPlatformAdmin } from "../lib/roles";
 let JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   if (process.env.NODE_ENV === "production") {
-    throw new Error("JWT_SECRET environment variable is required in production. Set it in the Railway service variables.");
+    throw new Error("JWT_SECRET environment variable is required in production. Set it via Replit Secrets.");
   }
   JWT_SECRET = crypto.randomBytes(48).toString("hex");
   console.warn("[auth] JWT_SECRET not set — generated ephemeral dev secret. Sessions will be invalidated on restart.");
@@ -27,6 +27,8 @@ export interface SessionPrincipal {
   orgRole?: string | null;
   orgName?: string | null;
   orgStatus?: string | null;
+  /** When the organization's current billing status began (ISO string); the dunning ladder reads it. */
+  orgBillingStatusSince?: string | null;
   planCode?: string | null;
   territory?: { states: string[]; county_fips: string[] } | null;
   termsAcceptedAt?: string | null;
@@ -100,6 +102,7 @@ async function authenticate(req: AuthRequest, res: Response, next: NextFunction,
     // The admin role and the flag are one thing (the Users screen keeps them together); either grants it.
     isPlatformAdmin: !!user.is_platform_admin || user.role === "admin",
     orgId: user.org_id ?? null, orgRole: user.org_role ?? null, orgName: user.org_name ?? null, orgStatus: user.org_status ?? null,
+    orgBillingStatusSince: user.org_billing_status_since ? new Date(user.org_billing_status_since).toISOString() : null,
     planCode: user.plan_code ?? null, territory: (user.territory as any) ?? null,
     termsAcceptedAt: user.terms_accepted_at ? new Date(user.terms_accepted_at).toISOString() : null,
   };

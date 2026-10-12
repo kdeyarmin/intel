@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ArrowLeft, Building2, MapPin, Star, DollarSign, Users, Calendar, Activity, FileText, Layers, ExternalLink, Mail, Phone, ChevronDown, ChevronUp, Search, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import AffiliatedProvidersCard from '../components/facilities/AffiliatedProvidersCard';
 import ComprehensiveReport from '../components/reports/ComprehensiveReport';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import HospitalCatchmentCard from '../components/market/HospitalCatchmentCard';
 import MarketPositionCard from '../components/market/MarketPositionCard';
 import { DmeFacilityCard, DrgCard } from '../components/market/MarketReferenceCards';
@@ -438,20 +439,27 @@ export function FacilitySummaryCard({ data, financials, facilityTypes, config })
   );
 }
 
+const NEUTRAL_CONFIG = { title: 'Facility', plural: 'Facilities', back: 'Facilities', iconCls: 'text-slate-400', badgeCls: 'bg-slate-800/50 text-slate-300 border-slate-600/50' };
+
 export default function FacilityDetail() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const providerId = searchParams.get('id');
-  const group = searchParams.get('group') || 'hospital';
-
-  const config = FACILITY_LABELS[group] || FACILITY_LABELS.hospital;
+  const groupParam = searchParams.get('group');
+  const groupIsKnown = !groupParam || !!FACILITY_LABELS[groupParam];
+  // An unknown ?group= is never echoed as hospital branding: the backend runs
+  // unfiltered (null) and the page brands from the data it actually got, with
+  // an explicit notice. No ?group= keeps the previous hospital default.
+  const group = groupIsKnown ? (groupParam || 'hospital') : null;
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['facilityDetail', providerId, group],
-    queryFn: () => base44.functions.invoke('getFacilityDetail', { provider_id: providerId, facility_group: group }),
+    queryFn: () => base44.functions.invoke('getFacilityDetail', { provider_id: providerId, ...(group ? { facility_group: group } : {}) }),
     enabled: !!providerId,
     select: (res) => res.data || res,
   });
+
+  const config = (group && FACILITY_LABELS[group]) || (data && FACILITY_LABELS[data.facility_group]) || NEUTRAL_CONFIG;
 
   if (!providerId) {
     return (
@@ -500,7 +508,27 @@ export default function FacilityDetail() {
         <Button variant="ghost" size="sm" onClick={() => navigate(createPageUrl(config.back))} className="text-slate-400 hover:text-slate-200">
           <ArrowLeft className="w-4 h-4 mr-2" /> {config.plural}
         </Button>
+        <div className="ml-auto flex items-center gap-2">
+          {linked?.npi && (
+            <Button asChild variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-cyan-400">
+              <Link to={createPageUrl(`ReferralNetworkIntelligence?npi=${linked.npi}`)}>
+                View in referral network
+              </Link>
+            </Button>
+          )}
+          <Button asChild variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-cyan-400">
+            <Link to={createPageUrl('ProviderIntelligence')}>
+              Provider intelligence
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      {groupParam && !groupIsKnown && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-900/20 px-4 py-3 text-sm text-amber-200">
+          Unknown facility group &ldquo;{groupParam}&rdquo; — showing records across all facility types instead of one group.
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
         <div className="flex-1 min-w-0">
@@ -574,6 +602,8 @@ export default function FacilityDetail() {
           </TabsContent>
         ))}
       </Tabs>
+
+      <DataSourcesFooter />
     </div>
   );
 }

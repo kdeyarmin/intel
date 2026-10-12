@@ -12,7 +12,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { countExport, exportCSV, exportExcel } from '@/components/exports/exportUtils';
+import { exportCSV, exportExcel } from '@/components/exports/exportUtils';
 
 const EXPORT_FIELDS = [
   { key: 'name', label: 'Company Name' },
@@ -117,12 +117,10 @@ export default function DMEProviderReport() {
   const handleExport = async (format) => {
     setExporting(format);
     try {
-      // Counts against the organization's daily export allowance, like every export.
-      const quota = await countExport();
-      if (!quota.ok) {
-        toast.error(quota.message);
-        return;
-      }
+      // The for_export flag makes the server consume one export from the
+      // daily quota before building the payload (a 429 here means it is used
+      // up), so no separate countExport() call is needed — and the count
+      // cannot be skipped.
       const res = await base44.functions.invoke('getDMEProviders', {
         state: selectedState || undefined,
         search: debouncedSearch || undefined,

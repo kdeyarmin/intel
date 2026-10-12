@@ -7,6 +7,8 @@ import { clientIp } from "../middleware/rateLimit";
 import type { AuditWriter } from "../lib/audit";
 import type { CreatedLeadList } from "../lib/leadLists";
 import { ASSISTANT_CONFIG } from "../lib/assistant/config";
+import { assertBillableOrg, SubscriptionError } from "../lib/entitlements";
+import { isPlatformAdmin } from "../lib/roles";
 import { runAssistantTurn, usageUnits, type StreamFactory, type TurnResult } from "../lib/assistant/loop";
 import { checkQuota } from "../lib/assistant/quota";
 import { decisionNote, renderTranscript, replayHistory, titleFrom, uiAction } from "../lib/assistant/render";
@@ -74,12 +76,16 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
 
   router.post("/conversations", async (req: AuthRequest, res: Response) => {
     const title = typeof req.body?.title === "string" ? req.body.title.trim().slice(0, 200) : null;
-    res.status(201).json({ conversation: await store.createConversation(req.user!.id, title || null) });
+    res.status(201).json({ conversation: await store.createConversation(req.user!.id, title || null, req.user!.orgId ?? null) });
   });
 
   router.get("/conversations/:id", async (req: AuthRequest, res: Response) => {
     const conv = await ownConversation(req, res);
     if (!conv) return;
+    // Self-heal on read: a turn still "running" past the stale threshold is
+    // from a dead process, so mark it interrupted instead of reporting
+    // running:true forever.
+    await store.interruptStaleTurns(conv.id, ASSISTANT_CONFIG.staleTurnMs);
     const { turns, messages, actions } = await store.loadTranscript(conv.id);
     res.json({
       conversation: conv,
@@ -117,6 +123,18 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
       return res.status(409).json({ code: "conversation_full", message: `This conversation has reached ${ASSISTANT_CONFIG.maxTurnsPerConversation} questions. Start a new conversation to continue.` });
     }
     const user = req.user!;
+    // The assistant spends AI tokens, so it follows the same billing gate as
+    // other cost-incurring calls: a past_due or canceled organization cannot
+    // run it until it pays. The per-user daily budget (checkQuota below)
+    // remains the control for organizations in good standing.
+    if (!isPlatformAdmin(user) && user.orgStatus) {
+      try {
+        assertBillableOrg({ status: user.orgStatus });
+      } catch (e) {
+        if (e instanceof SubscriptionError) return res.status(e.status).json({ code: e.code, message: e.message });
+        throw e;
+      }
+    }
     const quota = await checkQuota(store, user.id, new Date(now()));
     if (!quota.ok) {
       res.setHeader("Retry-After", String(quota.retryAfterSec));
@@ -154,7 +172,7 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
         emit: (event, data) => sse.send(event, data),
         toolContext: { userId: user.id, user, conversationId: conv.id, turnId: turn.id, deps: deps.toolDeps },
         signal: controller.signal,
-        onUsage: (u) => store.addUsage(user.id, usageUnits(u)),
+        onUsage: (u) => store.addUsage(user.id, usageUnits(u), user.orgId ?? null),
         // Each further model call re-checks the daily budget.
         beforeRequest: async () => ((await store.usageToday(user.id)) >= ASSISTANT_CONFIG.dailyTokenBudget
           ? "You've reached today's assistant usage limit, so this answer stopped early. It resets at midnight UTC."
@@ -162,7 +180,7 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
       });
     } catch (e: any) {
       console.error("[assistant] turn failed:", e?.message || e);
-      result = { status: "error", error: "The assistant ran into a problem. Try again.", usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, requests: 0 }, rounds: 0 };
+      result = { status: "error", error: "The assistant ran into a problem. Try again.", usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, requests: 0, retries: 0 }, rounds: 0 };
     } finally {
       finished = true;
       clearTimeout(hardStop);
@@ -179,6 +197,19 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
     }
     sse.send("done", { turn_id: turn.id, status: result.status, error: result.error ?? null });
     sse.close();
+  });
+
+  // The UI's "mark as stopped" for a saved "running" turn whose process is
+  // gone (see AssistantTurn). Only the owner's running turns can be marked.
+  router.post("/conversations/:id/turns/:turnId/stop", async (req: AuthRequest, res: Response) => {
+    const conv = await ownConversation(req, res);
+    if (!conv) return;
+    const turnId = parseId(String(req.params.turnId));
+    if (turnId == null) return res.status(404).json({ message: "Turn not found." });
+    if (!(await store.interruptTurn(conv.id, turnId))) {
+      return res.status(404).json({ message: "That turn isn't running anymore." });
+    }
+    res.json({ ok: true });
   });
 
   function sendDecision(res: Response, result: DecisionResult) {

@@ -237,7 +237,14 @@ export default function AIAssistantPage() {
               <EmptyState onPick={ask} disabled={!configured || streaming || creating} />
             )}
             {turns.map(({ turn, live }) => (
-              <AssistantTurn key={turn.id} turn={turn} live={live} conversationId={selectedId} />
+              <AssistantTurn
+                key={turn.id}
+                turn={turn}
+                live={live}
+                conversationId={selectedId}
+                onRetry={(q) => ask(q)}
+                onStopped={() => queryClient.invalidateQueries({ queryKey: ['assistantConversation', selectedId] })}
+              />
             ))}
           </div>
 

@@ -76,10 +76,10 @@ const makeIndividual = (npi, first, last) => ({
   email: null,
 });
 
-function setupMocks({ providers = [], scores = [], locations = [], taxonomies = [], savedFilters = [] } = {}) {
+function setupMocks({ providers = [], scores = [], locations = [], taxonomies = [], savedFilters = [], stateServer = null } = {}) {
   useQuery.mockImplementation(({ queryKey }) => {
     const key = Array.isArray(queryKey) ? queryKey[0] : queryKey;
-    if (key === 'providersPage') return { data: { providers }, isLoading: false };
+    if (key === 'providersPage') return { data: { providers, stateServer }, isLoading: false };
     if (key === 'providersPageScores') return { data: scores, isLoading: false };
     if (key === 'providersPageLocations') return { data: locations, isLoading: false };
     if (key === 'providersPageTaxonomies') return { data: taxonomies, isLoading: false };
@@ -292,7 +292,7 @@ describe('Providers page – server search results', () => {
   it("keeps the server's matches instead of re-filtering them in the browser", () => {
     // "John Smith" matches no single name column, and the provider's PA
     // location isn't among the capped locations loaded for the page.
-    setupMocks({ providers: [makeIndividual('6666666666', 'John', 'Smith')], locations: [] });
+    setupMocks({ providers: [makeIndividual('6666666666', 'John', 'Smith')], locations: [], stateServer: 'PA' });
     renderProviders('/Providers?q=john%20smith&state=PA');
     expect(screen.getByText('Smith, John')).toBeInTheDocument();
   });

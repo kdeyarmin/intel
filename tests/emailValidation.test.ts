@@ -126,96 +126,140 @@ describe("isValidEmailSyntax", () => {
 
 describe("shouldPromoteToPrimary", () => {
   const VALID_EMAIL = "dr.jones@hospital.edu";
+  // Stub for the independent (DNS) check so these tests don't need the network.
+  const cleanCheck = async () => ({ ok: true, detail: null });
+  const dirtyCheck = async () => ({ ok: false, detail: "no mail servers" });
 
-  // --- promotion allowed ---
-  it("promotes a valid email with no confidence or validation_status flags", () => {
-    expect(shouldPromoteToPrimary({ email: VALID_EMAIL })).toBe(true);
-  });
-
-  it("promotes when confidence is 'high'", () => {
-    expect(shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "high" })).toBe(true);
-  });
-
-  it("promotes when confidence is 'medium'", () => {
-    expect(shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "medium" })).toBe(true);
-  });
-
-  it("promotes when validation_status is 'valid'", () => {
-    expect(shouldPromoteToPrimary({ email: VALID_EMAIL, validation_status: "valid" })).toBe(true);
-  });
-
-  it("promotes when validation_status is 'unknown'", () => {
-    expect(shouldPromoteToPrimary({ email: VALID_EMAIL, validation_status: "unknown" })).toBe(true);
-  });
-
-  it("promotes when both confidence and validation_status are OK", () => {
+  // --- promotion allowed: high confidence + a self-grade that doesn't veto + a clean independent check ---
+  it("promotes when confidence is high, status is valid and the independent check is clean", async () => {
     expect(
-      shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "high", validation_status: "valid" })
+      await shouldPromoteToPrimary(
+        { email: VALID_EMAIL, confidence: "high", validation_status: "valid" },
+        cleanCheck,
+      )
     ).toBe(true);
   });
 
-  // --- promotion blocked ---
-  it("does not promote when confidence is 'low'", () => {
-    expect(shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "low" })).toBe(false);
-  });
-
-  it("does not promote when validation_status is 'invalid'", () => {
-    expect(shouldPromoteToPrimary({ email: VALID_EMAIL, validation_status: "invalid" })).toBe(false);
-  });
-
-  it("does not promote when both confidence is low and status is invalid", () => {
+  it("promotes when confidence is high and the model gave no validation_status", async () => {
     expect(
-      shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "low", validation_status: "invalid" })
+      await shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "high" }, cleanCheck)
+    ).toBe(true);
+  });
+
+  it("promotes when confidence is high and validation_status is 'unknown'", async () => {
+    expect(
+      await shouldPromoteToPrimary(
+        { email: VALID_EMAIL, confidence: "high", validation_status: "unknown" },
+        cleanCheck,
+      )
+    ).toBe(true);
+  });
+
+  // --- the model is never both guesser and grader ---
+  it("does not promote when confidence is 'medium', even with a clean independent check", async () => {
+    expect(
+      await shouldPromoteToPrimary(
+        { email: VALID_EMAIL, confidence: "medium", validation_status: "valid" },
+        cleanCheck,
+      )
     ).toBe(false);
   });
 
-  it("does not promote when email is null", () => {
-    expect(shouldPromoteToPrimary({ email: null, confidence: "high" })).toBe(false);
+  it("does not promote when confidence is missing", async () => {
+    expect(await shouldPromoteToPrimary({ email: VALID_EMAIL }, cleanCheck)).toBe(false);
   });
 
-  it("does not promote when email is undefined", () => {
-    expect(shouldPromoteToPrimary({ email: undefined, confidence: "high" })).toBe(false);
+  it("does not promote when confidence is 'low'", async () => {
+    expect(
+      await shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "low" }, cleanCheck)
+    ).toBe(false);
   });
 
-  it("does not promote when email is syntactically invalid", () => {
-    expect(shouldPromoteToPrimary({ email: "notanemail", confidence: "high" })).toBe(false);
+  it("does not promote when validation_status is 'risky'", async () => {
+    expect(
+      await shouldPromoteToPrimary(
+        { email: VALID_EMAIL, confidence: "high", validation_status: "risky" },
+        cleanCheck,
+      )
+    ).toBe(false);
   });
 
-  it("does not promote when email is on the bogus domain list", () => {
-    expect(shouldPromoteToPrimary({ email: "user@example.com", confidence: "high" })).toBe(false);
+  it("does not promote when validation_status is 'invalid'", async () => {
+    expect(
+      await shouldPromoteToPrimary(
+        { email: VALID_EMAIL, confidence: "high", validation_status: "invalid" },
+        cleanCheck,
+      )
+    ).toBe(false);
   });
 
-  it("does not promote when the candidate object itself is null-ish", () => {
+  it("does not promote when the independent check fails, even with high confidence", async () => {
+    expect(
+      await shouldPromoteToPrimary(
+        { email: VALID_EMAIL, confidence: "high", validation_status: "valid" },
+        dirtyCheck,
+      )
+    ).toBe(false);
+  });
+
+  // --- syntax guards still apply ---
+  it("does not promote when email is null", async () => {
+    expect(await shouldPromoteToPrimary({ email: null, confidence: "high" }, cleanCheck)).toBe(false);
+  });
+
+  it("does not promote when email is undefined", async () => {
+    expect(await shouldPromoteToPrimary({ email: undefined, confidence: "high" }, cleanCheck)).toBe(false);
+  });
+
+  it("does not promote when email is syntactically invalid", async () => {
+    expect(
+      await shouldPromoteToPrimary({ email: "notanemail", confidence: "high" }, cleanCheck)
+    ).toBe(false);
+  });
+
+  it("does not promote when email is on the bogus domain list", async () => {
+    expect(
+      await shouldPromoteToPrimary({ email: "user@example.com", confidence: "high" }, cleanCheck)
+    ).toBe(false);
+  });
+
+  it("does not promote when the candidate object itself is null-ish", async () => {
     // The function guards candidate?.email, so a missing property chain is safe.
-    expect(shouldPromoteToPrimary({} as any)).toBe(false);
+    expect(await shouldPromoteToPrimary({} as any, cleanCheck)).toBe(false);
   });
 
   // --- edge / boundary ---
-  it("treats an empty email string as invalid (no promotion)", () => {
-    expect(shouldPromoteToPrimary({ email: "", confidence: "high" })).toBe(false);
+  it("treats an empty email string as invalid (no promotion)", async () => {
+    expect(await shouldPromoteToPrimary({ email: "", confidence: "high" }, cleanCheck)).toBe(false);
   });
 
-  it("does not care about extra unknown fields on the candidate", () => {
+  it("does not care about extra unknown fields on the candidate", async () => {
     const candidate = {
       email: VALID_EMAIL,
-      confidence: "medium",
+      confidence: "high",
       validation_status: "valid",
       extra_field: "irrelevant",
     };
-    expect(shouldPromoteToPrimary(candidate)).toBe(true);
+    expect(await shouldPromoteToPrimary(candidate, cleanCheck)).toBe(true);
   });
 
   // Regression: 'low' confidence must block even when validation_status is 'valid'.
-  it("regression: low confidence blocks promotion even if status is valid", () => {
+  it("regression: low confidence blocks promotion even if status is valid", async () => {
     expect(
-      shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "low", validation_status: "valid" })
+      await shouldPromoteToPrimary(
+        { email: VALID_EMAIL, confidence: "low", validation_status: "valid" },
+        cleanCheck,
+      )
     ).toBe(false);
   });
 
-  // Regression: 'invalid' status must block even when confidence is 'high'.
-  it("regression: invalid status blocks promotion even if confidence is high", () => {
+  // Regression: 'invalid' status must block even when confidence is high.
+  it("regression: invalid status blocks promotion even if confidence is high", async () => {
     expect(
-      shouldPromoteToPrimary({ email: VALID_EMAIL, confidence: "high", validation_status: "invalid" })
+      await shouldPromoteToPrimary(
+        { email: VALID_EMAIL, confidence: "high", validation_status: "invalid" },
+        cleanCheck,
+      )
     ).toBe(false);
   });
 });

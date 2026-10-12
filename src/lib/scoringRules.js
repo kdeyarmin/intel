@@ -3,14 +3,22 @@
 // computed on the server by the lead scoring job; this file only describes
 // the rules so the Scoring Rules page can seed, label and edit them.
 
+/**
+ * Services per beneficiary at or above which a provider counts as high
+ * intensity ("Complex Care" in the lead list UI). Canonical value shared with
+ * the server (server/lib/leadScoring.ts HIGH_INTENSITY_THRESHOLD); keep the
+ * two in sync.
+ */
+export const HIGH_INTENSITY_THRESHOLD = 8;
+
 export const DEFAULT_SCORING_RULES = [
-  { name: 'Specialty Match', rule_type: 'specialty_match', weight: 20, description: 'Primary-care and geriatric specialties that refer to post-acute care (the groups are in Conditions)', conditions: { groups: ['family_medicine', 'internal_medicine', 'geriatrics', 'nurse_practitioner', 'physician_assistant', 'psychiatry'] } },
-  { name: 'Medicare Participation', rule_type: 'medicare_participation', weight: 15, description: 'On the CMS Order & Referring list, or billing Medicare Part B' },
-  { name: 'Patient Volume', rule_type: 'patient_volume', weight: 20, description: 'Medicare beneficiaries served (Physician & Other Practitioners by Provider)' },
-  { name: 'Service Intensity', rule_type: 'service_intensity', weight: 15, description: 'Medicare services per beneficiary' },
-  { name: 'Geographic Priority', rule_type: 'geographic_priority', weight: 10, description: 'Practice location in the target states and counties (Conditions); scoring covers the listed states', conditions: { states: ['PA'], counties: [] } },
-  { name: 'Practice Type', rule_type: 'practice_type', weight: 10, description: 'Solo or small group practice preference' },
-  { name: 'Behavioral Health Potential', rule_type: 'behavioral_health', weight: 10, description: 'Mental health referral likelihood' },
+  { name: 'Specialty Match', rule_type: 'specialty_match', weight: 20, enabled: true, description: 'Primary-care and geriatric specialties that refer to post-acute care (the groups are in Conditions)', conditions: { groups: ['family_medicine', 'internal_medicine', 'geriatrics', 'nurse_practitioner', 'physician_assistant', 'psychiatry'] } },
+  { name: 'Medicare Participation', rule_type: 'medicare_participation', weight: 15, enabled: true, description: 'On the CMS Order & Referring list, or billing Medicare Part B' },
+  { name: 'Patient Volume', rule_type: 'patient_volume', weight: 20, enabled: true, description: 'Medicare beneficiaries served (Physician & Other Practitioners by Provider)' },
+  { name: 'Service Intensity', rule_type: 'service_intensity', weight: 15, enabled: true, description: 'Medicare services per beneficiary' },
+  { name: 'Geographic Priority', rule_type: 'geographic_priority', weight: 10, enabled: true, description: 'Practice location in the target states and counties (Conditions); scoring covers the listed states', conditions: { states: ['PA'], counties: [] } },
+  { name: 'Practice Type', rule_type: 'practice_type', weight: 10, enabled: true, description: 'Solo or small group practice preference' },
+  { name: 'Behavioral Health Potential', rule_type: 'behavioral_health', weight: 10, enabled: true, description: 'Mental health referral likelihood' },
 ];
 
 /** The rules whose Conditions the page lets you edit, and which list each one holds. */

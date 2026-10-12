@@ -3,8 +3,10 @@ import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { isPlatformAdmin } from "../lib/roles";
 import { rateLimit } from "../middleware/rateLimit";
 import { CLAUDE_MODELS } from "../lib/aiModels";
-import { isFunctionAuthorized, isFunctionAllowedFor } from "../lib/functionAcl";
+import { isFunctionAllowedFor } from "../lib/functionAcl";
+import { assertBillableOrg, orgAccessTier, SubscriptionError } from "../lib/entitlements";
 import { publicErrorMessage } from "../lib/publicError";
+import { consumeQuota } from "../lib/orgQuota";
 
 const router = Router();
 
@@ -18,7 +20,41 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
     });
   }
 
+  // Cost-incurring calls are gated on the organization's billing status: a
+  // past_due or canceled organization keeps read-only access, but it may not
+  // send paid email or burn AI tokens until it pays. The platform's own
+  // operation (admin-only functions) is not a customer's spend.
+  const requireBillableOrg = () => {
+    if (isPlatformAdmin(req.user)) return;
+    assertBillableOrg({ status: req.user?.orgStatus });
+  };
+
   try {
+    // The dunning ladder's last rung (orgAccessTier): an organization that is
+    // canceled, or past_due for 14+ days, is billing-only — it can sign in and
+    // use the Billing page, but function calls are closed until it pays.
+    // getGeoCounties stays open: the Billing page's territory picker calls it,
+    // and it serves public census reference data only.
+    if (
+      functionName !== "getGeoCounties"
+      && !isPlatformAdmin(req.user)
+      && req.user?.orgStatus
+      && orgAccessTier({ status: req.user.orgStatus, billingStatusSince: req.user.orgBillingStatusSince }) === "billing_only"
+    ) {
+      throw new SubscriptionError("Your organization's subscription has lapsed. An owner can update payment on the Billing page to restore access.");
+    }
+
+    // Export-sized data fetches are metered server-side (A5.2): when the
+    // caller asks for the export payload (for_export: true), one export is
+    // consumed from the organization's daily quota before the handler runs.
+    // The 429 carries its quota_exceeded code through the catch below, so the
+    // count cannot be skipped by dropping the client's separate countExport()
+    // call. Handlers that serve export-sized payloads (e.g. getDMEProviders)
+    // lift their view caps only when this flag is set.
+    if (req.body?.for_export === true) {
+      await consumeQuota(req.user, "exports");
+    }
+
     switch (functionName) {
       case "getDashboardStats": {
         const { getDashboardStats } = await import("../lib/dashboardStats");
@@ -112,7 +148,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         const provEst = await db.execute(sql`SELECT reltuples::bigint AS est FROM pg_class WHERE relname = 'providers'`);
         // reltuples is -1 for a never-ANALYZEd table (PG14+); clamp to 0.
         const providerCount = Math.max(0, Number((((provEst as any).rows || provEst) || [])[0]?.est) || 0);
-        const [alertCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts);
+        const [alertCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts).where(sql`status = 'new'`);
         const [scanCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityScans);
         // Completeness and accuracy come from the latest completed quality
         // scan (a sampled scan; see runDataQualityScan), not from a constant.
@@ -203,6 +239,8 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleMatchProvidersToLocations(req.body));
       }
       case "generateScheduledReport": {
+        // Sends email with the report; gate on billing before the rate limit.
+        requireBillableOrg();
         const { consumeToken } = await import("../middleware/rateLimit");
         if (!consumeToken(`scheduledReport:${req.user?.id ?? "anon"}`, 6, 60_000)) {
           return res.status(429).json({ message: "Too many report runs. Try again in a minute." });
@@ -259,7 +297,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
       case "enrichmentJobStart":
       case "intelJobStart": {
         const { handleIntelJobStart } = await import("../functions/providerIntelligenceBot");
-        return res.json(await handleIntelJobStart(req.body));
+        return res.json(await handleIntelJobStart(req.body, { id: req.user!.id, orgId: req.user!.orgId ?? null }));
       }
       case "enrichmentJobStop":
       case "intelJobStop": {
@@ -312,6 +350,8 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleCleanProviderData(req.body));
       }
       case "analyzeProviderNetwork": {
+        // The "full" analysis calls the AI; the rules analysis is read-only.
+        if (req.body?.analysis_type === "full") requireBillableOrg();
         const { consumeToken } = await import("../middleware/rateLimit");
         if (!consumeToken(`networkAnalysis:${req.user?.id ?? "anon"}`, 10, 60_000)) {
           return res.status(429).json({ message: "Too many network analyses. Try again in a minute." });
@@ -427,10 +467,13 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
       }
       case "sendCampaignMessages": {
         // Admin-only (not in PUBLIC_FUNCTIONS): sends real email.
+        requireBillableOrg();
         const { handleSendCampaignMessages } = await import("../functions/outreach");
         return res.json(await handleSendCampaignMessages(req.body, req.user));
       }
       case "calculateOutreachScore": {
+        // The AI strategy costs tokens; the rules-only score is free.
+        if (req.body?.with_ai) requireBillableOrg();
         const { consumeToken } = await import("../middleware/rateLimit");
         if (!consumeToken(`outreachScore:${req.user?.id ?? "anon"}`, 30, 60_000)) {
           return res.status(429).json({ message: "Too many score calculations. Try again in a minute." });
@@ -568,7 +611,7 @@ Be concise and helpful. Use markdown formatting for readability.`;
 
       case "getComprehensiveReport": {
         const { handleGetComprehensiveReport } = await import("../functions/comprehensiveReport");
-        return res.json(await handleGetComprehensiveReport(req.body));
+        return res.json(await handleGetComprehensiveReport(req.body, req.user));
       }
 
       case "getDMEProviders": {
@@ -591,7 +634,7 @@ Be concise and helpful. Use markdown formatting for readability.`;
       case "searchProviders": {
         // Server-side provider search (see server/lib/providerSearch.ts).
         const { handleSearchProviders } = await import("../functions/search");
-        return res.json(await handleSearchProviders(req.body));
+        return res.json(await handleSearchProviders(req.body, req.user));
       }
 
       case "getOperationsAlerts": {
@@ -653,7 +696,7 @@ Be concise and helpful. Use markdown formatting for readability.`;
 
       case "searchLocations": {
         const { handleSearchLocations } = await import("../functions/search");
-        return res.json(await handleSearchLocations(req.body));
+        return res.json(await handleSearchLocations(req.body, req.user));
       }
 
       default:
@@ -664,7 +707,12 @@ Be concise and helpful. Use markdown formatting for readability.`;
   } catch (e: any) {
     const statusCode = e.status || 500;
     console.error(`[Function ${functionName} Error]`, e.message);
-    res.status(statusCode).json({ message: publicErrorMessage(e) });
+    // Deliberate HTTP errors carry a machine-readable code (quota_exceeded,
+    // outside_territory, subscription_inactive, …); internal failures stay
+    // message-only so nothing about the stack leaks.
+    const body: Record<string, unknown> = { message: publicErrorMessage(e) };
+    if (e.status && typeof e.code === "string") body.code = e.code;
+    res.status(statusCode).json(body);
   }
 });
 

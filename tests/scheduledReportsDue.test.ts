@@ -13,6 +13,15 @@ import { scheduleSignature } from "../server/lib/reportAggregate";
 const created = new Date("2026-01-01T00:00:00Z");
 const weekly = { frequency: "weekly", schedule_day: "Monday", schedule_time: "08:00", is_active: true };
 
+// The billable-org gate (assertScheduleOrgBillable) looks the schedule's org
+// status up before any billable work; these tests run as a billable org
+// unless a test overrides the row.
+const billableOrgRow = (sql: string) =>
+  sql.startsWith("SELECT status FROM organizations WHERE id") ? { rows: [{ status: "active" }] } : null;
+// consumeQuota's single-statement upsert: pretend the quota has room.
+const quotaRoom = (sql: string) =>
+  sql.includes("INSERT INTO org_usage") ? { rows: [{ used: 1, limit_value: 500 }] } : null;
+
 beforeEach(() => {
   query.mockReset();
   vi.useFakeTimers();
@@ -27,8 +36,12 @@ afterEach(() => {
 describe("runDueScheduledReports", () => {
   it("pages through every active schedule instead of the first 500", async () => {
     const page1 = Array.from({ length: 500 }, (_, i) => ({ id: i + 1, name: `r${i}`, created_date: created, config: { ...weekly } }));
-    const page2 = [{ id: 501, name: "late", created_date: created, config: { ...weekly } }];
+    const page2 = [{ id: 501, name: "late", created_date: created, org_id: 1, config: { ...weekly } }];
     query.mockImplementation(async (sql: string, params: any[]) => {
+      const org = billableOrgRow(sql);
+      if (org) return org;
+      const quota = quotaRoom(sql);
+      if (quota) return quota;
       if (sql.startsWith(SCAN)) return { rows: params[0] === 0 ? page1 : params[0] === 500 ? page2 : [] };
       return { rows: [], rowCount: 1 };
     });
@@ -41,7 +54,11 @@ describe("runDueScheduledReports", () => {
   it("stores the next run of a new or edited schedule that isn't due yet", async () => {
     const edited = { ...weekly, schedule_day: "Tuesday", next_run_at: "2026-01-05T13:00:00.000Z", schedule_signature: scheduleSignature(weekly) };
     query.mockImplementation(async (sql: string, params: any[]) => {
-      if (sql.startsWith(SCAN)) return { rows: params[0] === 0 ? [{ id: 7, name: "x", created_date: created, config: edited }] : [] };
+      const org = billableOrgRow(sql);
+      if (org) return org;
+      const quota = quotaRoom(sql);
+      if (quota) return quota;
+      if (sql.startsWith(SCAN)) return { rows: params[0] === 0 ? [{ id: 7, name: "x", created_date: created, org_id: 1, config: edited }] : [] };
       return { rows: [], rowCount: 1 };
     });
     await handleRunDueScheduledReports();
@@ -60,7 +77,11 @@ describe("runDueScheduledReports", () => {
       schedule_signature: scheduleSignature(weekly),
     };
     query.mockImplementation(async (sql: string, params: any[]) => {
-      if (sql.startsWith(SCAN)) return { rows: params[0] === 0 ? [{ id: 8, name: "x", created_date: created, config: edited }] : [] };
+      const org = billableOrgRow(sql);
+      if (org) return org;
+      const quota = quotaRoom(sql);
+      if (quota) return quota;
+      if (sql.startsWith(SCAN)) return { rows: params[0] === 0 ? [{ id: 8, name: "x", created_date: created, org_id: 1, config: edited }] : [] };
       return { rows: [], rowCount: 1 };
     });
     await handleRunDueScheduledReports();
@@ -77,6 +98,10 @@ describe("runDueScheduledReports", () => {
       config: { ...weekly, next_run_at: new Date(Date.UTC(2026, 0, 1, 23 - i)).toISOString(), schedule_signature: scheduleSignature(weekly) },
     }));
     query.mockImplementation(async (sql: string, params: any[]) => {
+      const org = billableOrgRow(sql);
+      if (org) return org;
+      const quota = quotaRoom(sql);
+      if (quota) return quota;
       if (sql.startsWith(SCAN)) return { rows: params[0] === 0 ? due : [] };
       return { rows: [], rowCount: 0 }; // claim lost: nothing is sent
     });
@@ -90,9 +115,13 @@ describe("runDueScheduledReports", () => {
   it("claims a schedule only if it wasn't edited or switched off, and sends the claimed version", async () => {
     process.env.REPORT_RECIPIENT_DOMAINS = "example.com";
     const cfg = { ...weekly, dataset: "providers", metrics: ["npi"], include_summary: false, include_csv: false, next_run_at: "2026-01-01T08:00:00.000Z", schedule_signature: scheduleSignature(weekly) };
-    const scanned = { id: 3, name: "weekly", created_date: created, updated_stamp: "2026-01-01 09:00:00.123456", recipients: ["old@example.com"], config: cfg };
-    const fresh = { id: 3, name: "weekly", created_date: created, recipients: ["new@example.com"], config: { ...cfg, next_run_at: "lease" } };
+    const scanned = { id: 3, name: "weekly", created_date: created, org_id: 1, updated_stamp: "2026-01-01 09:00:00.123456", recipients: ["old@example.com"], config: cfg };
+    const fresh = { id: 3, name: "weekly", created_date: created, org_id: 1, recipients: ["new@example.com"], config: { ...cfg, next_run_at: "lease" } };
     query.mockImplementation(async (sql: string, params: any[]) => {
+      const org = billableOrgRow(sql);
+      if (org) return org;
+      const quota = quotaRoom(sql);
+      if (quota) return quota;
       if (sql.startsWith(SCAN)) return { rows: params[0] === 0 ? [scanned] : [] };
       if (sql.includes("RETURNING *")) return { rows: [fresh], rowCount: 1 };
       return { rows: [], rowCount: 1 };
@@ -110,7 +139,11 @@ describe("runDueScheduledReports", () => {
     process.env.REPORT_RECIPIENT_DOMAINS = "example.com";
     const cfg = { ...weekly, dataset: "providers", metrics: ["npi"], include_summary: false, include_csv: false, next_run_at: "2026-01-05T13:00:00.000Z", schedule_signature: scheduleSignature(weekly) };
     query.mockImplementation(async (sql: string) => {
-      if (sql.startsWith("SELECT * FROM scheduled_reports WHERE id")) return { rows: [{ id: 4, name: "weekly", created_date: created, recipients: ["a@example.com"], config: cfg }] };
+      const org = billableOrgRow(sql);
+      if (org) return org;
+      const quota = quotaRoom(sql);
+      if (quota) return quota;
+      if (sql.startsWith("SELECT * FROM scheduled_reports WHERE id")) return { rows: [{ id: 4, name: "weekly", created_date: created, org_id: 1, recipients: ["a@example.com"], config: cfg }] };
       return { rows: [], rowCount: 1 };
     });
     const out: any = await handleGenerateScheduledReport({ action: "run_single", report_id: 4 }, { role: "admin", orgId: 1 });
@@ -126,7 +159,11 @@ describe("runDueScheduledReports", () => {
     process.env.REPORT_RECIPIENT_DOMAINS = "example.com";
     const cfg = { ...weekly, dataset: "providers", metrics: ["npi"], include_summary: false };
     query.mockImplementation(async (sql: string) => {
-      if (sql.startsWith("SELECT * FROM scheduled_reports WHERE id")) return { rows: [{ id: 6, name: "weekly", created_date: created, recipients: ["a@example.com"], config: cfg }] };
+      const org = billableOrgRow(sql);
+      if (org) return org;
+      const quota = quotaRoom(sql);
+      if (quota) return quota;
+      if (sql.startsWith("SELECT * FROM scheduled_reports WHERE id")) return { rows: [{ id: 6, name: "weekly", created_date: created, org_id: 1, recipients: ["a@example.com"], config: cfg }] };
       return { rows: [], rowCount: 1 };
     });
     const out: any = await handleGenerateScheduledReport({ action: "preview", report_id: 6 }, { role: "user", orgId: 1 });

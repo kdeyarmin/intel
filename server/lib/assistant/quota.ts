@@ -22,6 +22,9 @@ export async function checkQuota(store: AssistantStore, userId: number, now = ne
       retryAfterSec: secondsUntilUtcMidnight(now),
     };
   }
+  // consumeToken is in-memory per process: a second server instance has its own
+  // bucket, so this per-minute limit is approximate under horizontal scaling
+  // (the daily token budget above is in the database and holds everywhere).
   if (!consumeToken(`assistant:${userId}`, ASSISTANT_CONFIG.requestsPerMinute, 60_000)) {
     return { ok: false, status: 429, message: "You're sending questions faster than the assistant allows. Wait a minute and try again.", retryAfterSec: 60 };
   }

@@ -26,6 +26,10 @@ import billingRoutes from "./routes/billing";
 import webhookRoutes from "./routes/webhooks";
 import publicRoutes from "./routes/public";
 
+// Postgres advisory lock guarding startup import recovery (see app.listen).
+// Arbitrary; distinct from TICK_LOCK (maintenanceTicker) and the migration lock.
+const IMPORT_RECOVERY_LOCK = 4206921;
+
 const app = express();
 
 // Which X-Forwarded-For hops to believe when working out a client's address
@@ -142,121 +146,158 @@ app.listen(PORT, "0.0.0.0", async () => {
     } else if (seed?.outcome === "invalid_email") {
       console.warn("[CareMetric API] ADMIN_EMAIL isn't a valid email address; skipping admin seed.");
     }
-    const { and } = await import("drizzle-orm");
-
-    const isCrawler = (b: any) => b.import_type === "nppes_registry" && b.file_name?.startsWith("crawler_");
-
-    const activeBatches = await safeStartupQuery(
-      () => db.select().from(importBatches).where(inArray(importBatches.status, ["processing", "validating"])),
-      [] as any[], "fetch active batches"
-    );
-
-    const failedCrawlerBatches = await safeStartupQuery(
-      () => db.select().from(importBatches).where(and(
-        eq(importBatches.import_type, "nppes_registry"),
-        eq(importBatches.status, "failed"),
-      )),
-      [] as any[], "fetch failed crawlers"
-    );
-    const resumableFailedCrawlers = failedCrawlerBatches.filter(b => isCrawler(b) && ((b as any).imported_rows > 0));
-    const emptyFailedCrawlers = failedCrawlerBatches.filter(b => isCrawler(b) && !((b as any).imported_rows > 0));
-
-    const crawlerActive = activeBatches.filter(isCrawler);
-    const cmsActive = activeBatches.filter(b => !isCrawler(b));
-
-    if (emptyFailedCrawlers.length > 0) {
-      console.log(`[CareMetric API] Resetting ${emptyFailedCrawlers.length} empty failed crawler batch(es) to paused`);
-      const { nppesQueueItems } = await import("./db/schema");
-      for (const batch of emptyFailedCrawlers) {
-        await safeStartupQuery(
-          () => db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, batch.id)),
-          undefined, `pause empty crawler ${batch.id}`
-        );
-        await safeStartupQuery(
-          () => db.update(nppesQueueItems)
-            .set({ status: "pending", updated_date: new Date() })
-            .where(and(eq(nppesQueueItems.batch_id, batch.id), eq(nppesQueueItems.status, "failed"))),
-          undefined, `reset queue ${batch.id}`
-        );
-      }
+    // Startup import recovery runs on ONE instance only. A non-blocking
+    // Postgres advisory lock (same pattern as TICK_LOCK in
+    // server/lib/maintenanceTicker.ts) keeps parallel instances from
+    // pausing/resuming the same batches and launching duplicate import loops.
+    // The lock is released once recovery is scheduled; the loser skips.
+    let recoveryLocked = false;
+    let recoveryLockClient: any = null;
+    try {
+      recoveryLockClient = await dbPool.connect();
+      const { rows: recoveryLockRows } = await recoveryLockClient.query("SELECT pg_try_advisory_lock($1) AS ok", [IMPORT_RECOVERY_LOCK]);
+      recoveryLocked = !!recoveryLockRows[0]?.ok;
+    } catch (e: any) {
+      console.warn(`[CareMetric API] Startup recovery lock unavailable: ${e.message}; skipping import recovery`);
     }
+    if (!recoveryLocked) {
+      console.log(`[CareMetric API] Another instance is running startup import recovery; skipping`);
+      if (recoveryLockClient) recoveryLockClient.release();
+    } else {
+      try {
+        const { and } = await import("drizzle-orm");
 
-    if (crawlerActive.length > 0 || resumableFailedCrawlers.length > 0) {
-      const allCrawlerIds = [...crawlerActive, ...resumableFailedCrawlers];
-      console.log(`[CareMetric API] Recovering ${allCrawlerIds.length} NPPES crawler batch(es)`);
+        const isCrawler = (b: any) => b.import_type === "nppes_registry" && b.file_name?.startsWith("crawler_");
 
-      const { nppesQueueItems } = await import("./db/schema");
-      for (const batch of crawlerActive) {
-        await safeStartupQuery(
-          () => db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, batch.id)),
-          undefined, `pause crawler ${batch.id}`
+        const activeBatches = await safeStartupQuery(
+          () => db.select().from(importBatches).where(inArray(importBatches.status, ["processing", "validating"])),
+          [] as any[], "fetch active batches"
         );
-        await safeStartupQuery(
-          () => db.update(nppesQueueItems)
-            .set({ status: "pending", updated_date: new Date() })
-            .where(and(eq(nppesQueueItems.batch_id, batch.id), inArray(nppesQueueItems.status, ["processing"]))),
-          undefined, `reset processing ${batch.id}`
+
+        const failedCrawlerBatches = await safeStartupQuery(
+          () => db.select().from(importBatches).where(and(
+            eq(importBatches.import_type, "nppes_registry"),
+            eq(importBatches.status, "failed"),
+          )),
+          [] as any[], "fetch failed crawlers"
         );
-      }
+        const resumableFailedCrawlers = failedCrawlerBatches.filter(b => isCrawler(b) && ((b as any).imported_rows > 0));
+        const emptyFailedCrawlers = failedCrawlerBatches.filter(b => isCrawler(b) && !((b as any).imported_rows > 0));
 
-      for (const batch of resumableFailedCrawlers) {
-        await safeStartupQuery(
-          () => db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, batch.id)),
-          undefined, `pause failed crawler ${batch.id}`
-        );
-        await safeStartupQuery(
-          () => db.update(nppesQueueItems)
-            .set({ status: "pending", updated_date: new Date() })
-            .where(and(eq(nppesQueueItems.batch_id, batch.id), eq(nppesQueueItems.status, "failed"))),
-          undefined, `reset failed items ${batch.id}`
-        );
-      }
+        const crawlerActive = activeBatches.filter(isCrawler);
+        const cmsActive = activeBatches.filter(b => !isCrawler(b));
 
-      setTimeout(async () => {
-        try {
-          const { handleNppesCrawler, startCrawlerWatchdog } = await import("./functions/nppesCrawler");
-          await handleNppesCrawler({ action: "batch_resume" }, { role: "admin" });
-          console.log(`[CareMetric API] NPPES crawler batches resumed`);
-          startCrawlerWatchdog();
-        } catch (e: any) {
-          console.error(`[CareMetric API] NPPES auto-resume failed:`, e.message);
-        }
-      }, 5000);
-    }
-
-    if (cmsActive.length > 0) {
-      console.log(`[CareMetric API] Recovering ${cmsActive.length} import batch(es)`);
-      const { handleAutoImportCMSData, endedWithoutFinishing } = await import("./functions/triggerImport");
-      const { handleImportNPPESFlatFile } = await import("./functions/importNPPESFlatFile");
-      const { handleImportNPPESFile } = await import("./functions/importNPPESFile");
-      const { planRecovery } = await import("./lib/importRecovery");
-
-      for (let i = 0; i < cmsActive.length; i++) {
-        const batch = cmsActive[i] as any;
-        const plan = planRecovery(batch);
-
-        if (plan.action === "fail") {
-          await db.update(importBatches).set({
-            status: "failed",
-            error_samples: [{ row: 0, message: plan.reason }],
-            updated_date: new Date(),
-          }).where(eq(importBatches.id, batch.id));
-          console.log(`  - Batch ${batch.id} (${batch.import_type}) failed — ${plan.reason}`);
-          await endedWithoutFinishing(String(batch.import_type), batch.id, "failed", plan.reason);
-          continue;
+        if (emptyFailedCrawlers.length > 0) {
+          console.log(`[CareMetric API] Resetting ${emptyFailedCrawlers.length} empty failed crawler batch(es) to paused`);
+          const { nppesQueueItems } = await import("./db/schema");
+          for (const batch of emptyFailedCrawlers) {
+            await safeStartupQuery(
+              () => db.update(importBatches).set({ status: "paused", paused_by: "system", updated_date: new Date() }).where(eq(importBatches.id, batch.id)),
+              undefined, `pause empty crawler ${batch.id}`
+            );
+            await safeStartupQuery(
+              () => db.update(nppesQueueItems)
+                .set({ status: "pending", updated_date: new Date() })
+                .where(and(eq(nppesQueueItems.batch_id, batch.id), eq(nppesQueueItems.status, "failed"))),
+              undefined, `reset queue ${batch.id}`
+            );
+          }
         }
 
-        await db.update(importBatches).set({ updated_date: new Date() }).where(eq(importBatches.id, batch.id));
-        const run = plan.action === "nppes_flat_file" ? handleImportNPPESFlatFile : plan.action === "nppes_file" ? handleImportNPPESFile : handleAutoImportCMSData;
-        setTimeout(() => {
-          run(plan.params as any).catch((e: any) => console.error(`[CareMetric API] Batch ${batch.id} resume failed:`, e.message));
-        }, 10000 + i * 5000);
-        console.log(`  - Batch ${batch.id} (${batch.import_type}) resuming from ${plan.action === "nppes_flat_file" ? `byte ${plan.params.byte_offset}` : `offset ${plan.params.resume_offset}`} (delay ${10 + i * 5}s)`);
-      }
-    }
+        if (crawlerActive.length > 0 || resumableFailedCrawlers.length > 0) {
+          const allCrawlerIds = [...crawlerActive, ...resumableFailedCrawlers];
+          console.log(`[CareMetric API] Recovering ${allCrawlerIds.length} NPPES crawler batch(es)`);
 
-    if (activeBatches.length === 0 && resumableFailedCrawlers.length === 0) {
-      console.log(`[CareMetric API] No imports to recover`);
+          const { nppesQueueItems } = await import("./db/schema");
+          for (const batch of crawlerActive) {
+            await safeStartupQuery(
+              () => db.update(importBatches).set({ status: "paused", paused_by: "system", updated_date: new Date() }).where(eq(importBatches.id, batch.id)),
+              undefined, `pause crawler ${batch.id}`
+            );
+            await safeStartupQuery(
+              () => db.update(nppesQueueItems)
+                .set({ status: "pending", updated_date: new Date() })
+                .where(and(eq(nppesQueueItems.batch_id, batch.id), inArray(nppesQueueItems.status, ["processing"]))),
+              undefined, `reset processing ${batch.id}`
+            );
+          }
+
+          for (const batch of resumableFailedCrawlers) {
+            await safeStartupQuery(
+              () => db.update(importBatches).set({ status: "paused", paused_by: "system", updated_date: new Date() }).where(eq(importBatches.id, batch.id)),
+              undefined, `pause failed crawler ${batch.id}`
+            );
+            await safeStartupQuery(
+              () => db.update(nppesQueueItems)
+                .set({ status: "pending", updated_date: new Date() })
+                .where(and(eq(nppesQueueItems.batch_id, batch.id), eq(nppesQueueItems.status, "failed"))),
+              undefined, `reset failed items ${batch.id}`
+            );
+          }
+
+          setTimeout(async () => {
+            try {
+              const { handleNppesCrawler, startCrawlerWatchdog } = await import("./functions/nppesCrawler");
+              await handleNppesCrawler({ action: "batch_resume" }, { role: "admin" });
+              console.log(`[CareMetric API] NPPES crawler batches resumed`);
+              startCrawlerWatchdog();
+            } catch (e: any) {
+              console.error(`[CareMetric API] NPPES auto-resume failed:`, e.message);
+            }
+          }, 5000);
+        }
+
+        if (cmsActive.length > 0) {
+          console.log(`[CareMetric API] Recovering ${cmsActive.length} import batch(es)`);
+          const { handleAutoImportCMSData, endedWithoutFinishing, recordImportFailureAlert } = await import("./functions/triggerImport");
+          const { handleImportNPPESFlatFile } = await import("./functions/importNPPESFlatFile");
+          const { handleImportNPPESFile } = await import("./functions/importNPPESFile");
+          const { planRecovery } = await import("./lib/importRecovery");
+
+          // Batches left in an intermediate pause/cancel state when the process
+          // died never got their worker's acknowledgment: settle them to the
+          // final state the user asked for instead of resuming them.
+          for (const [from, to] of [["pausing", "paused"], ["cancelling", "cancelled"]] as const) {
+            const settled = await safeStartupQuery(
+              () => db.update(importBatches).set({ status: to, updated_date: new Date() })
+                .where(eq(importBatches.status, from)).returning({ id: importBatches.id }),
+              [] as any[], `settle ${from} batches`
+            );
+            for (const b of settled) console.log(`  - Batch ${b.id} settled ${from} -> ${to} (interrupted ${from})`);
+          }
+
+          for (let i = 0; i < cmsActive.length; i++) {
+            const batch = cmsActive[i] as any;
+            const plan = planRecovery(batch);
+
+            if (plan.action === "fail") {
+              await db.update(importBatches).set({
+                status: "failed",
+                error_samples: [{ row: 0, message: plan.reason }],
+                updated_date: new Date(),
+              }).where(eq(importBatches.id, batch.id));
+              console.log(`  - Batch ${batch.id} (${batch.import_type}) failed — ${plan.reason}`);
+              await recordImportFailureAlert(batch.id, String(batch.import_type), plan.reason);
+              await endedWithoutFinishing(String(batch.import_type), batch.id, "failed", plan.reason);
+              continue;
+            }
+
+            await db.update(importBatches).set({ updated_date: new Date() }).where(eq(importBatches.id, batch.id));
+            const run = plan.action === "nppes_flat_file" ? handleImportNPPESFlatFile : plan.action === "nppes_file" ? handleImportNPPESFile : handleAutoImportCMSData;
+            setTimeout(() => {
+              run(plan.params as any).catch((e: any) => console.error(`[CareMetric API] Batch ${batch.id} resume failed:`, e.message));
+            }, 10000 + i * 5000);
+            console.log(`  - Batch ${batch.id} (${batch.import_type}) resuming from ${plan.action === "nppes_flat_file" ? `byte ${plan.params.byte_offset}` : `offset ${plan.params.resume_offset}`} (delay ${10 + i * 5}s)`);
+          }
+        }
+
+        if (activeBatches.length === 0 && resumableFailedCrawlers.length === 0) {
+          console.log(`[CareMetric API] No imports to recover`);
+        }
+      } finally {
+        await recoveryLockClient.query("SELECT pg_advisory_unlock($1)", [IMPORT_RECOVERY_LOCK]).catch(() => {});
+        recoveryLockClient.release();
+      }
     }
 
     try {

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Save, Download, Users } from 'lucide-react';
 import LeadListFilters from '../components/leadlists/LeadListFilters';
@@ -13,9 +14,14 @@ import LeadResultsTable from '../components/leadlists/LeadResultsTable';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import PageHeader from '../components/shared/PageHeader';
 import { countExport, exportCSV } from '../components/exports/exportUtils';
+import { listMembers as fetchStoredMembers } from '../components/leadlists/leadListService';
+import { HIGH_INTENSITY_THRESHOLD } from '@/lib/scoringRules';
 import { toast } from 'sonner';
 
-const MAX_LIST_MEMBERS = 1000;
+const MAX_LIST_MEMBERS = 5000; // same cap as the server (server/lib/leadLists.ts)
+
+// A provider can carry several taxonomy rows; prefer the primary one when flagged.
+const primaryTaxonomy = (taxonomy) => (taxonomy || []).find(t => t?.is_primary) || (taxonomy || [])[0];
 
 export default function LeadListBuilder() {
   const uid = useId();
@@ -129,12 +135,13 @@ export default function LeadListBuilder() {
         // City filter (the key is still `county`)
         if (filters.county && !location?.city?.toLowerCase().includes(filters.county.toLowerCase())) return false;
 
-        // ZIP filter (exact match)
-        if (filters.zip && location?.zip !== filters.zip) return false;
+        // ZIP filter (5-digit: provider_locations.zip can be ZIP+4, while the
+        // server compares left(zip, 5), so an exact match silently misses).
+        if (filters.zip && String(location?.zip ?? '').slice(0, 5) !== filters.zip.trim().slice(0, 5)) return false;
 
         // Specialty filter
         if (filters.specialty) {
-          const taxonomyDesc = (taxonomy?.[0]?.taxonomy_description || '').toLowerCase();
+          const taxonomyDesc = (primaryTaxonomy(taxonomy)?.taxonomy_description || '').toLowerCase();
           if (!taxonomyDesc.includes(filters.specialty.toLowerCase())) return false;
         }
 
@@ -150,7 +157,7 @@ export default function LeadListBuilder() {
 
         // Behavioral health filter
         if (filters.behavioralHealth) {
-          const taxonomyDesc = (taxonomy?.[0]?.taxonomy_description || '').toLowerCase();
+          const taxonomyDesc = (primaryTaxonomy(taxonomy)?.taxonomy_description || '').toLowerCase();
           const behavioralTerms = ['psychiatry', 'psychology', 'behavioral', 'mental health'];
           if (!behavioralTerms.some(t => taxonomyDesc.includes(t))) return false;
         }
@@ -159,13 +166,28 @@ export default function LeadListBuilder() {
         if (filters.geriatricHeavy) {
           const volume = utilization?.total_medicare_beneficiaries || 0;
           const intensity = volume > 0 ? (utilization?.total_services || 0) / volume : 0;
-          if (volume < 200 || intensity < 8) return false;
+          if (volume < 200 || intensity < HIGH_INTENSITY_THRESHOLD) return false;
         }
 
         return true;
       })
       .sort((a, b) => (b.score?.score || 0) - (a.score?.score || 0));
   }, [providers, locations, taxonomies, scores, utilizations, listMembers, filters]);
+
+  // How many of the sampled providers can never match a filter because their
+  // location/score row fell outside that table's own 500-row sample. The state
+  // filter can't move server-side (state lives on provider_locations, joined
+  // here by NPI), so the builder discloses the join misses instead.
+  const joinStats = React.useMemo(() => {
+    const withNpi = providers.filter(p => p?.npi);
+    const locationNpis = new Set(locations.map(l => l?.npi).filter(Boolean));
+    const scoreNpis = new Set(scores.map(s => s?.npi).filter(Boolean));
+    return {
+      providers: withNpi.length,
+      missingLocation: withNpi.filter(p => !locationNpis.has(p.npi)).length,
+      missingScore: withNpi.filter(p => !scoreNpis.has(p.npi)).length,
+    };
+  }, [providers, locations, scores]);
 
   const handleSaveList = async () => {
     if (!listName.trim()) {
@@ -206,6 +228,16 @@ export default function LeadListBuilder() {
       setListName('');
       setListDescription('');
     } catch (error) {
+      // A failed chunk commits its predecessors, so the count set at creation
+      // would be inflated: recompute it from what is actually stored.
+      try {
+        const stored = await fetchStoredMembers(newList.id);
+        if (stored.length !== memberBatch.length) {
+          await base44.entities.LeadList.update(newList.id, { member_count: stored.length });
+        }
+      } catch {
+        // best-effort: the error toast below is the news that matters
+      }
       toast.error(`Failed to save list: ${error.message}`);
     }
   };
@@ -240,12 +272,12 @@ export default function LeadListBuilder() {
       
       const volume = utilization?.total_medicare_beneficiaries || 0;
       const intensity = volume > 0 ? (utilization?.total_services || 0) / volume : 0;
-      const fingerprint = volume >= 300 ? 'High Volume' : intensity >= 10 ? 'Complex Care' : 'Standard';
+      const fingerprint = volume >= 300 ? 'High Volume' : intensity >= HIGH_INTENSITY_THRESHOLD ? 'Complex Care' : 'Standard';
 
       return {
         npi: provider.npi,
         name,
-        specialty: taxonomy?.[0]?.taxonomy_description || '',
+        specialty: primaryTaxonomy(taxonomy)?.taxonomy_description || '',
         city: location?.city || '',
         state: location?.state || '',
         zip: location?.zip || '',
@@ -337,7 +369,9 @@ export default function LeadListBuilder() {
                   />
                 </div>
                 <div className="text-sm text-slate-400">
-                  This will save {filteredResults.length} providers
+                  {filteredResults.length > MAX_LIST_MEMBERS
+                    ? `This will save the first ${MAX_LIST_MEMBERS.toLocaleString()} of ${filteredResults.length.toLocaleString()} matching providers`
+                    : `This will save ${filteredResults.length.toLocaleString()} providers`}
                 </div>
                 <Button onClick={handleSaveList} className="w-full">
                   Save List
@@ -378,15 +412,26 @@ export default function LeadListBuilder() {
                   <Users className="h-5 w-5" />
                   Results
                 </div>
-                <span className="text-base font-normal text-slate-400">
+                <span className="text-base font-normal text-slate-400 flex items-center gap-2">
                   {filteredResults.length} providers
+                  <Badge
+                    variant="outline"
+                    className="bg-amber-900/20 text-amber-300 border-amber-500/30 font-normal"
+                    title="Built from five separate 500-row samples joined by NPI; providers whose location, score, taxonomy or utilization fell outside the samples are excluded"
+                  >
+                    partial results
+                  </Badge>
                 </span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-xs text-slate-400 mb-3">
-                The builder filters the 500 most recently added providers, so it can miss matches.
-                To find a specialty or area across the whole database, ask the AI Assistant. The Territory
+                Partial results: the builder joins five separate samples of the 500 most recently added
+                providers, locations, scores, taxonomies and utilization rows by NPI. A provider whose
+                location, score, taxonomy or utilization row fell outside its sample is silently excluded —
+                right now {joinStats.missingLocation} of {joinStats.providers} sampled providers have no
+                location in the sample and {joinStats.missingScore} have no score, so no filter can match
+                them. To find a specialty or area across the whole database, ask the AI Assistant. The Territory
                 map shows a bounded sample: up to 500 providers for a state (highest scores first) or a specialty.
               </p>
               <LeadResultsTable

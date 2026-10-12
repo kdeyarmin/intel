@@ -370,6 +370,12 @@ export async function handleGetHospitalCatchment(payload: any, user?: EntitledUs
     const hospitalState = n?.state ?? mix.rows[0]?.state ?? null;
     // A hospital is covered by where it is (its patients' origins were already narrowed to the plan above).
     assertFacilityTerritory(user, { state: hospitalState });
+    // The mix row is the hospital's own aggregate, but its national
+    // benchmark columns describe out-of-territory scope: territory-limited
+    // plans see the facility and its (in-territory) state numbers only.
+    // DischargeMixCard renders without the U.S. comparison when null.
+    const dischargeMix = mixRow(mix.rows[0]);
+    if (dischargeMix && !isUnrestricted(user)) dischargeMix.national = null;
     return {
       ccn,
       name: n?.name ?? mix.rows[0]?.facility_name ?? null,
@@ -382,7 +388,7 @@ export async function handleGetHospitalCatchment(payload: any, user?: EntitledUs
       zips_truncated: zipsTotal > zipRows.length,
       zips: zipRows,
       counties,
-      discharge_mix: mixRow(mix.rows[0]),
+      discharge_mix: dischargeMix,
       rollups: await marketRollupFreshness(),
     };
   }));

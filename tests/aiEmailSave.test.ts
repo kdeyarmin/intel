@@ -19,6 +19,13 @@ vi.mock("../server/db", () => ({
   pool: {},
 }));
 
+// The strict promotion rule (A4.5) requires an independent DNS/MX check;
+// stub it valid so the promotion path is exercised without live DNS.
+vi.mock("../server/lib/emailVerification", () => ({
+  checkDomainCached: async () => ({ hasMX: true }),
+  scoreEmail: () => ({ status: "valid", score: 95, confidence: "high", reasons: [], riskFlags: [] }),
+}));
+
 import { saveEmailToProvider } from "../server/functions/emailSearchBot";
 import { saveEmail } from "../server/functions/providerIntelligenceBot";
 

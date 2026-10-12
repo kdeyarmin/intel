@@ -26,16 +26,23 @@ export interface ScoringRule {
 }
 
 export const DEFAULT_SCORING_RULES = [
-  { name: "Specialty Match", rule_type: "specialty_match", weight: 20, description: "Primary-care and geriatric specialties that refer to post-acute care (the groups are in Conditions)", conditions: { groups: ["family_medicine", "internal_medicine", "geriatrics", "nurse_practitioner", "physician_assistant", "psychiatry"] } },
-  { name: "Medicare Participation", rule_type: "medicare_participation", weight: 15, description: "On the CMS Order & Referring list, or billing Medicare Part B" },
-  { name: "Patient Volume", rule_type: "patient_volume", weight: 20, description: "Medicare beneficiaries served (Physician & Other Practitioners by Provider)" },
-  { name: "Service Intensity", rule_type: "service_intensity", weight: 15, description: "Medicare services per beneficiary" },
-  { name: "Geographic Priority", rule_type: "geographic_priority", weight: 10, description: "Practice location in the target states and counties (Conditions); scoring covers the listed states", conditions: { states: ["PA"], counties: [] } },
-  { name: "Practice Type", rule_type: "practice_type", weight: 10, description: "Solo or small group practice preference" },
-  { name: "Behavioral Health Potential", rule_type: "behavioral_health", weight: 10, description: "Mental health referral likelihood" },
+  { name: "Specialty Match", rule_type: "specialty_match", weight: 20, enabled: true, description: "Primary-care and geriatric specialties that refer to post-acute care (the groups are in Conditions)", conditions: { groups: ["family_medicine", "internal_medicine", "geriatrics", "nurse_practitioner", "physician_assistant", "psychiatry"] } },
+  { name: "Medicare Participation", rule_type: "medicare_participation", weight: 15, enabled: true, description: "On the CMS Order & Referring list, or billing Medicare Part B" },
+  { name: "Patient Volume", rule_type: "patient_volume", weight: 20, enabled: true, description: "Medicare beneficiaries served (Physician & Other Practitioners by Provider)" },
+  { name: "Service Intensity", rule_type: "service_intensity", weight: 15, enabled: true, description: "Medicare services per beneficiary" },
+  { name: "Geographic Priority", rule_type: "geographic_priority", weight: 10, enabled: true, description: "Practice location in the target states and counties (Conditions); scoring covers the listed states", conditions: { states: ["PA"], counties: [] } },
+  { name: "Practice Type", rule_type: "practice_type", weight: 10, enabled: true, description: "Solo or small group practice preference" },
+  { name: "Behavioral Health Potential", rule_type: "behavioral_health", weight: 10, enabled: true, description: "Mental health referral likelihood" },
 ] as const;
 
 export const RULE_TYPES = DEFAULT_SCORING_RULES.map((r) => r.rule_type);
+
+/**
+ * Services per beneficiary at or above which a provider counts as high
+ * intensity ("Complex Care" in the lead list UI). Canonical value shared with
+ * the client (src/lib/scoringRules.js mirrors it); keep the two in sync.
+ */
+export const HIGH_INTENSITY_THRESHOLD = 8;
 
 /**
  * Descriptions the Scoring Rules page used to seed before rule_type was
@@ -62,13 +69,15 @@ const listOf = (value: unknown): string[] =>
 /**
  * The enabled rules with a usable weight, one per rule type, conditions
  * merged over the defaults (a rule saved without conditions keeps the
- * default territory and specialty groups).
+ * default territory and specialty groups). A rule counts as enabled only
+ * when enabled is explicitly true: NULL (or missing) is disabled, matching
+ * what the Scoring Rules page shows.
  */
 export function normalizeRules(rows: ScoringRuleRow[]): ScoringRule[] {
   const out = new Map<string, ScoringRule>();
   for (const row of rows) {
     const type = String(row.rule_type ?? "");
-    if (!RULE_TYPES.includes(type as any) || row.enabled === false || out.has(type)) continue;
+    if (!RULE_TYPES.includes(type as any) || row.enabled !== true || out.has(type)) continue;
     const weight = Number(row.weight);
     if (!Number.isFinite(weight) || weight <= 0) continue;
     const given = row.conditions && typeof row.conditions === "object" && !Array.isArray(row.conditions) ? row.conditions : {};
@@ -109,7 +118,10 @@ export function resolveTerritory(rules: ScoringRule[]): Territory {
  */
 export function territoryFromRows(rows: ScoringRuleRow[]): Territory {
   const geo = rows.filter((r) => String(r.rule_type ?? "") === "geographic_priority");
-  const row = geo.find((r) => r.enabled !== false && Number(r.weight) > 0) ?? geo[0];
+  // The active row wins; with none active the territory still falls back to
+  // the row itself (a disabled rule adds no points but doesn't change scope).
+  // NULL counts as disabled here too, like in normalizeRules.
+  const row = geo.find((r) => r.enabled === true && Number(r.weight) > 0) ?? geo[0];
   if (!row) return { states: [], counties: [] };
   const given = row.conditions && typeof row.conditions === "object" && !Array.isArray(row.conditions) ? row.conditions : {};
   return territoryOf({ ...defaultsFor("geographic_priority"), ...given });
@@ -166,7 +178,7 @@ export interface ScoreResult {
 
 const BEHAVIORAL_GROUPS = new Set(["behavioral_health", "psychiatry"]);
 
-/** Scores one provider against the rules. Weights are applied as given; 100% total keeps scores on a 0–100 scale. */
+/** Scores one provider against the rules. Weights are normalized to sum to 100, so the score is a weighted average on a 0–100 scale. */
 export function scoreProvider(input: ScoringInput, rules: ScoringRule[]): ScoreResult {
   const territory = resolveTerritory(rules);
   const groups = targetGroups(rules);
@@ -197,8 +209,8 @@ export function scoreProvider(input: ScoringInput, rules: ScoringRule[]): ScoreR
 
   // 4. Service intensity (services per beneficiary).
   const intensity = volume > 0 ? Math.max(0, input.services ?? 0) / volume : 0;
-  values.service_intensity = intensity >= 12 ? 100 : intensity >= 8 ? 70 : intensity >= 4 ? 40 : 0;
-  if (intensity >= 8) reasons.push(`High service intensity (${intensity.toFixed(1)} services per beneficiary)`);
+  values.service_intensity = intensity >= 12 ? 100 : intensity >= HIGH_INTENSITY_THRESHOLD ? 70 : intensity >= 4 ? 40 : 0;
+  if (intensity >= HIGH_INTENSITY_THRESHOLD) reasons.push(`High service intensity (${intensity.toFixed(1)} services per beneficiary)`);
 
   // 5. Geographic priority: a priority county, else a scored state.
   const inCounty = territory.counties.length > 0 && input.locations.some((l) => l.county_fips && territory.counties.includes(l.county_fips));
@@ -222,9 +234,16 @@ export function scoreProvider(input: ScoringInput, rules: ScoringRule[]): ScoreR
   values.behavioral_health = behavioral ? 100 : 50;
   if (behavioral) reasons.push("Behavioral health specialty");
 
+  // Normalize weights to sum to 100 so the score is a weighted average of the
+  // rule values. Weights summing over 100 used to push every strong provider
+  // against the 100 cap (destroying the ranking); under 100 they shrank every
+  // score toward zero. The breakdown shows the effective (normalized) weight.
+  const total = totalWeight(rules);
+  const effective = total > 0 ? rules.map((r) => ({ ...r, weight: (r.weight * 100) / total })) : [];
+
   const breakdown: ScoreResult["breakdown"] = {};
   let score = 0;
-  for (const rule of rules) {
+  for (const rule of effective) {
     const value = values[rule.rule_type];
     if (value == null) continue;
     const contribution = (value * rule.weight) / 100;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,8 +6,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ExternalLink, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { HIGH_INTENSITY_THRESHOLD } from '@/lib/scoringRules';
+
+const PAGE_SIZE = 50;
+
+// A provider can carry several taxonomy rows; prefer the primary one when flagged.
+const primaryTaxonomy = (taxonomy) => (taxonomy || []).find(t => t?.is_primary) || (taxonomy || [])[0];
 
 export default function LeadResultsTable({ results, onStatusChange }) {
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageRows = results.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+
   const getScoreColor = (score) => {
     if (score >= 80) return 'bg-green-900/30 text-green-400';
     if (score >= 60) return 'bg-yellow-900/30 text-yellow-400';
@@ -20,9 +31,9 @@ export default function LeadResultsTable({ results, onStatusChange }) {
     const intensity = volume > 0 ? (utilization?.total_services || 0) / volume : 0;
 
     if (volume >= 300) signals.push('High Volume');
-    if (intensity >= 10) signals.push('Complex Care');
-    
-    const taxonomyDesc = (taxonomy?.[0]?.taxonomy_description || '').toLowerCase();
+    if (intensity >= HIGH_INTENSITY_THRESHOLD) signals.push('Complex Care');
+
+    const taxonomyDesc = (primaryTaxonomy(taxonomy)?.taxonomy_description || '').toLowerCase();
     if (['psychiatry', 'psychology', 'behavioral', 'mental'].some(t => taxonomyDesc.includes(t))) {
       signals.push('Behavioral Health');
     }
@@ -53,7 +64,7 @@ export default function LeadResultsTable({ results, onStatusChange }) {
               </TableCell>
             </TableRow>
           ) : (
-            results.map((result) => {
+            pageRows.map((result) => {
               const { provider, score, location, taxonomy, utilization, listMember } = result;
               const name = provider.entity_type === 'Organization'
                 ? provider.organization_name
@@ -68,7 +79,7 @@ export default function LeadResultsTable({ results, onStatusChange }) {
                     }
                   </TableCell>
                   <TableCell className="text-sm text-slate-400">
-                    {taxonomy?.[0]?.taxonomy_description || '-'}
+                    {primaryTaxonomy(taxonomy)?.taxonomy_description || '-'}
                   </TableCell>
                   <TableCell className="text-sm">
                     {location ? `${location.city}, ${location.state}` : '-'}
@@ -118,6 +129,22 @@ export default function LeadResultsTable({ results, onStatusChange }) {
           )}
         </TableBody>
       </Table>
+      {pageCount > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 text-sm text-slate-400 border-t">
+          <span>
+            Showing {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, results.length)} of {results.length.toLocaleString()}
+          </span>
+          <div className="flex items-center gap-2">
+            <span>Page {safePage + 1} of {pageCount}</span>
+            <Button variant="outline" size="sm" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>
+              Previous
+            </Button>
+            <Button variant="outline" size="sm" disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)}>
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

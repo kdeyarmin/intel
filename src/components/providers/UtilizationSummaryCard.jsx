@@ -2,15 +2,20 @@ import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, Activity } from 'lucide-react';
+import { utilizationYears, sumUtilizationYear } from './utilizationTotals';
 
 export default function UtilizationSummaryCard({ utilizations = [] }) {
   const summary = useMemo(() => {
     if (!utilizations.length) return null;
-    const sorted = [...utilizations].sort((a, b) => (a.year || 0) - (b.year || 0));
-    const latest = sorted[sorted.length - 1];
-    const prev = sorted.length > 1 ? sorted[sorted.length - 2] : null;
-    const _earliest = sorted[0];
-    const yearSpan = sorted.length;
+    // Rows are per-HCPCS slices: "latest" and YoY compare provider totals
+    // (summed across every row of a data year), never single rows.
+    const years = utilizationYears(utilizations);
+    if (!years.length) return null;
+    const latest = sumUtilizationYear(utilizations, years[years.length - 1]);
+    const prev = years.length > 1 ? sumUtilizationYear(utilizations, years[years.length - 2]) : null;
+    // Distinct data years, not rows: a provider with 340 HCPCS codes does not
+    // have "340 yrs of data".
+    const yearSpan = years.length;
 
     const totalPayments = utilizations.reduce((s, u) => s + (u.total_medicare_payment || 0), 0);
     const totalServices = utilizations.reduce((s, u) => s + (u.total_services || 0), 0);
@@ -27,7 +32,7 @@ export default function UtilizationSummaryCard({ utilizations = [] }) {
       ? latest.total_medicare_payment / latest.total_medicare_beneficiaries
       : 0;
 
-    return { latest, yearSpan, totalPayments, totalServices, totalBeneficiaries, yoyPayment, yoyServices, avgPaymentPerBene, years: sorted.map(s => s.year) };
+    return { latest, yearSpan, totalPayments, totalServices, totalBeneficiaries, yoyPayment, yoyServices, avgPaymentPerBene, years };
   }, [utilizations]);
 
   if (!summary) return null;

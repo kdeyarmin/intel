@@ -492,10 +492,13 @@ export async function handleRunDataQualityScan(payload: any) {
 
     for (const rule of ruleResults) {
       if (rule.failing > 0) {
+        // Severity is a failure *rate*, not an absolute count: >1000 failing
+        // rows is noise on a multi-million-row table but critical on a small one.
+        const failRate = 100 - rule.pct;
         alertsToCreate.push({
           scan_id: scanId,
           alert_type: rule.rule_id,
-          severity: rule.failing > 1000 ? "high" : rule.failing > 100 ? "medium" : "low",
+          severity: failRate >= 10 ? "high" : failRate >= 2 ? "medium" : "low",
           title: rule.rule_name,
           description: `${rule.failing.toLocaleString()} of ${rule.total.toLocaleString()} records failing (${rule.pct}% pass rate)`,
           status: "new",
