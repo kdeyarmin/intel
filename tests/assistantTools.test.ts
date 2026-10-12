@@ -147,12 +147,14 @@ describe("runTool", () => {
       getProviderReport: vi.fn(async () => ({ provider: { npi: "1000000001", displayName: "Ada", entityType: "Individual" } })),
       getProviderCMSData: vi.fn(async () => ({ referral_potential: { referral_index: 96, rank_in_county: 1, county_name: "Allegheny County", benes: 620, hospital_ccns: [], affiliations: 0, data_year: "2024", ...potential } })),
     });
-    const loaded = JSON.parse((await runTool("get_provider_profile", { npi: "1000000001" }, profile({ hh_cert_benes: 43, hospice_oversight_benes: 0 }))).content);
-    expect(loaded.referral_potential).toMatchObject({ home_health_certified_patients: 43, hospice_oversight_patients: 0 });
+    const loaded = JSON.parse((await runTool("get_provider_profile", { npi: "1000000001" }, profile({ hh_cert_benes: 43, hospice_oversight_benes: 0, hh_cert_year: "2023" }))).content);
+    expect(loaded.referral_potential).toMatchObject({ home_health_certified_patients: 43, hospice_oversight_patients: 0, home_health_certified_year: "2023", year: "2024" });
     expect(loaded.referral_potential.note).toMatch(/up to 50 points for patients certified for home health/);
+    expect(loaded.referral_potential.note).toMatch(/adds up the care settings CMS lists separately.*for home_health_certified_year; 0 means 10 or fewer in each setting, not none/);
     expect(loaded.referral_potential.note).not.toMatch(/Home Health Certifications file has not been imported/);
     const before = JSON.parse((await runTool("get_provider_profile", { npi: "1000000001" }, profile({ hh_cert_benes: null, hospice_oversight_benes: null }))).content);
     expect(before.referral_potential.home_health_certified_patients).toBeNull();
+    expect(before.referral_potential.home_health_certified_year).toBeNull();
     expect(before.referral_potential.note).toMatch(/Home Health Certifications file has not been imported/);
   });
 

@@ -386,14 +386,18 @@ describe("getReferralSources", () => {
 
   it("passes the home health certifications on, and explains the index by them, once the file is imported", async () => {
     h.answers.push(
-      [/FROM rollup_referral_sources WHERE county_fips = \$1 ORDER BY referral_index DESC/, [{ ...SOURCES[0], hh_cert_benes: 43, hospice_oversight_benes: 0 }, { ...SOURCES[1], hh_cert_benes: 0, hospice_oversight_benes: 0 }]],
+      [/FROM rollup_referral_sources WHERE county_fips = \$1 ORDER BY referral_index DESC/, [{ ...SOURCES[0], hh_cert_benes: 43, hospice_oversight_benes: 0, hh_cert_year: "2023" }, { ...SOURCES[1], hh_cert_benes: 0, hospice_oversight_benes: 0, hh_cert_year: "2023" }]],
       [/FROM providers WHERE npi = ANY/, [{ npi: "1000000001", first_name: "Ada", last_name: "Lovelace", credential: "MD" }]],
     );
     const r: any = await handleGetReferralSources({ state: "PA", county_fips: "42003", limit: 10 });
     expect(r.certifications_loaded).toBe(true);
-    // 0 is a clinician CMS does not list (10 patients or fewer), not unknown.
+    // 0 is a clinician CMS does not list (10 patients or fewer in a care setting), not unknown.
     expect(r.rows.map((x: any) => [x.hh_cert_benes, x.hospice_oversight_benes])).toEqual([[43, 0], [0, 0]]);
     expect(r.index_note).toMatch(/up to 50 points for patients certified for home health/);
+    // The certification file has its own year, which is not the physician file's (data_year).
+    expect(r.certifications_year).toBe("2023");
+    expect(r.rows.map((x: any) => x.hh_cert_year)).toEqual(["2023", "2023"]);
+    expect(r.data_year).not.toBe("2023");
   });
 
   it("passes the certifications on as unknown (null), not 0, and keeps the old explanation, before the file is imported", async () => {
@@ -403,7 +407,8 @@ describe("getReferralSources", () => {
     );
     const r: any = await handleGetReferralSources({ state: "PA", county_fips: "42003", limit: 10 });
     expect(r.certifications_loaded).toBe(false);
-    expect(r.rows.map((x: any) => x.hh_cert_benes)).toEqual([null, null]);
+    expect(r.certifications_year).toBeNull();
+    expect(r.rows.map((x: any) => [x.hh_cert_benes, x.hh_cert_year])).toEqual([[null, null], [null, null]]);
     expect(r.index_note).toMatch(/^Referral index \(0–100\): 50 points for Medicare beneficiaries served/);
   });
 

@@ -146,7 +146,7 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
               {data?.certifications_loaded === false ? (
                 <p className="text-[11px] text-slate-400 mt-1">A dash under Home health certified means the Home Health Certifications file has not been imported yet, so who certifies patients for home health is unknown; the index then rests on Medicare volume, risk and eligibility alone.</p>
               ) : data?.certifications_loaded ? (
-                <p className="text-[11px] text-slate-400 mt-1">Home health certified counts the Medicare patients a clinician certified for home health in the latest data year. CMS lists a clinician only above 10 patients, so “≤10” means not listed: 10 or fewer, or none.</p>
+                <p className="text-[11px] text-slate-400 mt-1">Home health certified adds up the Medicare patients a clinician certified for home health in {data.certifications_year || 'the latest data year'}, as CMS counts them for each care setting (a patient certified in two settings counts in both). CMS lists a setting only above 10 patients, so “≤10” means no setting is listed: 10 or fewer in each, or none.</p>
               ) : null}
               {rows.some((r) => r.affiliations == null) ? (
                 <p className="text-[11px] text-slate-400 mt-1">A dash under Hospitals means the Facility Affiliation file has not been imported yet, so affiliations are unknown (not zero).</p>

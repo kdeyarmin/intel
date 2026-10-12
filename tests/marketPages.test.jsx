@@ -187,13 +187,15 @@ describe('referral sources list', () => {
 
   it('shows the patients each clinician certified for home health, and "≤10" for one CMS does not list, with the note', async () => {
     invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(fn === 'getReferralSources'
-      ? { ...SOURCES, certifications_loaded: true, rows: SOURCES.rows.map((r, i) => ({ ...r, hh_cert_benes: i === 0 ? 1234 : 0, hospice_oversight_benes: 0 })) }
+      ? { ...SOURCES, certifications_loaded: true, certifications_year: '2023', rows: SOURCES.rows.map((r, i) => ({ ...r, hh_cert_benes: i === 0 ? 1234 : 0, hospice_oversight_benes: 0, hh_cert_year: '2023' })) }
       : countyAnswers(fn, payload)));
     renderAt('/CountyIntelligence?state=PA&county=42003&tab=referrals', CountyIntelligence, '/CountyIntelligence');
     await screen.findByRole('link', { name: 'Ada Lovelace, MD' });
     expect(certifiedCell('Ada Lovelace, MD')).toHaveTextContent(/^1,234$/);
     expect(certifiedCell('Bo Hart')).toHaveTextContent(/^≤10$/);
-    expect(screen.getByText(/CMS lists a clinician only above 10 patients, so “≤10” means not listed/)).toBeInTheDocument();
+    // The note names the certification file's own year, and says the figure adds up the care settings CMS counts separately.
+    expect(screen.getByText(/certified for home health in 2023, as CMS counts them for each care setting \(a patient certified in two settings counts in both\)/)).toBeInTheDocument();
+    expect(screen.getByText(/CMS lists a setting only above 10 patients, so “≤10” means no setting is listed: 10 or fewer in each, or none/)).toBeInTheDocument();
     expect(screen.queryByText(/has not been imported yet, so who certifies/)).toBeNull();
     // The entity is written out in the string, so it must read as an ampersand, not as "&amp;".
     expect(screen.getByText(/ranked by a referral index built from the patients they certified for home health \(Physician & Other Practitioners by Provider and Service\), Medicare volume/)).toBeInTheDocument();
@@ -549,11 +551,28 @@ describe('cards', () => {
     const certified = () => screen.getByText('Certified for home health').nextElementSibling;
     const { rerender } = render(<ReferralPotentialCard potential={base} />);
     expect(certified()).toHaveTextContent('Not loaded');
+    expect(screen.queryByText(/added up over the care settings/)).toBeNull();
     rerender(<ReferralPotentialCard potential={{ ...base, hh_cert_benes: 43 }} />);
     expect(certified()).toHaveTextContent(/^43 patients$/);
     expect(screen.getByText(/^Patients certified for home health, Medicare volume/)).toBeInTheDocument();
+    // The counts are added up over the care settings, which the card says.
+    expect(screen.getByText(/Certified patients are added up over the care settings CMS lists separately, so a patient certified in two settings counts in both\. CMS lists a setting only above 10 patients\./)).toBeInTheDocument();
     rerender(<ReferralPotentialCard potential={{ ...base, hh_cert_benes: 0 }} />);
     expect(certified()).toHaveTextContent(/^10 or fewer$/);
+  });
+
+  it('puts the certification file\'s own year on the count, not the physician file\'s year in the badge', () => {
+    // The two annual files can be on different releases: the badge says 2024, the certifications are 2023's.
+    const base = { data_year: '2024', referral_index: 96, rank_in_county: 1, county_name: 'Allegheny County', benes: 620, hospital_ccns: [], affiliations: 0, hh_cert_year: '2023' };
+    const certified = () => screen.getByText('Certified for home health').nextElementSibling;
+    const { rerender } = render(<ReferralPotentialCard potential={{ ...base, hh_cert_benes: 43 }} />);
+    expect(screen.getByText('data year 2024')).toBeInTheDocument();
+    expect(certified()).toHaveTextContent(/^43 patients \(2023\)$/);
+    rerender(<ReferralPotentialCard potential={{ ...base, hh_cert_benes: 0 }} />);
+    expect(certified()).toHaveTextContent(/^10 or fewer \(2023\)$/);
+    // Before the file is imported there is no year to show.
+    rerender(<ReferralPotentialCard potential={{ ...base, hh_cert_benes: null, hh_cert_year: null }} />);
+    expect(certified()).toHaveTextContent(/^Not loaded$/);
   });
 
   it('carries the market disclaimer and says when the referral rollup last computed', () => {

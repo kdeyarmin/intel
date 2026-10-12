@@ -89,14 +89,31 @@ describe("market rollup jobs", () => {
   it("rank on the patients a clinician certified for home health once that file is imported, and on volume alone before", () => {
     const sql = jobByName("referral_sources")!.sql;
     // The certification columns are unknown (NULL), never 0, until the file is loaded; a clinician CMS does not list reads 0 after.
-    expect(sql).toMatch(/cert_loaded AS \(SELECT EXISTS \(SELECT 1 FROM cms_physician_certifications\) AS loaded\)/);
+    expect(sql).toMatch(/cert_loaded AS \(SELECT EXISTS \(SELECT 1 FROM cert_rows\) AS loaded\)/);
     expect(sql).toMatch(/CASE WHEN \(SELECT loaded FROM cert_loaded\) THEN COALESCE\(ce\.hh_cert_benes, 0\) END AS hh_cert_benes/);
     expect(sql).toMatch(/CASE WHEN \(SELECT loaded FROM cert_loaded\) THEN COALESCE\(ce\.hospice_oversight_benes, 0\) END AS hospice_oversight_benes/);
     // Only the latest data year counts, and only the two codes behind the columns (G0180 certification, G0182 hospice oversight).
-    expect(sql).toMatch(/JOIN \(SELECT max\(data_year\) AS y FROM cms_physician_certifications\) l ON l\.y = c\.data_year/);
+    expect(sql).toMatch(/cert_year AS \(SELECT max\(data_year\) AS y FROM cert_rows\)/);
+    expect(sql).toMatch(/FROM cert_rows c\s+JOIN cert_year l ON l\.y = c\.data_year/);
     expect(sql).toContain("FILTER (WHERE c.hcpcs_code = 'G0180')");
     expect(sql).toContain("FILTER (WHERE c.hcpcs_code = 'G0182')");
-    expect(jobByName("referral_sources")!.resultColumns).toEqual(expect.arrayContaining(["hh_cert_benes", "hospice_oversight_benes"]));
+    expect(jobByName("referral_sources")!.resultColumns).toEqual(expect.arrayContaining(["hh_cert_benes", "hospice_oversight_benes", "hh_cert_year"]));
+  });
+
+  it("rank on certifications only from an import that completed, never from a running or failed one", () => {
+    // The importer commits page by page and marks the batch completed at the end, so rows are read through their batch.
+    const sql = jobByName("referral_sources")!.sql;
+    expect(sql).toMatch(/cert_rows AS \(\s+SELECT c\.npi, c\.hcpcs_code, c\.data_year, c\.benes\s+FROM cms_physician_certifications c\s+WHERE c\.import_batch_id IN \(SELECT id FROM import_batches WHERE import_type = 'physician_certifications' AND status = 'completed'\)\)/);
+    // Nothing reads the table any other way: the loaded flag, the year and the sums all come through cert_rows.
+    expect(sql.match(/FROM cms_physician_certifications/g)).toHaveLength(1);
+  });
+
+  it("carry the year of the certification file, which is not the physician file's year", () => {
+    const job = jobByName("referral_sources")!;
+    expect(job.sql).toMatch(/\(SELECT y FROM cert_year\) AS hh_cert_year/);
+    expect(job.sql).toMatch(/hh_cert_benes, hospice_oversight_benes, hh_cert_year\s+FROM scored/);
+    // Appended last, after the two counts, as migration 0022 adds them.
+    expect(job.resultColumns.slice(-3)).toEqual(["hh_cert_benes", "hospice_oversight_benes", "hh_cert_year"]);
   });
 
   it("count the county's post-acute providers at each setting's own latest year", () => {

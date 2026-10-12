@@ -2,7 +2,10 @@
 -- (CMS "Physician & Other Practitioners - by Provider and Service", HCPCS G0180, G0179, G0181,
 -- G0182): the one public measure of who actually certifies a patient for home health. The rows are
 -- fetched with a server-side filter on those codes, so the table holds tens of thousands of rows.
--- The referral sources rollup reads it, and gets two columns for it.
+-- CMS counts patients per clinician, code and care setting (facility or office) and lists a row only
+-- above 10 patients, which is why the place of service is part of the key. The referral sources
+-- rollup reads it, and gets three columns for it: the patients for G0180 and for G0182, and the
+-- data year they come from.
 CREATE TABLE IF NOT EXISTS "cms_physician_certifications" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"npi" varchar(10) NOT NULL,
@@ -23,3 +26,5 @@ CREATE UNIQUE INDEX IF NOT EXISTS "uq_cms_phys_cert" ON "cms_physician_certifica
 ALTER TABLE "rollup_referral_sources" ADD COLUMN IF NOT EXISTS "hh_cert_benes" integer;
 --> statement-breakpoint
 ALTER TABLE "rollup_referral_sources" ADD COLUMN IF NOT EXISTS "hospice_oversight_benes" integer;
+--> statement-breakpoint
+ALTER TABLE "rollup_referral_sources" ADD COLUMN IF NOT EXISTS "hh_cert_year" varchar(10);

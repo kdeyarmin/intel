@@ -149,7 +149,7 @@ export const MARKET_JOBS: MarketJob[] = [
       "npi", "data_year", "county_fips", "state", "zip5", "specialty", "benes", "services", "avg_risk_score", "dual_pct",
       "cc_chf_pct", "cc_copd_pct", "cc_alzheimer_pct", "cc_ckd_pct", "cc_diabetes_pct",
       "hha_eligible", "hospice_eligible", "dme_eligible", "dme_benes", "hospital_ccns", "affiliations", "referral_index", "rank_in_county",
-      "hh_cert_benes", "hospice_oversight_benes",
+      "hh_cert_benes", "hospice_oversight_benes", "hh_cert_year",
     ],
     // rank_in_county is set only for clinicians whose ZIP resolves to a county: a NULL partition would rank the
     // ones that don't against each other, and the provider page would show a bogus "Nth in the county".
@@ -170,20 +170,32 @@ export const MARKET_JOBS: MarketJob[] = [
          is a statement about the file, and without it every clinician would read 0. */
       aff_loaded AS (SELECT EXISTS (SELECT 1 FROM cms_facility_affiliation) AS loaded),
       /* Patients a clinician certified for home health (G0180) and patients whose hospice plan of care they oversaw
-         (G0182) in the latest data year. CMS lists a clinician only above 10 patients for a code, so one that is not
-         listed has between none and 10. Like affiliations, both stay NULL (unknown) until the Home Health
+         (G0182) in the latest data year. CMS counts patients per clinician, code and care setting (facility or office)
+         and lists a row only above 10, so the sum over settings counts a patient seen in both twice (102 of 18,598
+         certifiers in the 2024 file have rows in both), and a clinician with 10 or fewer in every setting is not
+         listed however many they have in all. Like affiliations, both stay NULL (unknown) until the Home Health
          Certifications file has been imported. The index then rests on certifications: being listed is worth 15 points
          and 40 patients the full 50, where it used to rest on Order & Referring eligibility, which nearly every
          physician has (99% in the 2026 file) and so says nothing about who refers; without any certification a clinician
-         can reach 50 of 100 on volume, risk and eligibility. */
+         can reach 50 of 100 on volume, risk and eligibility.
+         Only rows that a completed import wrote count. The importer commits each page as it goes, so a rollup that
+         ran during the import, or after one that failed part-way, would otherwise rank on part of the file (and a
+         newer year half loaded would take the place of a complete older one). A clinician's rows carry the batch that
+         last wrote them, so a running import takes its rows out until it completes. hh_cert_year is the year the
+         counts come from, which can differ from the physician file's year. */
+      cert_rows AS (
+        SELECT c.npi, c.hcpcs_code, c.data_year, c.benes
+          FROM cms_physician_certifications c
+         WHERE c.import_batch_id IN (SELECT id FROM import_batches WHERE import_type = 'physician_certifications' AND status = 'completed')),
+      cert_year AS (SELECT max(data_year) AS y FROM cert_rows),
       cert AS (
         SELECT c.npi,
                COALESCE(sum(c.benes) FILTER (WHERE c.hcpcs_code = 'G0180'), 0)::int AS hh_cert_benes,
                COALESCE(sum(c.benes) FILTER (WHERE c.hcpcs_code = 'G0182'), 0)::int AS hospice_oversight_benes
-          FROM cms_physician_certifications c
-          JOIN (SELECT max(data_year) AS y FROM cms_physician_certifications) l ON l.y = c.data_year
+          FROM cert_rows c
+          JOIN cert_year l ON l.y = c.data_year
          GROUP BY c.npi),
-      cert_loaded AS (SELECT EXISTS (SELECT 1 FROM cms_physician_certifications) AS loaded),
+      cert_loaded AS (SELECT EXISTS (SELECT 1 FROM cert_rows) AS loaded),
       scored AS (
         SELECT p.npi, p.data_year, z.primary_county_fips AS county_fips, p.state, p.zip5, p.provider_type, p.benes, p.services,
                p.avg_risk_score,
@@ -197,6 +209,7 @@ export const MARKET_JOBS: MarketJob[] = [
                d.dme_benes, a.hospital_ccns, CASE WHEN (SELECT loaded FROM aff_loaded) THEN COALESCE(a.affiliations, 0) END AS affiliations,
                CASE WHEN (SELECT loaded FROM cert_loaded) THEN COALESCE(ce.hh_cert_benes, 0) END AS hh_cert_benes,
                CASE WHEN (SELECT loaded FROM cert_loaded) THEN COALESCE(ce.hospice_oversight_benes, 0) END AS hospice_oversight_benes,
+               (SELECT y FROM cert_year) AS hh_cert_year,
                CASE WHEN (SELECT loaded FROM cert_loaded)
                     THEN round(CASE WHEN COALESCE(ce.hh_cert_benes, 0) > 0 THEN 15 + 35 * least(ce.hh_cert_benes / 40.0, 1) ELSE 0 END
                                + 20 * least(p.benes / 500.0, 1) + 15 * least(COALESCE(p.avg_risk_score, 0) / 2.5, 1)
@@ -214,7 +227,7 @@ export const MARKET_JOBS: MarketJob[] = [
              cc_chf_pct, cc_copd_pct, cc_alzheimer_pct, cc_ckd_pct, cc_diabetes_pct,
              hha_eligible, hospice_eligible, dme_eligible, dme_benes, hospital_ccns, affiliations, referral_index,
              (CASE WHEN county_fips IS NOT NULL THEN rank() OVER (PARTITION BY county_fips ORDER BY referral_index DESC, benes DESC, npi) END)::int,
-             hh_cert_benes, hospice_oversight_benes
+             hh_cert_benes, hospice_oversight_benes, hh_cert_year
         FROM scored`,
   },
   {

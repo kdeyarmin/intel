@@ -269,6 +269,7 @@ export const rollupReferralSources = pgTable("rollup_referral_sources", {
   rank_in_county: integer("rank_in_county"),
   hh_cert_benes: integer("hh_cert_benes"),
   hospice_oversight_benes: integer("hospice_oversight_benes"),
+  hh_cert_year: varchar("hh_cert_year", { length: 10 }),
 }, (table) => [
   index("idx_rollup_ref_src_county").on(table.county_fips, table.referral_index),
   index("idx_rollup_ref_src_state").on(table.state, table.referral_index),
