@@ -163,4 +163,30 @@ describe("the NPPES crawl schedule", () => {
     expect(h.fanoutCalls[0].opts.schedules).toMatchObject({ checked: 1, processed: 0, skipped: 1 });
     expect(r.skipped).toEqual([expect.objectContaining({ id: 3, reason: "a crawl is still in progress" })]);
   });
+
+  describe("a schedule that depends on the crawl", () => {
+    // The crawler answers "success" once its states are queued, so the parent's own status can't say the crawl is over.
+    const queued = new Date(Date.now() - 3_600_000);
+    const parent = () => ({ ...crawlSchedule(), next_run_at: new Date(Date.now() + 86_400_000), last_run_status: "success", last_run_at: queued, last_successful_run_at: queued });
+    const child = () => ({
+      id: 4, import_type: "hospice_provider_data", label: "Hospice", is_active: true, enabled: true, schedule_frequency: "daily", schedule_time: "02:00",
+      next_run_at: new Date(Date.now() - 60_000), consecutive_failures: 0, depends_on_import_type: "nppes_registry",
+    });
+
+    it("waits while a state of the crawl is still being fetched", async () => {
+      h.schedules.push(parent(), child());
+      h.batches.push({ id: 90 });
+      const r: any = await handleRunScheduledImports();
+      expect(h.triggered).toHaveLength(0);
+      expect(r.skipped).toEqual([expect.objectContaining({ id: 4, reason: expect.stringMatching(/NPPES crawl it depends on/) })]);
+    });
+
+    it("starts once every state has finished", async () => {
+      h.schedules.push(parent(), child());
+      const r: any = await handleRunScheduledImports();
+      expect(h.triggered).toHaveLength(1);
+      expect(h.triggered[0]).toMatchObject({ import_type: "hospice_provider_data" });
+      expect(r.skipped).toEqual([]);
+    });
+  });
 });

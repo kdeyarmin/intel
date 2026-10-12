@@ -24,6 +24,25 @@ export function signupPendingEmail(to: string, newUser: { email: string; full_na
   };
 }
 
+/** To the admins who run the Stripe account: an organization completed a second checkout while it still paid for the first. */
+export function duplicateSubscriptionEmail(to: string, org: { id: number; name: string }, subscriptions: { kept: string; previous: string }): MailMessage {
+  // The name is whatever the customer typed at signup: one line, of a length a subject can carry.
+  const name = org.name.replace(/\s+/g, " ").trim().slice(0, 80) || `organization #${org.id}`;
+  return {
+    to,
+    subject: `${PRODUCT}: ${name} is paying for two subscriptions`,
+    text: lines(
+      `${name} (organization #${org.id}) completed a second Stripe checkout while its first subscription was still active, so both are billing.`,
+      "",
+      `Tracked now:  ${subscriptions.kept}`,
+      `Earlier one:  ${subscriptions.previous} (still billing, no longer tracked here)`,
+      "",
+      "Nothing was cancelled or refunded: the customer paid for both. In Stripe, decide which one to keep, then cancel the other and refund or credit it.",
+      "The same entry is in Security Audit (billing, duplicate_subscription).",
+    ),
+  };
+}
+
 export function approvedEmail(to: string, base: string): MailMessage {
   return {
     to,

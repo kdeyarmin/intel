@@ -43,7 +43,7 @@ export function defaultAccountDeps(pool: any): AccountDeps {
 }
 
 /** Sends without letting a mail failure break the request that triggered it. */
-export async function sendQuietly(deps: AccountDeps, msg: MailMessage, label: string): Promise<boolean> {
+export async function sendQuietly(deps: Pick<AccountDeps, "mailerConfigured" | "sendMail">, msg: MailMessage, label: string): Promise<boolean> {
   if (!deps.mailerConfigured()) return false;
   try {
     await deps.sendMail(msg);

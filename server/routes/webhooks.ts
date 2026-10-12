@@ -7,6 +7,17 @@ import { addSuppressions } from "../lib/suppressions";
 
 const router = Router();
 
+/** Emails the active admins about an organization that now pays for two subscriptions. Never throws. */
+async function tellAdminsOfDuplicate(orgId: number, duplicate: { kept: string; previous: string }): Promise<void> {
+  try {
+    const [{ notifyDuplicateSubscription }, { defaultAccountDeps }] = await Promise.all([import("../lib/billingNotices"), import("../lib/accountDeps")]);
+    const { rows } = await pool.query("SELECT name FROM organizations WHERE id = $1", [orgId]);
+    await notifyDuplicateSubscription(defaultAccountDeps(pool), { id: orgId, name: rows[0]?.name ?? `organization ${orgId}` }, duplicate);
+  } catch (e: any) {
+    console.warn("[stripe webhook] couldn't notify the admins of a duplicate subscription:", e?.message || e);
+  }
+}
+
 // Stripe webhook (subscriptions for organizations). Configure the endpoint in
 // Stripe as POST https://<app>/api/webhooks/stripe and set
 // STRIPE_WEBHOOK_SECRET to its signing secret. The signature covers the raw
@@ -40,6 +51,9 @@ router.post(
       // Who was approved is for the audit trail, not for Stripe's copy of the response.
       const { approved: _approved, ...outcome } = result;
       res.json({ received: true, ...outcome });
+      // A second live subscription means the customer is being charged twice. The admins hear of it after Stripe has
+      // its answer, so a slow or broken mail provider can't delay or fail the acknowledgement.
+      if (result.duplicate_subscription && result.org_id) void tellAdminsOfDuplicate(result.org_id, result.duplicate_subscription);
     } catch (e: any) {
       console.error("[stripe webhook] failed:", e?.message || e);
       res.status(500).json({ message: "Failed to apply the event" });
