@@ -270,9 +270,12 @@ export const rollupReferralSources = pgTable("rollup_referral_sources", {
   hh_cert_benes: integer("hh_cert_benes"),
   hospice_oversight_benes: integer("hospice_oversight_benes"),
   hh_cert_year: varchar("hh_cert_year", { length: 10 }),
+  hospice_index: integer("hospice_index"),
+  hospice_rank_in_county: integer("hospice_rank_in_county"),
 }, (table) => [
   index("idx_rollup_ref_src_county").on(table.county_fips, table.referral_index),
   index("idx_rollup_ref_src_state").on(table.state, table.referral_index),
+  index("idx_rollup_ref_src_county_hospice").on(table.county_fips, table.hospice_index),
 ]);
 
 export const rollupCountyMarketProfile = pgTable("rollup_county_market_profile", {
@@ -323,6 +326,13 @@ export const rollupCountyMarketProfile = pgTable("rollup_county_market_profile",
   living_alone_65_plus: integer("living_alone_65_plus"),
   licensed_homes: integer("licensed_homes"),
   licensed_beds: integer("licensed_beds"),
+  hha_users_change_pct: doublePrecision("hha_users_change_pct"),
+  hha_providers_change_pct: doublePrecision("hha_providers_change_pct"),
+  hospice_users_change_pct: doublePrecision("hospice_users_change_pct"),
+  hospice_providers_change_pct: doublePrecision("hospice_providers_change_pct"),
+  snf_users_change_pct: doublePrecision("snf_users_change_pct"),
+  snf_providers_change_pct: doublePrecision("snf_providers_change_pct"),
+  avg_hcc_source: varchar("avg_hcc_source", { length: 40 }),
 }, (table) => [
   index("idx_rollup_county_profile_state").on(table.state),
 ]);
@@ -921,7 +931,7 @@ export const medicareFacilities = pgTable("medicare_facilities", {
   avg_length_of_stay: doublePrecision("avg_length_of_stay"),
   total_charges: doublePrecision("total_charges"),
   total_payments: doublePrecision("total_payments"),
-  quality_rating: integer("quality_rating"),
+  quality_rating: doublePrecision("quality_rating"),
   data_year: varchar("data_year", { length: 10 }),
   raw_data: jsonb("raw_data"),
   import_batch_id: text("import_batch_id"),
@@ -1791,6 +1801,26 @@ export const cmsPhysicianCertifications = pgTable("cms_physician_certifications"
   updated_date: timestamp("updated_date").defaultNow(),
 }, (table) => [
   uniqueIndex("uq_cms_phys_cert").on(table.npi, table.hcpcs_code, table.place_of_service, table.data_year),
+]);
+
+/** Medicare Inpatient Hospitals by Provider and Service: one row per hospital, DRG and year. */
+export const cmsInpatientDrg = pgTable("cms_inpatient_drg", {
+  id: serial("id").primaryKey(),
+  ccn: varchar("ccn", { length: 10 }).notNull(),
+  drg_code: varchar("drg_code", { length: 10 }).notNull(),
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  drg_desc: text("drg_desc"),
+  provider_name: text("provider_name"),
+  state: varchar("state", { length: 2 }),
+  discharges: integer("discharges"),
+  avg_covered_charges: doublePrecision("avg_covered_charges"),
+  avg_total_payments: doublePrecision("avg_total_payments"),
+  avg_medicare_payments: doublePrecision("avg_medicare_payments"),
+  raw_data: jsonb("raw_data"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_cms_inpatient_drg").on(table.ccn, table.drg_code, table.data_year),
 ]);
 
 /** Long-Term Care Facility Characteristics (CMS-671): quarterly nursing-home census and payer mix. */

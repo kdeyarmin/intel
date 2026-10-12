@@ -173,7 +173,7 @@ const IMPORT_CATEGORIES = [
       { id: 'market_saturation_cbsa', name: 'Market Saturation (CBSA)', description: 'Provider density by CBSA', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'medicare_geographic_variation', name: 'Geographic Variation', description: 'Medicare spending variation', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'medicare_telehealth_trends', name: 'Telehealth Trends', description: 'Telehealth utilization trends', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
-      { id: 'provider_ownership', name: 'Provider Ownership', description: 'Ownership & control info', requiredColumns: ['ENROLLMENT ID', 'ASSOCIATE ID', 'ORGANIZATION NAME', 'ASSOCIATE ID - OWNER'], downloadUrl: 'https://data.cms.gov/provider-characteristics/medicare-provider-supplier-enrollment/provider-and-supplier-ownership' },
+      { id: 'provider_ownership', name: 'Provider Ownership (retired)', description: 'CMS retired this file (404). Use the All Owners imports.', requiredColumns: [], downloadUrl: '' },
       { id: 'facility_affiliation', name: 'Facility Affiliation', description: 'Facility affiliation data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'aco_organizations', name: 'ACO Organizations', description: 'ACO organization data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'aco_participants', name: 'ACO Participants', description: 'ACO participant info', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },

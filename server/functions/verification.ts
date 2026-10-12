@@ -2,6 +2,7 @@
 // verification (DNS/MX, no paid service), and connection tests for data
 // source URLs. Outbound requests to user-supplied URLs go through safeFetch.
 import { pool } from "../db";
+import { inSequence } from "../lib/pgSequence";
 import { apiKeyHeaders, checkUrl, type CheckResult } from "../lib/connectorCheck";
 import { decorateRow } from "../lib/entityFields";
 import { buildNpiValidationRecord, isValidNpi } from "../lib/npiValidation";
@@ -44,14 +45,14 @@ export async function handleValidateProviderNPI(payload: any) {
   }
 
   const local = await withClient("10s", async (client) => {
-    const [p, l, t] = await Promise.all([
-      client.query("SELECT entity_type, first_name, last_name, organization_name, credential, status FROM providers WHERE npi = $1 LIMIT 1", [npi]),
+    const [p, l, t] = await inSequence([
+      () => client.query("SELECT entity_type, first_name, last_name, organization_name, credential, status FROM providers WHERE npi = $1 LIMIT 1", [npi]),
       // The practice location if there is one (a provider can have many rows).
-      client.query(
+      () => client.query(
         "SELECT address_1, address_2, city, state, zip, phone, location_type FROM provider_locations WHERE npi = $1 ORDER BY (location_type = 'Practice') DESC NULLS LAST LIMIT 1",
         [npi],
       ),
-      client.query("SELECT taxonomy_code FROM provider_taxonomies WHERE npi = $1 AND is_primary = true LIMIT 1", [npi]),
+      () => client.query("SELECT taxonomy_code FROM provider_taxonomies WHERE npi = $1 AND is_primary = true LIMIT 1", [npi]),
     ]);
     const location = l.rows[0] || null;
     return { provider: p.rows[0] || null, location, primaryTaxonomyCode: t.rows[0]?.taxonomy_code || null };

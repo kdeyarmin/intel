@@ -100,7 +100,7 @@ const CMS_IMPORT_TYPE_DEFINITIONS = [
   { id: 'nursing_home_chains', label: 'Nursing Home Chains', supportsUrl: true },
   { id: 'inpatient_drg', label: 'Inpatient DRG', supportsUrl: true },
   { id: 'home_health_pdgm', label: 'Home Health PDGM', supportsUrl: true },
-  { id: 'provider_ownership', label: 'Provider Ownership', supportsUrl: true },
+  { id: 'provider_ownership', label: 'Provider Ownership (retired)', supportsUrl: false },
   { id: 'home_health_agencies', label: 'Home Health Agencies', supportsUrl: true },
   { id: 'home_infusion_therapy', label: 'Home Infusion Therapy', supportsUrl: true },
   { id: 'hospice_general_info', label: 'Hospice General Info', supportsUrl: true },
@@ -280,6 +280,8 @@ export function buildImportTypeLabels(overrides = {}) {
 export const FILE_IMPORT_FIELDS = {
   licensed_facilities: { year: true, state: true, licenseType: true },
   physician_shared_patient_patterns: { year: true },
+  // The CMS URL is gone. A file the admin already has can still be imported, and it needs the year it describes.
+  provider_ownership: { year: true },
 };
 
 /** The license types a licensing export is normalized to (server/functions/cmsTypedTables.ts: normalizeLicenseType). */
