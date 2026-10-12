@@ -14,6 +14,8 @@ import { US_STATES } from '@/lib/usStates';
 import { fmtCount, fmtMoney, fmtPct, fmtShare } from '@/lib/marketFormat';
 import { GROWTH_SETTINGS, REPORT_CATALOG, countyGrowthRows, growthFacts, leaderFacts } from '@/lib/marketBriefs';
 import { useBusinessLine } from '@/lib/BusinessLineContext';
+import { countExport } from '@/components/exports/exportUtils';
+import { toast } from 'sonner';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import MarketFreshness from '../components/market/MarketFreshness';
 
@@ -178,6 +180,17 @@ export default function MarketBriefs() {
   const countyList = counties?.counties || [];
   const countyName = countyList.find((c) => c.fips === url.county)?.name || market?.county?.name || 'This county';
   const place = `${countyName}${url.state ? `, ${url.state}` : ''}`;
+
+  // Printing exports the full brief, so it counts against the organization's
+  // daily export allowance like every other export.
+  const handlePrint = async () => {
+    const quota = await countExport();
+    if (!quota.ok) {
+      toast.error(quota.message);
+      return;
+    }
+    window.print();
+  };
   const facts = useMemo(() => growthFacts(countyGrowthRows(layer?.counties || [], settingKey)), [layer, settingKey]);
   const ranked = useMemo(() => sortGrowth(facts.ranked, SORTS.some((s) => s.id === url.sort) ? url.sort : 'users').filter((r) => r.users != null).slice(0, 15), [facts, url.sort]);
 
@@ -193,7 +206,7 @@ export default function MarketBriefs() {
           <p className="text-sm text-slate-400 mt-1">{profile ? profile.blurb : 'Each report answers one decision. The figures are the published counts, not a score built on top of them.'}</p>
         </div>
         {spec && (
-          <Button type="button" variant="outline" size="sm" onClick={() => window.print()} disabled={spec.needs === 'county' && !ready}>
+          <Button type="button" variant="outline" size="sm" onClick={handlePrint} disabled={spec.needs === 'county' && !ready}>
             <Printer className="w-4 h-4 mr-1" aria-hidden="true" /> Print
           </Button>
         )}
