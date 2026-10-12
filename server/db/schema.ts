@@ -276,6 +276,7 @@ export const rollupReferralSources = pgTable("rollup_referral_sources", {
   index("idx_rollup_ref_src_county").on(table.county_fips, table.referral_index),
   index("idx_rollup_ref_src_state").on(table.state, table.referral_index),
   index("idx_rollup_ref_src_county_hospice").on(table.county_fips, table.hospice_index),
+  index("idx_rollup_ref_src_state_hospice").on(table.state, table.hospice_index),
 ]);
 
 export const rollupCountyMarketProfile = pgTable("rollup_county_market_profile", {
@@ -1933,6 +1934,9 @@ export const cmsInpatientDrg = pgTable("cms_inpatient_drg", {
 }, (table) => [
   uniqueIndex("uq_cms_inpatient_drg").on(table.ccn, table.drg_code, table.data_year),
 ]);
+
+// The importer writes cms_inpatient_drg. Reports read it through the entity API.
+tableMap.CmsInpatientDrg = cmsInpatientDrg;
 
 /** Long-Term Care Facility Characteristics (CMS-671): quarterly nursing-home census and payer mix. */
 export const cmsLtcFacilityCharacteristics = pgTable("cms_ltc_facility_characteristics", {

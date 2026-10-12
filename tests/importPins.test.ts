@@ -50,6 +50,7 @@ describe("pinned CMS datasets", () => {
     const entry = getCMSDatasetCatalog().datasets.find((d: { id: string }) => d.id === "provider_ownership");
     expect(entry?.url).toBeNull();
     expect(entry?.available).toBe(true);
+    expect(entry?.unavailable).toBe(true);
     expect(entry?.description).toMatch(/retired|All Owners/i);
     expect(autoImportBlock("provider_ownership", null)).toMatch(/404/);
     expect(autoImportBlock("provider_ownership", "https://example.com/owners.csv")).toBeNull();

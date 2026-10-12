@@ -42,4 +42,9 @@ describe("the hospice index note", () => {
     expect(sql).toContain("ORDER BY hospice_index DESC, benes DESC, npi");
     expect(sql).toMatch(/ELSE\s+\(round\(40 \* s\.hospice_fit/);
   });
+
+  it("gives a physical therapist no specialty fit, whichever way CMS names the specialty", () => {
+    expect(sql).toMatch(/audiolog\|physical therap'/);
+    expect(sql).not.toMatch(/physical therapy'/);
+  });
 });
