@@ -10,7 +10,9 @@ export default function ResumeImportButton({ batch, onResumed }) {
   const isNPPES = batch.import_type === 'nppes_registry' && batch.file_name?.startsWith('crawler_');
 
   const isFlatFile = batch.import_type === 'nppes_flat_file' || batch.import_type === 'nppes_registry_file';
-  const canResume = (batch.status === 'paused' || batch.status === 'failed') && 
+  // completed_with_errors (MAX_PAGES cap) is resumable: the batch saved its
+  // resume offset and the error sample says "Resume to continue."
+  const canResume = (batch.status === 'paused' || batch.status === 'failed' || batch.status === 'completed_with_errors') &&
                     (isNPPES || isFlatFile || batch.retry_params?.resume_offset > 0 || batch.imported_rows > 0);
 
   if (!canResume) return null;
@@ -27,39 +29,42 @@ export default function ResumeImportButton({ batch, onResumed }) {
         });
         toast.success('NPPES crawler batch resumed');
       } else if (isFlatFile) {
-        if (batch.status === 'failed' || batch.status === 'paused') {
-          try {
-            await base44.entities.ImportBatch.update(batch.id, {
-              status: 'processing',
-              paused_at: null,
-              cancel_reason: "",
-            });
-          } catch (__) { /* best-effort */ }
+        // The flat-file worker is synchronous and checks the batch status at
+        // each chunk, so the flip must happen before invoking — but a failed
+        // invoke restores the previous status instead of stranding the batch
+        // in 'processing' with no worker running.
+        const prevStatus = batch.status;
+        try {
+          await base44.entities.ImportBatch.update(batch.id, {
+            status: 'processing',
+            paused_at: null,
+            paused_by: null,
+            cancel_reason: "",
+            expected_status: prevStatus,
+          });
+        } catch (__) { /* best-effort: the worker still runs */ }
+
+        try {
+          const rp = batch.retry_params || {};
+          await base44.functions.invoke('importNPPESFlatFile', {
+            batch_id: batch.id,
+            file_url: rp.file_url || batch.file_url || batch.file_name,
+            byte_offset: rp.byte_offset || 0,
+            headers: rp.headers || null,
+            total_rows: rp.total_rows || batch.imported_rows || 0,
+          });
+        } catch (invokeErr) {
+          await base44.entities.ImportBatch.update(batch.id, { status: prevStatus }).catch(() => {});
+          throw invokeErr;
         }
 
-        const rp = batch.retry_params || {};
-        await base44.functions.invoke('importNPPESFlatFile', {
-          batch_id: batch.id,
-          file_url: rp.file_url || batch.file_url || batch.file_name,
-          byte_offset: rp.byte_offset || 0,
-          headers: rp.headers || null,
-          total_rows: rp.total_rows || batch.imported_rows || 0,
-        });
-
-        toast.success(`Resuming flat file import from byte offset ${(rp.byte_offset || 0).toLocaleString()}`);
+        toast.success(`Resuming flat file import from byte offset ${(batch.retry_params?.byte_offset || 0).toLocaleString()}`);
       } else {
+        // triggerImport flips the batch to 'processing' itself on a successful
+        // invoke (409 when the batch is no longer resumable). Flipping here
+        // first would strand the batch in 'processing' if the invoke fails.
         const offset = batch.retry_params?.resume_offset || batch.imported_rows || 0;
 
-        if (batch.status === 'failed' || batch.status === 'paused') {
-          try {
-            await base44.entities.ImportBatch.update(batch.id, {
-              status: 'processing',
-              paused_at: null,
-              cancel_reason: "",
-            });
-          } catch (__) { /* best-effort */ }
-        }
-        
         await base44.functions.invoke('triggerImport', {
           import_type: batch.import_type,
           file_url: batch.retry_params?.file_url || batch.file_url,
