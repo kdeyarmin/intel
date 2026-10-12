@@ -30,6 +30,8 @@ export interface UiTurn {
   created_at: string | Date;
   question: string;
   items: UiItem[];
+  /** Billed re-issued requests on this turn (mid-stream failures the loop retried). */
+  retries: number;
 }
 
 export function uiAction(a: { id: string; kind: string; status: string; payload: any; expires_at?: string | Date | null; expiresAt?: string | null; result?: any }, now = Date.now()): UiAction {
@@ -96,7 +98,7 @@ export function renderTranscript(turns: TurnRow[], messages: MessageRow[], actio
         }
       }
     });
-    return { id: turn.id, status: turn.status, error: turn.error, created_at: turn.created_at, question, items };
+    return { id: turn.id, status: turn.status, error: turn.error, created_at: turn.created_at, question, items, retries: Number((turn.usage as any)?.retries || 0) };
   });
 }
 

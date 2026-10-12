@@ -156,3 +156,33 @@ export function adminActionProblem(input: {
   }
   return null;
 }
+
+export type OrgOwnerAction = "role" | "remove";
+
+/**
+ * Why an owner may not demote or remove `targetUserId` from their
+ * organization, or null when allowed. Mirrors adminActionProblem: an
+ * organization always keeps its last owner, the way the platform always
+ * keeps its last active admin.
+ */
+export function orgOwnerActionProblem(input: {
+  actorId: number;
+  targetUserId: number;
+  orgId: number;
+  action: OrgOwnerAction;
+  newOrgRole?: "owner" | "member" | null;
+  /** User ids of the organization's current owners. */
+  ownerIds: number[];
+}): string | null {
+  const { actorId, targetUserId, action, newOrgRole, ownerIds } = input;
+  if (targetUserId === actorId) {
+    return action === "remove"
+      ? "You can't remove yourself from the organization. Ask another owner."
+      : "You can't change your own organization role here. Ask another owner.";
+  }
+  const removesOwner = ownerIds.includes(targetUserId) && (action === "remove" || newOrgRole !== "owner");
+  if (removesOwner && ownerIds.length <= 1) {
+    return "This is the last owner of the organization. Make someone else an owner first.";
+  }
+  return null;
+}
