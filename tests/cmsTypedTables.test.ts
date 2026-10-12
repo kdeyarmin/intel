@@ -180,3 +180,23 @@ describe("Home health certifications", () => {
     expect(mapPhysicianCertification({ ...good, HCPCS_Cd: "g0180" }, ctx2)).toMatchObject({ hcpcs_code: "G0180" });
   });
 });
+
+describe("Inpatient DRG", () => {
+  it("keeps one row per hospital, DRG and year, and drops a row with no DRG", () => {
+    const row = {
+      Rndrng_Prvdr_CCN: "010001", DRG_Cd: "003", DRG_Desc: "ECMO OR TRACH", YEAR: "2024",
+      Rndrng_Prvdr_Org_Name: "Southeast Health", Rndrng_Prvdr_State_Abrvtn: "AL",
+      Tot_Dschrgs: "11", Avg_Submtd_Cvrd_Chrg: "1000", Avg_Tot_Pymt_Amt: "800", Avg_Mdcr_Pymt_Amt: "700",
+    };
+    const mapped = TYPED_ROUTES.inpatient_drg.map(row, ctx)!;
+    expect(mapped).toMatchObject({
+      ccn: "010001", drg_code: "003", data_year: "2024", drg_desc: "ECMO OR TRACH",
+      provider_name: "Southeast Health", state: "AL", discharges: 11,
+      avg_covered_charges: 1000, avg_total_payments: 800, avg_medicare_payments: 700,
+    });
+    expect(TYPED_ROUTES.inpatient_drg.key).toEqual(["ccn", "drg_code", "data_year"]);
+    expect(TYPED_ROUTES.inpatient_drg.map({ ...row, DRG_Cd: "" }, ctx)).toBeNull();
+    expect(TYPED_ROUTES.inpatient_drg.map({ ...row, YEAR: "" }, { year: null, batchId: 7 })).toBeNull();
+  });
+});
+

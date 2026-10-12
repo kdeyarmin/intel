@@ -19,6 +19,7 @@ import {
   cmsPacUtilization,
   cmsPhysicianByProvider,
   cmsPhysicianCertifications,
+  cmsInpatientDrg,
   cmsZipServiceArea,
 } from "../db/schema";
 
@@ -496,6 +497,24 @@ export function mapLicensedFacility(row: any, ctx: MapContext) {
   };
 }
 
+export function mapInpatientDrg(row: any, ctx: MapContext) {
+  const ccn = str(row.Rndrng_Prvdr_CCN ?? row.CCN, 10);
+  const drg_code = str(row.DRG_Cd ?? row.DRG_CODE, 10);
+  const data_year = yearOf(ctx, row.YEAR);
+  if (!ccn || !drg_code || !data_year) return null;
+  return {
+    ccn, drg_code, data_year,
+    drg_desc: str(row.DRG_Desc, 500),
+    provider_name: str(row.Rndrng_Prvdr_Org_Name, 500),
+    state: str(row.Rndrng_Prvdr_State_Abrvtn, 2),
+    discharges: int(row.Tot_Dschrgs),
+    avg_covered_charges: num(row.Avg_Submtd_Cvrd_Chrg),
+    avg_total_payments: num(row.Avg_Tot_Pymt_Amt),
+    avg_medicare_payments: num(row.Avg_Mdcr_Pymt_Amt),
+    raw_data: row, import_batch_id: ctx.batchId,
+  };
+}
+
 // ─── routes ──────────────────────────────────────────────────────────────────
 
 export const TYPED_ROUTES: Record<string, TypedRoute> = {
@@ -514,6 +533,7 @@ export const TYPED_ROUTES: Record<string, TypedRoute> = {
   facility_affiliation: { table: cmsFacilityAffiliation, key: ["npi", "facility_type", "facility_ccn"], map: mapFacilityAffiliation, snapshot: { table: "cms_facility_affiliation" } },
   medicare_dme_by_referring: { table: cmsDmeByReferring, key: ["npi", "data_year"], map: mapDmeByReferring },
   physician_certifications: { table: cmsPhysicianCertifications, key: ["npi", "hcpcs_code", "place_of_service", "data_year"], map: mapPhysicianCertification },
+  inpatient_drg: { table: cmsInpatientDrg, key: ["ccn", "drg_code", "data_year"], map: mapInpatientDrg },
   ltc_facility_characteristics: { table: cmsLtcFacilityCharacteristics, key: ["ccn", "period_end"], map: mapLtcFacilityCharacteristics },
   licensed_facilities: {
     table: licensedFacilities, key: ["state", "license_type", "facility_key"], map: mapLicensedFacility, needsGeo: true, stateFromParams: true,

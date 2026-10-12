@@ -89,7 +89,7 @@ export default function LinkedFacilitiesCard({ linkedFacilities }) {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {f.quality_rating && (
                     <Badge className="bg-amber-900/30 text-amber-400 border-amber-500/30 text-xs">
-                      <Star className="w-3 h-3 mr-0.5" />{f.quality_rating}
+                      <Star className="w-3 h-3 mr-0.5" />{Number.isInteger(Number(f.quality_rating)) ? f.quality_rating : Number(f.quality_rating).toFixed(1)}
                     </Badge>
                   )}
                   <ExternalLink className="w-3 h-3 text-slate-400" aria-hidden="true" />

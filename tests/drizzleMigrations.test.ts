@@ -743,7 +743,7 @@ describe("migration 0022_physician_certifications", () => {
     const table = schema.slice(schema.indexOf('pgTable("cms_physician_certifications"'));
     expect(table.slice(0, table.indexOf("});"))).toContain('uniqueIndex("uq_cms_phys_cert").on(table.npi, table.hcpcs_code, table.place_of_service, table.data_year)');
     const rollup = schema.slice(schema.indexOf('pgTable("rollup_referral_sources"'));
-    expect(rollup.slice(0, rollup.indexOf("}, (table)"))).toMatch(/rank_in_county: integer\("rank_in_county"\),\s+hh_cert_benes: integer\("hh_cert_benes"\),\s+hospice_oversight_benes: integer\("hospice_oversight_benes"\),\s+hh_cert_year: varchar\("hh_cert_year", \{ length: 10 \}\),\s+$/);
+    expect(rollup.slice(0, rollup.indexOf("}, (table)"))).toMatch(/rank_in_county: integer\("rank_in_county"\),\s+hh_cert_benes: integer\("hh_cert_benes"\),\s+hospice_oversight_benes: integer\("hospice_oversight_benes"\),\s+hh_cert_year: varchar\("hh_cert_year", \{ length: 10 \}\),/);
   });
 
   it("is registered in the drizzle journal after 0021, later than it", () => {
@@ -752,6 +752,33 @@ describe("migration 0022_physician_certifications", () => {
     expect(tags.indexOf("0022_physician_certifications")).toBe(tags.indexOf("0021_billing_event_guard") + 1);
     const at = (tag: string) => journal.entries.find((e: { tag: string }) => e.tag === tag).when;
     expect(at("0022_physician_certifications")).toBeGreaterThan(at("0021_billing_event_guard"));
+  });
+});
+
+describe("migration 0023_remaining_data_fixes", () => {
+  const sql = readMigration("0023_remaining_data_fixes.sql");
+
+  it("widens star ratings, stores DRG rows, and adds the hospice and county columns", () => {
+    expect(sql).toMatch(/ALTER COLUMN "quality_rating" TYPE double precision/);
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "cms_inpatient_drg"');
+    expect(sql).toContain('CREATE UNIQUE INDEX IF NOT EXISTS "uq_cms_inpatient_drg"');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "hospice_index" integer');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "hospice_rank_in_county" integer');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "avg_hcc_source" varchar(40)');
+    const schema = readSchema();
+    expect(schema).toContain('pgTable("cms_inpatient_drg"');
+    const facilities = schema.slice(schema.indexOf('pgTable("medicare_facilities"'));
+    expect(facilities.slice(0, facilities.indexOf("});"))).toContain('quality_rating: doublePrecision("quality_rating")');
+    const rollup = schema.slice(schema.indexOf('pgTable("rollup_referral_sources"'));
+    expect(rollup.slice(0, rollup.indexOf("}, (table)"))).toMatch(/hh_cert_year: varchar\("hh_cert_year", \{ length: 10 \}\),\s+hospice_index: integer\("hospice_index"\),\s+hospice_rank_in_county: integer\("hospice_rank_in_county"\),/);
+  });
+
+  it("is registered in the drizzle journal after 0022, later than it", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const tags = journal.entries.map((e: { tag: string }) => e.tag);
+    expect(tags.indexOf("0023_remaining_data_fixes")).toBe(tags.indexOf("0022_physician_certifications") + 1);
+    const at = (tag: string) => journal.entries.find((e: { tag: string }) => e.tag === tag).when;
+    expect(at("0023_remaining_data_fixes")).toBeGreaterThan(at("0022_physician_certifications"));
   });
 });
 
