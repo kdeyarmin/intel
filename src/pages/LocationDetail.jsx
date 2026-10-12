@@ -12,6 +12,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ArrowLeft, MapPin, Phone, Printer, Users, Building2, ExternalLink, Shield, Activity, GitBranch } from 'lucide-react';
 import LocationGeoInsights from '../components/locations/LocationGeoInsights';
 import ContactEnrichmentStatus from '../components/locations/ContactEnrichmentStatus';
+import QueryErrorState from '../components/shared/QueryErrorState';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import { latestUtilizationTotals } from '../components/providers/utilizationTotals';
 import AIContactEnrichment from '../components/ai/AIContactEnrichment';
 import AILocationInsights from '../components/ai/AILocationInsights';
 import AIDataEnrichmentPanel from '../components/ai/AIDataEnrichmentPanel';
@@ -21,7 +24,7 @@ export default function LocationDetail() {
   const [searchParams] = useSearchParams();
   const locationId = searchParams.get('id');
 
-  const { data: allLocations = [], isLoading: loadingLoc } = useQuery({
+  const { data: allLocations = [], isLoading: loadingLoc, isError: locError, error: locLoadError, refetch: refetchLoc } = useQuery({
     queryKey: ['locationDetail', locationId],
     queryFn: () => base44.entities.ProviderLocation.filter({ id: locationId }),
     enabled: !!locationId,
@@ -42,14 +45,13 @@ export default function LocationDetail() {
     .map(l => l.npi)
     .filter(Boolean))];
 
-  // Fetch those providers
-  const { data: allProviders = [] } = useQuery({
-    queryKey: ['locDetailProviders'],
-    queryFn: () => base44.entities.Provider.list('-created_date', 500),
-    staleTime: 60000,
+  // Fetch providers at this address server-side by NPI: the previous
+  // newest-500 client-side filter nearly always came back empty.
+  const { data: coProviders = [] } = useQuery({
+    queryKey: ['locDetailProviders', location?.id, coLocatedNPIs.join(',')],
+    queryFn: () => base44.entities.Provider.filter({ npi: { $in: coLocatedNPIs } }, undefined, 500),
+    enabled: coLocatedNPIs.length > 0,
   });
-
-  const coProviders = allProviders.filter(p => coLocatedNPIs.includes(p.npi));
 
   // Fetch utilization data for the main NPI
   const { data: utilizations = [] } = useQuery({
@@ -119,6 +121,14 @@ export default function LocationDetail() {
     );
   }
 
+  if (locError) {
+    return (
+      <div className="p-8 max-w-xl mx-auto">
+        <QueryErrorState title="Couldn't load this location" error={locLoadError} onRetry={refetchLoc} />
+      </div>
+    );
+  }
+
   if (!location) {
     return (
       <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
@@ -130,7 +140,9 @@ export default function LocationDetail() {
     );
   }
 
-  const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+  // Utilization rows are per-HCPCS slices: the card shows provider totals
+  // summed across every row of the latest data year, not one arbitrary row.
+  const latestUtil = latestUtilizationTotals(utilizations);
   const latestRef = latestReferralSnapshot(referrals);
 
   return (
@@ -177,6 +189,18 @@ export default function LocationDetail() {
               <Button asChild variant="outline" size="sm" className="mt-2 gap-1.5">
                 <Link to={createPageUrl(`ProviderDetail?npi=${location.npi}`)}>
                   <ExternalLink className="w-3.5 h-3.5" /> View Provider
+                </Link>
+              </Button>
+              {location.npi && (
+                <Button asChild variant="outline" size="sm" className="mt-2 gap-1.5">
+                  <Link to={createPageUrl(`ReferralNetworkIntelligence?npi=${location.npi}`)}>
+                    <GitBranch className="w-3.5 h-3.5" /> View in referral network
+                  </Link>
+                </Button>
+              )}
+              <Button asChild variant="outline" size="sm" className="mt-2 gap-1.5">
+                <Link to={createPageUrl('ProviderIntelligence')}>
+                  Provider intelligence
                 </Link>
               </Button>
             </div>
@@ -333,6 +357,11 @@ export default function LocationDetail() {
               Providers at This Address
               <Badge variant="outline" className="ml-auto text-xs">{coProviders.length}</Badge>
             </CardTitle>
+            {coLocatedLocations.length >= 500 && (
+              <p className="text-[10px] text-amber-400/80">
+                The location scan is capped at 500 rows, so providers at this address may be incomplete.
+              </p>
+            )}
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -399,6 +428,8 @@ export default function LocationDetail() {
           </CardContent>
         </Card>
       )}
+
+      <DataSourcesFooter />
     </div>
   );
 }
