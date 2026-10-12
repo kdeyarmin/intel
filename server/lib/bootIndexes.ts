@@ -56,6 +56,9 @@ export const BOOT_INDEXES: BootIndex[] = [
   // Recent events of one type, newest first: account activity on Admin
   // Settings and the maintenance heartbeat. audit_events only grows.
   idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_events_type_created ON audit_events (event_type, created_date DESC)"),
+  // Market views name facilities by CCN (facilityNames in server/functions/market.ts); the table's
+  // natural-key index leads with setting, so a CCN-only lookup would scan it.
+  idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cms_pac_provider_ccn ON cms_pac_utilization (ccn, data_year DESC) WHERE summary_level = 'provider'"),
   // Case-insensitive unique emails. Migration 0008 creates it when it can;
   // while two accounts differ only by case the build fails (and is logged)
   // at every boot, and succeeds on the first boot after they're merged.
@@ -75,6 +78,7 @@ export const SWEEP_TABLES = [
   "lead_scores",
   "users",
   "audit_events",
+  "cms_pac_utilization",
 ];
 
 // Still-valid indexes whose natural key changed and must be rebuilt under a

@@ -520,6 +520,36 @@ Be concise and helpful. Use markdown formatting for readability.`;
         return res.json(await handleGetCountyIntelligence(req.body));
       }
 
+      case "getCountyMarket": {
+        const { handleGetCountyMarket } = await import("../functions/market");
+        return res.json(await handleGetCountyMarket(req.body));
+      }
+
+      case "getHospitalCatchment": {
+        const { handleGetHospitalCatchment } = await import("../functions/market");
+        return res.json(await handleGetHospitalCatchment(req.body));
+      }
+
+      case "getFacilityMarket": {
+        const { handleGetFacilityMarket } = await import("../functions/market");
+        return res.json(await handleGetFacilityMarket(req.body));
+      }
+
+      case "getCountyMarketLayer": {
+        const { handleGetCountyMarketLayer } = await import("../functions/market");
+        return res.json(await handleGetCountyMarketLayer(req.body));
+      }
+
+      case "getReferralSources": {
+        const { handleGetReferralSources } = await import("../functions/market");
+        return res.json(await handleGetReferralSources(req.body));
+      }
+
+      case "getServiceAreaOverlap": {
+        const { handleGetServiceAreaOverlap } = await import("../functions/market");
+        return res.json(await handleGetServiceAreaOverlap(req.body));
+      }
+
       case "getAvailableStatesCounties": {
         const { handleGetAvailableStatesCounties } = await import("../functions/countyIntelligence");
         return res.json(await handleGetAvailableStatesCounties(req.body));

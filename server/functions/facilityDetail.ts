@@ -1,5 +1,5 @@
 import { db, pool } from "../db";
-import { medicareFacilities, medicareFacilitiesRaw, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals, leadScores, cmsOrderReferring } from "../db/schema";
+import { medicareFacilities, medicareFacilitiesRaw, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals, leadScores, cmsOrderReferring, rollupReferralSources } from "../db/schema";
 import { eq, sql, and, ilike, inArray, desc, asc } from "drizzle-orm";
 
 const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
@@ -215,6 +215,19 @@ export async function handleGetProviderCMSData(params: any) {
     partb: cmsOrderReferring.partb, dme: cmsOrderReferring.dme, hha: cmsOrderReferring.hha,
     pmd: cmsOrderReferring.pmd, hospice: cmsOrderReferring.hospice, as_of: cmsOrderReferring.as_of,
   }).from(cmsOrderReferring).where(eq(cmsOrderReferring.npi, String(npi))).limit(1).catch(() => [] as any[]);
+  // The clinician's standing as a post-acute referral source (market rollup).
+  const [potential = null] = await db.select().from(rollupReferralSources).where(eq(rollupReferralSources.npi, String(npi))).limit(1).catch(() => [] as any[]);
+  let referralPotential: Record<string, unknown> | null = null;
+  let rollups: Record<string, unknown> | null = null;
+  if (potential) {
+    const { getGeoIndex } = await import("../lib/geo");
+    const { pool } = await import("../db");
+    const index = await getGeoIndex(pool).catch(() => null);
+    referralPotential = { ...potential, county_name: potential.county_fips && index ? index.counties.get(potential.county_fips)?.name ?? null : null };
+    // When the rollup behind the card last computed: every market view says so (MarketFreshness).
+    const { marketRollupFreshness } = await import("./market");
+    rollups = await marketRollupFreshness();
+  }
 
   const allRows = await db.select({
     id: medicareFacilities.id,
@@ -311,6 +324,10 @@ export async function handleGetProviderCMSData(params: any) {
     linked_facilities: Object.values(linkedFacilities),
     // Medicare services the provider may order or refer (CMS Order & Referring).
     order_referring: orderReferring,
+    // The clinician's standing as a post-acute referral source (ReferralPotentialCard, the assistant).
+    referral_potential: referralPotential,
+    // Freshness of the market rollups the card reads (present with referral_potential).
+    rollups,
     total_records: allRows.length,
   };
 }

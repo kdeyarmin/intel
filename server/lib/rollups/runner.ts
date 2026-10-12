@@ -13,6 +13,7 @@ import {
   type Accumulator,
   type Staging,
 } from "./core";
+import { MARKET_JOBS } from "./market";
 
 // Rows held in memory per query; jobs run one at a time to keep this bounded.
 export const CHUNK_ROWS = 100_000;
@@ -27,11 +28,19 @@ export interface RollupJob {
   name: string;
   label: string;
   source: string;
-  columns: string[];
   resultTable: string;
   resultColumns: string[];
   intervalMs: number;
-  accumulator: (staging: Staging) => Accumulator<any, any>;
+  /**
+   * "scan" (default) walks `source` in primary-key chunks through
+   * `accumulator`; "query" fills the result table with one SELECT (`sql`)
+   * under RESULTS_TIMEOUT, for sources small enough to aggregate in place
+   * (the typed CMS tables, never the big provider or facility tables).
+   */
+  kind?: "scan" | "query";
+  columns?: string[];
+  accumulator?: (staging: Staging) => Accumulator<any, any>;
+  sql?: string;
 }
 
 export const ROLLUP_JOBS: RollupJob[] = [
@@ -75,6 +84,9 @@ export const ROLLUP_JOBS: RollupJob[] = [
     intervalMs: DAY_MS,
     accumulator: () => facilityTypes(),
   },
+  // Market and patient-flow rollups; the county profile is last because it
+  // reads county_hospital_sources and pac_market_share.
+  ...MARKET_JOBS.map((j): RollupJob => ({ ...j, kind: "query", intervalMs: DAY_MS })),
 ];
 
 export const jobByName = (name: string) => ROLLUP_JOBS.find((j) => j.name === name) || null;
@@ -216,9 +228,29 @@ export async function runRollupJob(pool: any, job: RollupJob, log: Pick<Console,
       [job.name, JSON.stringify({ chunk: 0 })],
     );
 
+    if (job.kind === "query") {
+      if (!job.sql) throw new Error(`query job ${job.name} has no sql`);
+      await client.query(`SET statement_timeout = '${RESULTS_TIMEOUT}'`);
+      await client.query("BEGIN");
+      await client.query(`DELETE FROM ${job.resultTable}`);
+      const inserted = await client.query(`INSERT INTO ${job.resultTable} (${job.resultColumns.join(", ")})\n${job.sql}`);
+      const n = Number(inserted?.rowCount ?? 0);
+      const duration = Date.now() - started;
+      await client.query(
+        `UPDATE rollup_runs SET status = 'success', finished_at = now(), last_success_at = now(), rows_scanned = $2,
+           rows_skipped = 0, result_rows = $3, duration_ms = $4, progress = NULL, error = NULL WHERE job = $1`,
+        [job.name, n, n, duration],
+      );
+      await client.query("COMMIT");
+      await client.query("RESET statement_timeout");
+      log.log(`[rollups] ${job.name}: ${n.toLocaleString("en-US")} rows in ${Math.round(duration / 1000)}s`);
+      return { job: job.name, status: "success", rows_scanned: n, result_rows: n, duration_ms: duration };
+    }
+
     await client.query(`SET statement_timeout = '${CHUNK_TIMEOUT}'`);
     const { rows: [bounds] } = await client.query(`SELECT min(id) AS lo, max(id) AS hi FROM ${job.source}`);
     const chunks = planChunks(bounds.lo == null ? null : Number(bounds.lo), bounds.hi == null ? null : Number(bounds.hi), CHUNK_ROWS);
+    if (!job.accumulator || !job.columns) throw new Error(`scan job ${job.name} has no accumulator`);
     const acc = job.accumulator(staging);
     let scanned = 0;
     for (let i = 0; i < chunks.length; i += 1) {

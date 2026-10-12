@@ -10,6 +10,9 @@ function ctx(overrides: Partial<ToolDeps> = {}): ToolContext {
     describeProviders: vi.fn(async (npis: string[]) => new Map(npis.map((npi) => [npi, { npi, name: `P ${npi}`, entityType: "Individual", specialty: null, city: null, state: "PA", score: null }]))),
     getProviderReport: vi.fn(),
     getCountyIntelligence: vi.fn(),
+    getCountyMarket: vi.fn(async () => null),
+    getReferralSources: vi.fn(async () => null),
+    getProviderCMSData: vi.fn(async () => null),
     getTerritoryData: vi.fn(),
     getReferralNetwork: vi.fn(),
     getDashboardStats: vi.fn(),
@@ -83,6 +86,70 @@ describe("runTool", () => {
     expect(out.providers).toMatchObject({ total: 4200, total_is_exact: false });
     expect(out.sample_note).toMatch(/sample of 5000/);
     expect(out.top_providers).toEqual([{ npi: "1", name: "A", specialty: "X", score: 90 }]);
+  });
+
+  it("get_area_summary adds the county's market when the rollups have it", async () => {
+    const c = ctx({
+      getCountyIntelligence: vi.fn(async () => ({ state: "PA", county: { fips: "42003", name: "Allegheny County" }, summary: {}, sample: {}, providers: [] })),
+      getCountyMarket: vi.fn(async () => ({
+        profile: { available: true, benes: 310000, ma_penetration: 0.62, hha_users_pct: 11.05, readmission_rate: 0.152 },
+        vintages: { enrollment: "2026-06" },
+        hospital_sources: { rows: [{ ccn: "390001", name: "UPMC", share: 0.31, cases: 12000, discharge_mix: { pct_snf: 12.5, pct_hha: 8.1, pct_hospice: 1.2 } }] },
+        competitors: { snf: { data_year: "2024", rows: [{ ccn: "395001", name: "KANE", benes: 900, share: 0.12, rank: 1, providers_in_market: 70 }] }, hha: { data_year: null, rows: [] } },
+      })),
+      getReferralSources: vi.fn(async () => ({ rows: [{ npi: "1000000001", name: "Ada", specialty: "Internal Medicine", referral_index: 96, benes: 620, eligible: { hha: true, hospice: true, dme: false }, lead_score: 88 }] })),
+    });
+    const out = JSON.parse((await runTool("get_area_summary", { state: "PA", county: "42003" }, c)).content);
+    expect(c.deps.getCountyMarket).toHaveBeenCalledWith({ state: "PA", county_fips: "42003" });
+    expect(c.deps.getReferralSources).toHaveBeenCalledWith({ state: "PA", county_fips: "42003", limit: 10 });
+    expect(out.market.profile).toMatchObject({ medicare_beneficiaries: 310000, medicare_advantage_share_pct: 62, readmission_rate_pct: 15.2 });
+    expect(out.market.hospital_sources[0]).toMatchObject({ ccn: "390001", share_of_county_cases_pct: 31, post_discharge_mix_pct: { snf: 12.5 } });
+    expect(out.market.post_acute_market_share).toEqual({ snf: { year: "2024", providers_in_county: 70, top: [{ ccn: "395001", name: "KANE", beneficiaries: 900, share_pct: 12, rank: 1 }] } });
+    expect(out.market.likely_referral_sources[0]).toMatchObject({ npi: "1000000001", referral_index: 96, can_order: ["home health", "hospice"], lead_score: 88 });
+    expect(out.market.note).toMatch(/proxy/);
+    expect(out.market.vintages).toEqual({ enrollment: "2026-06" });
+  });
+
+  it("get_area_summary still answers when the market rollups aren't there", async () => {
+    const c = ctx({
+      getCountyIntelligence: vi.fn(async () => ({ state: "PA", county: { fips: "42003", name: "Allegheny County" }, summary: {}, sample: {}, providers: [] })),
+      getCountyMarket: vi.fn(async () => { throw new Error("relation missing"); }),
+      getReferralSources: vi.fn(async () => null),
+    });
+    const out = JSON.parse((await runTool("get_area_summary", { state: "PA", county: "42003" }, c)).content);
+    expect(out.county).toEqual({ fips: "42003", name: "Allegheny County" });
+    expect(out.market).toBeNull();
+  });
+
+  it("get_provider_profile adds who sends patients, ordering eligibility and referral potential", async () => {
+    const c = ctx({
+      getProviderReport: vi.fn(async () => ({
+        provider: { npi: "1000000001", displayName: "Ada", entityType: "Individual" },
+        referralsFrom: [{ toNpi: "2", toName: "B", totalReferrals: 5, dataYear: "2015" }],
+        referralsTo: [{ fromNpi: "3", fromName: "C", totalReferrals: 7, dataYear: "2015" }],
+      })),
+      getProviderCMSData: vi.fn(async () => ({
+        order_referring: { partb: true, hha: true, hospice: false, dme: false, as_of: "2026-10-03" },
+        referral_potential: { referral_index: 96, rank_in_county: 1, county_name: "Allegheny County", benes: 620, avg_risk_score: 2.1, hospital_ccns: ["390001"], affiliations: 2, data_year: "2024" },
+      })),
+    });
+    const out = JSON.parse((await runTool("get_provider_profile", { npi: "1000000001" }, c)).content);
+    expect(out.receives_patients_from).toEqual([{ npi: "3", name: "C", shared_patients: 7, year: "2015" }]);
+    expect(out.medicare_ordering).toEqual({ part_b: true, home_health: true, hospice: false, dme: false, as_of: "2026-10-03" });
+    expect(out.referral_potential).toMatchObject({ index: 96, rank_in_county: 1, county: "Allegheny County", hospital_affiliations: 1, year: "2024" });
+    expect(out.referral_potential.note).not.toMatch(/Facility Affiliation/);
+  });
+
+  it("get_provider_profile says hospital affiliations are unknown, not 0, until the Facility Affiliation file is imported", async () => {
+    const c = ctx({
+      getProviderReport: vi.fn(async () => ({ provider: { npi: "1000000001", displayName: "Ada", entityType: "Individual" } })),
+      getProviderCMSData: vi.fn(async () => ({
+        referral_potential: { referral_index: 96, rank_in_county: 1, county_name: "Allegheny County", benes: 620, hospital_ccns: null, affiliations: null, data_year: "2024" },
+      })),
+    });
+    const out = JSON.parse((await runTool("get_provider_profile", { npi: "1000000001" }, c)).content);
+    expect(out.referral_potential.hospital_affiliations).toBeNull();
+    expect(out.referral_potential.note).toMatch(/Facility Affiliation file has not been imported/);
   });
 
   it("get_referral_network takes exactly one scope and passes the user for rate limiting", async () => {

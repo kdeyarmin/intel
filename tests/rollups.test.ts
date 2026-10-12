@@ -139,7 +139,7 @@ describe("dueJobs", () => {
       { job: "geo_zip_location_counts", status: "success", started_at: ago(2), last_success_at: ago(2) },
       { job: "cms_service_types", status: "success", started_at: ago(30), last_success_at: ago(30) },
       { job: "cms_top_referred", status: "running", started_at: ago(1), last_success_at: null },
-    ], now).map((j) => j.name);
+    ], now, ROLLUP_JOBS.filter((j) => j.kind !== "query")).map((j) => j.name);
     expect(due).toEqual(["cms_service_types", "facility_types"]);
   });
 

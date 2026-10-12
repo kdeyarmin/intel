@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "17922748fdf84c67765642bbc8ae8bb1645269b6",
+    "ref": "c501d0dfe3263d3896fd5645e31b76f041051c6d",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -27,9 +27,9 @@
   },
   "summary": {
     "section_count": 9,
-    "topic_count": 30,
-    "text_character_count": 11754,
-    "canonical_sha256": "c57ca5b5339dcf83b1f2805b94de7a5c85d6ca08003070d22b2862b759934362"
+    "topic_count": 33,
+    "text_character_count": 14571,
+    "canonical_sha256": "c636b83100c166bd3b38e01dc5a7fc2771187b8cd2c9ccf7b1af2ea5d791a7b6"
   },
   "sections": [
     {
@@ -118,6 +118,21 @@
           "heading": "County view",
           "text": "Pick a state and a county to see providers practicing there, top specialties, the highest-scored providers, Medicare facilities, the strongest shared-patient pairs and top Medicare services. In large counties the page counts **practice locations** instead of providers (a provider with several offices counts more than once) and the details describe a sample; totals marked \"≈\" are estimates.",
           "sha256": "f239a0dd28eaee90ba82db2dc29656981fd3df280d4ad6fb97c83604ab7397b3"
+        },
+        {
+          "heading": "Market tab and county table",
+          "text": "Every county view has a **Market** tab: Medicare beneficiaries and the Medicare Advantage share (Medicare Monthly Enrollment), residents aged 85 and over and dual-eligibles, home health, hospice and skilled nursing use and supply (CMS Market Saturation), standardized spend per beneficiary and readmissions (Medicare Geographic Variation), and how many hospitals serve the county's residents. **Market Intelligence** (Territory › Market) puts every county of a state in one sortable table, with a CSV download; the Territory map's county density tab can colour counties by any of the same metrics.\n\nThese figures come from the daily market rollups, which need the enrollment, saturation, variation and Hospital Service Area files imported; each view says which vintage it used and when it was computed.",
+          "sha256": "b87125250c8eee178279c3d10d2059903c7d14e7a9f08a5bd0018d12d0bf979d"
+        },
+        {
+          "heading": "Hospital sources and competitors",
+          "text": "**Hospital sources** lists the hospitals whose Medicare inpatients live in the county (CMS Hospital Service Area: the patient's ZIP of residence by hospital), with each hospital's share of the county's cases and, where CMS publishes it, its post-discharge spend to skilled nursing, home health and hospice (Medicare Hospital Spending by Claim). That mix is a proxy for where a hospital's patients go next, not a count of transfers. A hospital's own page shows the counties and ZIP areas its patients come from.\n\n**Competitors** ranks the post-acute providers located in the county by the Medicare beneficiaries they served (Post-Acute Care Utilization by Provider) for skilled nursing, home health, hospice, inpatient rehab and long-term care hospitals, with payments, dual-eligible share and risk scores, year-over-year trend, and the home health agencies and hospices whose Care Compare service areas cover the county's ZIP codes. A facility's own page shows its rank and share in its county and state.\n\n**Referral sources** ranks the county's clinicians by a referral index (Medicare volume, patient risk score and Order & Referring eligibility) with the chronic-condition mix of their patients and their hospital affiliations; filter by eligibility or specialty group and add the top clinicians to a lead list in one step.",
+          "sha256": "74ab4097919637ac399365715288188150c48d9373042e47fe2b16a6f7f97e7a"
+        },
+        {
+          "heading": "What market share means here",
+          "text": "Market share is a provider's share of the Medicare fee-for-service beneficiaries served by all providers of that setting **located in the same county** (or state), from the CMS Post-Acute Care Utilization files. It describes Original Medicare only: Medicare Advantage, Medicaid and private-pay patients are not in the files, so a county with a high Medicare Advantage share is under-counted. Home health agencies and hospices serve patients beyond their home county, which is why the service-area coverage list is shown alongside. CMS suppresses counts under 11 before publishing, and all of these figures are CareMetric analytics derived from public CMS data rather than CMS publications.",
+          "sha256": "7a54d926938d58c00f3ef6375ac198f3d1773f2801e0d3eaac3450d0e2894fdf"
         },
         {
           "heading": "About the geography",

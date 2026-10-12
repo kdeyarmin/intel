@@ -148,6 +148,165 @@ export const rollupFacilityTypes = pgTable("rollup_facility_types", {
   latest_year: varchar("latest_year", { length: 10 }),
 });
 
+// Market and patient-flow rollups (server/lib/rollups/market.ts).
+export const rollupHospitalCatchment = pgTable("rollup_hospital_catchment", {
+  ccn: varchar("ccn", { length: 10 }).notNull(),
+  zip5: varchar("zip5", { length: 5 }).notNull(),
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  county_fips: varchar("county_fips", { length: 5 }),
+  cases: integer("cases"),
+  days: integer("days"),
+  charges: doublePrecision("charges"),
+  share_of_hospital: doublePrecision("share_of_hospital"),
+}, (table) => [
+  primaryKey({ columns: [table.ccn, table.zip5, table.data_year] }),
+  index("idx_rollup_hosp_catch_county").on(table.county_fips, table.data_year),
+]);
+
+export const rollupCountyHospitalSources = pgTable("rollup_county_hospital_sources", {
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  ccn: varchar("ccn", { length: 10 }).notNull(),
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  cases: integer("cases"),
+  days: integer("days"),
+  share_of_county: doublePrecision("share_of_county"),
+  rank: integer("rank"),
+}, (table) => [
+  primaryKey({ columns: [table.county_fips, table.ccn, table.data_year] }),
+  index("idx_rollup_county_hosp_ccn").on(table.ccn, table.data_year),
+]);
+
+export const rollupHospitalDischargeMix = pgTable("rollup_hospital_discharge_mix", {
+  ccn: varchar("ccn", { length: 10 }).notNull(),
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  facility_name: text("facility_name"),
+  state: varchar("state", { length: 2 }),
+  pct_snf: doublePrecision("pct_snf"),
+  pct_hha: doublePrecision("pct_hha"),
+  pct_hospice: doublePrecision("pct_hospice"),
+  pct_inpatient: doublePrecision("pct_inpatient"),
+  pct_outpatient: doublePrecision("pct_outpatient"),
+  pct_snf_state: doublePrecision("pct_snf_state"),
+  pct_hha_state: doublePrecision("pct_hha_state"),
+  pct_hospice_state: doublePrecision("pct_hospice_state"),
+  pct_snf_national: doublePrecision("pct_snf_national"),
+  pct_hha_national: doublePrecision("pct_hha_national"),
+  pct_hospice_national: doublePrecision("pct_hospice_national"),
+  avg_episode_spend: doublePrecision("avg_episode_spend"),
+}, (table) => [
+  primaryKey({ columns: [table.ccn, table.data_year] }),
+]);
+
+export const rollupPacMarketShare = pgTable("rollup_pac_market_share", {
+  setting: varchar("setting", { length: 10 }).notNull(),
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  geo_level: varchar("geo_level", { length: 10 }).notNull(),
+  geo_code: varchar("geo_code", { length: 5 }).notNull(),
+  ccn: varchar("ccn", { length: 10 }).notNull(),
+  provider_name: text("provider_name"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 2 }),
+  zip5: varchar("zip5", { length: 5 }),
+  benes: integer("benes"),
+  stays: integer("stays"),
+  days: integer("days"),
+  payment: doublePrecision("payment"),
+  dual_pct: doublePrecision("dual_pct"),
+  risk_score: doublePrecision("risk_score"),
+  share_benes: doublePrecision("share_benes"),
+  rank: integer("rank"),
+  providers_in_market: integer("providers_in_market"),
+}, (table) => [
+  primaryKey({ columns: [table.setting, table.data_year, table.geo_level, table.geo_code, table.ccn] }),
+  index("idx_rollup_pac_share_ccn").on(table.ccn, table.setting, table.data_year),
+  index("idx_rollup_pac_share_geo").on(table.geo_level, table.geo_code, table.setting, table.data_year),
+]);
+
+export const rollupAgencyCoverage = pgTable("rollup_agency_coverage", {
+  setting: varchar("setting", { length: 10 }).notNull(),
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  ccn: varchar("ccn", { length: 10 }).notNull(),
+  zips_served: integer("zips_served").notNull(),
+  county_zips: integer("county_zips").notNull(),
+  share_of_county_zips: doublePrecision("share_of_county_zips"),
+}, (table) => [
+  primaryKey({ columns: [table.setting, table.county_fips, table.ccn] }),
+  index("idx_rollup_agency_cov_ccn").on(table.setting, table.ccn),
+  index("idx_rollup_agency_cov_county").on(table.county_fips, table.setting),
+]);
+
+export const rollupReferralSources = pgTable("rollup_referral_sources", {
+  npi: varchar("npi", { length: 10 }).primaryKey(),
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  county_fips: varchar("county_fips", { length: 5 }),
+  state: varchar("state", { length: 2 }),
+  zip5: varchar("zip5", { length: 5 }),
+  specialty: varchar("specialty", { length: 120 }),
+  benes: integer("benes"),
+  services: doublePrecision("services"),
+  avg_risk_score: doublePrecision("avg_risk_score"),
+  dual_pct: doublePrecision("dual_pct"),
+  cc_chf_pct: doublePrecision("cc_chf_pct"),
+  cc_copd_pct: doublePrecision("cc_copd_pct"),
+  cc_alzheimer_pct: doublePrecision("cc_alzheimer_pct"),
+  cc_ckd_pct: doublePrecision("cc_ckd_pct"),
+  cc_diabetes_pct: doublePrecision("cc_diabetes_pct"),
+  hha_eligible: boolean("hha_eligible"),
+  hospice_eligible: boolean("hospice_eligible"),
+  dme_eligible: boolean("dme_eligible"),
+  dme_benes: integer("dme_benes"),
+  hospital_ccns: text("hospital_ccns").array(),
+  affiliations: integer("affiliations"),
+  referral_index: integer("referral_index"),
+  rank_in_county: integer("rank_in_county"),
+}, (table) => [
+  index("idx_rollup_ref_src_county").on(table.county_fips, table.referral_index),
+  index("idx_rollup_ref_src_state").on(table.state, table.referral_index),
+]);
+
+export const rollupCountyMarketProfile = pgTable("rollup_county_market_profile", {
+  county_fips: varchar("county_fips", { length: 5 }).primaryKey(),
+  state: varchar("state", { length: 2 }).notNull(),
+  county_name: text("county_name").notNull(),
+  enrollment_period: varchar("enrollment_period", { length: 8 }),
+  benes: bigint("benes", { mode: "number" }),
+  original_medicare: bigint("original_medicare", { mode: "number" }),
+  ma_benes: bigint("ma_benes", { mode: "number" }),
+  ma_penetration: doublePrecision("ma_penetration"),
+  aged: bigint("aged", { mode: "number" }),
+  dual: bigint("dual", { mode: "number" }),
+  benes_85_plus: bigint("benes_85_plus", { mode: "number" }),
+  saturation_period: varchar("saturation_period", { length: 40 }),
+  hha_providers: integer("hha_providers"),
+  hha_users: bigint("hha_users", { mode: "number" }),
+  hha_users_pct: doublePrecision("hha_users_pct"),
+  hospice_providers: integer("hospice_providers"),
+  hospice_users: bigint("hospice_users", { mode: "number" }),
+  hospice_users_pct: doublePrecision("hospice_users_pct"),
+  snf_providers: integer("snf_providers"),
+  snf_users: bigint("snf_users", { mode: "number" }),
+  snf_users_pct: doublePrecision("snf_users_pct"),
+  variation_year: varchar("variation_year", { length: 10 }),
+  std_per_capita_total: doublePrecision("std_per_capita_total"),
+  std_per_capita_snf: doublePrecision("std_per_capita_snf"),
+  std_per_capita_hha: doublePrecision("std_per_capita_hha"),
+  std_per_capita_hospice: doublePrecision("std_per_capita_hospice"),
+  readmission_rate: doublePrecision("readmission_rate"),
+  er_visits_per_1000: doublePrecision("er_visits_per_1000"),
+  avg_hcc_score: doublePrecision("avg_hcc_score"),
+  hsa_year: varchar("hsa_year", { length: 10 }),
+  hospitals_serving: integer("hospitals_serving"),
+  top_hospital_ccn: varchar("top_hospital_ccn", { length: 10 }),
+  top_hospital_share: doublePrecision("top_hospital_share"),
+  pac_year: varchar("pac_year", { length: 10 }),
+  snf_facilities: integer("snf_facilities"),
+  hha_agencies: integer("hha_agencies"),
+  hospice_agencies: integer("hospice_agencies"),
+  as_of: jsonb("as_of"),
+}, (table) => [
+  index("idx_rollup_county_profile_state").on(table.state),
+]);
+
 // Census geography (2020), loaded from server/data/census. Not exposed via tableMap.
 export const geoCounties = pgTable("geo_counties", {
   fips: varchar("fips", { length: 5 }).primaryKey(),

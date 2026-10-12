@@ -598,6 +598,42 @@ describe("migration 0017_nucc_taxonomies", () => {
   });
 });
 
+describe("migration 0018_market_rollups", () => {
+  const sql = readMigration("0018_market_rollups.sql");
+  const schema = readSchema();
+
+  it("only creates rollup tables and indexes, idempotently", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    expect(statements.length).toBeGreaterThan(10);
+    for (const stmt of statements) expect(stmt).toMatch(/^CREATE (TABLE|INDEX) IF NOT EXISTS "(rollup_|idx_rollup_)/);
+  });
+
+  it("declares every rollup table in the Drizzle schema with a primary key", () => {
+    const tables = [...sql.matchAll(/CREATE TABLE IF NOT EXISTS "(\w+)"/g)].map((m) => m[1]);
+    expect(tables).toHaveLength(7);
+    for (const table of tables) {
+      expect(schema, table).toContain(`pgTable("${table}"`);
+      expect(sql.slice(sql.indexOf(`"${table}" (`)), `${table} primary key`).toMatch(/PRIMARY KEY/);
+    }
+  });
+
+  it("indexes the county-keyed reads of the market share and agency coverage tables, in the migration and the schema", () => {
+    // County Intel reads these by county (geo_level + geo_code, county_fips), which neither primary key leads with.
+    expect(sql).toContain('"idx_rollup_pac_share_geo" ON "rollup_pac_market_share" ("geo_level", "geo_code", "setting", "data_year")');
+    expect(sql).toContain('"idx_rollup_agency_cov_county" ON "rollup_agency_coverage" ("county_fips", "setting")');
+    expect(schema).toContain('index("idx_rollup_pac_share_geo").on(table.geo_level, table.geo_code, table.setting, table.data_year)');
+    expect(schema).toContain('index("idx_rollup_agency_cov_county").on(table.county_fips, table.setting)');
+  });
+
+  it("is registered in the drizzle journal after 0017", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const tags = journal.entries.map((e: { tag: string }) => e.tag);
+    expect(tags.indexOf("0018_market_rollups")).toBe(tags.indexOf("0017_nucc_taxonomies") + 1);
+    const whens = journal.entries.map((e: { when: number }) => e.when);
+    expect(whens[whens.length - 1]).toBeGreaterThan(whens[whens.length - 2]);
+  });
+});
+
 describe("migration 0012_assistant", () => {
   const sql = readMigration("0012_assistant.sql");
   const schema = readSchema();
