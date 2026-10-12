@@ -1,88 +1,103 @@
-# Pilot Operational Setup Checklist
+# CareMetric Intel — Pilot Operational Setup Checklist
 
-This checklist covers the must-have operational setup for releasing CareMetric Intel to employees for a pilot. Complete these before inviting pilot users so data stays fresh, auth works, and core features (AI, email, imports) are available.
+This checklist covers the **must-have operational setup** before releasing the app to employees for pilot. Follow it for Railway (recommended), Replit, or local.
 
-Recommended deployment target for the pilot: **Railway** (Postgres plugin + volume + optional cron). Replit is also supported. The previous Vercel URL is not configured for this app (no `vercel.json`; designed for same-origin Express + SPA).
+**Goal:** A running instance with migrations applied, an admin account, maintenance ticks for data freshness, and the secrets needed for AI / email / optional billing.
 
 ## 1. PostgreSQL + Migrations
 
-- Provision a PostgreSQL database (Railway Postgres plugin recommended; it injects `DATABASE_URL`).
-- Set `DATABASE_URL` (required in all environments).
-- Set `DB_MIGRATE_ON_BOOT=true` so migrations from `./drizzle/` apply automatically at startup (uses an advisory lock; safe for multiple instances). Alternatively run `npm run db:migrate` manually.
+- Provision a PostgreSQL database (Railway Postgres plugin is the simplest).
+- Set `DATABASE_URL`.
+- **Recommended:** set `DB_MIGRATE_ON_BOOT=true` so the server applies pending migrations before listening (safe with multiple instances via advisory lock). The server exits if migration fails.
+- Alternatively run `npm run db:migrate` once after deploy.
 - Optional for local/controlled testing only: `npm run db:seed-demo` (refuses non-local databases).
-- Verify with `npm run db:status` or by hitting `/api/health` after boot.
 
-**Warning**: Do not use `npm run db:push` on shared or production databases — it drops the indexes the server builds at boot.
+Verify: server starts without migration errors; `/api/health` returns ok.
 
-## 2. JWT_SECRET and Admin Seed
+## 2. JWT_SECRET & First Admin
 
-- Generate a long random `JWT_SECRET` (required in production; the server refuses to start without it).
-- Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` to seed the first platform admin on first boot (or restore if the account still matches the password and no other admins exist).
-- In production the admin is only seeded when `ADMIN_PASSWORD` is set. Change the password after first login.
-- Recovery if needed: `RECOVER_EMAIL=... npx tsx scripts/admin-recover.ts`.
+- Generate a long random secret (e.g. `openssl rand -hex 48`) and set `JWT_SECRET`.
+  - **Required in production.** The server throws on startup if missing (see `server/middleware/auth.ts`).
+  - In development an ephemeral secret is generated (sessions drop on restart).
+- Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` (and optionally `ADMIN_FULL_NAME`).
+  - In production the first admin is seeded only if `ADMIN_PASSWORD` is set.
+  - If locked out later: `RECOVER_EMAIL=... npx tsx scripts/admin-recover.ts`.
 
-## 3. Maintenance Ticks (required for data freshness)
+After first boot, log in with the admin credentials and change the password.
 
-Nothing imports, retries, rolls up, or checks freshness without a maintenance tick.
+## 3. Maintenance Ticks (Critical for Data Freshness)
 
-**Simplest for pilot** (recommended):
-```
-MAINTENANCE_INPROCESS_INTERVAL_MS=600000
-```
-The server runs the same work every 10 minutes (shared across instances via advisory lock). Leave unset if you use an external scheduler.
+Nothing imports, retries, settles schedules, checks CMS catalogs, refreshes rollups, or sends ops alerts without a maintenance tick.
 
-**External cron** (Railway cron service, Replit Scheduled Deployment, or system cron):
-```
-MAINTENANCE_TOKEN=<long random secret>
-```
-Then run every 10 minutes:
+**Simplest for pilot (recommended):**
+
 ```bash
-MAINTENANCE_URL=https://your-app.railway.app MAINTENANCE_TOKEN=... sh scripts/maintenance-tick.sh
+MAINTENANCE_INPROCESS_INTERVAL_MS=600000   # every 10 minutes, min 60s
 ```
 
-After the first ticks:
-- Open the Import Monitor → Health tab. Confirm the last tick and review the “Needs attention” list.
-- Dataset catalog shows data year and import date.
-- Platform admins (plus `OPERATIONS_ALERT_EMAILS`) receive a daily digest while issues are open.
+The server starts an in-process ticker (shared across instances with an advisory lock). See `server/lib/maintenanceTicker.ts`.
 
-## 4. Secrets and Volumes
+**External cron alternative:**
 
-Copy from `.env.example` and set at least:
+- Set a strong `MAINTENANCE_TOKEN`.
+- Point a cron (Railway Cron Service, Replit Scheduled Deployment, system cron) every 10 minutes at:
+  ```bash
+  MAINTENANCE_URL=https://your-app.example.com \
+  MAINTENANCE_TOKEN=your-token \
+  sh scripts/maintenance-tick.sh
+  ```
+
+**After deploy:** open the Import Monitor → Health tab. Confirm the last tick is recent and the “Needs attention” list is empty (or expected items only). Dataset catalog shows data years / import dates.
+
+## 4. Secrets & Volumes
 
 | Variable | Purpose | Required for pilot? |
 |----------|---------|---------------------|
-| `ANTHROPIC_API_KEY` | AI Assistant, enrichment bots, insights | Yes (AI features) |
-| `SENDGRID_API_KEY` + `SENDGRID_FROM_EMAIL` | Email (password reset, invites, campaigns, alerts) | Yes (email) |
-| `PUBLIC_APP_URL` | Absolute links in emails (reset, unsubscribe, etc.) | Yes in production |
-| `OUTREACH_PHYSICAL_ADDRESS` | CAN-SPAM for outreach campaigns | Yes if sending outreach |
-| `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` + price IDs | Billing / Checkout / portal | Optional (Billing page works without; contact-us fallback) |
-| `NPPES_DOWNLOAD_DIR` | NPPES zip downloads (outside `uploads/`) | Recommended (use a volume) |
+| `ANTHROPIC_API_KEY` | AI Assistant, enrichment bots, quality analysis | Yes (for AI features) |
+| `SENDGRID_API_KEY` + `SENDGRID_FROM_EMAIL` + `PUBLIC_APP_URL` | Email (password reset, invites, campaigns, alerts) | Yes (for email features) |
+| `OUTREACH_PHYSICAL_ADDRESS` | CAN-SPAM for outreach | Yes if sending campaigns |
+| `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` + price IDs | Billing / Checkout / Portal | Only if testing paid plans |
+| `MAINTENANCE_TOKEN` | External cron | Only if not using in-process ticker |
 
-**Volumes (Railway)**:
-- Mount a volume at `/app/uploads` (served to signed-in users behind auth).
-- Optionally mount another (or use disk) for `NPPES_DOWNLOAD_DIR` (monthly full file is ~1.1 GB zipped). Must not be under `uploads/`.
+**Volumes (Railway):**
+
+- Mount a volume at `/app/uploads` for user file uploads (served only to signed-in users).
+- NPPES downloads go to `downloads/nppes/` (or `NPPES_DOWNLOAD_DIR`). Must be **outside** `uploads/` (served to users). Use a separate volume or ensure enough disk. Monthly full file is ~1.1 GB zipped.
+
+See `.env.example` for the complete commented list (CORS, model overrides, quotas, etc.).
 
 ## 5. Deployment
 
-### Railway (recommended)
-1. New service from this repo (uses `railpack.json` + `railway.toml`).
-2. Add Postgres plugin → `DATABASE_URL` is set automatically.
-3. Add volume mounted at `/app/uploads`.
-4. Set environment variables from `.env.example` (at minimum: `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `DB_MIGRATE_ON_BOOT=true`, `MAINTENANCE_INPROCESS_INTERVAL_MS=600000` or cron token, Anthropic, SendGrid, `PUBLIC_APP_URL`, `NODE_ENV=production`).
-5. Health check is already configured at `/api/health`.
-6. Optional: second cron service with command `sh scripts/maintenance-tick.sh` and the two `MAINTENANCE_*` vars (if not using in-process).
+### Railway (recommended for pilot)
+
+1. Create a new service from this repo.
+2. Add a PostgreSQL plugin → `DATABASE_URL` is injected.
+3. Add a volume mounted at `/app/uploads`.
+4. Set environment variables from `.env.example` (at minimum: `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `DB_MIGRATE_ON_BOOT=true`, `MAINTENANCE_INPROCESS_INTERVAL_MS=600000`, `ANTHROPIC_API_KEY`, `SENDGRID_*`, `PUBLIC_APP_URL`, `NODE_ENV=production`).
+5. Build command is handled by `railpack.json` (`npm ci && npm run build`); start is `npm start`.
+6. Health check is already in `railway.toml` (`/api/health`).
+7. (Optional) Add a Cron Service that runs `sh scripts/maintenance-tick.sh` if you prefer external ticks instead of in-process.
 
 ### Replit
-`.replit` is already configured for autoscale: builds then runs `NODE_ENV=production node --import tsx server/index.ts`. Set the same secrets in Replit Secrets. Use a Scheduled Deployment for the maintenance tick if not using in-process.
 
-### Post-deploy verification
-- `GET /api/health` returns ok.
-- Log in as the seeded admin.
-- Import Monitor Health shows a recent tick (or “overdue heartbeat” if ticks are missing).
-- Dataset catalog and a sample provider/facility page load.
-- AI Assistant and a test email (password reset or alert) work if keys are set.
+`.replit` is already configured for autoscale deployment (`npm run build` then production start). Set the same secrets. Use a Scheduled Deployment or in-process ticker for maintenance.
 
-## Notes
-- Large CMS/NPPES tables rely on the indexes built at boot and the precomputed rollups. Monitor query performance under pilot load.
-- Geography uses 2020 Census data loaded at boot when tables are empty.
-- See `.env.example`, `README.md`, and `replit.md` for full architecture, security model, and all variables.
+### Note on Vercel
+
+The app is designed for same-origin serving (Express serves the SPA in production). The previously mentioned Vercel URL returns 404; use Railway or Replit for the pilot.
+
+## Post-Deploy Verification
+
+- [ ] `GET /api/health` → `{ "status": "ok" }`
+- [ ] Admin can log in
+- [ ] Import Monitor Health tab shows a recent tick
+- [ ] No unexpected items in “Needs attention”
+- [ ] (If AI enabled) AI Assistant responds
+- [ ] (If email enabled) password reset / invite works
+- [ ] Dataset catalog shows freshness info
+
+## Further Reading
+
+- `.env.example` — full documented environment
+- `README.md` — Deployment and Keeping the data fresh
+- `replit.md` / `CLAUDE.md` — architecture and conventions
