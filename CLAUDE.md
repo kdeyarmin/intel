@@ -280,7 +280,8 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   that names no state at all (Order & Referring, CBSA saturation) fails the batch
   after its first 5,000 rows with the reason, instead of reading to the end and
   importing nothing. The pinned ids in `IMPORT_TYPE_URLS` for the typed datasets
-  are checked against the live catalogs by title (`tests/importPins.test.ts`).
+  were checked against the live catalogs by title; `tests/importPins.test.ts`
+  records them (offline), so changing one is a deliberate act.
 - **Import progress is merged, never replaced.** `import_batches.retry_params`
   is shared by the importers, auto-retry and auto-resume, so write it with
   `mergeRetryParams` (`triggerImport.ts`) or the attempt counters are lost and
