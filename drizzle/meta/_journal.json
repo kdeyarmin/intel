@@ -220,10 +220,24 @@
       "breakpoints": true
     },
     {
-      "idx": 32,
+      "idx": 33,
       "version": "7",
       "when": 1791613237276,
-      "tag": "0032_import_batches_paused_by",
+      "tag": "0033_import_batches_paused_by",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791613238276,
+      "tag": "0034_drop_campaign_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1791613239276,
+      "tag": "0035_billing_status_since",
       "breakpoints": true
     }
   ]
