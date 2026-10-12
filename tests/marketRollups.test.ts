@@ -111,9 +111,9 @@ describe("market rollup jobs", () => {
   it("carry the year of the certification file, which is not the physician file's year", () => {
     const job = jobByName("referral_sources")!;
     expect(job.sql).toMatch(/\(SELECT y FROM cert_year\) AS hh_cert_year/);
-    expect(job.sql).toMatch(/hh_cert_benes, hospice_oversight_benes, hh_cert_year\s+FROM scored/);
-    // Appended last, after the two counts, as migration 0022 adds them.
-    expect(job.resultColumns.slice(-3)).toEqual(["hh_cert_benes", "hospice_oversight_benes", "hh_cert_year"]);
+    expect(job.sql).toMatch(/hh_cert_benes, hospice_oversight_benes, hh_cert_year, hospice_index/);
+    // 0022 appends the certification year after the two counts; 0023 appends the hospice rank after that.
+    expect(job.resultColumns.slice(-5)).toEqual(["hh_cert_benes", "hospice_oversight_benes", "hh_cert_year", "hospice_index", "hospice_rank_in_county"]);
   });
 
   it("count the county's post-acute providers at each setting's own latest year", () => {

@@ -3,6 +3,7 @@
 // to provider_location_matches for review on the matching page; approved,
 // rejected and overridden pairs are kept and never re-suggested.
 import { pool } from "../db";
+import { inSequence } from "../lib/pgSequence";
 import { LISTING_PRIMARY_TYPES } from "./facilityDetail";
 import { FACILITY_GROUP_LABELS, scoreProviderMatches, type FacilityMatch, type MatchFacility, type MatchProvider } from "../lib/matching";
 
@@ -69,20 +70,20 @@ export async function handleMatchProvidersToLocations(payload: any) {
       return { success: false, error: `No providers with a practice location in ${state}${listId ? " on that lead list" : ""}.` };
     }
 
-    const [prov, tax, refs, facs, decided] = await Promise.all([
-      client.query("SELECT npi, entity_type, first_name, last_name, organization_name, credential FROM providers WHERE npi = ANY($1)", [npis]),
-      client.query("SELECT npi, taxonomy_description FROM provider_taxonomies WHERE npi = ANY($1) AND is_primary = true", [npis]),
-      client.query(
+    const [prov, tax, refs, facs, decided] = await inSequence([
+      () => client.query("SELECT npi, entity_type, first_name, last_name, organization_name, credential FROM providers WHERE npi = ANY($1)", [npis]),
+      () => client.query("SELECT npi, taxonomy_description FROM provider_taxonomies WHERE npi = ANY($1) AND is_primary = true", [npis]),
+      () => client.query(
         "SELECT npi, referred_to_npi, total_referrals FROM cms_referrals WHERE npi = ANY($1) AND referred_to_npi IS NOT NULL LIMIT 50000",
         [npis],
       ),
       // idx_medfac_type_state
-      client.query(
+      () => client.query(
         `SELECT id, facility_type, provider_id, facility_name, address, city, zip FROM medicare_facilities
           WHERE facility_type = ANY($1) AND state = $2 ORDER BY id DESC LIMIT $3`,
         [groups.map((g) => LISTING_PRIMARY_TYPES[g]), state, MAX_FACILITIES],
       ),
-      client.query(
+      () => client.query(
         "SELECT npi, facility_id FROM provider_location_matches WHERE npi = ANY($1) AND match_type = 'facility' AND status <> 'suggested'",
         [npis],
       ),

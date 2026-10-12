@@ -7,6 +7,7 @@ import { handleGetTerritoryData } from "../../functions/territory";
 import { handleGetReferralNetworkData } from "../../functions/referralNetwork";
 import { getDashboardStats } from "../dashboardStats";
 import { withTimeoutClient } from "../pgClient";
+import { inSequence } from "../pgSequence";
 import { escapeLike } from "../providerSearch";
 import { normalizeEntityType } from "../specialtyGroups";
 import { pickScore, providerName } from "../territory";
@@ -20,11 +21,11 @@ export async function describeProviders(pool: any, npis: string[]): Promise<Map<
   const out = new Map<string, ProviderBrief>();
   if (npis.length === 0) return out;
   await withTimeoutClient(pool, "8s", async (client: any) => {
-    const [provs, taxes, locs, scores] = await Promise.all([
-      client.query("SELECT npi, entity_type, first_name, last_name, organization_name, credential, ai_outreach_score FROM providers WHERE npi = ANY($1)", [npis]),
-      client.query("SELECT npi, taxonomy_description FROM provider_taxonomies WHERE npi = ANY($1) AND is_primary = true", [npis]),
+    const [provs, taxes, locs, scores] = await inSequence([
+      () => client.query("SELECT npi, entity_type, first_name, last_name, organization_name, credential, ai_outreach_score FROM providers WHERE npi = ANY($1)", [npis]),
+      () => client.query("SELECT npi, taxonomy_description FROM provider_taxonomies WHERE npi = ANY($1) AND is_primary = true", [npis]),
       // One location per provider, the practice one first (an index probe each).
-      client.query(
+      () => client.query(
         `SELECT l.npi, l.location_type, l.city, l.state
            FROM unnest($1::varchar[]) AS n(npi)
            CROSS JOIN LATERAL (
@@ -33,7 +34,7 @@ export async function describeProviders(pool: any, npis: string[]): Promise<Map<
            ) l`,
         [npis],
       ),
-      client.query("SELECT npi, score FROM lead_scores WHERE npi = ANY($1)", [npis]),
+      () => client.query("SELECT npi, score FROM lead_scores WHERE npi = ANY($1)", [npis]),
     ]);
     const tax = new Map(taxes.rows.map((t: any) => [t.npi, t.taxonomy_description]));
     const loc = new Map<string, any>();

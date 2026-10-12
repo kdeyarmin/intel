@@ -395,28 +395,41 @@ export async function handleListFacilities(params: any) {
   const safePage = Math.max(1, Number(page) || 1);
   const offset = (safePage - 1) * safeLimit;
 
-  let whereClauses = [`facility_type = ANY($1)`];
+  let whereClauses = [`m.facility_type = ANY($1)`];
   const queryValues: any[] = [listingTypes];
   let paramIdx = 2;
 
   if (state) {
-    whereClauses.push(`state = $${paramIdx}`);
+    whereClauses.push(`m.state = $${paramIdx}`);
     queryValues.push(state.toUpperCase());
     paramIdx++;
   }
   if (search) {
-    whereClauses.push(`facility_name ILIKE $${paramIdx}`);
+    whereClauses.push(`m.facility_name ILIKE $${paramIdx}`);
     queryValues.push(`%${search}%`);
     paramIdx++;
   }
   const whereSQL = whereClauses.join(" AND ");
+  // Care Compare hospital rows don't carry discharges or Medicare payment. Those live on the
+  // inpatient-by-provider file (one row per CCN). Join the latest of those for the hospital list only.
+  const volumeJoin = facility_group === "hospital"
+    ? `LEFT JOIN LATERAL (
+         SELECT total_discharges, total_payments FROM medicare_facilities
+          WHERE facility_type = 'medicare_inpatient_by_provider' AND provider_id = m.provider_id
+          ORDER BY data_year DESC NULLS LAST, id DESC
+          LIMIT 1
+       ) ip ON true`
+    : "";
+  const volumeCols = facility_group === "hospital"
+    ? "COALESCE(ip.total_discharges, m.total_discharges) AS total_discharges, COALESCE(ip.total_payments, m.total_payments) AS total_payments"
+    : "m.total_discharges, m.total_payments";
 
   let rows: any[] = [];
   try {
     rows = await paramQuery(
-      `SELECT provider_id, facility_name, city, state, zip, quality_rating, total_discharges, total_payments, facility_type, data_year
-       FROM medicare_facilities WHERE ${whereSQL}
-       ORDER BY facility_name ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+      `SELECT m.provider_id, m.facility_name, m.city, m.state, m.zip, m.quality_rating, ${volumeCols}, m.facility_type, m.data_year
+       FROM medicare_facilities m ${volumeJoin} WHERE ${whereSQL}
+       ORDER BY m.facility_name ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
       [...queryValues, safeLimit, offset],
       60000
     );
@@ -424,8 +437,8 @@ export async function handleListFacilities(params: any) {
     console.warn(`[facilityDetail] Ordered query timed out for ${facility_group}, falling back to unordered`);
     try {
       rows = await paramQuery(
-        `SELECT provider_id, facility_name, city, state, zip, quality_rating, total_discharges, total_payments, facility_type, data_year
-         FROM medicare_facilities WHERE ${whereSQL}
+        `SELECT m.provider_id, m.facility_name, m.city, m.state, m.zip, m.quality_rating, ${volumeCols}, m.facility_type, m.data_year
+         FROM medicare_facilities m ${volumeJoin} WHERE ${whereSQL}
          LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
         [...queryValues, safeLimit, offset],
         60000
@@ -471,7 +484,7 @@ export async function handleListFacilities(params: any) {
   } else {
     try {
       const countRows = await paramQuery(
-        `SELECT count(DISTINCT provider_id) as count FROM medicare_facilities WHERE ${whereSQL}`,
+        `SELECT count(DISTINCT m.provider_id) as count FROM medicare_facilities m WHERE ${whereSQL}`,
         queryValues,
         30000
       );

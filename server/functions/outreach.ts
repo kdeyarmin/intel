@@ -5,6 +5,7 @@
 // organization: another organization's campaign answers 404.
 import crypto from "crypto";
 import { pool } from "../db";
+import { inSequence } from "../lib/pgSequence";
 import { getMailerStatus, sendMail } from "../lib/mailer";
 import { consumeQuota } from "../lib/orgQuota";
 import { isPlatformAdmin } from "../lib/roles";
@@ -182,16 +183,16 @@ async function prepareLocked(client: any, campaignId: number, user: Caller | und
   const taxonomyByNpi = new Map<string, any>();
   const locationByNpi = new Map<string, any>();
   for (const part of chunk(toFetch, 1000)) {
-    const [p, t, l] = await Promise.all([
-      client.query(
+    const [p, t, l] = await inSequence([
+      () => client.query(
         "SELECT npi, entity_type, first_name, last_name, organization_name, credential, status, email, email_validation_status FROM providers WHERE npi = ANY($1)",
         [part],
       ),
-      client.query(
+      () => client.query(
         "SELECT npi, taxonomy_description, is_primary FROM provider_taxonomies WHERE npi = ANY($1)",
         [part],
       ),
-      client.query(
+      () => client.query(
         "SELECT npi, city, state, location_type FROM provider_locations WHERE npi = ANY($1)",
         [part],
       ),
@@ -540,13 +541,13 @@ export async function handleCalculateOutreachScore(payload: any, user?: Caller) 
   if (!/^\d{10}$/.test(npi)) throw new HttpError(400, "A 10-digit npi is required");
 
   const features = await withClient("15s", async (client) => {
-    const [p, t, l, u, r, m] = await Promise.all([
-      client.query("SELECT npi, status, email, email_validation_status, phone, credential FROM providers WHERE npi = $1 LIMIT 1", [npi]),
-      client.query("SELECT 1 FROM provider_taxonomies WHERE npi = $1 LIMIT 1", [npi]),
-      client.query("SELECT phone FROM provider_locations WHERE npi = $1 LIMIT 20", [npi]),
+    const [p, t, l, u, r, m] = await inSequence([
+      () => client.query("SELECT npi, status, email, email_validation_status, phone, credential FROM providers WHERE npi = $1 LIMIT 1", [npi]),
+      () => client.query("SELECT 1 FROM provider_taxonomies WHERE npi = $1 LIMIT 1", [npi]),
+      () => client.query("SELECT phone FROM provider_locations WHERE npi = $1 LIMIT 20", [npi]),
       // Medicare volume: every service row of the provider's latest year (one
       // row is one HCPCS code), summed the same way as the provider report.
-      client.query(
+      () => client.query(
         `SELECT count(*)::int AS n,
                 COALESCE(SUM(CASE WHEN total_unique_benes ~ '^[0-9]+(\\.[0-9]+)?$' THEN total_unique_benes::numeric END), 0) AS benes
            FROM provider_service_utilization
@@ -555,13 +556,13 @@ export async function handleCalculateOutreachScore(payload: any, user?: Caller) 
         [npi],
       ),
       // Partners, not rows: a pair has one row per data year.
-      client.query(
+      () => client.query(
         `SELECT count(DISTINCT referred_to_npi)::int AS n
            FROM (SELECT referred_to_npi FROM cms_referrals WHERE npi = $1 AND referred_to_npi IS NOT NULL LIMIT 1000) x`,
         [npi],
       ),
       // The caller's own organization's outreach to this provider (another customer's is not theirs to see).
-      client.query(
+      () => client.query(
         `SELECT count(*) FILTER (WHERE sent_at IS NOT NULL)::int AS sent, count(opened_at)::int AS opened,
                 count(responded_at)::int AS responded, count(bounced_at)::int AS bounced
            FROM outreach_messages WHERE npi = $1 AND org_id = $2`,

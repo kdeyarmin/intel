@@ -15,7 +15,7 @@ import { RESIDENTIAL_LICENSE_TYPES } from "../lib/licenseTypes";
 import { countiesForState, getGeoIndex, resolveCounty, type GeoIndex } from "../lib/geo";
 import { normalizeStateFilter } from "../lib/providerSearch";
 import { specialtyGroupFor } from "../lib/specialtyGroups";
-import { referralIndexNote } from "../lib/referralIndex";
+import { hospiceIndexNote, referralIndexNote } from "../lib/referralIndex";
 import { providerName } from "../lib/territory";
 import { rollupStatus } from "../lib/rollups/runner";
 import { MARKET_JOBS } from "../lib/rollups/market";
@@ -510,8 +510,11 @@ export async function handleGetReferralSources(payload: any, user?: EntitledUser
       params.push(stateCounties);
       where.push(`county_fips = ANY($${params.length})`);
     }
+    const order = setting === "hospice"
+      ? "ORDER BY hospice_index DESC, benes DESC NULLS LAST, npi"
+      : "ORDER BY referral_index DESC, benes DESC NULLS LAST, npi";
     const { rows: fetched } = await client.query(
-      `SELECT * FROM rollup_referral_sources WHERE ${where.join(" AND ")} ORDER BY referral_index DESC, benes DESC NULLS LAST, npi LIMIT $2`,
+      `SELECT * FROM rollup_referral_sources WHERE ${where.join(" AND ")} ${order} LIMIT $2`,
       params,
     );
     const rows = fetched.slice(0, fetch);
@@ -552,12 +555,14 @@ export async function handleGetReferralSources(payload: any, user?: EntitledUser
           // null = the Home Health Certifications file has not been imported; 0 = not listed (CMS lists a clinician only above 10
           // patients in a care setting). The counts add up the care settings and are for hh_cert_year, not data_year.
           hh_cert_benes: num(r.hh_cert_benes), hospice_oversight_benes: num(r.hospice_oversight_benes), hh_cert_year: r.hh_cert_year ?? null,
-          referral_index: num(r.referral_index), rank_in_county: num(r.rank_in_county), lead_score: n?.score ?? null, data_year: r.data_year,
+          referral_index: num(r.referral_index), rank_in_county: num(r.rank_in_county),
+          hospice_index: num(r.hospice_index), hospice_rank_in_county: num(r.hospice_rank_in_county),
+          lead_score: n?.score ?? null, data_year: r.data_year,
         };
       }),
       certifications_loaded: certificationsLoaded,
       certifications_year: certificationsYear,
-      index_note: referralIndexNote(certificationsLoaded),
+      index_note: setting === "hospice" ? hospiceIndexNote(certificationsLoaded) : referralIndexNote(certificationsLoaded),
       rollups: await marketRollupFreshness(),
     };
   }));

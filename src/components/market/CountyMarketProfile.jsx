@@ -40,9 +40,9 @@ export default function CountyMarketProfile({ profile, vintages, rollups, county
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { key: 'hha', label: 'Home health', providers: p.hha_providers, users: p.hha_users, pct: p.hha_users_pct, spend: p.std_per_capita_hha, agencies: p.hha_agencies, color: 'text-green-400' },
-          { key: 'hospice', label: 'Hospice', providers: p.hospice_providers, users: p.hospice_users, pct: p.hospice_users_pct, spend: p.std_per_capita_hospice, agencies: p.hospice_agencies, color: 'text-purple-400' },
-          { key: 'snf', label: 'Skilled nursing', providers: p.snf_providers, users: p.snf_users, pct: p.snf_users_pct, spend: p.std_per_capita_snf, agencies: p.snf_facilities, color: 'text-amber-400' },
+          { key: 'hha', label: 'Home health', providers: p.hha_providers, users: p.hha_users, pct: p.hha_users_pct, spend: p.std_per_capita_hha, agencies: p.hha_agencies, usersChange: p.hha_users_change_pct, providersChange: p.hha_providers_change_pct, color: 'text-green-400' },
+          { key: 'hospice', label: 'Hospice', providers: p.hospice_providers, users: p.hospice_users, pct: p.hospice_users_pct, spend: p.std_per_capita_hospice, agencies: p.hospice_agencies, usersChange: p.hospice_users_change_pct, providersChange: p.hospice_providers_change_pct, color: 'text-purple-400' },
+          { key: 'snf', label: 'Skilled nursing', providers: p.snf_providers, users: p.snf_users, pct: p.snf_users_pct, spend: p.std_per_capita_snf, agencies: p.snf_facilities, usersChange: p.snf_users_change_pct, providersChange: p.snf_providers_change_pct, color: 'text-amber-400' },
         ].map((s) => (
           <Card key={s.key} className="bg-slate-800/50 border-slate-700/50">
             <CardContent className="p-4 space-y-1">
@@ -52,7 +52,9 @@ export default function CountyMarketProfile({ profile, vintages, rollups, county
               </div>
               <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
                 <dt className="text-slate-400">Users (share of FFS)</dt><dd className="text-slate-200">{fmtCount(s.users)} ({fmtPct(s.pct)})</dd>
+                <dt className="text-slate-400">Users vs prior year</dt><dd className="text-slate-200">{fmtPct(s.usersChange)}</dd>
                 <dt className="text-slate-400">Providers billing here</dt><dd className="text-slate-200">{fmtCount(s.providers)}</dd>
+                <dt className="text-slate-400">Providers vs prior year</dt><dd className="text-slate-200">{fmtPct(s.providersChange)}</dd>
                 <dt className="text-slate-400">Located in county</dt><dd className="text-slate-200">{fmtCount(s.agencies)}</dd>
                 <dt className="text-slate-400">Spend per beneficiary</dt><dd className="text-slate-200">{fmtMoney(s.spend)}</dd>
               </dl>
@@ -72,7 +74,7 @@ export default function CountyMarketProfile({ profile, vintages, rollups, county
         <Kpi icon={DollarSign} color="text-emerald-400" label="Standardized spend per beneficiary" value={fmtMoney(p.std_per_capita_total)} sub={p.variation_year ? `Geographic variation ${p.variation_year}` : null} />
         <Kpi icon={Activity} color="text-amber-400" label="Hospital readmission rate" value={fmtShare(p.readmission_rate, 1)} />
         <Kpi icon={Activity} color="text-orange-400" label="ER visits per 1,000" value={fmtRate(p.er_visits_per_1000, 0)} />
-        {p.avg_hcc_score != null && <Kpi icon={Activity} color="text-sky-400" label="Average HCC risk score" value={fmtRate(p.avg_hcc_score, 2)} />}
+        {p.avg_hcc_score != null && <Kpi icon={Activity} color="text-sky-400" label="Average HCC risk score" value={fmtRate(p.avg_hcc_score, 2)} sub={p.avg_hcc_source === 'physician_panels' ? "Beneficiary-weighted average of physicians’ CMS patient risk scores; the county file has no risk score" : p.avg_hcc_source === 'geographic_variation' && p.variation_year ? `Geographic variation ${p.variation_year}` : null} />}
       </div>
       <MarketFreshness rollups={rollups} jobs={['county_market_profile']} vintages={vintages} />
     </div>

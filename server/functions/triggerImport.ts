@@ -10,7 +10,7 @@ import { markImportFinished, markImportStarted, resolveImportVersion } from "../
 import { sourceForUrl } from "../lib/cmsCatalog";
 import { csvSourceRecords, isLocalUpload, sourceKindFor } from "../lib/importSources";
 import { pageRecords } from "../lib/csv";
-import { CERTIFICATION_HCPCS, TYPED_ROUTES, mapTypedRows } from "./cmsTypedTables";
+import { CERTIFICATION_HCPCS, TYPED_ROUTES, int, mapTypedRows, num } from "./cmsTypedTables";
 import { NPPES_FILE_TYPES } from "./importNPPESFile";
 import { resolveNppesFile, classifyNppesLink } from "../lib/nppesFiles";
 import { recordSourceFile } from "../lib/datasetRegistry";
@@ -160,9 +160,18 @@ export const IMPORT_TYPE_URLS: Record<string, string> = {
   mds_frequency: "https://data.cms.gov/data-api/v1/dataset/4b50bbe6-a496-4eda-b03b-5f835937f81b/data",
   nursing_home_chains: "https://data.cms.gov/data-api/v1/dataset/97ecfad1-d3f1-4d42-b774-d74661d830bc/data",
   snf_quality_reporting: "https://data.cms.gov/provider-data/api/1/datastore/query/fykj-qjee/0",
-  provider_ownership: "https://data.cms.gov/data-api/v1/dataset/6f1e6491-670f-4e3e-8bfb-7e04d678cfac/data",
-  inpatient_drg: "https://data.cms.gov/data-api/v1/dataset/ee6fb1a5-39b9-46b3-a980-a7284551a732/data",
+  // "Medicare Inpatient Hospitals - by Provider and Service" (one row per hospital and DRG). The id this used to
+  // share with medicare_inpatient_by_provider, ee6fb1a5, is the by-provider totals file: no DRG code.
+  inpatient_drg: "https://data.cms.gov/data-api/v1/dataset/690ddc6c-2767-4618-b277-420ffb2bf27c/data",
 };
+
+/** Why an import type cannot be started from a CMS URL, or null when it can (a file_url may still be uploaded). */
+export function autoImportBlock(importType: string, fileUrl?: string | null): string | null {
+  if (importType === "provider_ownership" && !fileUrl) {
+    return "Provider & Supplier Ownership was retired by CMS (the dataset returns 404). Import an All Owners file instead: hospital_all_owners, home_health_all_owners, hospice_all_owners, snf_all_owners, fqhc_all_owners, or rural_health_clinic_all_owners.";
+  }
+  return null;
+}
 
 const ZIP_FUNCTION_MAP: Record<string, string> = {
   medicare_hha_stats: "importMedicareHHA",
@@ -252,7 +261,7 @@ const CMS_DATASET_CATALOG = [
   { id: "ambulatory_surgical_center", title: "Ambulatory Surgical Center Quality Measures", description: "Quality performance data for Medicare-certified ambulatory surgical centers.", category: "Hospitals", records: "~5.7K", priority: "medium" },
   { id: "hospital_joint_replacement", title: "Comprehensive Care for Joint Replacement - Provider", description: "Provider-level data for the CMS Comprehensive Care for Joint Replacement bundled payment model.", category: "Hospitals", records: "~320", priority: "low" },
   { id: "hospital_price_transparency", title: "Hospital Price Transparency Enforcement", description: "Enforcement activities and outcomes for hospital price transparency compliance.", category: "Hospitals", records: "~2K", priority: "low" },
-  { id: "medicare_inpatient_by_provider", title: "Medicare Inpatient Hospitals - by Provider", description: "Inpatient hospital charge and payment data aggregated by provider including DRG utilization.", category: "Hospitals", records: "~200K", priority: "medium" },
+  { id: "medicare_inpatient_by_provider", title: "Medicare Inpatient Hospitals - by Provider", description: "One row per hospital: total discharges, covered days, submitted charges and Medicare payment. Not the DRG-level file.", category: "Hospitals", records: "~6K", priority: "medium" },
   { id: "medicare_outpatient_by_provider", title: "Medicare Outpatient Hospitals - by Provider", description: "Outpatient hospital service utilization and payment data by provider and APC code.", category: "Hospitals", records: "~3M", priority: "medium" },
 
   { id: "home_health_enrollments", title: "Home Health Agency Enrollments", description: "CMS enrollment data for home health agencies including NPI, CCN, organization details, and enrollment status.", category: "Home Health", records: "~12K", priority: "high" },
@@ -328,8 +337,8 @@ const CMS_DATASET_CATALOG = [
   { id: "aco_financial_results", title: "ACO Financial & Quality Results", description: "Annual financial performance and quality measure results for ACOs in the Medicare Shared Savings Program.", category: "ACO & Networks", records: "~500", priority: "medium" },
 
   { id: "nursing_home_chains", title: "Nursing Home Chain Data", description: "Performance data aggregated at the nursing home chain level including star ratings and facility counts.", category: "Nursing Homes & SNF", records: "~1K", priority: "medium" },
-  { id: "inpatient_drg", title: "Medicare Inpatient DRG Statistics", description: "Inpatient hospital charge and payment data by DRG code including discharges and average payments.", category: "Hospitals", records: "~200K", priority: "medium" },
-  { id: "provider_ownership", title: "Provider & Supplier Ownership", description: "Ownership and control information for Medicare providers and suppliers.", category: "Medicare Programs", records: "~2M", priority: "medium" },
+  { id: "inpatient_drg", title: "Medicare Inpatient Hospitals - by Provider and Service", description: "Discharges and average Medicare payment for each hospital and DRG. Not the one-row-per-hospital totals.", category: "Hospitals", records: "~200K+", priority: "medium" },
+  { id: "provider_ownership", title: "Provider & Supplier Ownership (Retired)", description: "Retired by CMS: the combined ownership file returns 404 and has no replacement. Import the All Owners files (hospital, home health, hospice, SNF, FQHC, rural health clinic) instead.", category: "Medicare Programs", records: "N/A", priority: "low" },
   { id: "home_health_pdgm", title: "Home Health PDGM Data (Retired)", description: "Patient-Driven Groupings Model data — dataset retired by CMS. Use HHA Utilization by Geography & Case-Mix instead.", category: "Home Health", records: "N/A", priority: "low" },
   { id: "snf_quality_reporting", title: "SNF Quality Reporting Program", description: "Quality measure data from the SNF Quality Reporting Program.", category: "Nursing Homes & SNF", records: "~15K", priority: "medium" },
   { id: "snf_utilization_geo_casemix", title: "SNF Utilization by Geography & Case-Mix", description: "Skilled nursing facility utilization and payment data broken down by geographic area, provider, and case-mix grouping.", category: "Nursing Homes & SNF", records: "~100K", priority: "medium" },
@@ -564,6 +573,9 @@ async function startImport(payload: any) {
     }, 100);
     return { success: true, message: `NPPES ${kind} file import started in the background (${fileName}). Check Data Center for progress.`, import_type, batch_id: activeBatchId, file_url: url, resumed: !!batch_id };
   }
+
+  const blocked = autoImportBlock(import_type, file_url);
+  if (blocked) throw { status: 400, message: blocked };
 
   const validTypes = Object.keys(IMPORT_TYPE_URLS);
   if (!validTypes.includes(import_type) && !file_url) {
@@ -1151,7 +1163,11 @@ export function rowDataYear(row: any, fallbackYear?: number | string | null): st
 const OVERALL_RATING_COLUMN: Record<string, string> = {
   nursing_home_providers: "overall_rating",
   hospital_general_info: "hospital_overall_rating",
+  home_health_agencies: "quality_of_patient_care_star_rating",
 };
+
+/** Home health ratings move in half stars (1, 1.5, …, 5). Nursing homes and hospitals stay whole stars. */
+const HALF_STAR_TYPES = new Set(["home_health_agencies"]);
 
 /** Whether a dataset's facility rows carry a star rating (so a refresh replaces it, blank or not). */
 export function hasStarRating(importType: unknown): boolean {
@@ -1160,13 +1176,14 @@ export function hasStarRating(importType: unknown): boolean {
 
 /**
  * A facility's overall star rating (1 to 5) for the Facilities lists, or null: "Not Available" and a blank are not
- * ratings. Home health agencies are not mapped: their quality-of-patient-care rating moves in half stars and the
- * column is an integer, so some agencies would show a rating and others, rated 3.5, none.
+ * ratings. Home health accepts half stars; a hospital or nursing home rated 3.5 is not a rating we can store as a whole star.
  */
 export function starRatingOf(row: any, importType: string): number | null {
   if (!hasStarRating(importType)) return null;
   const n = Number(String(row?.[OVERALL_RATING_COLUMN[importType]] ?? "").trim());
-  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : null;
+  if (!Number.isFinite(n) || n < 1 || n > 5) return null;
+  if (HALF_STAR_TYPES.has(importType)) return Number.isInteger(n * 2) ? n : null;
+  return Number.isInteger(n) ? n : null;
 }
 
 export function mapMedicareFacilityRow(row: any, importType: string, batchId: number, year?: number | string | null) {
@@ -1241,6 +1258,15 @@ export function mapMedicareFacilityRow(row: any, importType: string, batchId: nu
     raw_data: row,
     import_batch_id: String(batchId),
   };
+
+  // The by-provider inpatient file is one row per hospital. Those totals are what the hospital list shows;
+  // a Care Compare refresh must not be the thing that writes them (see refreshFacilityRows).
+  if (importType === "medicare_inpatient_by_provider") {
+    mapped.total_discharges = int(row.Tot_Dschrgs);
+    mapped.total_days_of_care = int(row.Tot_Cvrd_Days ?? row.Tot_Days);
+    mapped.total_charges = num(row.Tot_Submtd_Cvrd_Chrg);
+    mapped.total_payments = num(row.Tot_Mdcr_Pymt_Amt);
+  }
 
   if (mapped.state && mapped.state.length > 10) mapped.state = mapped.state.substring(0, 10);
   if (mapped.zip && mapped.zip.length > 20) mapped.zip = mapped.zip.substring(0, 20);
@@ -1342,13 +1368,15 @@ async function dedupeFacilities(importType: string, chunk: any[]): Promise<{ toC
  * them blank; the vintage, batch and raw record always move to the new release.
  * The star rating of a dataset that carries one (OVERALL_RATING_COLUMN) is replaced
  * as well, so a facility the release no longer rates loses its stars.
+ * Discharge and payment totals are replaced only for the inpatient-by-provider file,
+ * including a suppressed (null) reimport, so a Care Compare refresh cannot wipe them.
  */
 export async function refreshFacilityRows(
   tx: { execute: (q: any) => Promise<any>; insert: (table: any) => any },
   rows: Array<{ id: number; row: Record<string, any> }>,
 ): Promise<void> {
   if (rows.length === 0) return;
-  const tuples = rows.map(({ id, row }) => sql`(${id}::int, ${row.facility_name ?? null}::text, ${row.address ?? null}::text, ${row.city ?? null}::text, ${row.state ?? null}::text, ${row.zip ?? null}::text, ${row.quality_rating ?? null}::int, ${hasStarRating(row.facility_type)}::boolean, ${row.data_year ?? null}::text, ${row.import_batch_id ?? null}::text, ${JSON.stringify(row.raw_data ?? null)}::jsonb)`);
+  const tuples = rows.map(({ id, row }) => sql`(${id}::int, ${row.facility_name ?? null}::text, ${row.address ?? null}::text, ${row.city ?? null}::text, ${row.state ?? null}::text, ${row.zip ?? null}::text, ${row.quality_rating ?? null}::float8, ${hasStarRating(row.facility_type)}::boolean, ${row.data_year ?? null}::text, ${row.import_batch_id ?? null}::text, ${JSON.stringify(row.raw_data ?? null)}::jsonb, ${row.total_discharges ?? null}::int, ${row.total_days_of_care ?? null}::int, ${row.total_charges ?? null}::float8, ${row.total_payments ?? null}::float8, ${row.facility_type === "medicare_inpatient_by_provider"}::boolean)`);
   await tx.execute(sql`
     UPDATE medicare_facilities AS m SET
       facility_name = COALESCE(v.facility_name, m.facility_name),
@@ -1357,11 +1385,15 @@ export async function refreshFacilityRows(
       state = COALESCE(v.state, m.state),
       zip = COALESCE(v.zip, m.zip),
       quality_rating = CASE WHEN v.rated THEN v.quality_rating ELSE m.quality_rating END,
+      total_discharges = CASE WHEN v.volume THEN v.total_discharges ELSE m.total_discharges END,
+      total_days_of_care = CASE WHEN v.volume THEN v.total_days_of_care ELSE m.total_days_of_care END,
+      total_charges = CASE WHEN v.volume THEN v.total_charges ELSE m.total_charges END,
+      total_payments = CASE WHEN v.volume THEN v.total_payments ELSE m.total_payments END,
       data_year = v.data_year,
       import_batch_id = v.import_batch_id,
       raw_data = v.raw_data,
       updated_date = NOW()
-    FROM (VALUES ${sql.join(tuples, sql`, `)}) AS v(id, facility_name, address, city, state, zip, quality_rating, rated, data_year, import_batch_id, raw_data)
+    FROM (VALUES ${sql.join(tuples, sql`, `)}) AS v(id, facility_name, address, city, state, zip, quality_rating, rated, data_year, import_batch_id, raw_data, total_discharges, total_days_of_care, total_charges, total_payments, volume)
     WHERE m.id = v.id`);
   const rawRows = rows.filter(({ row }) => row.raw_data != null).map(({ id, row }) => ({ facility_id: id, raw_data: row.raw_data }));
   if (rawRows.length > 0) {

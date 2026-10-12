@@ -158,10 +158,21 @@ describe("refreshFacilityRows", () => {
     ]);
     const { sql, params } = executed[0];
     expect(sql).toMatch(/quality_rating = CASE WHEN v\.rated THEN v\.quality_rating ELSE m\.quality_rating END/);
-    expect(sql).toMatch(/AS v\(id, facility_name, address, city, state, zip, quality_rating, rated, data_year, import_batch_id, raw_data\)/);
-    // (id, name, address, city, state, zip, rating, rated, ...) per row: 4 and true; null and true (no longer rated); null and false.
-    expect(params.filter((p: any) => typeof p === "boolean")).toEqual([true, true, false]);
+    expect(sql).toMatch(/total_discharges = CASE WHEN v\.volume THEN v\.total_discharges ELSE m\.total_discharges END/);
+    expect(sql).toMatch(/AS v\(id, facility_name, address, city, state, zip, quality_rating, rated, data_year, import_batch_id, raw_data, total_discharges, total_days_of_care, total_charges, total_payments, volume\)/);
+    // Per row: rated, then (later) volume. Nursing homes are rated and not a volume file; hospice is neither.
+    expect(params.filter((p: any) => typeof p === "boolean")).toEqual([true, false, true, false, false, false]);
     expect(params).toContain(4);
+  });
+
+  it("replaces discharge totals only for the inpatient-by-provider file, including a suppressed null", async () => {
+    const { tx, executed } = refreshTx();
+    await refreshFacilityRows(tx as any, [
+      { id: 30, row: { facility_type: "medicare_inpatient_by_provider", total_discharges: null, total_payments: null, data_year: "2024", raw_data: {} } },
+      { id: 31, row: { facility_type: "hospital_general_info", total_discharges: 10, total_payments: 20, data_year: "2024", raw_data: {} } },
+    ]);
+    const { params } = executed[0];
+    expect(params.filter((p: any) => typeof p === "boolean")).toEqual([false, true, true, false]);
   });
 
   it("does nothing for an empty list", async () => {

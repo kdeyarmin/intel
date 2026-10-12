@@ -100,7 +100,7 @@ const CMS_IMPORT_TYPE_DEFINITIONS = [
   { id: 'nursing_home_chains', label: 'Nursing Home Chains', supportsUrl: true },
   { id: 'inpatient_drg', label: 'Inpatient DRG', supportsUrl: true },
   { id: 'home_health_pdgm', label: 'Home Health PDGM', supportsUrl: true },
-  { id: 'provider_ownership', label: 'Provider Ownership', supportsUrl: true },
+  { id: 'provider_ownership', label: 'Provider Ownership (retired)', supportsUrl: false },
   { id: 'home_health_agencies', label: 'Home Health Agencies', supportsUrl: true },
   { id: 'home_infusion_therapy', label: 'Home Infusion Therapy', supportsUrl: true },
   { id: 'hospice_general_info', label: 'Hospice General Info', supportsUrl: true },

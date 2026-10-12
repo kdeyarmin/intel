@@ -444,6 +444,7 @@ describe("getReferralSources", () => {
     h.answers.push([/FROM rollup_referral_sources WHERE state = \$1 AND hospice_eligible = true/, SOURCES]);
     const r: any = await handleGetReferralSources({ state: "PA", setting: "hospice", specialty_group: "internal_medicine", limit: 5 });
     const q = h.queries.find((x) => x.sql.includes("rollup_referral_sources"))!;
+    expect(q.sql).toContain("ORDER BY hospice_index DESC");
     expect(q.params).toEqual(["PA", 26]); // 5 x 5 to search, plus one to see whether the list goes on
     expect(r.county).toBeNull();
     expect(r.rows.map((x: any) => x.npi)).toEqual(["1000000001"]);
