@@ -22,7 +22,9 @@ export default function DataFreshnessPanel({ onlyLoaded = false }) {
     queryFn: async () => (await base44.functions.invoke('getDataFreshness', {})).data,
     staleTime: 60 * 1000,
   });
-  const rows = (data?.datasets || []).filter((d) => !onlyLoaded || d.status !== 'never_imported');
+  // Loaded means its rows are in the tables, whatever the latest refresh did: a dataset whose first import failed
+  // has none (its status is "failed", not "never imported"), while one whose refresh failed keeps its earlier import.
+  const rows = (data?.datasets || []).filter((d) => !onlyLoaded || d.imported_at);
   const checkedAt = rows.map((d) => d.catalog_checked_at).filter(Boolean).sort().pop();
   return (
     <Card className="bg-slate-900/80 border-slate-800">

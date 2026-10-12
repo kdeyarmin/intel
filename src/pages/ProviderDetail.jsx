@@ -314,7 +314,7 @@ export default function ProviderDetail() {
             <UtilizationSummaryCard utilizations={utilizations} />
             <ReferralSummaryCard referrals={referrals} orderReferring={orderReferring} />
           </div>
-          <ReferralPotentialCard potential={cmsData?.referral_potential} />
+          <ReferralPotentialCard potential={cmsData?.referral_potential} rollups={cmsData?.rollups} />
           <UtilizationInsights utilization={latestUtil} />
           <UtilizationTrendChart utilizations={utilizations} />
           <PatientPopulationFingerprint
