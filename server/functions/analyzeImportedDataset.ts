@@ -81,6 +81,9 @@ export function resolveSampleSource(importType: string | null | undefined): Samp
   return null;
 }
 
+/** PostgreSQL's query_canceled (SQLSTATE 57014), which statement_timeout raises. Drizzle wraps the driver's error as `cause`. */
+export const isStatementTimeout = (e: any): boolean => (e?.code ?? e?.cause?.code) === "57014";
+
 /** Up to SAMPLE_SIZE stored rows, found by key so a large table is never scanned or sorted. */
 async function sampleRows(source: SampleSource): Promise<Record<string, unknown>[]> {
   return await db.transaction(async (tx) => {
@@ -157,8 +160,9 @@ export interface DatasetAnalysis {
   sample_size: number;
 }
 
+/** A score from a number or a numeric string, clamped to 0-100. Number(null), Number("") and Number([]) are all 0, so only those two types are read. */
 const clampScore = (value: unknown): number | null => {
-  const n = Number(value);
+  const n = typeof value === "number" ? value : typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
   return Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : null;
 };
 const boundedText = (value: unknown, max: number): string => (typeof value === "string" ? value.trim().slice(0, max) : "");
@@ -272,7 +276,10 @@ export async function handleAnalyzeImportedDataset(payload: any, user?: Caller) 
   try {
     rows = cleanSample(await sampleRows(source));
   } catch (e: any) {
-    console.warn(`[analyzeImportedDataset] sampling failed for batch ${batchId}:`, e?.message || e);
+    // Only a cancelled statement is a timeout worth retrying; a connection, permission or schema failure is an
+    // operational problem and must surface as one.
+    if (!isStatementTimeout(e)) throw e;
+    console.warn(`[analyzeImportedDataset] sampling timed out for batch ${batchId}:`, e?.message || e);
     return { success: false, error: "Sampling the imported rows timed out. Try again later." };
   }
   if (rows.length === 0) {

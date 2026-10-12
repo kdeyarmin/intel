@@ -91,6 +91,8 @@ const GOOD_REPLY = JSON.stringify({
   overall_assessment: "Usable.",
 });
 const admin = { id: 9001, email: "admin@example.com", role: "admin" };
+// The limiter allows ten analyses a minute per user; the sampling-failure tests use their own so `admin` keeps its budget.
+const sampler = { id: 9002, email: "sampler@example.com", role: "admin" };
 
 describe("which table holds an import's rows", () => {
   it("follows the importer's routing", () => {
@@ -178,6 +180,19 @@ describe("validating the model's answer", () => {
     for (const reply of [null, undefined, "", "no json here", "{not json}", JSON.stringify({ quality_score: 50 }), JSON.stringify({ completeness_score: "n/a", quality_score: 1 })]) {
       expect(parseAnalysis(reply as any, meta), String(reply)).toBeNull();
     }
+  });
+
+  it("does not read an absent or blank score as a real zero", () => {
+    // Number(null), Number(""), Number(" ") and Number([]) are all 0.
+    for (const missing of [null, "", "   ", [], [5], true, {}]) {
+      for (const field of ["completeness_score", "quality_score"]) {
+        const reply = JSON.stringify({ completeness_score: 60, quality_score: 70, [field]: missing });
+        expect(parseAnalysis(reply, meta), `${field}: ${JSON.stringify(missing)}`).toBeNull();
+      }
+    }
+    // A genuine zero, or a number sent as a string, is still a score.
+    const a = parseAnalysis(JSON.stringify({ completeness_score: 0, quality_score: " 85 " }), meta)!;
+    expect([a.completeness_score, a.quality_score]).toEqual([0, 85]);
   });
 });
 
@@ -276,11 +291,31 @@ describe("handleAnalyzeImportedDataset", () => {
   });
 
   it("reports a sampling timeout instead of failing the request", async () => {
-    state.sampleError = new Error("canceling statement due to statement timeout");
-    const res: any = await handleAnalyzeImportedDataset({ batch_id: 12 }, admin);
-    expect(res).toMatchObject({ success: false });
-    expect(res.error).toContain("timed out");
+    // PostgreSQL's query_canceled, as the driver raises it and as Drizzle wraps it.
+    for (const error of [
+      Object.assign(new Error("canceling statement due to statement timeout"), { code: "57014" }),
+      Object.assign(new Error("Failed query: select ..."), { cause: { code: "57014" } }),
+    ]) {
+      state.sampleError = error;
+      const res: any = await handleAnalyzeImportedDataset({ batch_id: 12 }, sampler);
+      expect(res).toMatchObject({ success: false });
+      expect(res.error).toContain("timed out");
+    }
     expect(state.prompts).toHaveLength(0);
+  });
+
+  it("does not call any other database failure a timeout", async () => {
+    for (const error of [
+      Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:5432"), { code: "ECONNREFUSED" }),
+      Object.assign(new Error('relation "medicare_facilities" does not exist'), { code: "42P01" }),
+      Object.assign(new Error("Failed query: select ..."), { cause: { code: "28P01" } }),
+      new Error("canceling statement due to statement timeout"),
+    ]) {
+      state.sampleError = error;
+      await expect(handleAnalyzeImportedDataset({ batch_id: 12 }, sampler), error.message).rejects.toBe(error);
+    }
+    expect(state.prompts).toHaveLength(0);
+    expect(state.updates).toHaveLength(0);
   });
 
   it("stores nothing when the model's answer isn't usable", async () => {

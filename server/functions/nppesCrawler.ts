@@ -423,6 +423,20 @@ async function safeCrawlerQuery<T>(fn: () => Promise<T>, fallback: T, label: str
   return fallback;
 }
 
+const STUCK_ITEM_MS = 600000;
+
+/**
+ * Puts items stuck in 'processing' for over 10 minutes back to pending, in one UPDATE that re-checks status and
+ * staleness as it writes (as the start-of-cycle sweep does). An item a sibling worker completed or touched after
+ * this one last looked is left alone, and the rows returned are only those really re-queued.
+ */
+export function requeueStuckItems(database: typeof db = db, now: number = Date.now()) {
+  return database.update(nppesQueueItems)
+    .set({ status: "pending", retry_count: sql`COALESCE(${nppesQueueItems.retry_count}, 0) + 1`, updated_date: new Date(now) })
+    .where(and(eq(nppesQueueItems.status, "processing"), lt(nppesQueueItems.updated_date, new Date(now - STUCK_ITEM_MS))))
+    .returning({ id: nppesQueueItems.id });
+}
+
 async function processQueueWorker(dryRun: boolean) {
   if (activeWorkerCount >= MAX_CONCURRENT_WORKERS) {
     console.log(`[Crawler Worker] Already ${activeWorkerCount} workers active, skipping new spawn`);
@@ -484,23 +498,8 @@ async function processQueueWorker(dryRun: boolean) {
         // *during* this cycle (e.g. a crashed sibling worker) would otherwise
         // sit until the next worker's start-of-cycle sweep. Base44 re-checks
         // here and re-queues anything stuck > 10 min before closing batches.
-        const stuckNow = await safeCrawlerQuery(
-          () => db.select().from(nppesQueueItems)
-            .where(eq(nppesQueueItems.status, "processing"))
-            .orderBy(asc(nppesQueueItems.updated_date)).limit(50),
-          [] as any[], "mid-loop stuck check"
-        );
-        const nowMs = Date.now();
-        let recoveredNow = 0;
-        for (const stuckItem of stuckNow) {
-          if (nowMs - new Date(stuckItem.updated_date!).getTime() > 600000) {
-            await db.update(nppesQueueItems)
-              .set({ status: "pending", retry_count: (stuckItem.retry_count || 0) + 1, updated_date: new Date() })
-              .where(eq(nppesQueueItems.id, stuckItem.id)).catch(() => {});
-            recoveredNow++;
-          }
-        }
-        if (recoveredNow > 0) continue;
+        const recoveredNow = await safeCrawlerQuery(() => requeueStuckItems(), [] as Array<{ id: number }>, "mid-loop stuck recovery");
+        if (recoveredNow.length > 0) continue;
 
         const processingBatchList = await db.select().from(importBatches)
           .where(and(eq(importBatches.import_type, "nppes_registry"), eq(importBatches.status, "processing")));
