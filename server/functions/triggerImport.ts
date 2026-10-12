@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { db, pool } from "../db";
 import { importBatches, cmsReferrals, cmsOrderReferring, providerServiceUtilization, medicareFacilities, medicareFacilitiesRaw } from "../db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
@@ -953,6 +954,24 @@ const HOSPITAL_FACILITY_ID_TYPES: ReadonlySet<string> = new Set([
   "hospital_spending_per_beneficiary", "hospital_spending_by_claim", "hospital_hac_reduction",
 ]);
 
+/** The All Owners files (one row per owner or manager of an enrollment), which share one column layout. */
+const OWNER_FILE_TYPES: ReadonlySet<string> = new Set([
+  "hospital_all_owners", "home_health_all_owners", "hospice_all_owners", "snf_all_owners", "fqhc_all_owners", "rural_health_clinic_all_owners",
+]);
+
+/** Home Infusion Therapy Providers: the columns that tell one location of an enrollment from another. */
+const HOME_INFUSION_LOCATION_COLUMNS = [
+  "Street Address Line 1", "Street Address Line 2", "Specialty Name", "Geographic Location Type Description",
+  "Geographic Location City Name", "Geographic Location State Code", "Geographic Location ZIP Code", "State County Name",
+];
+
+const cell = (v: unknown): string => String(v ?? "").trim();
+
+/** A short stable key for the columns that identify a row, for datasets with no single id column (provider_id holds 50 characters). */
+function identityHash(parts: unknown[], length = 12): string {
+  return createHash("sha1").update(parts.map((p) => cell(p).toLowerCase()).join("\u001f")).digest("hex").slice(0, length);
+}
+
 /**
  * Compute a stable statistical identifier for a dataset row based on the dataset's import type.
  *
@@ -966,7 +985,30 @@ const HOSPITAL_FACILITY_ID_TYPES: ReadonlySet<string> = new Set([
  */
 function deriveStatisticalId(row: any, importType: string, index?: number): string | null {
   let id: string | null = null;
-  if (importType === "medicare_spending_by_drug_d" || importType === "medicare_spending_by_drug_b") {
+  if (OWNER_FILE_TYPES.has(importType) && row["ENROLLMENT ID"]) {
+    // One row per owner or manager role of an enrollment. The keys below read NPI and ASSOCIATE_ID, which these
+    // files don't have, so a row fell back to its organization's name and each organization kept one owner row.
+    id = [row["ENROLLMENT ID"], row["ASSOCIATE ID - OWNER"], row["ROLE CODE - OWNER"]].map(cell).join("_");
+  } else if (importType === "home_infusion_therapy" && row["Enrollment ID"]) {
+    // One row per enrollment and rendering area or location: the location columns tell them apart.
+    id = `${cell(row["Enrollment ID"])}_${identityHash(HOME_INFUSION_LOCATION_COLUMNS.map((k) => row[k]))}`;
+  } else if (importType === "aco_reach_providers" && row.aco_id) {
+    // One row per participant, class and start date within a performance year; no column is a participant id.
+    // The term date, capitation, APO election and waiver flags are left out of the key: they can change when CMS
+    // re-publishes a release (the 2024 file was), and a changed value must refresh the stored row, not add a second
+    // one beside the stale one. The public file has no TIN, so rows of one organization that differ only in those
+    // columns (about 2% of the distinct rows of the 2024 file) share a key and the first one read is kept.
+    id = `${cell(row.aco_id)}_${cell(row.perf_year)}_${identityHash([row.par_lbn, row.prvdr_class, row.start_date])}`;
+  } else if (importType === "aco_snf_affiliates" && row.ACO_ID && row.Aff_LBN) {
+    id = `${cell(row.ACO_ID)}_${identityHash([row.Aff_LBN])}`;
+  } else if ((importType === "nursing_home_chains" || importType === "nursing_home_chain_performance") && row["Chain ID"]) {
+    id = cell(row["Chain ID"]);
+  } else if (importType === "mds_frequency" && row["MDS Item Question/Description"]) {
+    // The state-level file (one row per place, quarter, item and response), not the facility-level one.
+    id = identityHash([row["Geographical Location"], row["Report Date"], row["MDS Item Question/Description"], row["MDS Item Response"]], 16);
+  } else if (importType === "medicare_telehealth_trends" && row.Bene_Geo_Desc) {
+    id = identityHash([row.Year, row.Quarter, row.Bene_Geo_Desc, row.Bene_Mdcd_Mdcr_Enrl_Stus, row.Bene_Race_Desc, row.Bene_Sex_Desc, row.Bene_Mdcr_Entlmt_Stus, row.Bene_Age_Desc, row.Bene_RUCA_Desc], 16);
+  } else if (importType === "medicare_spending_by_drug_d" || importType === "medicare_spending_by_drug_b") {
     id = row.Brnd_Name || row.Gnrc_Name || row.HCPCS_Cd || null;
   } else if (importType === "medicare_monthly_enrollment") {
     id = [row.YEAR, row.MONTH, row.BENE_STATE_ABRVTN].filter(Boolean).join("_") || null;
@@ -1051,6 +1093,12 @@ function deriveStatisticalId(row: any, importType: string, index?: number): stri
 }
 
 function deriveStatisticalName(row: any, importType: string): string | null {
+  if (importType === "home_infusion_therapy") return row["Legal Business Name"] || null;
+  if (importType === "aco_reach_providers") return row.par_lbn || null;
+  if (importType === "aco_snf_affiliates") return row.Aff_LBN || null;
+  if (importType === "nursing_home_chains" || importType === "nursing_home_chain_performance") return row.Chain || null;
+  if (importType === "mds_frequency") return row["MDS Item Question/Description"] || null;
+  if (importType === "medicare_telehealth_trends") return [row.Bene_Geo_Desc, row.Year, row.Quarter].filter(Boolean).join(" ") || null;
   if (importType === "medicare_spending_by_drug_d" || importType === "medicare_spending_by_drug_b") {
     return [row.Brnd_Name, row.Gnrc_Name, row.HCPCS_Desc].filter(Boolean).join(" — ") || null;
   }
@@ -1240,7 +1288,7 @@ export function mapMedicareFacilityRow(row: any, importType: string, batchId: nu
     address:
       row.address_line_1 || row["Address Line 1"] || row.Address_Line_1 ||
       row["ADDRESS LINE 1"] ||
-      row["Street Address"] || row.Rndrng_Prvdr_St ||
+      row["Street Address"] || row["Street Address Line 1"] || row.Rndrng_Prvdr_St ||
       row.provider_address || row["Provider Address"] ||
       row.practiceaddress1 ||
       row.Rndrng_Prvdr_St1 || row.Suplr_Prvdr_St1 || row.Rfrg_Prvdr_St1 ||
@@ -1267,7 +1315,7 @@ export function mapMedicareFacilityRow(row: any, importType: string, batchId: nu
       null
     ),
     zip: (
-      row.zip_code || row["Zip Code"] || row.Zip_Code ||
+      row.zip_code || row["Zip Code"] || row["ZIP Code"] || row.Zip_Code ||
       row["ZIP CODE"] || row.ZIP_CODE ||
       row.Rndrng_Prvdr_Zip5 ||
       row.practicezip9code ||

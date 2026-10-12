@@ -22,6 +22,7 @@ import { ACCOUNT_EVENT } from "../lib/audit";
 import { approvedEmail, inviteEmail } from "../lib/accountEmails";
 import { adminOnly, authMiddleware, AuthRequest } from "../middleware/auth";
 import { clientIp, rateLimit } from "../middleware/rateLimit";
+import { isPlatformAdmin } from "../lib/roles";
 import type { UserRepo } from "../lib/userRepo";
 
 class HttpError extends Error {
@@ -78,6 +79,8 @@ export function createAdminUsersRouter(deps: AccountDeps) {
   /** The organization the caller may manage, or null for a platform admin (every organization). */
   const scopeOf = (req: AuthRequest): number | null => (req.user!.isPlatformAdmin ? null : req.user!.orgId ?? NO_ORG);
   const orgRoleOf = (value: unknown): "owner" | "member" | null => (value === "owner" || value === "member" ? value : null);
+  /** Operates the platform: the admin role or the platform-admin flag (one thing, see lib/roles.ts). */
+  const isPlatformAccount = (u: Pick<UserRow, "role" | "is_platform_admin">) => isPlatformAdmin({ role: u.role, isPlatformAdmin: u.is_platform_admin });
 
   const handle = (fn: (req: AuthRequest, res: Response) => Promise<unknown>) => async (req: Request, res: Response) => {
     try {
@@ -89,7 +92,13 @@ export function createAdminUsersRouter(deps: AccountDeps) {
     }
   };
 
-  /** The target account, which must be in the caller's organization unless they are a platform admin. */
+  /**
+   * The target account, which must be in the caller's organization unless they are a platform admin. A platform
+   * admin's account is never an organization owner's to manage, even when the two share an organization (the
+   * platform's own is the one every account from before organizations was folded into, and where an admin who
+   * delegates by inviting an owner puts them): a reset link or a disable on it would be a takeover of the platform.
+   * It answers 404, like an account in another organization.
+   */
   async function load(req: AuthRequest, r: UserRepo): Promise<UserRow> {
     const idParam = req.params.id as string;
     // Plain decimal only: Number() would also read "1e3" or "0x10" as an id.
@@ -98,6 +107,7 @@ export function createAdminUsersRouter(deps: AccountDeps) {
     if (!user) throw new HttpError(404, "User not found");
     const scope = scopeOf(req);
     if (scope !== null && (await deps.orgs.membershipOf(user.id))?.org_id !== scope) throw new HttpError(404, "User not found");
+    if (scope !== null && isPlatformAccount(user)) throw new HttpError(404, "User not found");
     return user;
   }
 
@@ -135,7 +145,8 @@ export function createAdminUsersRouter(deps: AccountDeps) {
     const scope = scopeOf(req);
     const memberships = await deps.orgs.memberships(scope);
     const byUser = new Map(memberships.map((m) => [m.user_id, m]));
-    const users = (await repo.list()).filter((u) => scope === null || byUser.has(u.id));
+    // An organization's owner manages their people, never the platform's own accounts (see load()).
+    const users = (await repo.list()).filter((u) => scope === null || (byUser.has(u.id) && !isPlatformAccount(u)));
     const seats = scope === null || scope === NO_ORG ? null : await deps.orgs.seatUsage(scope);
     res.json({
       users: users.map((u) => {

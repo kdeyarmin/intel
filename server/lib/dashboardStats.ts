@@ -64,7 +64,9 @@ export async function getDashboardStats(): Promise<any> {
       count(*) FILTER (WHERE status = 'completed') AS completed,
       count(*) FILTER (WHERE status = 'failed') AS failed FROM import_batches`);
     const alertRows = await safeQ(`SELECT count(*) AS count FROM data_quality_alerts WHERE status = 'new'`);
-    const scanRows = await safeQ(`SELECT * FROM data_quality_scans ORDER BY created_date DESC LIMIT 1`);
+    // The scan that finished last: one still running (or one that failed) has no scores to show, and scans can
+    // overlap, so the newest to start is not always the newest to finish (getDataHealthMetrics orders the same way).
+    const scanRows = await safeQ(`SELECT results_summary FROM data_quality_scans WHERE status = 'completed' ORDER BY completed_at DESC NULLS LAST, created_date DESC LIMIT 1`);
     const batchRows = await safeQ(`SELECT created_date FROM import_batches WHERE status = 'completed' ORDER BY created_date DESC LIMIT 1`);
     const phoneSample = await safeQ(`
       SELECT count(*) AS count
@@ -87,18 +89,11 @@ export async function getDashboardStats(): Promise<any> {
     const icRow = importRows[0] || {};
     const lastRefresh = batchRows.length > 0 ? batchRows[0].created_date : null;
 
-    let dataQuality = null;
-    if (scanRows.length > 0) {
-      const scan = scanRows[0] as any;
-      const summary = scan.results_summary as any;
-      let score = 0;
-      if (summary && typeof summary.score === "number") {
-        score = summary.score;
-      } else if (scan.total_records > 0) {
-        score = Math.round(((scan.total_records - (scan.issues_found || 0)) / scan.total_records) * 100);
-      }
-      dataQuality = { score };
-    }
+    // The scan's own overall score (runDataQualityScan stores { scores: { completeness, accuracy, timeliness,
+    // consistency, overall }, ... }). There is no other honest number: the share of "records" without an alert is
+    // ~100% whenever a few dozen rules fail over millions of rows, whatever the data looks like.
+    const overall = (scanRows[0] as any)?.results_summary?.scores?.overall;
+    const dataQuality = typeof overall === "number" && Number.isFinite(overall) ? { score: Math.round(overall) } : null;
 
     const phoneSampleCount = Number(phoneSample[0]?.count || 0);
     // Extrapolate the no-phone count from the sampled rows. The divisor

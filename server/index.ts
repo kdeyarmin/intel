@@ -16,6 +16,7 @@ import { anthropicStreamFactory } from "./lib/assistant/anthropic";
 import { defaultAccountDeps } from "./lib/accountDeps";
 import { parseTrustProxy } from "./lib/trustProxy";
 import { corsPolicy } from "./lib/corsPolicy";
+import { uploadsStatic } from "./lib/uploadsStatic";
 import { authMiddleware } from "./middleware/auth";
 import entityRoutes from "./routes/entities";
 import integrationRoutes from "./routes/integrations";
@@ -45,7 +46,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 
 // Uploaded files are only for signed-in users (the SPA fetches them same-origin).
-app.use("/api/storage", authMiddleware, express.static(path.resolve("uploads")));
+app.use("/api/storage", authMiddleware, uploadsStatic(path.resolve("uploads")));
 const accountDeps = defaultAccountDeps(dbPool);
 app.use("/api/auth", createAuthRouter(accountDeps));
 app.use("/api/admin/users", createAdminUsersRouter(accountDeps));
