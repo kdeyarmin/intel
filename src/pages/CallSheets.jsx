@@ -129,16 +129,24 @@ export default function CallSheets() {
   }
 
   async function saveAccount(row, patch) {
-    await base44.entities.CallSheetAccount.update(row.id, patch);
-    queryClient.setQueryData(['callSheetAccounts', url.sheet], (current = []) => current.map((a) => (a.id === row.id ? { ...a, ...patch } : a)));
+    try {
+      await base44.entities.CallSheetAccount.update(row.id, patch);
+      queryClient.setQueryData(['callSheetAccounts', url.sheet], (current = []) => current.map((a) => (a.id === row.id ? { ...a, ...patch } : a)));
+    } catch (e) {
+      toast.error(e?.message || 'Could not save that.');
+    }
   }
 
   async function removeAccount(row) {
-    await base44.entities.CallSheetAccount.delete(row.id);
-    const next = accounts.filter((a) => a.id !== row.id);
-    queryClient.setQueryData(['callSheetAccounts', url.sheet], next);
-    await base44.entities.CallSheet.update(sheet.id, { account_count: next.length });
-    queryClient.invalidateQueries({ queryKey: ['callSheets'] });
+    try {
+      await base44.entities.CallSheetAccount.delete(row.id);
+      const next = accounts.filter((a) => a.id !== row.id);
+      queryClient.setQueryData(['callSheetAccounts', url.sheet], next);
+      await base44.entities.CallSheet.update(sheet.id, { account_count: next.length });
+      queryClient.invalidateQueries({ queryKey: ['callSheets'] });
+    } catch (e) {
+      toast.error(e?.message || 'Could not remove that account.');
+    }
   }
 
   async function removeSheet(row) {
@@ -209,7 +217,7 @@ export default function CallSheets() {
                   <p className="text-xs text-slate-500">{[row.county_name, row.state].filter(Boolean).join(', ')} · {fmtCount(row.account_count || 0)} accounts</p>
                 </button>
                 <Button type="button" variant="ghost" size="sm" onClick={() => removeSheet(row)} aria-label={`Delete ${row.name}`}>
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4" aria-hidden="true" />
                 </Button>
               </div>
             ))}

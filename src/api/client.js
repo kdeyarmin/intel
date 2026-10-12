@@ -103,10 +103,11 @@ async function request(url, options = {}, { sessionProbe = false } = {}) {
 
 function createEntityProxy(entityName) {
   return {
-    async list(sort, limit) {
+    async list(sort, limit, offset) {
       const params = new URLSearchParams();
       if (sort) params.set("sort", sort);
       if (limit) params.set("limit", String(limit));
+      if (offset) params.set("offset", String(offset));
       return request(`/entities/${entityName}?${params}`);
     },
 

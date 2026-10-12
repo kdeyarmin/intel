@@ -132,9 +132,12 @@ export default function FileParser({ onParsed, selectedType }) {
         const firstLine = text.split('\n')[0].replace(/\r$/, '');
         const splitHeaders = firstLine.split(delimiter).map(h => h.trim().replace(/"/g, ''));
         // CMS FOIA shared-patient files have no header: NPI, NPI, pair count, beneficiaries, same-day count.
-        const headers = delimiter === ',' && splitHeaders.length >= 4 && splitHeaders.length <= 5
+        // Only that import uses the layout. Any other headerless file keeps its own first row.
+        const sharedPatient = selectedType?.id === 'physician_shared_patient_patterns'
+          && delimiter === ',' && splitHeaders.length >= 4 && splitHeaders.length <= 5
           && /^\d{10}$/.test(splitHeaders[0]) && /^\d{10}$/.test(splitHeaders[1])
-          && splitHeaders.slice(2).every(f => /^\d+$/.test(f))
+          && splitHeaders.slice(2).every(f => /^\d+$/.test(f));
+        const headers = sharedPatient
           ? ['npi1', 'npi2', 'paircount', 'benecount', 'samedaycount']
           : splitHeaders;
         setProgress(100);

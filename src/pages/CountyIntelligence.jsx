@@ -376,7 +376,7 @@ export default function CountyIntelligence() {
               <TabsContent key={tab} value={tab} className="mt-0 space-y-4">
                 <ComplianceDisclaimer variant="market" />
                 {tab === 'referrals' ? (
-                  <ReferralSourcesTable state={url.state} countyFips={data.county.fips} countyName={data.county.name} initialSetting={everyLine ? 'all' : (profile?.referralSetting || 'all')} />
+                  <ReferralSourcesTable key={`${everyLine ? 'all' : (profile?.referralSetting || 'all')}:${url.county}`} state={url.state} countyFips={data.county.fips} countyName={data.county.name} initialSetting={everyLine ? 'all' : (profile?.referralSetting || 'all')} />
                 ) : marketError ? (
                   <p className="text-sm text-red-400" role="alert">Couldn't load the market data: {marketErr?.message}</p>
                 ) : loadingMarket || !market ? (
@@ -384,7 +384,7 @@ export default function CountyIntelligence() {
                 ) : tab === 'market' ? (
                   <>
                     <CountyMarketProfile profile={market.profile} vintages={market.vintages} rollups={market.rollups} countyName={data.county.name} line={everyLine ? null : profile} />
-                    <CountyReferenceCard reference={market.reference} />
+                    <CountyReferenceCard reference={market.reference} line={everyLine ? null : profile} />
                   </>
                 ) : tab === 'hospitals' ? (
                   <HospitalSourcesTable sources={market.hospital_sources} rollups={market.rollups} countyName={data.county.name} />

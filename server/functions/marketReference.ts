@@ -47,7 +47,11 @@ async function phc4ForCounty(client: PoolClient, countyName?: string | null) {
 }
 
 export async function countyReference(client: PoolClient, fips: string, state: string | null, countyName?: string | null) {
-  const plans = await rows(client, `SELECT organization, enrollment, contracts FROM cms_ma_plan_enrollment WHERE county_fips = $1 ORDER BY enrollment DESC LIMIT 8`, [fips]);
+  const latestPlan = await rows(client, `SELECT max(period) AS period FROM cms_ma_plan_enrollment WHERE county_fips = $1`, [fips]);
+  const planPeriod = latestPlan[0]?.period ?? null;
+  const plans = planPeriod
+    ? await rows(client, `SELECT organization, enrollment, contracts FROM cms_ma_plan_enrollment WHERE county_fips = $1 AND period = $2 ORDER BY enrollment DESC LIMIT 8`, [fips, planPeriod])
+    : [];
   const places = await rows(client, `SELECT measure_id, measure, data_value, year FROM cdc_places_county WHERE county_fips = $1 ORDER BY data_value DESC NULLS LAST`, [fips]);
   const drugs = await rows(client, `SELECT generic_name, claims, drug_cost, beneficiaries, opioid, data_year, county_fips FROM cms_partd_geo_drug WHERE county_fips = $1 OR county_fips = $2 ORDER BY (county_fips = $1) DESC, claims DESC NULLS LAST LIMIT 12`, [fips, state ?? ""]);
   const services = await rows(client, `SELECT hcpcs, description, beneficiaries, services, payment, data_year, county_fips FROM cms_geo_service WHERE county_fips = $1 OR county_fips = $2 ORDER BY (county_fips = $1) DESC, services DESC NULLS LAST LIMIT 8`, [fips, state ?? ""]);
@@ -85,7 +89,7 @@ export async function countyReference(client: PoolClient, fips: string, state: s
     oep: oep[0] ?? null,
     dme,
     as_of: {
-      ma: "2026-09",
+      ma: planPeriod,
       places: places[0]?.year ?? null,
       drugs: drugs[0]?.data_year ?? null,
       services: services[0]?.data_year ?? null,

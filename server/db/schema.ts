@@ -1,4 +1,4 @@
-import { pgTable, text, integer, bigint, boolean, timestamp, date, jsonb, doublePrecision, serial, varchar, uuid, index, uniqueIndex, primaryKey, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, bigint, boolean, timestamp, date, jsonb, doublePrecision, serial, varchar, uuid, index, uniqueIndex, primaryKey, foreignKey, numeric } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
@@ -1868,6 +1868,18 @@ export const cmsDmeByReferring = pgTable("cms_dme_by_referring", {
   services: doublePrecision("services"),
   medicare_payment: doublePrecision("medicare_payment"),
   standardized_payment: doublePrecision("standardized_payment"),
+  hcpcs_codes: integer("hcpcs_codes"),
+  allowed: doublePrecision("allowed"),
+  submitted_charges: doublePrecision("submitted_charges"),
+  dme_suppressed: boolean("dme_suppressed"),
+  dme_benes: integer("dme_benes"),
+  dme_payment: doublePrecision("dme_payment"),
+  pos_suppressed: boolean("pos_suppressed"),
+  pos_benes: integer("pos_benes"),
+  pos_payment: doublePrecision("pos_payment"),
+  drug_suppressed: boolean("drug_suppressed"),
+  drug_benes: integer("drug_benes"),
+  drug_payment: doublePrecision("drug_payment"),
   avg_age: doublePrecision("avg_age"),
   avg_risk_score: doublePrecision("avg_risk_score"),
   chronic_conditions: jsonb("chronic_conditions"),
@@ -1946,4 +1958,362 @@ export const cmsLtcFacilityCharacteristics = pgTable("cms_ltc_facility_character
   updated_date: timestamp("updated_date").defaultNow(),
 }, (table) => [
   uniqueIndex("uq_cms_ltc671").on(table.ccn, table.period_end),
+]);
+
+// County and provider reference files that are not in the CMS data-api catalog
+// (migrations 0024–0027). Composite keys match the SQL primary keys.
+
+/** Medicare Advantage enrollment by parent organization and county, one month at a time. */
+export const cmsMaPlanEnrollment = pgTable("cms_ma_plan_enrollment", {
+  period: varchar("period", { length: 7 }).notNull(),
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  state: varchar("state", { length: 2 }),
+  county_name: text("county_name"),
+  organization: text("organization").notNull(),
+  enrollment: integer("enrollment").notNull(),
+  contracts: integer("contracts"),
+}, (table) => [
+  primaryKey({ columns: [table.period, table.county_fips, table.organization] }),
+  index("idx_cms_ma_plan_fips").on(table.county_fips),
+]);
+
+export const cmsPartdGeoDrug = pgTable("cms_partd_geo_drug", {
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  data_year: varchar("data_year", { length: 4 }).notNull(),
+  generic_name: text("generic_name").notNull(),
+  claims: integer("claims"),
+  drug_cost: numeric("drug_cost", { precision: 16, scale: 2 }),
+  beneficiaries: integer("beneficiaries"),
+  opioid: boolean("opioid"),
+}, (table) => [
+  primaryKey({ columns: [table.county_fips, table.data_year, table.generic_name] }),
+]);
+
+export const cmsPartdProviderDrug = pgTable("cms_partd_provider_drug", {
+  npi: varchar("npi", { length: 10 }).notNull(),
+  data_year: varchar("data_year", { length: 4 }).notNull(),
+  generic_name: text("generic_name").notNull(),
+  brand_name: text("brand_name"),
+  claims: integer("claims"),
+  drug_cost: numeric("drug_cost", { precision: 16, scale: 2 }),
+  beneficiaries: integer("beneficiaries"),
+}, (table) => [
+  primaryKey({ columns: [table.npi, table.data_year, table.generic_name] }),
+  index("idx_cms_partd_npi").on(table.npi),
+]);
+
+export const cdcPlacesCounty = pgTable("cdc_places_county", {
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  measure_id: varchar("measure_id", { length: 40 }).notNull(),
+  measure: text("measure"),
+  data_value: numeric("data_value", { precision: 8, scale: 2 }),
+  year: varchar("year", { length: 4 }),
+}, (table) => [
+  primaryKey({ columns: [table.county_fips, table.measure_id] }),
+]);
+
+export const oigExclusions = pgTable("oig_exclusions", {
+  npi: varchar("npi", { length: 10 }).primaryKey(),
+  name: text("name"),
+  excl_type: varchar("excl_type", { length: 20 }),
+  excl_date: varchar("excl_date", { length: 8 }),
+  state: varchar("state", { length: 2 }),
+});
+
+export const medicareOptOut = pgTable("medicare_opt_out", {
+  npi: varchar("npi", { length: 10 }).primaryKey(),
+  name: text("name"),
+  specialty: text("specialty"),
+  state: varchar("state", { length: 2 }),
+  effective_date: varchar("effective_date", { length: 20 }),
+  end_date: varchar("end_date", { length: 20 }),
+});
+
+export const cmsGeoService = pgTable("cms_geo_service", {
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  data_year: varchar("data_year", { length: 4 }).notNull(),
+  hcpcs: varchar("hcpcs", { length: 10 }).notNull(),
+  description: text("description"),
+  beneficiaries: integer("beneficiaries"),
+  services: numeric("services", { precision: 14, scale: 1 }),
+  payment: numeric("payment", { precision: 16, scale: 2 }),
+}, (table) => [
+  primaryKey({ columns: [table.county_fips, table.data_year, table.hcpcs] }),
+]);
+
+export const hrsaShortage = pgTable("hrsa_shortage", {
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  discipline: varchar("discipline", { length: 40 }).notNull(),
+  designation_type: text("designation_type").notNull().default(""),
+  hpsa_score: numeric("hpsa_score", { precision: 6, scale: 2 }),
+  status: text("status"),
+}, (table) => [
+  primaryKey({ columns: [table.county_fips, table.discipline, table.designation_type] }),
+]);
+
+export const cmsOpenPaymentTotals = pgTable("cms_open_payment_totals", {
+  npi: varchar("npi", { length: 20 }).primaryKey(),
+  recipient_state: varchar("recipient_state", { length: 2 }),
+  program_year: integer("program_year").notNull(),
+  payment_count: integer("payment_count").notNull(),
+  total_amount: numeric("total_amount", { precision: 14, scale: 2 }).notNull(),
+});
+
+export const phc4CardiacVolume = pgTable("phc4_cardiac_volume", {
+  report_period: varchar("report_period", { length: 9 }).notNull(),
+  procedure_code: varchar("procedure_code", { length: 40 }).notNull(),
+  county_name: text("county_name").notNull().default(""),
+  facility_name: text("facility_name").notNull(),
+  total_cases: integer("total_cases"),
+  inpatient_cases: integer("inpatient_cases"),
+  outpatient_cases: integer("outpatient_cases"),
+}, (table) => [
+  primaryKey({ columns: [table.report_period, table.procedure_code, table.county_name, table.facility_name] }),
+  index("idx_phc4_cardiac_volume_county").on(table.county_name),
+]);
+
+export const phc4CardiacOutcome = pgTable("phc4_cardiac_outcome", {
+  report_period: varchar("report_period", { length: 9 }).notNull(),
+  procedure_code: varchar("procedure_code", { length: 40 }).notNull(),
+  facility_name: text("facility_name").notNull(),
+  measure: varchar("measure", { length: 24 }).notNull(),
+  cases: integer("cases"),
+  actual_value: numeric("actual_value", { precision: 14, scale: 2 }),
+  expected_value: numeric("expected_value", { precision: 14, scale: 2 }),
+  expected_low: numeric("expected_low", { precision: 14, scale: 2 }),
+  expected_high: numeric("expected_high", { precision: 14, scale: 2 }),
+  actual_rate: numeric("actual_rate", { precision: 8, scale: 2 }),
+  expected_rate: numeric("expected_rate", { precision: 8, scale: 2 }),
+  p_value: numeric("p_value", { precision: 8, scale: 4 }),
+  rating: varchar("rating", { length: 16 }),
+  adjusted_average: numeric("adjusted_average", { precision: 14, scale: 2 }),
+}, (table) => [
+  primaryKey({ columns: [table.report_period, table.procedure_code, table.facility_name, table.measure] }),
+  index("idx_phc4_cardiac_outcome_facility").on(table.facility_name),
+]);
+
+export const phc4CancerSurgery = pgTable("phc4_cancer_surgery", {
+  report_period: varchar("report_period", { length: 12 }).notNull(),
+  county_name: text("county_name").notNull().default(""),
+  facility_name: text("facility_name").notNull(),
+  facility_type: text("facility_type"),
+  cancer: varchar("cancer", { length: 24 }).notNull(),
+  inpatient_cases: integer("inpatient_cases"),
+  outpatient_cases: integer("outpatient_cases"),
+  total_cases: integer("total_cases"),
+}, (table) => [
+  primaryKey({ columns: [table.report_period, table.county_name, table.facility_name, table.cancer] }),
+  index("idx_phc4_cancer_county").on(table.county_name),
+]);
+
+export const phc4CountyStat = pgTable("phc4_county_stat", {
+  period: varchar("period", { length: 12 }).notNull(),
+  report: varchar("report", { length: 40 }).notNull(),
+  county_name: text("county_name").notNull(),
+  category: text("category").notNull(),
+  cases: integer("cases"),
+  value: numeric("value", { precision: 10, scale: 2 }),
+  value_unit: varchar("value_unit", { length: 32 }).notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.period, table.report, table.county_name, table.category] }),
+  index("idx_phc4_county_stat_county").on(table.county_name),
+]);
+
+export const paMcoEnrollment = pgTable("pa_mco_enrollment", {
+  period: varchar("period", { length: 7 }).notNull(),
+  county_name: text("county_name").notNull(),
+  plan: text("plan").notNull(),
+  zone: varchar("zone", { length: 32 }),
+  enrollment: integer("enrollment").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.period, table.county_name, table.plan] }),
+  index("idx_pa_mco_county").on(table.county_name),
+]);
+
+export const qhpCountyIssuer = pgTable("qhp_county_issuer", {
+  plan_year: varchar("plan_year", { length: 4 }).notNull(),
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  issuer_id: varchar("issuer_id", { length: 8 }).notNull(),
+  issuer_name: text("issuer_name").notNull(),
+  market: varchar("market", { length: 20 }).notNull(),
+  plan_count: integer("plan_count"),
+  metals: text("metals"),
+  state_enrollment: integer("state_enrollment"),
+}, (table) => [
+  primaryKey({ columns: [table.plan_year, table.county_fips, table.issuer_id, table.market] }),
+  index("idx_qhp_county_issuer_fips").on(table.county_fips),
+]);
+
+export const cmsMaStar = pgTable("cms_ma_star", {
+  rating_year: varchar("rating_year", { length: 4 }).notNull(),
+  contract_id: varchar("contract_id", { length: 16 }).notNull(),
+  organization_type: varchar("organization_type", { length: 80 }),
+  contract_name: text("contract_name"),
+  marketing_name: text("marketing_name"),
+  parent_organization: text("parent_organization"),
+  snp: varchar("snp", { length: 3 }),
+  part_c_rating: numeric("part_c_rating", { precision: 3, scale: 1 }),
+  part_d_rating: numeric("part_d_rating", { precision: 3, scale: 1 }),
+  overall_rating: numeric("overall_rating", { precision: 3, scale: 1 }),
+}, (table) => [
+  primaryKey({ columns: [table.rating_year, table.contract_id] }),
+]);
+
+export const cmsMaContractCounty = pgTable("cms_ma_contract_county", {
+  period: varchar("period", { length: 7 }).notNull(),
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  contract_id: varchar("contract_id", { length: 16 }).notNull(),
+  enrollment: integer("enrollment").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.period, table.county_fips, table.contract_id] }),
+  index("idx_cms_ma_contract_county_fips").on(table.county_fips),
+]);
+
+export const cmsMlr = pgTable("cms_mlr", {
+  reporting_year: varchar("reporting_year", { length: 4 }).notNull(),
+  state: varchar("state", { length: 2 }).notNull(),
+  market: varchar("market", { length: 20 }).notNull(),
+  company: text("company").notNull(),
+  mlr: numeric("mlr", { precision: 8, scale: 2 }),
+  mlr_denominator: numeric("mlr_denominator", { precision: 16, scale: 2 }),
+  rebate: numeric("rebate", { precision: 16, scale: 2 }),
+}, (table) => [
+  primaryKey({ columns: [table.reporting_year, table.state, table.market, table.company] }),
+  index("idx_cms_mlr_state").on(table.state),
+]);
+
+export const cmsOepState = pgTable("cms_oep_state", {
+  coverage_year: varchar("coverage_year", { length: 4 }).notNull(),
+  state: varchar("state", { length: 2 }).notNull(),
+  platform: varchar("platform", { length: 20 }),
+  plan_selections: integer("plan_selections"),
+  avg_premium: numeric("avg_premium", { precision: 10, scale: 2 }),
+  avg_premium_after_aptc: numeric("avg_premium_after_aptc", { precision: 10, scale: 2 }),
+}, (table) => [
+  primaryKey({ columns: [table.coverage_year, table.state] }),
+]);
+
+export const paAcaRate = pgTable("pa_aca_rate", {
+  plan_year: varchar("plan_year", { length: 4 }).notNull(),
+  market: varchar("market", { length: 20 }).notNull(),
+  company: text("company").notNull(),
+  on_marketplace: varchar("on_marketplace", { length: 3 }),
+  requested_pct: numeric("requested_pct", { precision: 6, scale: 2 }),
+  approved_pct: numeric("approved_pct", { precision: 6, scale: 2 }),
+  market_share: numeric("market_share", { precision: 6, scale: 2 }),
+}, (table) => [
+  primaryKey({ columns: [table.plan_year, table.market, table.company] }),
+]);
+
+/** Medicare DMEPOS by the supplier who was paid (calendar year). */
+export const cmsDmeBySupplier = pgTable("cms_dme_by_supplier", {
+  npi: varchar("npi", { length: 10 }).notNull(),
+  data_year: varchar("data_year", { length: 4 }).notNull(),
+  name: text("name"),
+  city: text("city"),
+  state: varchar("state", { length: 2 }),
+  zip5: varchar("zip5", { length: 5 }),
+  specialty: text("specialty"),
+  hcpcs_codes: integer("hcpcs_codes"),
+  benes: integer("benes"),
+  claims: integer("claims"),
+  services: doublePrecision("services"),
+  medicare_payment: doublePrecision("medicare_payment"),
+  allowed: doublePrecision("allowed"),
+  dme_suppressed: boolean("dme_suppressed"),
+  dme_benes: integer("dme_benes"),
+  dme_payment: doublePrecision("dme_payment"),
+  pos_suppressed: boolean("pos_suppressed"),
+  pos_benes: integer("pos_benes"),
+  pos_payment: doublePrecision("pos_payment"),
+  drug_suppressed: boolean("drug_suppressed"),
+  drug_benes: integer("drug_benes"),
+  drug_payment: doublePrecision("drug_payment"),
+}, (table) => [
+  primaryKey({ columns: [table.data_year, table.npi] }),
+  index("idx_cms_dme_supplier_zip").on(table.zip5),
+]);
+
+/** One HCPCS a referring provider ordered. `rental` is blank when the line is not a rental. */
+export const cmsDmeOrderLine = pgTable("cms_dme_order_line", {
+  data_year: varchar("data_year", { length: 4 }).notNull(),
+  npi: varchar("npi", { length: 10 }).notNull(),
+  hcpcs: varchar("hcpcs", { length: 10 }).notNull(),
+  rental: varchar("rental", { length: 1 }).notNull().default(""),
+  state: varchar("state", { length: 2 }),
+  rbcs_desc: text("rbcs_desc"),
+  hcpcs_desc: text("hcpcs_desc"),
+  suppliers: integer("suppliers"),
+  benes: integer("benes"),
+  claims: integer("claims"),
+  services: doublePrecision("services"),
+  avg_payment: doublePrecision("avg_payment"),
+}, (table) => [
+  primaryKey({ columns: [table.data_year, table.npi, table.hcpcs, table.rental] }),
+  index("idx_dme_order_npi").on(table.npi),
+]);
+
+/** One HCPCS a supplier was paid for. */
+export const cmsDmeSupplyLine = pgTable("cms_dme_supply_line", {
+  data_year: varchar("data_year", { length: 4 }).notNull(),
+  npi: varchar("npi", { length: 10 }).notNull(),
+  hcpcs: varchar("hcpcs", { length: 10 }).notNull(),
+  rental: varchar("rental", { length: 1 }).notNull().default(""),
+  state: varchar("state", { length: 2 }),
+  rbcs_desc: text("rbcs_desc"),
+  hcpcs_desc: text("hcpcs_desc"),
+  benes: integer("benes"),
+  claims: integer("claims"),
+  services: doublePrecision("services"),
+  avg_payment: doublePrecision("avg_payment"),
+}, (table) => [
+  primaryKey({ columns: [table.data_year, table.npi, table.hcpcs, table.rental] }),
+  index("idx_dme_supply_npi").on(table.npi),
+]);
+
+/** DMEPOS by the referring provider's geography. `geo_code` is a state FIPS, or blank for the national row. */
+export const cmsDmeGeoService = pgTable("cms_dme_geo_service", {
+  data_year: varchar("data_year", { length: 4 }).notNull(),
+  geo_level: varchar("geo_level", { length: 16 }).notNull(),
+  geo_code: varchar("geo_code", { length: 5 }).notNull().default(""),
+  hcpcs: varchar("hcpcs", { length: 10 }).notNull(),
+  rental: varchar("rental", { length: 1 }).notNull().default(""),
+  state: varchar("state", { length: 2 }).notNull().default(""),
+  geo_desc: text("geo_desc"),
+  rbcs_desc: text("rbcs_desc"),
+  hcpcs_desc: text("hcpcs_desc"),
+  referring_providers: integer("referring_providers"),
+  suppliers: integer("suppliers"),
+  benes: integer("benes"),
+  claims: integer("claims"),
+  services: doublePrecision("services"),
+  avg_payment: doublePrecision("avg_payment"),
+}, (table) => [
+  primaryKey({ columns: [table.data_year, table.geo_level, table.geo_code, table.hcpcs, table.rental] }),
+  index("idx_dme_geo_state").on(table.state),
+]);
+
+/** Medicare DMEPOS supplier directory. `provider_id` is the supplier number, not an NPI. */
+export const dmeSupplierDirectory = pgTable("dme_supplier_directory", {
+  provider_id: varchar("provider_id", { length: 20 }).primaryKey(),
+  npi: varchar("npi", { length: 10 }),
+  business_name: text("business_name"),
+  practice_name: text("practice_name"),
+  address: text("address"),
+  city: text("city"),
+  state: varchar("state", { length: 2 }),
+  zip5: varchar("zip5", { length: 5 }),
+  phone: varchar("phone", { length: 20 }),
+  accepts_assignment: boolean("accepts_assignment"),
+  participation_begin: date("participation_begin"),
+  specialties: text("specialties"),
+  provider_types: text("provider_types"),
+  supplies: text("supplies"),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  cba_contracted: boolean("cba_contracted"),
+  as_of: date("as_of"),
+}, (table) => [
+  index("idx_dme_dir_zip").on(table.zip5),
+  index("idx_dme_dir_npi").on(table.npi),
 ]);

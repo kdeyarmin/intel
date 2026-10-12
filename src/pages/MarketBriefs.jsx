@@ -15,6 +15,7 @@ import { fmtCount, fmtMoney, fmtPct, fmtShare } from '@/lib/marketFormat';
 import { GROWTH_SETTINGS, REPORT_CATALOG, countyGrowthRows, growthFacts, leaderFacts } from '@/lib/marketBriefs';
 import { useBusinessLine } from '@/lib/BusinessLineContext';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
+import MarketFreshness from '../components/market/MarketFreshness';
 
 const URL_DEFAULTS = { report: '', state: 'PA', county: '', from: '', setting: 'hha', sort: 'users' };
 
@@ -76,7 +77,7 @@ function acquireLead(state, spec, data) {
   if (!facts.top) return `${state} has no ${spec.audience.toLowerCase()} in the post-acute file yet.`;
   const top = facts.top;
   const place = [top.city, top.state].filter(Boolean).join(', ');
-  const parts = [`${top.name || top.ccn}${place ? ` (${place})` : ''} has the most Medicare beneficiaries among ${spec.audience.toLowerCase()} located in ${state}: ${fmtCount(top.benes)} (${fmtShare(top.share)} of providers located in the state).`];
+  const parts = [`${top.name || top.ccn}${place ? ` (${place})` : ''} has the most Medicare beneficiaries among ${spec.audience.toLowerCase()} located in ${state}: ${fmtCount(top.benes)} (${fmtShare(top.share)} of beneficiaries served by providers located in the state).`];
   if (data.providers_in_market != null) parts.push(`${fmtCount(data.providers_in_market)} providers are ranked${data.data_year ? ` for ${data.data_year}` : ''}.`);
   if (facts.listedShare != null) parts.push(`The ${fmtCount(facts.listed)} listed here account for ${fmtShare(facts.listedShare)} of beneficiaries served by providers located in the state.`);
   return parts.join(' ');
@@ -436,8 +437,13 @@ export default function MarketBriefs() {
 
       {spec && (spec.id.startsWith('expand') ? layer : spec.id.startsWith('acquire') ? leaders : ready && market && !market.needsCounty) && (
         <Card className="bg-slate-900/40 border-slate-800 print:border-0 print:shadow-none">
-          <CardContent className="p-3">
-            <ComplianceDisclaimer />
+          <CardContent className="p-3 space-y-2">
+            <ComplianceDisclaimer variant="market" />
+            <MarketFreshness
+              rollups={(spec.id.startsWith('expand') ? layer : spec.id.startsWith('acquire') ? leaders : market)?.rollups}
+              jobs={['county_market_profile']}
+              vintages={(spec.id.startsWith('expand') ? layer : market)?.vintages}
+            />
           </CardContent>
         </Card>
       )}

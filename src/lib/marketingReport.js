@@ -64,8 +64,13 @@ export function buildMarketingReport({ accounts = [], activities = [], referrals
   const refsOf = (ym) => referrals.filter((r) => inMonth(r.received_on, ym));
   const admitsOf = (ym) => referrals.filter((r) => r.outcome === 'admitted' && inMonth(r.admitted_on || r.received_on, ym));
   const calls = callsOf(month).length;
-  const refs = refsOf(month).length;
+  const refsReceived = refsOf(month);
+  const refs = refsReceived.length;
   const admits = admitsOf(month).length;
+  // Admissions are whoever was admitted this month. Conversion is only the
+  // referrals that arrived this month and were admitted, so an older referral
+  // admitted now cannot push the ratio over 100%.
+  const converted = refsReceived.filter((r) => r.outcome === 'admitted').length;
   const rows = accounts.map((account) => {
     const callsNow = activities.filter((a) => a.account_id === account.id && isCall(a) && a.done && inMonth(a.activity_date, month)).length;
     const refsNow = referrals.filter((r) => r.account_id === account.id && inMonth(r.received_on, month)).length;
@@ -96,7 +101,7 @@ export function buildMarketingReport({ accounts = [], activities = [], referrals
     referrals: refs,
     admissions: admits,
     callsPerReferral: refs ? Math.round((calls / refs) * 10) / 10 : null,
-    conversion: refs ? admits / refs : null,
+    conversion: refs ? converted / refs : null,
     trend: months.map((ym) => ({ month: ym, calls: callsOf(ym).length, referrals: refsOf(ym).length, admissions: admitsOf(ym).length })),
     more: rows.filter((a) => a.change > 0).sort((a, b) => b.change - a.change || b.referrals - a.referrals),
     less: rows.filter((a) => a.change < 0).sort((a, b) => a.change - b.change),

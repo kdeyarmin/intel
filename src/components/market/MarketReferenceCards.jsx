@@ -56,28 +56,45 @@ function conditionLabel(row) {
   return base;
 }
 
+/** Sections a business line actually uses. No line means the whole card. */
+const LINE_SECTIONS = {
+  hha: ['plans', 'places', 'shortage', 'medicaid'],
+  hospice: ['plans', 'places', 'shortage', 'medicaid'],
+  snf: ['plans', 'places', 'shortage', 'medicaid', 'phc4'],
+  pch: ['places'],
+  hospital: ['plans', 'shortage', 'phc4'],
+  dme: ['drugs', 'services', 'dme'],
+};
+
+function showSection(line, id) {
+  if (!line) return true;
+  return (LINE_SECTIONS[line.id] || []).includes(id);
+}
+
 /** Medicare Advantage plans, chronic-condition prevalence, and the drugs a county's clinicians write. */
-export function CountyReferenceCard({ reference }) {
+export function CountyReferenceCard({ reference, line = null }) {
   if (!reference) return null;
-  const plans = reference.ma_plans || [];
-  const stars = reference.ma_stars || [];
-  const places = reference.places || [];
-  const drugs = reference.drugs || [];
-  const services = reference.services || [];
-  const shortage = reference.shortage || [];
-  const phc4 = reference.phc4;
+  const plans = showSection(line, 'plans') ? (reference.ma_plans || []) : [];
+  const stars = showSection(line, 'plans') ? (reference.ma_stars || []) : [];
+  const places = showSection(line, 'places') ? (reference.places || []) : [];
+  const drugs = showSection(line, 'drugs') ? (reference.drugs || []) : [];
+  const services = showSection(line, 'services') ? (reference.services || []) : [];
+  const shortage = showSection(line, 'shortage') ? (reference.shortage || []) : [];
+  const phc4 = showSection(line, 'phc4') ? reference.phc4 : null;
   const hasPhc4 = phc4 && (phc4.payers?.length || phc4.conditions?.length || phc4.cardiac?.length || phc4.cancer?.length);
-  const medicaid = reference.medicaid || [];
-  const marketplace = reference.marketplace || [];
-  const rates = reference.aca_rates || [];
-  const mlr = reference.mlr || [];
-  const oep = reference.oep;
-  const dme = reference.dme;
+  const medicaid = showSection(line, 'medicaid') ? (reference.medicaid || []) : [];
+  const marketplace = showSection(line, 'marketplace') ? (reference.marketplace || []) : [];
+  const rates = showSection(line, 'rates') ? (reference.aca_rates || []) : [];
+  const mlr = showSection(line, 'mlr') ? (reference.mlr || []) : [];
+  const oep = showSection(line, 'oep') ? reference.oep : null;
+  const dme = showSection(line, 'dme') ? reference.dme : null;
   const hasPayers = medicaid.length || marketplace.length || rates.length || mlr.length || oep;
   if (!plans.length && !stars.length && !places.length && !drugs.length && !services.length && !shortage.length && !hasPhc4 && !hasPayers && !dme) return null;
+  const show = (id) => showSection(line, id);
   return (
     <div className="space-y-4">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {show('plans') && (
       <Card className="bg-slate-800/50 border-slate-700/50">
         <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-200">Medicare Advantage plans</CardTitle></CardHeader>
         <CardContent className="text-xs space-y-1">
@@ -97,9 +114,11 @@ export function CountyReferenceCard({ reference }) {
               ))}
             </div>
           )}
-          <p className="text-[11px] text-slate-500 pt-1">Enrollment is September 2026. Cells under 11 are left out by CMS, so the total is a floor. Stars are the 2027 contract ratings published October 8, 2026, for contracts with members in this county. Not a facility score.</p>
+          <p className="text-[11px] text-slate-500 pt-1">Enrollment is {reference.as_of?.ma || 'the latest month on file'}. Cells under 11 are left out by CMS, so the total is a floor. Stars are the 2027 contract ratings published October 8, 2026, for contracts with members in this county. Not a facility score.</p>
         </CardContent>
       </Card>
+      )}
+      {show('places') && (
       <Card className="bg-slate-800/50 border-slate-700/50">
         <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-200">Who lives here</CardTitle></CardHeader>
         <CardContent className="text-xs space-y-1">
@@ -109,11 +128,21 @@ export function CountyReferenceCard({ reference }) {
               <span className="text-slate-400 shrink-0">{fmtPct(p.data_value)}</span>
             </div>
           ))}
-          {shortage.length > 0 && (
+          {shortage.length > 0 && show('shortage') && (
             <p className="text-[11px] text-slate-400 pt-1">HRSA shortage: {shortage.map((s) => `${s.discipline} (${s.designation_type}) ${s.hpsa_score ?? ''}`).join(' · ')}. Geographic and population designations only, not FQHC or clinic auto-scores.</p>
           )}
         </CardContent>
       </Card>
+      )}
+      {!show('places') && show('shortage') && shortage.length > 0 && (
+        <Card className="bg-slate-800/50 border-slate-700/50">
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-200">Clinician shortage</CardTitle></CardHeader>
+          <CardContent className="text-xs">
+            <p className="text-slate-400">HRSA shortage: {shortage.map((s) => `${s.discipline} (${s.designation_type}) ${s.hpsa_score ?? ''}`).join(' · ')}. Geographic and population designations only, not FQHC or clinic auto-scores.</p>
+          </CardContent>
+        </Card>
+      )}
+      {show('drugs') && (
       <Card className="bg-slate-800/50 border-slate-700/50">
         <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-200">Drugs written here</CardTitle></CardHeader>
         <CardContent className="text-xs space-y-1">
@@ -126,6 +155,8 @@ export function CountyReferenceCard({ reference }) {
           <p className="text-[11px] text-slate-500 pt-1">{drugs[0]?.county_fips?.length === 5 ? 'This county' : 'Statewide'}, Part D 2024. Top generics. Counts under 11 are suppressed.</p>
         </CardContent>
       </Card>
+      )}
+      {show('services') && (
       <Card className="bg-slate-800/50 border-slate-700/50">
         <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-200">Medicare services</CardTitle></CardHeader>
         <CardContent className="text-xs space-y-1">
@@ -138,6 +169,7 @@ export function CountyReferenceCard({ reference }) {
           <p className="text-[11px] text-slate-500 pt-1">{services[0]?.county_fips?.length === 5 ? 'This county' : 'Statewide'}, 2024. Office visits, joint replacement, colonoscopy, home health certs. CMS publishes this file by state, not county.</p>
         </CardContent>
       </Card>
+      )}
     </div>
     {hasPhc4 && (
       <Card className="bg-slate-800/50 border-slate-700/50">

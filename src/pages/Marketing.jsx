@@ -23,14 +23,30 @@ function pct(n) {
   return `${Math.round(n * 100)}%`;
 }
 
+const PAGE = 5000;
+const CAP = 50000;
+
+async function listAll(entity, sort) {
+  const rows = [];
+  for (let offset = 0; offset < CAP; offset += PAGE) {
+    const page = await entity.list(sort, PAGE, offset);
+    rows.push(...page);
+    if (page.length < PAGE) return { rows, truncated: false };
+  }
+  return { rows, truncated: true };
+}
+
 async function loadBook() {
   const [accounts, contacts, activities, referrals] = await Promise.all([
-    base44.entities.CrmAccount.list('-updated_date', 2000),
-    base44.entities.CrmContact.list('-id', 5000),
-    base44.entities.CrmActivity.list('-activity_date', 5000),
-    base44.entities.CrmReferral.list('-received_on', 5000),
+    listAll(base44.entities.CrmAccount, '-updated_date'),
+    listAll(base44.entities.CrmContact, '-id'),
+    listAll(base44.entities.CrmActivity, '-activity_date'),
+    listAll(base44.entities.CrmReferral, '-received_on'),
   ]);
-  return { accounts, contacts, activities, referrals };
+  return {
+    accounts: accounts.rows, contacts: contacts.rows, activities: activities.rows, referrals: referrals.rows,
+    truncated: accounts.truncated || contacts.truncated || activities.truncated || referrals.truncated,
+  };
 }
 
 function Bar({ n, max, className, label }) {
@@ -77,6 +93,7 @@ export default function Marketing() {
       </div>
 
       {isError && <p className="text-sm text-red-400" role="alert">{error?.message || 'Could not load your book.'}</p>}
+      {data?.truncated && <p className="text-sm text-amber-300" role="status">The book is larger than this page can load, so the month-end totals are incomplete.</p>}
       {isLoading && <p className="text-sm text-slate-400">Loading your book…</p>}
 
       {!isLoading && account && (
@@ -117,7 +134,7 @@ function Book({ report, activities, month, onOpen, onAdded, onFail }) {
     if (!trimmed) return;
     setSaving(true);
     try {
-      await base44.entities.CrmAccount.create({ name: trimmed, account_type: type, city: city.trim() || null, account_key: accountKey(type, trimmed, city) });
+      await base44.entities.CrmAccount.create({ name: trimmed, account_type: type, city: city.trim() || null, account_key: accountKey(type, trimmed, city.trim()) });
       setName('');
       setCity('');
       onAdded();
