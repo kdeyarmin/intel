@@ -18,10 +18,24 @@ export default function SystemStatusPanel({ batches }) {
     const now = Date.now();
     const last24h = batches.filter(b => now - new Date(b.created_date).getTime() < 86400000);
     const lastHour = batches.filter(b => now - new Date(b.created_date).getTime() < 3600000);
-    const active = batches.filter(b => b.status === 'processing' || b.status === 'validating');
-    const completed24h = last24h.filter(b => b.status === 'completed');
-    const failed24h = last24h.filter(b => b.status === 'failed');
-    
+    const active = batches.filter(b => ['processing', 'validating', 'pausing', 'cancelling'].includes(b.status));
+
+    // A batch counts in the 24h window by when it finished, not when it was
+    // created: a stale batch that failed an hour ago is a failure in the last
+    // 24h. There is no failed_at column, so the last write is the failure-time
+    // proxy; completions use completed_at.
+    const finishedAt = (b) => {
+      const ts = b.status === 'failed' ? b.updated_date : (b.completed_at || b.updated_date);
+      const t = ts ? new Date(ts).getTime() : NaN;
+      return Number.isNaN(t) ? null : t;
+    };
+    const finishedIn24h = (b) => {
+      const t = finishedAt(b);
+      return t !== null && now - t < 86400000;
+    };
+    const completed24h = batches.filter(b => b.status === 'completed' && finishedIn24h(b));
+    const failed24h = batches.filter(b => b.status === 'failed' && finishedIn24h(b));
+
     // Avg duration for completed batches
     const durations = completed24h
       .filter(b => b.completed_at && b.created_date)
@@ -35,9 +49,10 @@ export default function SystemStatusPanel({ batches }) {
     // throughput isn't inflated by dividing all-24h rows by completed-only time.
     const completedRowsProcessed = completed24h.reduce((sum, b) => sum + (b.imported_rows || 0) + (b.updated_rows || 0), 0);
 
-    // Success rate
+    // Success rate: null (rendered as "—") when nothing finished. Never
+    // default to 100: no data is not a perfect record.
     const finishedCount = completed24h.length + failed24h.length;
-    const successRate = finishedCount > 0 ? Math.round((completed24h.length / finishedCount) * 100) : 100;
+    const successRate = finishedCount > 0 ? Math.round((completed24h.length / finishedCount) * 100) : null;
 
     // Throughput (rows per minute) over completed batches
     const totalDurationMin = durations.reduce((a, b) => a + b, 0) / 60000;
@@ -87,8 +102,8 @@ export default function SystemStatusPanel({ batches }) {
           <div className="bg-slate-800/50 border border-slate-700/30 rounded-lg p-2.5 text-center">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mx-auto mb-1" />
             <p className="text-[10px] text-slate-400">Success Rate (24h)</p>
-            <p className={`text-lg font-bold ${stats.successRate >= 80 ? 'text-emerald-400' : stats.successRate >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
-              {stats.successRate}%
+            <p className={`text-lg font-bold ${stats.successRate === null ? 'text-slate-400' : stats.successRate >= 80 ? 'text-emerald-400' : stats.successRate >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+              {stats.successRate === null ? '—' : `${stats.successRate}%`}
             </p>
           </div>
           <div className="bg-slate-800/50 border border-slate-700/30 rounded-lg p-2.5 text-center">

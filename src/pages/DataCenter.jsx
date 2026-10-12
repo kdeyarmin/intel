@@ -83,6 +83,7 @@ export default function DataCenter() {
           </CardContent>
         </Card>
       </div>
+      <p className="text-[11px] text-slate-500 -mt-2">Counts cover the 100 most recent imports only.</p>
 
       {/* Import Categories or Active Flow */}
       {activeCategory ? (

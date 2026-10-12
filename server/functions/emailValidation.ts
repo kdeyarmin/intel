@@ -9,7 +9,9 @@
 // clear policy:
 //   - reject anything that isn't even syntactically a valid address
 //   - only *promote* an inferred address to the primary providers.email field
-//     when it is plausibly deliverable (not low-confidence, not AI-flagged invalid)
+//     when the model is highly confident AND an independent (non-LLM) check
+//     agrees the address looks deliverable; the model is never both guesser
+//     and grader
 //   - everything else is retained as a candidate suggestion only
 //   - all AI-derived emails are tagged with provenance so the UI can mark them
 //     as unverified.
@@ -30,18 +32,54 @@ export function isValidEmailSyntax(email: unknown): boolean {
   return true;
 }
 
+export interface IndependentEmailCheck {
+  ok: boolean;
+  detail: string | null;
+}
+
 /**
- * Decide whether an inferred email is trustworthy enough to populate the primary
- * providers.email field. Conservative by design: a low-confidence guess or an
- * AI-flagged "invalid" address is kept only as a candidate, never promoted.
+ * Independent (non-LLM) validation of an inferred address: DNS/MX-based
+ * scoring of the domain from server/lib/emailVerification. A domain that
+ * accepts mail is "clean"; anything else (risky, invalid, or uncheckable)
+ * keeps the address as a candidate only. Imported lazily: emailVerification
+ * imports isValidEmailSyntax from this module, so a static import would be
+ * circular.
  */
-export function shouldPromoteToPrimary(candidate: {
-  email?: string | null;
-  confidence?: string | null;
-  validation_status?: string | null;
-}): boolean {
+export async function independentlyValidateEmail(email: string): Promise<IndependentEmailCheck> {
+  try {
+    const domain = String(email || "").trim().split("@")[1]?.toLowerCase();
+    if (!domain) return { ok: false, detail: "no domain" };
+    const { checkDomainCached, scoreEmail } = await import("../lib/emailVerification");
+    const scored = scoreEmail(email, await checkDomainCached(domain));
+    return scored.status === "valid"
+      ? { ok: true, detail: null }
+      : { ok: false, detail: scored.reasons?.[0] || scored.status };
+  } catch (e: any) {
+    // A DNS hiccup must neither promote the address nor crash the batch.
+    return { ok: false, detail: "validation check failed" };
+  }
+}
+
+/**
+ * Decide whether an inferred email is trustworthy enough to populate the
+ * primary providers.email field. Conservative by design:
+ *   - the model's self-grade can only veto, never approve: anything it rates
+ *     below "high" confidence, or flags "invalid"/"risky", stays a candidate;
+ *   - promotion additionally requires a clean independent (DNS/MX) check, so
+ *     the model is never both guesser and grader.
+ *
+ * `validate` is injectable so tests don't need live DNS.
+ */
+export async function shouldPromoteToPrimary(
+  candidate: {
+    email?: string | null;
+    confidence?: string | null;
+    validation_status?: string | null;
+  },
+  validate: (email: string) => Promise<IndependentEmailCheck> = independentlyValidateEmail,
+): Promise<boolean> {
   if (!candidate?.email || !isValidEmailSyntax(candidate.email)) return false;
-  if (candidate.validation_status === "invalid") return false;
-  if (candidate.confidence === "low") return false;
-  return true;
+  if (candidate.confidence !== "high") return false;
+  if (candidate.validation_status === "invalid" || candidate.validation_status === "risky") return false;
+  return (await validate(candidate.email)).ok;
 }

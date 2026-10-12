@@ -3,7 +3,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { client, poolQuery, sendMail, loadSuppressed, consumeQuota } = vi.hoisted(() => ({
   client: { query: vi.fn(), release: vi.fn() },
-  poolQuery: vi.fn(async () => ({ rows: [], rowCount: 0 })),
+  poolQuery: vi.fn(async (sql: string) =>
+    String(sql).startsWith("SELECT status FROM organizations WHERE id")
+      ? { rows: [{ status: "active" }], rowCount: 1 }
+      : { rows: [], rowCount: 0 }),
   sendMail: vi.fn(async () => ({ messageId: "sg-1" })),
   loadSuppressed: vi.fn(async () => new Set<string>()),
   consumeQuota: vi.fn(async () => {}),

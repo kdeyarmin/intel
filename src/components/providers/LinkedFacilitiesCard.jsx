@@ -54,47 +54,70 @@ export default function LinkedFacilitiesCard({ linkedFacilities }) {
         {linkedFacilities.map((f, i) => {
           const group = getGroupFromType(f.facility_type);
           const label = TYPE_LABELS[f.facility_type] || f.facility_type?.replace(/_/g, ' ');
+          // Only entries resolved to a real CCN-keyed facility row open a
+          // detail page. NPI-keyed or ungrouped entries have no FacilityDetail
+          // to navigate to, so they render disabled with the reason instead of
+          // a dead click.
+          const canOpen = !!(group && f.provider_id && f.resolved_ccn);
+          const disabledReason = !f.resolved_ccn
+            ? 'This facility could not be matched to a CMS facility record, so there is no detail page to open.'
+            : !group
+              ? `Unknown facility type "${f.facility_type}" — no detail view is available.`
+              : 'This entry has no facility identifier.';
+
+          const body = (
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-slate-200 truncate">
+                  {f.facility_name || f.provider_id}
+                </p>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <Badge className="bg-slate-800/50 text-slate-400 border-slate-500/30 text-[10px]">
+                    {label}
+                  </Badge>
+                  {f.city && f.state && (
+                    <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
+                      <MapPin className="w-2.5 h-2.5" />
+                      {f.city}, {f.state}
+                    </span>
+                  )}
+                  {f.data_year && (
+                    <span className="text-[10px] text-slate-400">{f.data_year}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {f.quality_rating && (
+                  <Badge className="bg-amber-900/30 text-amber-400 border-amber-500/30 text-xs">
+                    <Star className="w-3 h-3 mr-0.5" />{Number.isInteger(Number(f.quality_rating)) ? f.quality_rating : Number(f.quality_rating).toFixed(1)}
+                  </Badge>
+                )}
+                {canOpen && <ExternalLink className="w-3 h-3 text-slate-400" aria-hidden="true" />}
+              </div>
+            </div>
+          );
+
+          if (!canOpen) {
+            return (
+              <div
+                key={i}
+                title={disabledReason}
+                aria-disabled="true"
+                className="block w-full text-left bg-slate-900/50 rounded-lg p-3 border border-slate-700/30 opacity-60 cursor-not-allowed"
+              >
+                {body}
+              </div>
+            );
+          }
 
           return (
             <button
               type="button"
               key={i}
               className="block w-full text-left bg-slate-900/50 rounded-lg p-3 border border-slate-700/30 hover:border-slate-600/50 cursor-pointer transition-colors"
-              onClick={() => {
-                if (group && f.provider_id) {
-                  navigate(createPageUrl('FacilityDetail') + `?id=${f.provider_id}&group=${group}`);
-                }
-              }}
+              onClick={() => navigate(createPageUrl('FacilityDetail') + `?id=${f.provider_id}&group=${group}`)}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-slate-200 truncate">
-                    {f.facility_name || f.provider_id}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <Badge className="bg-slate-800/50 text-slate-400 border-slate-500/30 text-[10px]">
-                      {label}
-                    </Badge>
-                    {f.city && f.state && (
-                      <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
-                        <MapPin className="w-2.5 h-2.5" />
-                        {f.city}, {f.state}
-                      </span>
-                    )}
-                    {f.data_year && (
-                      <span className="text-[10px] text-slate-400">{f.data_year}</span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {f.quality_rating && (
-                    <Badge className="bg-amber-900/30 text-amber-400 border-amber-500/30 text-xs">
-                      <Star className="w-3 h-3 mr-0.5" />{Number.isInteger(Number(f.quality_rating)) ? f.quality_rating : Number(f.quality_rating).toFixed(1)}
-                    </Badge>
-                  )}
-                  <ExternalLink className="w-3 h-3 text-slate-400" aria-hidden="true" />
-                </div>
-              </div>
+              {body}
             </button>
           );
         })}

@@ -67,10 +67,20 @@ export async function saveProvidersToLeadList({
 
   const existing = new Set(existingRows);
   const toAdd = capped.filter((npi) => !existing.has(npi));
-  for (let i = 0; i < toAdd.length; i += CHUNK_SIZE) {
-    await base44.entities.LeadListMember.bulkCreate(
-      toAdd.slice(i, i + CHUNK_SIZE).map((npi) => ({ list_id: list.id, npi, status: 'New' })),
-    );
+  try {
+    for (let i = 0; i < toAdd.length; i += CHUNK_SIZE) {
+      await base44.entities.LeadListMember.bulkCreate(
+        toAdd.slice(i, i + CHUNK_SIZE).map((npi) => ({ list_id: list.id, npi, status: 'New' })),
+      );
+    }
+  } catch (e) {
+    // A failed chunk commits its predecessors, so the arithmetic below would
+    // lie: recompute the count from what is actually stored, then rethrow.
+    const actual = await listMemberNpis(list.id).catch(() => null);
+    if (actual && actual.length !== list.member_count) {
+      await base44.entities.LeadList.update(list.id, { member_count: actual.length }).catch(() => {});
+    }
+    throw e;
   }
 
   const memberCount = existingRows.length + toAdd.length;
