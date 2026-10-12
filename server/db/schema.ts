@@ -400,6 +400,8 @@ export const organizations = pgTable("organizations", {
   terms_version: varchar("terms_version", { length: 20 }),
   /** When the last Stripe event applied to this row happened; an older event is ignored (server/lib/billing.ts). */
   stripe_event_at: timestamp("stripe_event_at"),
+  /** When the current billing status began; applyStripeEvent moves it on every status transition, and the dunning ladder (orgAccessTier) reads it. */
+  billing_status_since: timestamp("billing_status_since"),
   created_date: timestamp("created_date").defaultNow(),
   updated_date: timestamp("updated_date").defaultNow(),
 });
@@ -1021,23 +1023,6 @@ export const scoringRules = pgTable("scoring_rules", {
   updated_date: timestamp("updated_date").defaultNow(),
 });
 
-export const campaignTasks = pgTable("campaign_tasks", {
-  org_id: integer("org_id"),
-  id: serial("id").primaryKey(),
-  title: varchar("title", { length: 255 }),
-  description: text("description"),
-  status: varchar("status", { length: 50 }).default("pending"),
-  priority: varchar("priority", { length: 50 }).default("medium"),
-  assigned_to: varchar("assigned_to", { length: 255 }),
-  due_date: timestamp("due_date"),
-  campaign_id: integer("campaign_id"),
-  tags: jsonb("tags"),
-  notes: text("notes"),
-  created_by: varchar("created_by", { length: 255 }),
-  created_date: timestamp("created_date").defaultNow(),
-  updated_date: timestamp("updated_date").defaultNow(),
-});
-
 export const nppesQueueItems = pgTable("nppes_queue_items", {
   id: serial("id").primaryKey(),
   batch_id: integer("batch_id"),
@@ -1172,19 +1157,6 @@ export const metricsSnapshots = pgTable("metrics_snapshots", {
   metadata: jsonb("metadata"),
   captured_at: timestamp("captured_at").defaultNow(),
   created_date: timestamp("created_date").defaultNow(),
-});
-
-export const campaignSequenceSteps = pgTable("campaign_sequence_steps", {
-  id: serial("id").primaryKey(),
-  campaign_id: integer("campaign_id"),
-  step_number: integer("step_number"),
-  step_type: varchar("step_type", { length: 50 }),
-  template_id: integer("template_id"),
-  delay_days: integer("delay_days"),
-  conditions: jsonb("conditions"),
-  is_active: boolean("is_active").default(true),
-  created_date: timestamp("created_date").defaultNow(),
-  updated_date: timestamp("updated_date").defaultNow(),
 });
 
 export const savedFilters = pgTable("saved_filters", {
@@ -1613,7 +1585,6 @@ export const tableMap: Record<string, any> = {
   AuditEvent: auditEvents,
   AnalyticsDashboard: analyticsDashboards,
   ScoringRule: scoringRules,
-  CampaignTask: campaignTasks,
   NPPESQueueItem: nppesQueueItems,
   NPPESCrawlerConfig: nppesCrawlerConfigs,
   CMSApiConnector: cmsApiConnectors,
@@ -1623,7 +1594,6 @@ export const tableMap: Record<string, any> = {
   ProviderReconciliation: providerReconciliations,
   ProviderServiceUtilization: providerServiceUtilization,
   MetricsSnapshot: metricsSnapshots,
-  CampaignSequenceStep: campaignSequenceSteps,
   SavedFilter: savedFilters,
   ScheduledReport: scheduledReports,
   ScheduledExport: scheduledExports,
