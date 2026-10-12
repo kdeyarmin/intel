@@ -41,9 +41,12 @@ export const INITIAL_MIGRATION = "0000_cute_nemesis";
 
 /**
  * Tables 0000 creates that schema.ts no longer defines, so a database pushed
- * since then doesn't have them. Nothing reads them.
+ * since then doesn't have them. Nothing reads them. The two campaign tables
+ * were dropped for real by migration 0034; they stay listed here so a
+ * database built with `drizzle-kit push` (which never had them) still counts
+ * as a complete 0000 when baselining.
  */
-export const RETIRED_INITIAL_TABLES = ["campaigns"];
+export const RETIRED_INITIAL_TABLES = ["campaigns", "campaign_sequence_steps", "campaign_tasks"];
 
 /** Tables a migration's SQL creates. */
 export function tablesCreatedBy(sql: string): string[] {

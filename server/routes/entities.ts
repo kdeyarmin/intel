@@ -1,7 +1,8 @@
 import { Router, Request, Response } from "express";
-import { db } from "../db";import { tableMap, leadListMembers, outreachCampaigns, outreachMessages, callSheetAccounts, crmContacts, crmActivities, crmReferrals } from "../db/schema";
+import { db } from "../db";import { tableMap, leadListMembers, outreachMessages, callSheetAccounts, crmContacts, crmActivities, crmReferrals } from "../db/schema";
 import { eq, desc, asc, sql, getTableColumns, and, inArray } from "drizzle-orm";
 import { authMiddleware, AuthRequest, SessionPrincipal, isOrgAdmin, isPlatformAdmin } from "../middleware/auth";
+import { orgAccessTier } from "../lib/entitlements";
 import { consumeQuota } from "../lib/orgQuota";
 import { leadLists, callSheets, crmAccounts } from "../db/schema";
 import {
@@ -21,11 +22,10 @@ import {
 const router = Router();
 
 // Entirely off-limits to the entity router. User is handled via dedicated
-// routes only. CampaignSequenceStep and CampaignTask are dead scaffolding —
-// nothing in the codebase writes those tables (verified by grep) — so they
-// answer 404 here until a migration drops them (created by
-// drizzle/0000_cute_nemesis.sql and 0020_organizations.sql).
-const BLOCKED_ENTITIES = new Set(["User", "CampaignSequenceStep", "CampaignTask"]);
+// routes only. (CampaignSequenceStep and CampaignTask were dead scaffolding
+// here until migration 0034 dropped their tables; with no table left in the
+// schema they now answer 404 as unknown entities, like anything unmapped.)
+const BLOCKED_ENTITIES = new Set(["User"]);
 
 // The platform's own operation: imports and their schedules, the crawler,
 // connectors, reconciliation, background tasks and validation rules. They hold
@@ -83,18 +83,15 @@ export const USER_WRITABLE_ENTITIES = new Set([
 export const ORG_ADMIN_ENTITIES = new Set([
   "OutreachCampaign",
   "OutreachMessage",
-  "CampaignSequenceStep",
-  "CampaignTask",
   "CampaignTemplate",
 ]);
 
 // Customer-owned entities (migration 0020): every read and write is limited
 // to the caller's organization, and a created row is stamped with it.
-// LeadListMember belongs to its list and CampaignSequenceStep to its campaign,
-// so they are scoped through lead_lists and outreach_campaigns.
+// LeadListMember belongs to its list, so it is scoped through lead_lists.
 export const ORG_SCOPED_ENTITIES = new Set([
   "LeadList", "CallSheet", "CrmAccount", "SavedFilter", "CustomReport", "ScheduledReport", "ScheduledExport", "AnalyticsDashboard",
-  "OutreachCampaign", "OutreachMessage", "CampaignTemplate", "CampaignTask", "DataQualityAlert", AUDIT_ENTITY,
+  "OutreachCampaign", "OutreachMessage", "CampaignTemplate", "DataQualityAlert", AUDIT_ENTITY,
 ]);
 
 /** Entities that belong to a parent row (the key to it, the parent's table, and its columns), scoped through the parent's organization. */
@@ -104,7 +101,6 @@ const PARENT_SCOPED: Record<string, { key: string; parent: any; label: string }>
   CrmContact: { key: "account_id", parent: crmAccounts, label: "account" },
   CrmActivity: { key: "account_id", parent: crmAccounts, label: "account" },
   CrmReferral: { key: "account_id", parent: crmAccounts, label: "account" },
-  CampaignSequenceStep: { key: "campaign_id", parent: outreachCampaigns, label: "campaign" },
 };
 
 // Platform administrators read these across every organization, and the platform's own rows (the server writes
@@ -177,8 +173,7 @@ const CASCADE_DELETES: Record<string, Array<{ table: any; column: string }>> = {
     { table: crmReferrals, column: "account_id" },
   ],
   // A deleted campaign takes its queued/sent messages with it; without this
-  // they were orphaned (the sequence-step and task tables are dead
-  // scaffolding with no writers, so there is nothing to cascade there).
+  // they were orphaned.
   OutreachCampaign: [{ table: outreachMessages, column: "campaign_id" }],
 };
 
@@ -244,6 +239,23 @@ function requireWriteAccess(req: AuthRequest, res: Response, entityName: string)
   res.status(403).json({
     message: "Forbidden",
     detail: ORG_ADMIN_ENTITIES.has(entityName) ? "Admin access is required to modify this resource." : "Only platform administrators can modify this resource.",
+  });
+  return false;
+}
+
+/**
+ * The dunning ladder's last rung (orgAccessTier in lib/entitlements): a
+ * billing-only organization — canceled, or past_due for 14+ days — can sign
+ * in and use the Billing page, but the data API is closed to it until it
+ * pays. Platform administrators operate the platform, not a subscription.
+ */
+function requireOrgAccess(req: AuthRequest, res: Response): boolean {
+  if (isPlatformAdmin(req.user) || !req.user?.orgStatus) return true;
+  if (orgAccessTier({ status: req.user.orgStatus, billingStatusSince: req.user.orgBillingStatusSince }) !== "billing_only") return true;
+  res.status(402).json({
+    message: "Your organization's subscription has lapsed.",
+    code: "subscription_inactive",
+    detail: "An owner can update payment on the Billing page to restore access.",
   });
   return false;
 }
@@ -335,6 +347,7 @@ router.get("/:entity", authMiddleware, async (req: AuthRequest, res: Response) =
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireReadAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
 
     // Export-sized reads are metered server-side (A5.2): for_export consumes
     // one export from the daily quota before any rows are read, so the count
@@ -363,6 +376,7 @@ router.post("/:entity/filter", authMiddleware, async (req: AuthRequest, res: Res
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireReadAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
 
     const { filters = {}, sort, limit: reqLimit } = req.body;
     const limit = Math.min(reqLimit || 100, 10000);
@@ -392,6 +406,7 @@ router.get("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireReadAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
 
     const idNum = parseId(req.params.id);
     if (idNum === null) return res.status(400).json({ message: "Invalid id" });
@@ -409,6 +424,7 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireWriteAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
 
     const entityName = req.params.entity;
     const split = splitWriteData(entityName, columnsOf(table), sanitizeWriteData(entityName, toSnakeKeys(req.body)));
@@ -420,16 +436,7 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     sendDroppedFields(res, entityName, split.dropped);
     if (!(await stampOrg(entityName, data, req, res))) return;
 
-    let row: any;
-    if (entityName === "LeadListMember") {
-      row = await db.transaction(async (tx) => {
-        const [inserted] = (await tx.insert(table).values(data).returning()) as any[];
-        await recountLeadList(tx, Number(data.list_id));
-        return inserted;
-      });
-    } else {
-      [row] = (await db.insert(table).values(data).returning()) as any[];
-    }
+    const [row] = (await db.insert(table).values(data).returning()) as any[];
     res.status(201).json(decorateRow(entityName, row));
   } catch (e: any) {
     if (e instanceof InvalidFieldValueError) return res.status(400).json({ message: e.message });
@@ -442,6 +449,7 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireWriteAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
 
     const items = req.body.items || req.body;
     if (!Array.isArray(items)) return res.status(400).json({ message: "Expected array of items" });
@@ -465,17 +473,7 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
     const knownParents = new Map<number, boolean>();
     for (const data of cleaned) if (!(await stampOrg(entityName, data, req, res, knownParents))) return;
 
-    let rows: any[];
-    if (entityName === "LeadListMember") {
-      rows = await db.transaction(async (tx) => {
-        const inserted = (await tx.insert(table).values(cleaned).returning()) as any[];
-        const listIds = [...new Set(inserted.map((r) => Number(r.list_id)).filter((id) => Number.isInteger(id)))];
-        for (const listId of listIds) await recountLeadList(tx, listId);
-        return inserted;
-      });
-    } else {
-      rows = (await db.insert(table).values(cleaned).returning()) as any[];
-    }
+    const rows = (await db.insert(table).values(cleaned).returning()) as any[];
     res.status(201).json(rows.map((r: any) => decorateRow(entityName, r)));
   } catch (e: any) {
     if (e instanceof InvalidFieldValueError) return res.status(400).json({ message: e.message });
@@ -488,6 +486,7 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireWriteAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
 
     const idNum = parseId(req.params.id);
     if (idNum === null) return res.status(400).json({ message: "Invalid id" });
@@ -547,6 +546,7 @@ router.delete("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Resp
     const table = getTable(req.params.entity);
     if (!table) return res.status(404).json({ message: `Entity ${req.params.entity} not found` });
     if (!requireWriteAccess(req, res, req.params.entity)) return;
+    if (!requireOrgAccess(req, res)) return;
 
     const idNum = parseId(req.params.id);
     if (idNum === null) return res.status(400).json({ message: "Invalid id" });
@@ -559,7 +559,6 @@ router.delete("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Resp
       for (const child of children) {
         await tx.delete(child.table).where(eq(child.table[child.column], idNum));
       }
-      if (req.params.entity === "LeadListMember") await recountLeadList(tx, Number(deleted.list_id));
       return deleted;
     });
     if (!row) return res.status(404).json({ message: "Not found" });
@@ -568,15 +567,6 @@ router.delete("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Resp
     return safeError(res, e, `DELETE /${req.params.entity}/${req.params.id}`);
   }
 });
-
-/** Recompute a lead list's member_count in the same transaction as the membership change. */
-async function recountLeadList(tx: typeof db, listId: number) {
-  if (!Number.isInteger(listId)) return;
-  await tx.update(leadLists).set({
-    member_count: sql`(SELECT count(*)::int FROM lead_list_members WHERE list_id = ${listId})`,
-    updated_date: new Date(),
-  }).where(eq(leadLists.id, listId));
-}
 
 /**
  * Whether a row's parent (the lead list of a member, the campaign of a step) is in the caller's organization.
