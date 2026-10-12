@@ -64,8 +64,9 @@ export async function getDashboardStats(): Promise<any> {
       count(*) FILTER (WHERE status = 'completed') AS completed,
       count(*) FILTER (WHERE status = 'failed') AS failed FROM import_batches`);
     const alertRows = await safeQ(`SELECT count(*) AS count FROM data_quality_alerts WHERE status = 'new'`);
-    // The latest scan that finished: one still running (or one that failed) has no scores to show.
-    const scanRows = await safeQ(`SELECT results_summary FROM data_quality_scans WHERE status = 'completed' ORDER BY created_date DESC LIMIT 1`);
+    // The scan that finished last: one still running (or one that failed) has no scores to show, and scans can
+    // overlap, so the newest to start is not always the newest to finish (getDataHealthMetrics orders the same way).
+    const scanRows = await safeQ(`SELECT results_summary FROM data_quality_scans WHERE status = 'completed' ORDER BY completed_at DESC NULLS LAST, created_date DESC LIMIT 1`);
     const batchRows = await safeQ(`SELECT created_date FROM import_batches WHERE status = 'completed' ORDER BY created_date DESC LIMIT 1`);
     const phoneSample = await safeQ(`
       SELECT count(*) AS count

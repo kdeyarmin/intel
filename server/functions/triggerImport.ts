@@ -972,8 +972,12 @@ function deriveStatisticalId(row: any, importType: string, index?: number): stri
     // One row per enrollment and rendering area or location: the location columns tell them apart.
     id = `${cell(row["Enrollment ID"])}_${identityHash(HOME_INFUSION_LOCATION_COLUMNS.map((k) => row[k]))}`;
   } else if (importType === "aco_reach_providers" && row.aco_id) {
-    // One row per participant, class and waiver set within a performance year; no column is a participant id.
-    id = `${cell(row.aco_id)}_${cell(row.perf_year)}_${identityHash(Object.keys(row).sort().map((k) => row[k]))}`;
+    // One row per participant, class and start date within a performance year; no column is a participant id.
+    // The term date, capitation, APO election and waiver flags are left out of the key: they can change when CMS
+    // re-publishes a release (the 2024 file was), and a changed value must refresh the stored row, not add a second
+    // one beside the stale one. The public file has no TIN, so rows of one organization that differ only in those
+    // columns (about 2% of the distinct rows of the 2024 file) share a key and the first one read is kept.
+    id = `${cell(row.aco_id)}_${cell(row.perf_year)}_${identityHash([row.par_lbn, row.prvdr_class, row.start_date])}`;
   } else if (importType === "aco_snf_affiliates" && row.ACO_ID && row.Aff_LBN) {
     id = `${cell(row.ACO_ID)}_${identityHash([row.Aff_LBN])}`;
   } else if ((importType === "nursing_home_chains" || importType === "nursing_home_chain_performance") && row["Chain ID"]) {
@@ -1263,7 +1267,7 @@ export function mapMedicareFacilityRow(row: any, importType: string, batchId: nu
     address:
       row.address_line_1 || row["Address Line 1"] || row.Address_Line_1 ||
       row["ADDRESS LINE 1"] ||
-      row["Street Address"] || row.Rndrng_Prvdr_St ||
+      row["Street Address"] || row["Street Address Line 1"] || row.Rndrng_Prvdr_St ||
       row.provider_address || row["Provider Address"] ||
       row.practiceaddress1 ||
       row.Rndrng_Prvdr_St1 || row.Suplr_Prvdr_St1 || row.Rfrg_Prvdr_St1 ||
@@ -1290,7 +1294,7 @@ export function mapMedicareFacilityRow(row: any, importType: string, batchId: nu
       null
     ),
     zip: (
-      row.zip_code || row["Zip Code"] || row.Zip_Code ||
+      row.zip_code || row["Zip Code"] || row["ZIP Code"] || row.Zip_Code ||
       row["ZIP CODE"] || row.ZIP_CODE ||
       row.Rndrng_Prvdr_Zip5 ||
       row.practicezip9code ||

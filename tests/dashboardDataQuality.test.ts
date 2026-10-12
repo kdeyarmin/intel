@@ -41,6 +41,11 @@ describe("getDashboardStats dataQuality", () => {
     expect(sqls.find((s) => s.includes("FROM data_quality_scans"))).toMatch(/WHERE status = 'completed'/);
   });
 
+  it("takes the scan that finished last, since scans can overlap and the newest to start may finish first", async () => {
+    await stats();
+    expect(sqls.find((s) => s.includes("FROM data_quality_scans"))).toMatch(/ORDER BY completed_at DESC NULLS LAST, created_date DESC LIMIT 1/);
+  });
+
   it("is null, shown as \"No scan\", when no scan has finished or its results have no score", async () => {
     expect((await stats()).dataQuality).toBeNull();
     scanRows = [{ results_summary: null }];

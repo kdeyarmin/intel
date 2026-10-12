@@ -62,6 +62,26 @@ describe("facility rows of datasets with no single id column", () => {
     expect(map("home_infusion_therapy", row)).toMatchObject({ facility_name: row["Legal Business Name"], state: row.State });
   });
 
+  it("keeps a home infusion supplier's street address and ZIP, which CMS names differently from the Care Compare files", () => {
+    for (const row of DATASETS.home_infusion_therapy) {
+      expect(map("home_infusion_therapy", row)).toMatchObject({ address: row["Street Address Line 1"], city: row.City, zip: row["ZIP Code"] });
+    }
+    expect(map("home_infusion_therapy", DATASETS.home_infusion_therapy[0])).toMatchObject({
+      address: "5431 SW 35TH DR", city: "GAINESVILLE", state: "FL", zip: "32608-5277",
+    });
+  });
+
+  it("keeps an ACO REACH participant's key when CMS revises its term date, elections or waivers", () => {
+    const row = DATASETS.aco_reach_providers[0];
+    const key = map("aco_reach_providers", row).provider_id;
+    const revised = { ...row, term_date: "2024-06-30", capitation_arrangement: "Y", apo_election: "Y", telehealth_waiver: "N", aco_name: "Renamed ACO" };
+    expect(map("aco_reach_providers", revised).provider_id).toBe(key);
+    // Another participant, class, start date, performance year or ACO is another row.
+    for (const other of [{ par_lbn: "SYNTHETIC PARTICIPANT C" }, { prvdr_class: "PREF" }, { start_date: "2024-02-01" }, { perf_year: "2025" }, { aco_id: "D0005" }]) {
+      expect(map("aco_reach_providers", { ...row, ...other }).provider_id, JSON.stringify(other)).not.toBe(key);
+    }
+  });
+
   it("keys a nursing home chain by its chain id, under either import type", () => {
     const row = DATASETS.nursing_home_chains.find((r: any) => r["Chain ID"]);
     for (const type of ["nursing_home_chains", "nursing_home_chain_performance"]) {
