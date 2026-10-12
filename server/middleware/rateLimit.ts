@@ -87,3 +87,13 @@ export function ipRateLimit(scope: string, max: number, windowMs: number) {
     next();
   };
 }
+
+/**
+ * Forget every bucket. For tests: the buckets are process-wide, so a test
+ * file that drives one route as one user more than `max` times in a window
+ * (or that moves the clock with fake timers) would otherwise be limited by
+ * the tests that ran before it.
+ */
+export function resetRateLimits(): void {
+  buckets.clear();
+}
