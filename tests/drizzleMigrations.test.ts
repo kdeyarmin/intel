@@ -634,6 +634,31 @@ describe("migration 0018_market_rollups", () => {
   });
 });
 
+describe("migration 0019_acs_and_licensed_facilities", () => {
+  const sql = readMigration("0019_acs_and_licensed_facilities.sql");
+  const schema = readSchema();
+
+  it("creates the ACS and licensing tables and adds the profile columns, all idempotently", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    for (const stmt of statements) {
+      expect(stmt).toMatch(/^(CREATE (TABLE|UNIQUE INDEX|INDEX) IF NOT EXISTS "|ALTER TABLE "rollup_county_market_profile" ADD COLUMN IF NOT EXISTS ")/);
+    }
+    const tables = [...sql.matchAll(/CREATE TABLE IF NOT EXISTS "(\w+)"/g)].map((m) => m[1]);
+    expect(tables).toEqual(["census_acs_county", "census_acs_zcta", "licensed_facilities"]);
+    for (const table of tables) expect(schema, table).toContain(`pgTable("${table}"`);
+    expect(schema).toContain('uniqueIndex("uq_licensed_facilities")');
+    for (const [, col] of sql.matchAll(/ADD COLUMN IF NOT EXISTS "(\w+)"/g)) expect(schema, col).toContain(`${col}: integer("${col}")`);
+  });
+
+  it("is registered in the drizzle journal after 0018", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const tags = journal.entries.map((e: { tag: string }) => e.tag);
+    expect(tags.indexOf("0019_acs_and_licensed_facilities")).toBe(tags.indexOf("0018_market_rollups") + 1);
+    const whens = journal.entries.map((e: { when: number }) => e.when);
+    expect(whens[whens.length - 1]).toBeGreaterThan(whens[whens.length - 2]);
+  });
+});
+
 describe("migration 0012_assistant", () => {
   const sql = readMigration("0012_assistant.sql");
   const schema = readSchema();

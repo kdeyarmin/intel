@@ -1,4 +1,4 @@
-import { db } from "../db";
+import { db, pool } from "../db";
 import { importBatches, cmsReferrals, cmsOrderReferring, providerServiceUtilization, medicareFacilities, medicareFacilitiesRaw } from "../db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
@@ -16,6 +16,7 @@ import { resolveNppesFile, classifyNppesLink } from "../lib/nppesFiles";
 import { recordSourceFile } from "../lib/datasetRegistry";
 import { getTableColumns } from "drizzle-orm";
 import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
+import { stateCodeOf } from "../lib/stateNames";
 
 // Shared with the NPPES file importer; re-exported for the callers that import them from here.
 export { mergeRetryParams, endedWithoutFinishing };
@@ -189,6 +190,7 @@ const CMS_DATASET_CATALOG = [
   { id: "nppes_weekly_incremental", title: "NPPES Weekly Update (V.2 file)", description: "CMS's weekly NPPES dissemination file: new NPIs, changed records and deactivations for the week. Providers are updated in place, and each NPI's addresses and taxonomies are replaced with the file's. The current file is found on CMS's NPI files page automatically.", category: "Physicians & Clinicians", records: "~100K/week", priority: "high" },
   { id: "nppes_monthly_full", title: "NPPES Monthly Full File (V.2)", description: "The complete NPPES registry (about 1.1 GB zipped, 8M+ records). Replaces every provider, address and taxonomy with the current registry. Needs disk for the download; run on demand.", category: "Physicians & Clinicians", records: "~8.5M", priority: "medium" },
   { id: "cms_order_referring", title: "Order & Referring Providers", description: "Complete list of providers eligible to order and refer Medicare services including Part B, DME, HHA, PMD, and Hospice designations.", category: "Physicians & Clinicians", records: "~2M", priority: "high" },
+  { id: "licensed_facilities", title: "State-Licensed Homes (personal care, assisted living)", description: "Personal care homes, assisted living residences and similar state-licensed homes that CMS files never list. Import a state licensing export as a CSV upload (or an https link): columns are matched by name (name, address, city, state, zip, license number, license type, capacity, status, licensee); set state_filter and license_type for files that don't carry them, and year for the export's date. Each home gets its county from its ZIP (the Census geography must be loaded first) and shows on the Facilities page (Licensed Homes) and County Intel's Competitors tab; the county profile counts the personal care, assisted living, memory care and domiciliary care homes and beds (nursing homes are counted from the CMS files).", category: "Nursing Homes & SNF", records: "varies by state", priority: "high", available: true },
   { id: "physician_shared_patient_patterns", title: "Physician Shared Patient Patterns", description: "Real provider-to-provider relationships: directed pairs of providers who treated the same Medicare beneficiaries within a 30/60/90/180-day window, with shared-patient and encounter counts. Populates referred_to_npi + total_referrals so the Network/County/Dashboard referral features show real relationships. Not on the data.cms.gov data-api — import by supplying a CMS FOIA file_url (the rows must reach the importer as named-field JSON; a headerless FOIA CSV must have a header row / be converted first).", category: "Physicians & Clinicians", records: "~35M", priority: "high" },
   { id: "provider_service_utilization", title: "Physician & Other Practitioners - by Provider and Service", description: "Utilization and payment data for Medicare Part B services by individual provider and HCPCS code.", category: "Physicians & Clinicians", records: "~10M", priority: "high" },
   { id: "medicare_physician_by_provider", title: "Physician & Other Practitioners - by Provider", description: "Aggregate utilization and payment data for Medicare Part B services summarized at the provider level.", category: "Physicians & Clinicians", records: "~1.2M", priority: "high" },
@@ -369,6 +371,16 @@ function retireSnapshotRows(importType: string, batchId: number, opts: { dry_run
     .catch((err) => console.warn(`[triggerImport] retiring stale ${importType} rows:`, err?.message));
 }
 
+const GEOGRAPHY_MISSING = "The Census geography isn't loaded yet, so ZIP codes can't be placed in counties. It loads when the server starts (or run `npm run geo:load`); retry once it has.";
+
+/** Why a dataset that places ZIP codes in counties can't be imported yet, or null when it can. */
+export async function geographyProblem(importType: string): Promise<string | null> {
+  if (!TYPED_ROUTES[importType]?.needsGeo) return null;
+  const { getGeoIndex } = await import("../lib/geo");
+  const index = await getGeoIndex(pool).catch(() => null);
+  return index && index.counties.size > 0 ? null : GEOGRAPHY_MISSING;
+}
+
 /**
  * The release date a snapshot import's rows are stamped with (`as_of`): the resumed batch's
  * own, else the last day the newest release covers, else the day it was published. The Care
@@ -381,12 +393,35 @@ export function importAsOf(o: { inherited?: string | null; temporalEnd?: string 
   return o.inherited ?? o.temporalEnd ?? o.stated ?? modified ?? null;
 }
 
+/**
+ * A client that creates its batch first (the Data Center wizard) passes it as batch_id while it is still
+ * "validating". When the request is refused before the import starts, nothing would ever move that batch on,
+ * and it would sit in "validating" until the stall sweep: fail it now, with the reason. A batch being resumed
+ * (paused, failed) is in another state and keeps it.
+ */
+async function failPrecreatedBatch(batchId: unknown, message: string) {
+  const id = Number(batchId);
+  if (!Number.isInteger(id) || id <= 0) return;
+  await db.update(importBatches)
+    .set({ status: "failed", error_samples: [{ message }], updated_date: new Date() })
+    .where(and(eq(importBatches.id, id), eq(importBatches.status, "validating")))
+    .catch(() => {});
+}
+
 export async function handleTriggerImport(payload: any, user: any) {
   if (!user || user.role !== "admin") {
     throw { status: 403, message: "Forbidden: Admin access required" };
   }
+  try {
+    return await startImport(payload);
+  } catch (err: any) {
+    await failPrecreatedBatch(payload?.batch_id, String(err?.message || "The import could not be started."));
+    throw err;
+  }
+}
 
-  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter, headers } = payload;
+async function startImport(payload: any) {
+  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter, headers, license_type } = payload;
 
   if (!raw_import_type) {
     throw { status: 400, message: "Missing required field: import_type" };
@@ -397,6 +432,11 @@ export async function handleTriggerImport(payload: any, user: any) {
   const urlProblem = fileUrlProblem(import_type, file_url, year);
   if (urlProblem) {
     throw { status: 400, message: urlProblem };
+  }
+  const noGeography = await geographyProblem(import_type);
+  if (noGeography) {
+    // 412, not 409: the clients read a 409 as "this import is already running" and would hide the reason.
+    throw { status: 412, message: noGeography };
   }
 
   const activeImports = await db.select().from(importBatches)
@@ -529,6 +569,7 @@ export async function handleTriggerImport(payload: any, user: any) {
   let effNpiFilter = npi_filter;
   let effStateFilter = state_filter;
   let effHeaders: string[] | undefined = Array.isArray(headers) && headers.length ? headers.map(String) : undefined;
+  let effLicenseType: string | undefined = typeof license_type === "string" && license_type.trim() ? license_type.trim().slice(0, 60) : undefined;
   let inheritedAsOf: string | null = null;
   const inheritFiltersFrom = batch_id ?? retry_of;
   if (inheritFiltersFrom != null) {
@@ -537,9 +578,13 @@ export async function handleTriggerImport(payload: any, user: any) {
     effNpiFilter = npi_filter ?? prevParams.npi_filter;
     effStateFilter = state_filter ?? prevParams.state_filter;
     if (!effHeaders && Array.isArray(prevParams.headers) && prevParams.headers.length) effHeaders = prevParams.headers.map(String);
+    if (!effLicenseType && typeof prevParams.license_type === "string" && prevParams.license_type.trim()) effLicenseType = prevParams.license_type.trim().slice(0, 60);
     inheritedAsOf = typeof prevParams.as_of === "string" ? prevParams.as_of : null;
   }
-  const effAsOf = importAsOf({ inherited: inheritedAsOf, temporalEnd: version?.temporalEnd, catalogModified: version?.catalogModified });
+  // The release date: the resumed batch's own, else the newest release's period end, else the date an
+  // upload states (an export has no catalog entry), else the day the catalog says the release was published.
+  const statedAsOf = typeof payload.as_of === "string" && /^\d{4}-\d{2}-\d{2}$/.test(payload.as_of) ? payload.as_of : null;
+  const effAsOf = importAsOf({ inherited: inheritedAsOf, temporalEnd: version?.temporalEnd, stated: statedAsOf, catalogModified: version?.catalogModified });
 
   if (batch_id) {
     await db.update(importBatches).set({
@@ -547,7 +592,7 @@ export async function handleTriggerImport(payload: any, user: any) {
       cancel_reason: null,
       cancelled_at: null,
       error_samples: null,
-      retry_params: mergeRetryParams({ year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter, headers: effHeaders, as_of: effAsOf }),
+      retry_params: mergeRetryParams({ year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter, headers: effHeaders, license_type: effLicenseType, as_of: effAsOf }),
       updated_date: new Date(),
     }).where(eq(importBatches.id, batch_id));
     activeBatchId = batch_id;
@@ -559,7 +604,7 @@ export async function handleTriggerImport(payload: any, user: any) {
       dry_run: !!dry_run,
       total_rows: 0,
       imported_rows: 0,
-      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter, headers: effHeaders, as_of: effAsOf },
+      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter, headers: effHeaders, license_type: effLicenseType, as_of: effAsOf },
     });
     if (conflict) throw conflict;
     activeBatchId = batch.id;
@@ -580,6 +625,8 @@ export async function handleTriggerImport(payload: any, user: any) {
       as_of: effAsOf,
       // Column names for a headerless CSV upload (e.g. the FOIA shared-patient files).
       headers: effHeaders,
+      // State licensing files: the license type the file holds when its rows don't say.
+      license_type: effLicenseType,
     }).catch((e) => console.error(`[triggerImport] CMS import error:`, e.message));
   }, 100);
 
@@ -720,7 +767,7 @@ const FILTER_STATE_FIELDS = [
   "Rndrng_Prvdr_State_Abrvtn", "Prvdr_State_Abrvtn", "prvdr_state",
   "Rndrng_Prvdr_State", "Prscrbr_State_Abrvtn", "provider_state",
   "PROVIDER_STATE", "BENE_STATE_ABRVTN", "state_abbreviation",
-  "STATE_ABBREVIATION", "Provider State", "State Code",
+  "STATE_ABBREVIATION", "Provider State", "State Code", "state_code",
   // Keep in sync with mapMedicareFacilityRow's state field list so a
   // state_filter works for supplier/referring/practice-shaped CMS feeds.
   "Suplr_Prvdr_State_Abrvtn", "Rfrg_Prvdr_State_Abrvtn", "practicestate",
@@ -728,23 +775,43 @@ const FILTER_STATE_FIELDS = [
 ];
 
 // Parse a comma/space/semicolon-separated filter string (or array) into a
-// trimmed, de-duplicated list. Exported for unit testing.
+// trimmed, de-duplicated list. A state spelled out ("New York", "District of
+// Columbia") stays one item instead of being split at its spaces. Exported for
+// unit testing.
 export function parseFilterList(value: unknown): string[] {
-  const raw = Array.isArray(value) ? value : String(value ?? "").split(/[,\s;]+/);
-  return [...new Set(raw.map((v) => String(v).trim()).filter(Boolean))];
+  if (Array.isArray(value)) return [...new Set(value.map((v) => String(v).trim()).filter(Boolean))];
+  const items: string[] = [];
+  for (const segment of String(value ?? "").split(/[,;\n]+/)) {
+    const words = segment.split(/\s+/).filter(Boolean);
+    for (let i = 0; i < words.length;) {
+      // The longest run of words that names a state (up to "Northern Mariana Islands"), else the word alone.
+      let take = 1;
+      for (let n = Math.min(3, words.length - i); n >= 2; n -= 1) {
+        if (stateCodeOf(words.slice(i, i + n).join(" "))) { take = n; break; }
+      }
+      items.push(words.slice(i, i + take).join(" "));
+      i += take;
+    }
+  }
+  return [...new Set(items)];
 }
 
 // Build a row predicate from the optional npi_filter / state_filter inputs, or
 // null when neither is set (so callers can skip filtering entirely). NPIs are
-// compared digits-only; states case-insensitively. Exported for unit testing.
+// compared digits-only; states case-insensitively. `stateOptional` is for files
+// whose state_filter names the file's own state (a state licensing export has no
+// state column): a row that carries a state must match, a row without one takes
+// the filter's, instead of every such row being dropped. Exported for unit testing.
 export function buildImportRowFilter(
   npiFilter: unknown,
   stateFilter: unknown,
+  opts: { stateOptional?: boolean } = {},
 ): ((row: any) => boolean) | null {
   const npis = new Set(
     parseFilterList(npiFilter).map((s) => s.replace(/\D/g, "")).filter(Boolean),
   );
-  const states = new Set(parseFilterList(stateFilter).map((s) => s.toUpperCase()));
+  // A state may be written as a code or spelled out, in the filter and in the file.
+  const states = new Set(parseFilterList(stateFilter).map((s) => stateCodeOf(s) ?? s.toUpperCase()));
   if (npis.size === 0 && states.size === 0) return null;
   return (row: any) => {
     if (npis.size > 0) {
@@ -752,8 +819,9 @@ export function buildImportRowFilter(
       if (!npi || !npis.has(npi)) return false;
     }
     if (states.size > 0) {
-      const st = String(firstField(row, FILTER_STATE_FIELDS) ?? "").trim().toUpperCase();
-      if (!st || !states.has(st)) return false;
+      const raw = String(firstField(row, FILTER_STATE_FIELDS) ?? "").trim();
+      const st = raw ? stateCodeOf(raw) ?? raw.toUpperCase() : "";
+      if (st ? !states.has(st) : !opts.stateOptional) return false;
     }
     return true;
   };
@@ -1268,9 +1336,18 @@ export async function dualWriteFacilityRows(
 // Typed destinations (server/functions/cmsTypedTables.ts): map, drop rows
 // without a key, and upsert on the natural key so a re-import or a newer
 // vintage replaces rather than duplicates or collapses.
-async function insertTypedRows(importType: string, rows: any[], year: number, batchId: number, asOf: string | null | undefined): Promise<{ inserted: number; skipped: number; filtered: number }> {
+async function insertTypedRows(importType: string, rows: any[], year: number, batchId: number, asOf: string | null | undefined, params?: Record<string, unknown> | null): Promise<{ inserted: number; skipped: number; filtered: number }> {
   const route = TYPED_ROUTES[importType];
-  const { rows: mapped, dropped } = mapTypedRows(route, rows, { year, asOf, batchId });
+  let countyForZip: ((zip: string) => string | null) | undefined;
+  if (route.needsGeo) {
+    // State licensing files carry ZIPs, not counties: the Census geography gives each ZIP its county.
+    // Without it every row would be stored with no county and vanish from every county view.
+    const { getGeoIndex, zipToCounty } = await import("../lib/geo");
+    const index = await getGeoIndex(pool).catch(() => null);
+    if (!index || index.counties.size === 0) throw new Error(GEOGRAPHY_MISSING);
+    countyForZip = (zip) => zipToCounty(index, zip)?.fips ?? null;
+  }
+  const { rows: mapped, dropped } = mapTypedRows(route, rows, { year, asOf, batchId, params: params ?? null, countyForZip });
   if (mapped.length === 0) return { inserted: 0, skipped: 0, filtered: dropped };
   const columns = Object.keys(getTableColumns(route.table));
   const set = Object.fromEntries(columns.filter((c) => c !== "id" && !route.key.includes(c)).map((c) => [c, sql.raw(`excluded."${c}"`)]));
@@ -1300,9 +1377,9 @@ async function insertTypedRows(importType: string, rows: any[], year: number, ba
   return { inserted, skipped, filtered: dropped };
 }
 
-async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number, opts: { asOf?: string | null } = {}): Promise<{ inserted: number; skipped: number; filtered: number }> {
+async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number, opts: { asOf?: string | null; params?: Record<string, unknown> | null } = {}): Promise<{ inserted: number; skipped: number; filtered: number }> {
   if (rows.length === 0) return { inserted: 0, skipped: 0, filtered: 0 };
-  if (TYPED_ROUTES[importType]) return insertTypedRows(importType, rows, year, batchId, opts.asOf);
+  if (TYPED_ROUTES[importType]) return insertTypedRows(importType, rows, year, batchId, opts.asOf, opts.params);
 
   const CHUNK_SIZE = 500;
   let inserted = 0;
@@ -1489,7 +1566,7 @@ async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | n
       }
       if (!dry_run && rows.length > 0) {
         try {
-          const result = await insertCMSRows(import_type, rows, year, batch_id, { asOf: as_of });
+          const result = await insertCMSRows(import_type, rows, year, batch_id, { asOf: as_of, params });
           totalInserted += result.inserted;
           totalSkipped += result.skipped + result.filtered;
         } catch (e: any) {
@@ -1531,7 +1608,7 @@ export async function handleAutoImportCMSData(params: any) {
   const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, npi_filter, state_filter, as_of = null } = params;
   // Optional row-level filters from the import dialog. Built once; null when no
   // filter is configured so the common path stays allocation-free.
-  const rowFilter = buildImportRowFilter(npi_filter, state_filter);
+  const rowFilter = buildImportRowFilter(npi_filter, state_filter, { stateOptional: !!TYPED_ROUTES[import_type]?.stateFromParams });
   const sourceKind = sourceKindFor(file_url);
   if (sourceKind === "local_csv" || sourceKind === "remote_csv") {
     return importFromCsv(params, rowFilter);

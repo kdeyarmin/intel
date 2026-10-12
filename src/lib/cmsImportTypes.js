@@ -94,6 +94,7 @@ const CMS_IMPORT_TYPE_DEFINITIONS = [
   { id: 'snf_utilization_geo_casemix', label: 'SNF Utilization by Geo/Case-Mix', supportsUrl: true },
   { id: 'hha_utilization_geo_casemix', label: 'HHA Utilization by Geo/Case-Mix', supportsUrl: true },
   { id: 'ltc_facility_characteristics', label: 'LTC Facility Characteristics', supportsUrl: true },
+  { id: 'licensed_facilities', label: 'State-Licensed Homes (PCH / assisted living)', supportsUrl: true },
   { id: 'mds_frequency', label: 'MDS Frequency', supportsUrl: true },
   { id: 'nursing_home_chains', label: 'Nursing Home Chains', supportsUrl: true },
   { id: 'inpatient_drg', label: 'Inpatient DRG', supportsUrl: true },
@@ -217,6 +218,7 @@ export const BASE_IMPORT_TYPE_LABELS = {
   snf_utilization_geo_casemix: 'SNF Util by Geo/Case-Mix',
   hha_utilization_geo_casemix: 'HHA Util by Geo/Case-Mix',
   ltc_facility_characteristics: 'LTC Facility Characteristics',
+  licensed_facilities: 'State-Licensed Homes',
   mds_frequency: 'MDS Frequency',
   cms_order_referring: 'Order & Referring',
   provider_service_utilization: 'Service Utilization',
@@ -267,3 +269,23 @@ export function buildImportTypeLabels(overrides = {}) {
     ...overrides,
   };
 }
+
+/**
+ * Datasets that are read from a file the admin supplies need more than the file. The server refuses such an import
+ * without the data year the file describes; a state licensing export also takes the state and the license type
+ * when the file has no such column (server/functions/triggerImport.ts: UPLOAD_CAPABLE_TYPES, mapLicensedFacility).
+ */
+export const FILE_IMPORT_FIELDS = {
+  licensed_facilities: { year: true, state: true, licenseType: true },
+  physician_shared_patient_patterns: { year: true },
+};
+
+/** The license types a licensing export is normalized to (server/functions/cmsTypedTables.ts: normalizeLicenseType). */
+export const LICENSE_TYPE_OPTIONS = [
+  { value: 'personal_care_home', label: 'Personal care home' },
+  { value: 'assisted_living', label: 'Assisted living' },
+  { value: 'memory_care', label: 'Memory care' },
+  { value: 'domiciliary_care', label: 'Domiciliary care' },
+  { value: 'nursing_home', label: 'Nursing home' },
+  { value: 'adult_day', label: 'Adult day' },
+];

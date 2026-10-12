@@ -26,6 +26,7 @@ import MarketIntelligence from '../src/pages/MarketIntelligence';
 import TerritoryIntelligence from '../src/pages/TerritoryIntelligence';
 import ReferralPotentialCard from '../src/components/market/ReferralPotentialCard';
 import CountyMetricLayer from '../src/components/market/CountyMetricLayer';
+import PacCompetitorsTable from '../src/components/market/PacCompetitorsTable';
 import MarketPositionCard from '../src/components/market/MarketPositionCard';
 import HospitalCatchmentCard from '../src/components/market/HospitalCatchmentCard';
 import ComplianceDisclaimer from '../src/components/compliance/ComplianceDisclaimer';
@@ -341,6 +342,25 @@ describe('CountyMetricLayer', () => {
     render(<MemoryRouter><CountyMetricLayer layer={layer(12)} state="PA" /></MemoryRouter>);
     expect(screen.getAllByRole('link')).toHaveLength(12);
     expect(screen.queryByRole('button', { name: /Show all/ })).toBeNull();
+  });
+});
+
+describe('PacCompetitorsTable licensed homes', () => {
+  const home = (i) => ({ license_type: 'personal_care_home', license_number: `PCH-${i}`, name: `Home ${i}`, address: '1 Main St', city: 'Pittsburgh', zip5: '15213', capacity: 100 - i, status: 'Regular', licensee: 'Sunny Hill LLC' });
+  const licensed = (rows, totals) => ({ as_of: '2026-09-30', rows: Array.from({ length: rows }, (_, i) => home(i)), totals });
+
+  it("counts the county's homes from the totals, not the rows listed (the list is capped), and says so", () => {
+    render(<MemoryRouter><PacCompetitorsTable licensed={licensed(50, [{ license_type: 'personal_care_home', homes: 120, beds: 5200 }, { license_type: 'assisted_living', homes: 30, beds: 1900 }])} countyName="Allegheny County" /></MemoryRouter>);
+    // No CMS rows in this county, so the licensed homes are what opens.
+    expect(screen.getByRole('button', { name: 'Personal care / assisted living (150)', pressed: true })).toBeInTheDocument();
+    expect(screen.getByText('Showing the 50 largest of 150 licensed homes in Allegheny County; the counts above cover all of them.')).toBeInTheDocument();
+    expect(screen.getByText('Personal care home: 120 homes · 5,200 beds')).toBeInTheDocument();
+  });
+
+  it('says nothing about a capped list when every home is listed', () => {
+    render(<MemoryRouter><PacCompetitorsTable licensed={licensed(12, [{ license_type: 'personal_care_home', homes: 12, beds: 600 }])} countyName="Butler County" /></MemoryRouter>);
+    expect(screen.getByRole('button', { name: 'Personal care / assisted living (12)' })).toBeInTheDocument();
+    expect(screen.queryByText(/Showing the/)).toBeNull();
   });
 });
 

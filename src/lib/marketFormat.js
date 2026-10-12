@@ -100,6 +100,7 @@ export function describeVintages(vintages) {
   const labels = {
     enrollment: 'Medicare enrollment', saturation: 'Market saturation', variation: 'Geographic variation',
     hospital_service_area: 'Hospital Service Area', pac_utilization: 'Post-acute utilization',
+    acs: 'Census ACS', licensed: 'State licensing',
   };
   const parts = Object.entries(labels)
     .map(([k, label]) => [label, k === 'pac_utilization' ? pacVintage(vintages) : vintages[k] ? String(vintages[k]).replace(/ to .*$/, '').slice(0, 10) : null])

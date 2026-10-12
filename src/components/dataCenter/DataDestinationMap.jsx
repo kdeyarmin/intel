@@ -11,6 +11,7 @@ const DATA_DESTINATION_MAP = {
   nppes_weekly_incremental: { page: 'Providers', label: 'Providers' },
   nppes_monthly_full: { page: 'Providers', label: 'Providers' },
   physician_shared_patient_patterns: { page: 'ReferralNetworkIntelligence', label: 'Referrals' },
+  licensed_facilities: { page: 'Facilities', params: { type: 'licensed' }, label: 'Licensed homes' },
 
   hospital_general_info: { page: 'Facilities', params: { type: 'hospital' }, label: 'Hospitals' },
   hospital_enrollments: { page: 'Facilities', params: { type: 'hospital' }, label: 'Hospitals' },

@@ -47,6 +47,13 @@ export const LAYER_METRICS: Record<string, { column: string; label: string; form
   readmission_rate: { column: "readmission_rate", label: "Hospital readmission rate", format: "percent", vintage: "variation" },
   er_visits_per_1000: { column: "er_visits_per_1000", label: "ER visits per 1,000", format: "rate", vintage: "variation" },
   hospitals_serving: { column: "hospitals_serving", label: "Hospitals serving residents", format: "count", vintage: "hospital_service_area" },
+  pop_65_plus: { column: "pop_65_plus", label: "Population aged 65+", format: "count", vintage: "acs" },
+  pop_85_plus: { column: "pop_85_plus", label: "Population aged 85+", format: "count", vintage: "acs" },
+  living_alone_65_plus: { column: "living_alone_65_plus", label: "People 65+ living alone", format: "count", vintage: "acs" },
+  median_income: { column: "median_income", label: "Median household income", format: "money", vintage: "acs" },
+  median_home_value: { column: "median_home_value", label: "Median home value", format: "money", vintage: "acs" },
+  licensed_homes: { column: "licensed_homes", label: "Licensed personal care / assisted living homes", format: "count", vintage: "licensed" },
+  licensed_beds: { column: "licensed_beds", label: "Licensed personal care / assisted living beds", format: "count", vintage: "licensed" },
 };
 
 const TIMEOUT = "10s";
@@ -99,6 +106,43 @@ export async function facilityNames(client: any, ccns: string[]): Promise<Map<st
     for (const r of fac.rows) out.set(r.provider_id, { name: r.facility_name, city: r.city, state: r.state });
   }
   return out;
+}
+
+/** Latest CMS-671 census and payer mix per nursing home (cms_ltc_facility_characteristics). */
+export async function nursingHomeCensus(client: any, ccns: string[]): Promise<Map<string, any>> {
+  const wanted = [...new Set(ccns.filter(Boolean))];
+  if (!wanted.length) return new Map();
+  const { rows } = await client.query(
+    `SELECT DISTINCT ON (ccn) ccn, period_end::text AS period_end, medicare_census, medicaid_census, other_census, total_residents,
+            ownership_type, multi_facility_org_name, ccrc, special_care_beds
+       FROM cms_ltc_facility_characteristics WHERE ccn = ANY($1) ORDER BY ccn, period_end DESC`, [wanted]).catch(() => ({ rows: [] as any[] }));
+  return new Map(rows.map((r: any) => [r.ccn, {
+    period_end: r.period_end, total_residents: num(r.total_residents), medicare_census: num(r.medicare_census), medicaid_census: num(r.medicaid_census), other_census: num(r.other_census),
+    medicare_pct: r.total_residents > 0 && r.medicare_census != null ? Number(r.medicare_census) / Number(r.total_residents) : null,
+    medicaid_pct: r.total_residents > 0 && r.medicaid_census != null ? Number(r.medicaid_census) / Number(r.total_residents) : null,
+    ownership_type: r.ownership_type ?? null, chain: r.multi_facility_org_name ?? null, ccrc: r.ccrc ?? null,
+    special_care_beds: r.special_care_beds && typeof r.special_care_beds === "object" ? r.special_care_beds : null,
+  }]));
+}
+
+/** State-licensed homes (personal care, assisted living) in a county: the largest first, with totals by license type. */
+export async function licensedHomes(client: any, countyFips: string, limit = 50) {
+  const [{ rows }, { rows: totals }] = await Promise.all([
+    client.query(
+      `SELECT license_type, license_number, name, address, city, state, zip5, capacity, status, licensee, phone, as_of::text AS as_of
+         FROM licensed_facilities WHERE county_fips = $1 ORDER BY capacity DESC NULLS LAST, name LIMIT $2`, [countyFips, limit]),
+    client.query(
+      `SELECT license_type, count(*)::int AS homes, sum(capacity)::int AS beds, max(as_of)::text AS as_of
+         FROM licensed_facilities WHERE county_fips = $1 GROUP BY 1 ORDER BY 2 DESC`, [countyFips]),
+  ]);
+  return {
+    as_of: totals.map((t: any) => t.as_of).filter(Boolean).sort().pop() ?? null,
+    totals: totals.map((t: any) => ({ license_type: t.license_type, homes: Number(t.homes), beds: num(t.beds) })),
+    rows: rows.map((r: any) => ({
+      license_type: r.license_type, license_number: r.license_number, name: r.name, address: r.address, city: r.city, state: r.state, zip5: r.zip5,
+      capacity: num(r.capacity), status: r.status, licensee: r.licensee, phone: r.phone, as_of: r.as_of,
+    })),
+  };
 }
 
 async function providerNames(client: any, npis: string[]): Promise<Map<string, { name: string; specialty: string | null; code: string | null; score: number | null }>> {
@@ -187,6 +231,8 @@ export async function handleGetCountyMarket(payload: any) {
              FROM rollup_agency_coverage WHERE county_fips = $1) c
           WHERE rn <= $2 ORDER BY setting, rn`, [fips, TOP]),
     ]);
+    const licensed = await licensedHomes(client, fips);
+    const snfCensus = await nursingHomeCensus(client, competitors.rows.filter((r: any) => r.setting === "snf").map((r: any) => r.ccn));
     const sourceCcns = sources.rows.map((r: any) => r.ccn);
     const mix = sourceCcns.length
       ? await client.query("SELECT DISTINCT ON (ccn) * FROM rollup_hospital_discharge_mix WHERE ccn = ANY($1) ORDER BY ccn, data_year DESC", [sourceCcns])
@@ -200,7 +246,7 @@ export async function handleGetCountyMarket(payload: any) {
     for (const r of competitors.rows) {
       const e = bySetting[r.setting] ?? (bySetting[r.setting] = { data_year: null, rows: [] });
       e.data_year = r.data_year;
-      e.rows.push({ ...shareRow(r), name: r.provider_name || named(r.ccn).name, facility_group: SETTING_FACILITY_GROUP[r.setting] ?? null });
+      e.rows.push({ ...shareRow(r), name: r.provider_name || named(r.ccn).name, facility_group: SETTING_FACILITY_GROUP[r.setting] ?? null, census: r.setting === "snf" ? snfCensus.get(r.ccn) ?? null : undefined });
     }
     const trendBy: Record<string, Array<{ data_year: string; benes: number | null; stays: number | null; providers: number }>> = {};
     for (const r of trends.rows) (trendBy[r.setting] ??= []).push({ data_year: r.data_year, benes: num(r.benes), stays: num(r.stays), providers: Number(r.providers) });
@@ -227,6 +273,7 @@ export async function handleGetCountyMarket(payload: any) {
       competitors: bySetting,
       trends: trendBy,
       coverage: coverageBy,
+      licensed,
       labels: SETTING_LABELS,
       vintages: p?.as_of ?? null,
       rollups: await marketRollupFreshness(),
@@ -315,6 +362,7 @@ export async function handleGetFacilityMarket(payload: any) {
         : { rows: [] },
     ]);
     const names = await facilityNames(client, market.rows.map((r: any) => r.ccn));
+    const census = setting === "snf" ? await nursingHomeCensus(client, [ccn, ...market.rows.map((r: any) => r.ccn)]) : new Map();
     const county = countyFips ? index.counties.get(countyFips) : null;
     const trendBy = new Map<string, any>(marketTrend.rows.map((r: any) => [String(r.data_year), r]));
     return {
@@ -329,7 +377,8 @@ export async function handleGetFacilityMarket(payload: any) {
         ...(countyRow ? {} : { rank: null, share: null, providers_in_market: null }),
         state_rank: num(stateRow?.rank), state_providers: num(stateRow?.providers_in_market), state_share: num(stateRow?.share_benes),
       },
-      market: market.rows.map((r: any) => ({ ...shareRow(r), name: r.provider_name || names.get(r.ccn)?.name || null, is_this: r.ccn === ccn, facility_group: SETTING_FACILITY_GROUP[setting] })),
+      census: census.get(ccn) ?? null,
+      market: market.rows.map((r: any) => ({ ...shareRow(r), name: r.provider_name || names.get(r.ccn)?.name || null, is_this: r.ccn === ccn, facility_group: SETTING_FACILITY_GROUP[setting], census: setting === "snf" ? census.get(r.ccn) ?? null : undefined })),
       trend: own.filter((r: any) => r.geo_level === "county").map((r: any) => ({
         data_year: r.data_year, benes: num(r.benes), share: num(r.share_benes), rank: num(r.rank),
         market_benes: num(trendBy.get(String(r.data_year))?.benes), market_providers: num(trendBy.get(String(r.data_year))?.providers),
@@ -340,7 +389,7 @@ export async function handleGetFacilityMarket(payload: any) {
   }));
 }
 
-const VINTAGE_KEYS = ["enrollment", "saturation", "variation", "hospital_service_area", "pac_utilization"];
+const VINTAGE_KEYS = ["enrollment", "saturation", "variation", "hospital_service_area", "pac_utilization", "acs", "licensed"];
 
 /** One metric for every county in a state (for a choropleth), or with `all` every metric (for the county table). */
 export async function handleGetCountyMarketLayer(payload: any) {

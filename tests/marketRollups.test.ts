@@ -11,13 +11,18 @@ import { describe, expect, it } from "vitest";
 import { MARKET_JOBS } from "../server/lib/rollups/market";
 import { ROLLUP_JOBS, jobByName, rollupStatus, runRollupJob } from "../server/lib/rollups/runner";
 
-const migration = fs.readFileSync(path.resolve(import.meta.dirname, "..", "drizzle", "0018_market_rollups.sql"), "utf8");
+const DRIZZLE = path.resolve(import.meta.dirname, "..", "drizzle");
+const migration = fs.readFileSync(path.join(DRIZZLE, "0018_market_rollups.sql"), "utf8");
+// Columns later migrations add (ALTER TABLE … ADD COLUMN IF NOT EXISTS), in journal order.
+const laterSql = fs.readdirSync(DRIZZLE).filter((f) => /^00(19|[2-9]\d)_.*\.sql$/.test(f)).sort().map((f) => fs.readFileSync(path.join(DRIZZLE, f), "utf8")).join("\n");
 
-/** Column names of a CREATE TABLE statement in the migration, in order. */
+/** Column names of a rollup table: its CREATE TABLE in 0018 plus columns added since, in order. */
 function tableColumns(table: string): string[] {
   const m = new RegExp(`CREATE TABLE IF NOT EXISTS "${table}" \\(([\\s\\S]*?)\\n\\);`).exec(migration);
   if (!m) throw new Error(`no CREATE TABLE for ${table}`);
-  return m[1].split("\n").map((l) => /^\s*"(\w+)"/.exec(l)?.[1]).filter((c): c is string => !!c);
+  const created = m[1].split("\n").map((l) => /^\s*"(\w+)"/.exec(l)?.[1]).filter((c): c is string => !!c);
+  const added = [...laterSql.matchAll(new RegExp(`ALTER TABLE "${table}" ADD COLUMN IF NOT EXISTS "(\\w+)"`, "g"))].map((x) => x[1]);
+  return [...created, ...added];
 }
 
 describe("market rollup jobs", () => {
@@ -86,6 +91,14 @@ describe("market rollup jobs", () => {
     expect(sql).toMatch(/latest_pac AS \(SELECT setting, max\(data_year\) AS year FROM rollup_pac_market_share WHERE geo_level = 'county' GROUP BY setting\)/);
     expect(sql).toMatch(/JOIN latest_pac l ON l\.setting = p\.setting AND l\.year = p\.data_year/);
     expect(sql).toContain("'pac_utilization_by_setting', py.by_setting");
+  });
+
+  it("count only residential-care licenses as licensed personal care / assisted living supply", () => {
+    // Nursing homes are counted from the CMS files (snf_facilities), and an adult day center or an unrecognized
+    // license type is not a bed of residential care: all of them would inflate the metric's label.
+    const sql = jobByName("county_market_profile")!.sql;
+    expect(sql).toContain("license_type IN ('personal_care_home', 'assisted_living', 'memory_care', 'domiciliary_care')");
+    expect(sql).not.toMatch(/nursing_home|adult_day/);
   });
 
   it("run as one INSERT … SELECT inside the swap transaction under the results timeout", async () => {

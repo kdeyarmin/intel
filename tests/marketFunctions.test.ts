@@ -95,6 +95,9 @@ describe("getCountyMarket", () => {
       ]],
       [/sum\(benes\)::bigint AS benes, sum\(stays\)::bigint AS stays, count\(\*\)::int AS providers/, [{ setting: "snf", data_year: "2023", benes: "7000", stays: "9000", providers: 72 }, { setting: "snf", data_year: "2024", benes: "7400", stays: "9500", providers: 70 }]],
       [/FROM rollup_agency_coverage\s+WHERE county_fips/, [{ setting: "hha", ccn: "397001", zips_served: 40, county_zips: 50, share_of_county_zips: 0.8 }, { setting: "hospice", ccn: "398001", zips_served: 25, county_zips: 50, share_of_county_zips: 0.5 }]],
+      [/FROM cms_ltc_facility_characteristics WHERE ccn = ANY/, (p: any[]) => p[0].filter((c: string) => c === "395001").map((ccn: string) => ({ ccn, period_end: "2026-06-30", medicare_census: 30, medicaid_census: 60, other_census: 30, total_residents: 120, ownership_type: "For profit", multi_facility_org_name: "KANE SYSTEM", ccrc: false, special_care_beds: null }))],
+      [/FROM licensed_facilities WHERE county_fips = \$1 ORDER BY capacity/, [{ license_type: "personal_care_home", license_number: "PCH-1234", name: "Sunny Hill Personal Care", address: "1 Main St", city: "Pittsburgh", state: "PA", zip5: "15213", capacity: 48, status: "Regular", licensee: "Sunny Hill LLC", phone: null, as_of: "2026-09-30" }]],
+      [/FROM licensed_facilities WHERE county_fips = \$1 GROUP BY/, [{ license_type: "personal_care_home", homes: 2, beds: 90, as_of: "2026-09-30" }]],
     );
     const r: any = await handleGetCountyMarket({ state: "PA", county_fips: "42003" });
     expect(r.county).toEqual({ fips: "42003", name: "Allegheny County", state: "PA" });
@@ -106,7 +109,9 @@ describe("getCountyMarket", () => {
     expect(r.hospital_sources.rows[0]).toMatchObject({ ccn: "390001", name: "UPMC PRESBYTERIAN", share: 0.31, rank: 1, discharge_mix: { pct_snf: 12.5, state: { pct_snf: 11 }, national: { pct_hha: 6 } } });
     // A hospital the typed files don't name falls back to the facility records.
     expect(r.hospital_sources.rows[1]).toMatchObject({ ccn: "390002", name: "ALLEGHENY GENERAL", city: "Pittsburgh", discharge_mix: null });
-    expect(r.competitors.snf.rows[0]).toMatchObject({ ccn: "395001", name: "KANE REGIONAL", share: 0.12, rank: 1, providers_in_market: 70, facility_group: "snf" });
+    expect(r.competitors.snf.rows[0]).toMatchObject({ ccn: "395001", name: "KANE REGIONAL", share: 0.12, rank: 1, providers_in_market: 70, facility_group: "snf", census: { total_residents: 120, medicare_pct: 0.25, medicaid_pct: 0.5, chain: "KANE SYSTEM" } });
+    expect(r.competitors.hha.rows[0].census).toBeUndefined();
+    expect(r.licensed).toEqual({ as_of: "2026-09-30", totals: [{ license_type: "personal_care_home", homes: 2, beds: 90 }], rows: [expect.objectContaining({ name: "Sunny Hill Personal Care", capacity: 48, license_type: "personal_care_home" })] });
     expect(r.competitors.hha.rows[0]).toMatchObject({ ccn: "397001", name: "PAC 397001", facility_group: "home_health" });
     expect(r.competitors.hospice.rows).toEqual([]);
     expect(r.trends.snf).toEqual([{ data_year: "2023", benes: 7000, stays: 9000, providers: 72 }, { data_year: "2024", benes: 7400, stays: 9500, providers: 70 }]);
@@ -130,6 +135,7 @@ describe("getCountyMarket", () => {
     expect(r.profile).toEqual({ available: false, county_fips: "42019" });
     expect(r.hospital_sources).toEqual({ data_year: null, total: 0, rows: [] });
     expect(r.competitors.snf.rows).toEqual([]);
+    expect(r.licensed).toEqual({ as_of: null, totals: [], rows: [] });
   });
 });
 
@@ -202,8 +208,11 @@ describe("getFacilityMarket", () => {
       ]],
       [/sum\(benes\)::bigint AS benes, count\(\*\)::int AS providers FROM rollup_pac_market_share/, [{ data_year: "2023", benes: "7000", providers: 72 }, { data_year: "2024", benes: "7400", providers: 70 }]],
     );
+    h.answers.push([/FROM cms_ltc_facility_characteristics WHERE ccn = ANY/, (p: any[]) => p[0].filter((c: string) => c === "395001").map((ccn: string) => ({ ccn, period_end: "2026-06-30", medicare_census: 30, medicaid_census: 60, other_census: 30, total_residents: 120, ownership_type: "For profit", multi_facility_org_name: null, ccrc: true, special_care_beds: { Alzheimer: 20 } }))]);
     const r: any = await handleGetFacilityMarket({ ccn: "395001", setting: "snf" });
     expect(r).toMatchObject({ found: true, name: "KANE REGIONAL", county: { fips: "42003", name: "Allegheny County" }, data_year: "2024" });
+    expect(r.census).toEqual({ period_end: "2026-06-30", total_residents: 120, medicare_census: 30, medicaid_census: 60, other_census: 30, medicare_pct: 0.25, medicaid_pct: 0.5, ownership_type: "For profit", chain: null, ccrc: true, special_care_beds: { Alzheimer: 20 } });
+    expect(r.market.find((m: any) => m.ccn === "395009").census).toBeNull();
     expect(r.position).toMatchObject({ rank: 2, share: 0.12, providers_in_market: 70, state_rank: 15, state_providers: 680 });
     expect(r.market.map((m: any) => [m.ccn, m.is_this])).toEqual([["395009", false], ["395001", true]]);
     expect(r.trend).toEqual([
@@ -238,6 +247,7 @@ describe("getCountyMarketLayer", () => {
     expect(r).toMatchObject({ state: "PA", metric: "ma_penetration", label: "Medicare Advantage share", format: "percent", vintage: "2026-06" });
     expect(r.counties).toEqual([{ fips: "42003", name: "Allegheny County", value: 0.62 }, { fips: "42019", name: "Butler County", value: null }]);
     expect(r.metrics.map((m: any) => m.key)).toEqual(Object.keys(LAYER_METRICS));
+    expect(Object.keys(LAYER_METRICS)).toEqual(expect.arrayContaining(["pop_65_plus", "pop_85_plus", "median_income", "licensed_beds"]));
     expect(h.queries.find((q) => q.sql.includes("rollup_county_market_profile"))!.sql).toContain("ma_penetration AS value");
   });
 });
@@ -383,6 +393,8 @@ describe("a rollup that can't be read is an error, not an empty market", () => {
     ["a county's competitors", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /SELECT p\.\* FROM rollup_pac_market_share p/],
     ["a county's trends", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /sum\(benes\)::bigint AS benes, sum\(stays\)::bigint AS stays/],
     ["a county's agency coverage", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM rollup_agency_coverage\s+WHERE county_fips/],
+    ["a county's licensed homes", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM licensed_facilities WHERE county_fips = \$1 ORDER BY capacity/],
+    ["a county's licensed-home totals", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM licensed_facilities WHERE county_fips = \$1 GROUP BY 1/],
     ["a hospital's catchment years", () => handleGetHospitalCatchment({ ccn: "390001" }), /SELECT DISTINCT data_year FROM rollup_hospital_catchment/],
     ["a hospital's discharge mix", () => handleGetHospitalCatchment({ ccn: "390001" }), /FROM rollup_hospital_discharge_mix WHERE ccn = \$1/],
     ["a facility's market position", () => handleGetFacilityMarket({ ccn: "395001", setting: "snf" }), /FROM rollup_pac_market_share WHERE ccn = \$1 AND setting = \$2/],

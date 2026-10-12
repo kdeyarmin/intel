@@ -127,6 +127,13 @@
       "when": 1791612087276,
       "tag": "0018_market_rollups",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791612147276,
+      "tag": "0019_acs_and_licensed_facilities",
+      "breakpoints": true
     }
   ]
 }

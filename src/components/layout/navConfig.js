@@ -113,13 +113,15 @@ export const FACILITY_TYPES = [
   { type: 'ltch', label: 'Long-Term Care Hospitals', legacyPage: 'LongTermCare' },
   { type: 'dme', label: 'DME Suppliers', legacyPage: 'DMESuppliers' },
   { type: 'community_health', label: 'Community Health', legacyPage: 'CommunityHealthCenters' },
+  // State-licensed homes (personal care, assisted living) from licensing exports; never had its own page.
+  { type: 'licensed', label: 'Licensed Homes', legacyPage: null },
 ];
 
 // Old page URLs and where they live now. `params` select the right view on
 // the target and win over the same keys in the old URL; every other query
 // parameter is kept, so old bookmarks and shared links still land in place.
 export const LEGACY_REDIRECTS = {
-  ...Object.fromEntries(FACILITY_TYPES.map(({ type, legacyPage }) => [legacyPage, { page: 'Facilities', params: { type } }])),
+  ...Object.fromEntries(FACILITY_TYPES.filter(({ legacyPage }) => legacyPage).map(({ type, legacyPage }) => [legacyPage, { page: 'Facilities', params: { type } }])),
   OrganizationDetail: { page: 'ProviderDetail' },
   Campaigns: { page: 'ProviderOutreach' },
   EmailSearchBot: { page: 'ProviderIntelligence', params: { tab: 'email' } },

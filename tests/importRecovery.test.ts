@@ -35,6 +35,12 @@ describe("planRecovery", () => {
     });
   });
 
+  it("carries a licensing file's licence type, so the rest of the file is read the same way", () => {
+    const plan: any = planRecovery({ id: 5, import_type: "licensed_facilities", retry_params: { file_url: "/api/storage/pa-pch.csv", year: 2026, state_filter: "PA", license_type: "personal_care_home" } }, now);
+    expect(plan.params).toMatchObject({ import_type: "licensed_facilities", state_filter: "PA", license_type: "personal_care_home" });
+    expect(planRecovery({ id: 6, import_type: "licensed_facilities", retry_params: { file_url: "/api/storage/x.csv" } }, now)).toMatchObject({ params: { license_type: undefined } });
+  });
+
   it("keeps a dry run a dry run, and a headerless CSV's column names", () => {
     const plan: any = planRecovery({ id: 3, import_type: "physician_shared_patient_patterns", dry_run: true, retry_params: { file_url: "/api/storage/pairs.csv", year: 2015, headers: ["a", "b"] } }, now);
     expect(plan.params).toMatchObject({ dry_run: true, year: 2015, headers: ["a", "b"], resume_offset: 0 });

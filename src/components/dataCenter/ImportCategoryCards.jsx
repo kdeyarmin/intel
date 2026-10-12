@@ -136,6 +136,7 @@ const IMPORT_CATEGORIES = [
       { id: 'pbj_daily_nonnurse_staffing', name: 'PBJ Non-Nurse Staffing', description: 'Non-nurse staffing', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
       { id: 'snf_utilization_geo_casemix', name: 'SNF Util by Geo/Case-Mix', description: 'Geographic utilization analysis', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'ltc_facility_characteristics', name: 'LTC Facility Characteristics', description: 'Long-term care facility info', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
+      { id: 'licensed_facilities', name: 'State-Licensed Homes', description: 'Personal care homes and assisted living from a state licensing export (CSV upload)', requiredColumns: ['name'], downloadUrl: 'https://www.pa.gov/agencies/dhs/resources/for-providers/personal-care-homes' },
       { id: 'mds_frequency', name: 'MDS Frequency', description: 'Minimum Data Set frequency', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'medicare_snf_utilization', name: 'SNF Post-Acute Utilization', description: 'Post-acute care SNF data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
     ]

@@ -27,7 +27,8 @@
     "db:retire-typed-facility-rows": "tsx scripts/db/retire-typed-facility-rows.ts",
     "db:seed-demo": "tsx scripts/dev/seed-demo.ts",
     "geo:load": "tsx scripts/census/load-census-geo.ts",
-    "nucc:load": "tsx scripts/nucc/load-nucc-taxonomy.ts"
+    "nucc:load": "tsx scripts/nucc/load-nucc-taxonomy.ts",
+    "acs:load": "tsx scripts/census/load-acs.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

@@ -54,6 +54,8 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
     placeholderData: keepPreviousData,
   });
 
+  // A state-licensed home has a capacity and a license, not CMS quality ratings, discharges or payments.
+  const licensed = facilityGroup === 'licensed';
   const facilities = data?.facilities || [];
   const total = data?.total || 0;
   const availableStates = data?.available_states || [];
@@ -118,46 +120,57 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
         <div className="space-y-1">
           <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2 text-xs text-slate-400 font-medium uppercase tracking-wide">
             <div className="col-span-4">Facility</div>
-            <div className="col-span-3">Location</div>
-            <div className="col-span-1 text-center">Rating</div>
-            <div className="col-span-2 text-right">Discharges</div>
-            <div className="col-span-2 text-right">Payments</div>
+            <div className={licensed ? 'col-span-6' : 'col-span-3'}>Location</div>
+            {licensed ? null : <div className="col-span-1 text-center">Rating</div>}
+            {licensed ? null : <div className="col-span-2 text-right">Discharges</div>}
+            <div className="col-span-2 text-right">{licensed ? 'Capacity' : 'Payments'}</div>
           </div>
-          {facilities.map((f, i) => (
-            <Link
-              key={f.provider_id || i}
-              to={createPageUrl(detailPage) + `?id=${f.provider_id}&group=${facilityGroup}`}
-              className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 bg-slate-800/30 hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 border border-slate-700/30 rounded-lg px-4 py-3 transition-colors items-center"
+          {facilities.map((f, i) => {
+            const rowCls = "grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-3 bg-slate-800/30 hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 border border-slate-700/30 rounded-lg px-4 py-3 transition-colors items-center";
+            // A state-licensed home has no CMS number, so no detail page to open.
+            const Row = f.provider_id ? Link : 'div';
+            const rowProps = f.provider_id ? { to: createPageUrl(detailPage) + `?id=${f.provider_id}&group=${facilityGroup}` } : {};
+            return (
+            <Row
+              key={f.provider_id || f.facility_key || i}
+              {...rowProps}
+              className={rowCls}
             >
               <div className="md:col-span-4 flex items-center gap-3 min-w-0">
                 <Building2 className={`w-4 h-4 ${resolvedIconCls} flex-shrink-0`} />
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-200 truncate">{f.facility_name || f.provider_id}</p>
                   <p className="text-[10px] text-slate-400 md:hidden">{f.city}, {f.state} {f.zip}</p>
+                  {f.license_type ? <p className="text-[10px] text-slate-400">{String(f.license_type).replace(/_/g, ' ')}{f.license_number ? ` · license ${f.license_number}` : ''}{f.status ? ` · ${f.status}` : ''}</p> : null}
                 </div>
               </div>
-              <div className="hidden md:flex md:col-span-3 items-center gap-1 text-sm text-slate-400">
+              <div className={`hidden md:flex ${licensed ? 'md:col-span-6' : 'md:col-span-3'} items-center gap-1 text-sm text-slate-400`}>
                 <MapPin className="w-3 h-3 flex-shrink-0" />
                 <span className="truncate">{f.city}, {f.state} {f.zip}</span>
               </div>
-              <div className="hidden md:flex md:col-span-1 justify-center">
-                {f.quality_rating ? (
-                  <Badge className="bg-amber-900/30 text-amber-400 border-amber-500/30 text-xs">
-                    <Star className="w-3 h-3 mr-0.5" />{f.quality_rating}
-                  </Badge>
-                ) : (
-                  <span className="text-slate-400 text-xs">—</span>
-                )}
-              </div>
-              <div className="hidden md:block md:col-span-2 text-right text-sm text-slate-300">
-                {f.total_discharges ? Number(f.total_discharges).toLocaleString() : '—'}
-              </div>
+              {licensed ? null : (
+                <div className="hidden md:flex md:col-span-1 justify-center">
+                  {f.quality_rating ? (
+                    <Badge className="bg-amber-900/30 text-amber-400 border-amber-500/30 text-xs">
+                      <Star className="w-3 h-3 mr-0.5" />{f.quality_rating}
+                    </Badge>
+                  ) : (
+                    <span className="text-slate-400 text-xs">—</span>
+                  )}
+                </div>
+              )}
+              {licensed ? null : (
+                <div className="hidden md:block md:col-span-2 text-right text-sm text-slate-300">
+                  {f.total_discharges ? Number(f.total_discharges).toLocaleString() : '—'}
+                </div>
+              )}
               <div className="hidden md:flex md:col-span-2 items-center justify-end gap-2">
-                <span className="text-sm text-slate-300">{formatCurrency(f.total_payments)}</span>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
+                <span className="text-sm text-slate-300">{licensed ? (f.capacity != null ? `${Number(f.capacity).toLocaleString()} beds` : '—') : formatCurrency(f.total_payments)}</span>
+                {f.provider_id ? <ChevronRight className="w-4 h-4 text-slate-400" /> : null}
               </div>
-            </Link>
-          ))}
+            </Row>
+            );
+          })}
         </div>
       )}
 

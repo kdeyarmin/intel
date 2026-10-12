@@ -299,6 +299,9 @@ app.listen(PORT, "0.0.0.0", async () => {
       // The NUCC taxonomy code set (server/data/nucc) loads the same way.
       const { autoloadNuccTaxonomies } = await import("./lib/nucc/load");
       await autoloadNuccTaxonomies(dbPool);
+      // ACS demand data (population 65+, income) when the bundle is shipped.
+      const { autoloadAcsDemographics } = await import("./lib/census/acs");
+      await autoloadAcsDemographics(dbPool);
     })();
 
     // Large-table indexes build in the background (see server/lib/bootIndexes.ts).

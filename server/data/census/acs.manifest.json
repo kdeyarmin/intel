@@ -1,0 +1,36 @@
+{
+  "vintage": "2020-2024",
+  "released": "2025-12",
+  "description": "U.S. Census Bureau American Community Survey 2020-2024 5-year estimates (tables B01001, B19013, B25077, B11007) for counties and 2020 ZIP Code Tabulation Areas. Public domain.",
+  "sources": {
+    "b01001": {
+      "url": "https://www2.census.gov/programs-surveys/acs/summary_file/2024/table-based-SF/data/5YRData/acsdt5y2024-b01001.dat",
+      "sha256": "1637b18a96881b81e050df1cd3d5ac38a33208b9b69b40e1dbeb3c4e13718f0e"
+    },
+    "b19013": {
+      "url": "https://www2.census.gov/programs-surveys/acs/summary_file/2024/table-based-SF/data/5YRData/acsdt5y2024-b19013.dat",
+      "sha256": "b25a176b0e6c339b6f3a2a0d3d8446bf06f5f080b4395993ec9a8313efb1c229"
+    },
+    "b25077": {
+      "url": "https://www2.census.gov/programs-surveys/acs/summary_file/2024/table-based-SF/data/5YRData/acsdt5y2024-b25077.dat",
+      "sha256": "89eb2153764a2330b23959d8bbc29b3a8f3016f087b990f2a8ea0d5096d9a816"
+    },
+    "b11007": {
+      "url": "https://www2.census.gov/programs-surveys/acs/summary_file/2024/table-based-SF/data/5YRData/acsdt5y2024-b11007.dat",
+      "sha256": "23a0dc3423feb040b5ae7d04c0cbd86a3ba92f373b81f95b0780f0f4db3dc12f"
+    }
+  },
+  "outputs": {
+    "census_acs_county": {
+      "file": "census_acs_county.csv.gz",
+      "sha256": "4b6f3682341912ace738e93cb9139ae024ae8b6455c7b9e9297c965ca3b33bd9",
+      "rows": 3222
+    },
+    "census_acs_zcta": {
+      "file": "census_acs_zcta.csv.gz",
+      "sha256": "1fe517afee04c526b8323425edde1f55221c177204347357d00dde769b3a389f",
+      "rows": 33772
+    }
+  },
+  "dataset_sha256": "f00bdd4563833a93f54b9807137ddbd56d3c05aead895cd617118b4fc43a9368"
+}

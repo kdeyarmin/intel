@@ -16,7 +16,7 @@ describe("county layer metrics", () => {
     for (const [key, m] of Object.entries(LAYER_METRICS)) {
       expect(m.column, key).toMatch(/^[a-z_0-9]+$/);
       expect(["count", "percent", "pct_units", "money", "rate"]).toContain(m.format);
-      expect(["enrollment", "saturation", "variation", "hospital_service_area", "pac_utilization"]).toContain(m.vintage);
+      expect(["enrollment", "saturation", "variation", "hospital_service_area", "pac_utilization", "acs", "licensed"]).toContain(m.vintage);
     }
   });
 });
