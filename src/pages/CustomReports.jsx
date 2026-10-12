@@ -18,6 +18,7 @@ import ScheduledReportPreviewDialog from '../components/scheduledReports/Schedul
 import { DATASET_CONFIG } from '../components/customReports/reportConfig';
 import PageHeader from '../components/shared/PageHeader';
 import { useConfirm } from '@/components/shared/ConfirmDialog';
+import PageTabs from '@/components/layout/PageTabs';
 
 const EMPTY_CONFIG = { name: '', dataset: '', metrics: [], group_by: '', chart_type: 'bar', filters: {} };
 
@@ -196,6 +197,7 @@ export default function CustomReports() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
+      <PageTabs current="CustomReports" />
       <PageHeader
         title="Reports & Analytics"
         subtitle="Create custom visualizations and schedule automated emails"

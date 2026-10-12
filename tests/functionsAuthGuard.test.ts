@@ -68,7 +68,7 @@ describe("PUBLIC_FUNCTIONS authorization guard", () => {
   });
 
   it("contains exactly the 41 documented public function names", () => {
-    expect(PUBLIC_FUNCTIONS.size).toBe(41);
+    expect(PUBLIC_FUNCTIONS.size).toBe(43);
   });
 
   it("all listed functions are individually verified", () => {

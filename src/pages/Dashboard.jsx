@@ -11,12 +11,18 @@ import RecentActivityCard from '../components/dashboard/RecentActivityCard';
 import ProactiveAlerts from '../components/dashboard/ProactiveAlerts';
 import DataHealthAlerts from '../components/dashboard/DataHealthAlerts';
 import QuickActions from '../components/shared/QuickActions';
+import BusinessLineSelect from '@/components/shared/BusinessLineSelect';
+import { useBusinessLine } from '@/lib/BusinessLineContext';
+import { REPORT_CATALOG } from '@/lib/marketBriefs';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { LayoutDashboard, AlertTriangle, RefreshCw } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
 import { usePageAccess } from '@/hooks/usePageAccess';
 
 export default function Dashboard() {
   const { isAdmin } = usePageAccess();
+  const { profile } = useBusinessLine();
   const { data: stats, isLoading: loadingStats, error: statsError, refetch: refetchStats, isRefetching: refetchingStats } = useQuery({
     queryKey: ['dashboardStats'],
     queryFn: async () => {
@@ -43,10 +49,35 @@ export default function Dashboard() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6 w-full overflow-hidden">
       <PageHeader
         title="Dashboard"
-        subtitle="CareMetric Provider Intelligence — all your data at a glance"
+        subtitle={profile ? profile.label : 'CareMetric Provider Intelligence — all your data at a glance'}
         icon={LayoutDashboard}
         breadcrumbs={[{ label: 'Dashboard' }]}
       />
+
+      <BusinessLineSelect />
+
+      {profile && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {REPORT_CATALOG.filter((r) => profile.reports.includes(r.id)).map((r) => (
+            <Link key={r.id} to={`${createPageUrl('MarketBriefs')}?report=${r.id}`} className="rounded-lg border border-slate-800 bg-slate-900/40 p-3 hover:border-slate-600">
+              <p className="text-[11px] uppercase tracking-wide text-slate-500">{r.purpose}</p>
+              <p className="text-sm font-medium text-slate-100">{r.title}</p>
+            </Link>
+          ))}
+          <Link to={`${createPageUrl('Facilities')}?type=${profile.facilityTypes[0]}`} className="rounded-lg border border-slate-800 bg-slate-900/40 p-3 hover:border-slate-600">
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">Directory</p>
+            <p className="text-sm font-medium text-slate-100">Facilities for this line</p>
+          </Link>
+          <Link to={createPageUrl('CallSheets')} className="rounded-lg border border-slate-800 bg-slate-900/40 p-3 hover:border-slate-600">
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">Sales</p>
+            <p className="text-sm font-medium text-slate-100">Call sheets</p>
+          </Link>
+          <Link to={createPageUrl('Marketing')} className="rounded-lg border border-slate-800 bg-slate-900/40 p-3 hover:border-slate-600">
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">Sales</p>
+            <p className="text-sm font-medium text-slate-100">Marketing book</p>
+          </Link>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <QuickActions />
@@ -72,6 +103,8 @@ export default function Dashboard() {
         </div>
       )}
 
+      {!profile && (
+      <>
       {/* System Health Strip — last refresh, imports, quality score, alerts */}
       <SystemHealthStrip stats={stats} loading={loadingStats} />
 
@@ -98,6 +131,8 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 gap-6">
           <RecentActivityCard events={auditEvents} loading={loadingEvents} />
         </div>
+      )}
+      </>
       )}
 
     </div>

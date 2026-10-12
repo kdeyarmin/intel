@@ -65,6 +65,7 @@ import {
   handleGetHospitalCatchment,
   handleGetReferralSources,
   handleGetServiceAreaOverlap,
+  handleGetStateMarketLeaders,
 } from "../server/functions/market";
 import { PUBLIC_FUNCTIONS } from "../server/lib/functionAcl";
 
@@ -90,7 +91,7 @@ beforeEach(() => {
 
 describe("public functions", () => {
   it("lists the six market functions as read-only", () => {
-    for (const f of ["getCountyMarket", "getHospitalCatchment", "getFacilityMarket", "getCountyMarketLayer", "getReferralSources", "getServiceAreaOverlap"]) {
+    for (const f of ["getCountyMarket", "getHospitalCatchment", "getFacilityMarket", "getCountyMarketLayer", "getReferralSources", "getServiceAreaOverlap", "getStateMarketLeaders"]) {
       expect(PUBLIC_FUNCTIONS.has(f), f).toBe(true);
     }
   });
@@ -376,6 +377,16 @@ describe("getCountyMarketLayer", () => {
     expect(Object.keys(LAYER_METRICS)).toEqual(expect.arrayContaining(["pop_65_plus", "pop_85_plus", "median_income", "licensed_beds"]));
     expect(h.queries.find((q) => q.sql.includes("rollup_county_market_profile"))!.sql).toContain("ma_penetration AS value");
   });
+
+  it("attaches user counts and year-over-year change to the full county table without adding map metrics", async () => {
+    h.answers.push([/hha_users/, [
+      { county_fips: "42003", county_name: "Allegheny County", benes: "10", hha_users: "12000", hha_users_change_pct: "2.5", hha_providers_change_pct: "0", as_of: { enrollment: "2026-06" } },
+    ]]);
+    const r: any = await handleGetCountyMarketLayer({ state: "PA", all: true });
+    expect(r.counties[0].volume).toMatchObject({ hha_users: 12000, hha_users_change_pct: 2.5, hha_providers_change_pct: 0, hospice_users: null });
+    expect(r.counties[0].values.benes).toBe(10);
+    expect(r.metrics.map((m: any) => m.key)).not.toContain("hha_users");
+  });
 });
 
 describe("getReferralSources", () => {
@@ -539,6 +550,24 @@ describe("getServiceAreaOverlap", () => {
   });
 });
 
+describe("getStateMarketLeaders", () => {
+  it("lists the largest agencies located in the state and how many counties they cover", async () => {
+    h.answers.push(
+      [/geo_level = 'state' AND p\.geo_code = \$2 AND p\.rank/, [{ ccn: "397001", provider_name: "Acme Home Health", city: "Pittsburgh", state: "PA", data_year: "2024", benes: 4000, share_benes: 0.25, rank: 1, providers_in_market: 80, payment: 1000000 }]],
+      [/AS counties FROM rollup_agency_coverage/, [{ ccn: "397001", counties: 6 }]],
+    );
+    const r: any = await handleGetStateMarketLeaders({ state: "pa", setting: "hha" });
+    expect(r).toMatchObject({ state: "PA", setting: "hha", label: "Home health", data_year: "2024", providers_in_market: 80 });
+    expect(r.rows[0]).toMatchObject({ ccn: "397001", name: "Acme Home Health", share: 0.25, benes: 4000, counties_served: 6, facility_group: "home_health" });
+    await expect(handleGetStateMarketLeaders({ state: "PA", setting: "hospital" })).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("does not rank the whole state for a plan that only covers selected counties", async () => {
+    const pack = { role: "user", orgRole: "member", planCode: "county_pack", territory: { states: [], county_fips: ["42003"] }, orgStatus: "active" };
+    await expect(handleGetStateMarketLeaders({ state: "PA", setting: "hha" }, pack as any)).rejects.toMatchObject({ status: 403 });
+  });
+});
+
 describe("a rollup that can't be read is an error, not an empty market", () => {
   // The page says "not loaded yet" for empty data, so an outage, a missing migration or a timeout must not look like it.
   const outage = Object.assign(new Error("connection terminated unexpectedly"), { code: "08006" });
@@ -557,6 +586,7 @@ describe("a rollup that can't be read is an error, not an empty market", () => {
     ["the county table", () => handleGetCountyMarketLayer({ state: "PA", all: true }), /FROM rollup_county_market_profile WHERE state = \$1/],
     ["referral sources", () => handleGetReferralSources({ state: "PA", county_fips: "42003" }), /FROM rollup_referral_sources/],
     ["a county's service-area overlap", () => handleGetServiceAreaOverlap({ state: "PA", county_fips: "42003", setting: "hha" }), /FROM rollup_agency_coverage a/],
+    ["state acquisition targets", () => handleGetStateMarketLeaders({ state: "PA", setting: "hha" }), /geo_level = 'state'/],
   ];
 
   it.each(calls)("%s rejects instead of answering with nothing", async (_name, call, failing) => {

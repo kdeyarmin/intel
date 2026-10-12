@@ -131,7 +131,37 @@ describe("Zip service areas, affiliations, physicians, DME, LTC-671", () => {
   });
 
   it("maps DME by referring provider, with suppressed beneficiary counts as null", () => {
-    expect(mapAll("medicare_dme_by_referring").rows[0]).toMatchObject({ npi: "1003000126", specialty: "Internal Medicine", suppliers: 3, benes: null, claims: 19, medicare_payment: 2635.49 });
+    expect(mapAll("medicare_dme_by_referring").rows[0]).toMatchObject({
+      npi: "1003000126", specialty: "Internal Medicine", suppliers: 3, benes: null, claims: 19, medicare_payment: 2635.49,
+      hcpcs_codes: 4, allowed: 3601.62, submitted_charges: 10947.68,
+      dme_suppressed: null, dme_benes: null, dme_payment: 2635.49,
+      pos_suppressed: null, pos_benes: null, pos_payment: 0,
+      drug_suppressed: null, drug_benes: null, drug_payment: 0,
+    });
+    const suppressed = TYPED_ROUTES.medicare_dme_by_referring.map(rows("medicare_dme_by_referring")[1], ctx)!;
+    expect(suppressed).toMatchObject({ pos_suppressed: true, pos_benes: null, drug_suppressed: true, drug_benes: null });
+  });
+
+  it("maps the supplier total and the equipment, prosthetics, and drug split", () => {
+    expect(mapAll("medicare_dme_by_supplier").rows[0]).toMatchObject({
+      npi: "1003000399", data_year: "2024", name: "Reconstructive Hand To Shoulder Of Indiana, Llc",
+      city: "Carmel", state: "IN", zip5: "46032", specialty: "General Surgery",
+      hcpcs_codes: 14, benes: 238, claims: 244, medicare_payment: 48799.37, allowed: 63465.4,
+      dme_benes: 0, dme_payment: 0, pos_benes: 238, pos_payment: 48799.37, drug_benes: 0, drug_payment: 0,
+    });
+  });
+
+  it("maps an ordered HCPCS line, a supplied line, and a state geography row", () => {
+    expect(mapAll("medicare_dme_by_referring_service").rows[0]).toMatchObject({
+      npi: "1003000530", hcpcs: "A4253", rental: "", state: "PA", suppliers: 7, claims: 25, services: 57, avg_payment: 5.7394736842,
+      hcpcs_desc: "Blood glucose test or reagent strips for home blood glucose monitor, per 50 strips",
+    });
+    expect(mapAll("medicare_dme_by_supplier_service").rows[0]).toMatchObject({
+      npi: "1003000399", hcpcs: "L3808", rental: "", state: "IN", benes: 69, claims: 70, avg_payment: 293.84851351,
+    });
+    expect(mapAll("medicare_dme_by_geography_service").rows[0]).toMatchObject({
+      geo_level: "State", geo_code: "01", state: "AL", hcpcs: "J1811", rental: "", referring_providers: 28, suppliers: 26, benes: 33,
+    });
   });
 
   it("maps the LTC-671 census with the dataset's period end", () => {

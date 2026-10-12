@@ -67,6 +67,7 @@ const PLANS = [
 ];
 
 import billingRouter from "../server/routes/billing";
+import { clearRateLimits } from "../server/middleware/rateLimit";
 
 let h: Harness;
 let server: Server;
@@ -79,6 +80,7 @@ const paying = (over: Record<string, unknown> = {}) => ({
 const subscription = (price: string, status = "active") => ({ id: "sub_2", status, items: { data: [{ id: "si_1", price: { id: price } }] } });
 
 beforeEach(async () => {
+  clearRateLimits();
   process.env.STRIPE_SECRET_KEY = "sk_test_x";
   process.env.PUBLIC_APP_URL = "https://app.example.com";
   s.org = paying();
