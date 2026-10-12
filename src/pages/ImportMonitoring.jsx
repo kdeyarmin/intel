@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-  Activity, CheckCircle2, XCircle, Clock, AlertCircle,
+  Activity, CheckCircle2, XCircle, Clock, AlertCircle, AlertTriangle,
   FileText, TrendingUp, Loader2, Search, Pause, RefreshCw, Trash2,
   Plus, History, ShieldCheck, Bell, Download, Sparkles, Upload, Bot, HeartPulse, CalendarClock, StopCircle
 } from 'lucide-react';
@@ -346,10 +346,16 @@ export default function ImportMonitoring() {
         return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
       case 'completed':
         return <CheckCircle2 className="w-5 h-5 text-green-500" />;
+      case 'completed_with_errors':
+        return <AlertTriangle className="w-5 h-5 text-amber-500" />;
       case 'failed':
         return <XCircle className="w-5 h-5 text-red-500" />;
       case 'paused':
         return <Pause className="w-5 h-5 text-amber-500" />;
+      case 'pausing':
+        return <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />;
+      case 'cancelling':
+        return <Loader2 className="w-5 h-5 text-orange-400 animate-spin" />;
       case 'cancelled':
         return <XCircle className="w-5 h-5 text-slate-400" />;
       default:
@@ -361,26 +367,26 @@ export default function ImportMonitoring() {
     processing: 'bg-blue-900/15 text-blue-400 border border-blue-500/20',
     validating: 'bg-yellow-900/15 text-yellow-400 border border-yellow-500/20',
     completed: 'bg-emerald-900/15 text-emerald-400 border border-emerald-500/20',
+    completed_with_errors: 'bg-amber-900/15 text-amber-400 border border-amber-500/20',
     failed: 'bg-red-900/15 text-red-400 border border-red-500/20',
     paused: 'bg-amber-900/15 text-amber-400 border border-amber-500/20',
+    pausing: 'bg-amber-900/15 text-amber-300 border border-amber-500/20',
+    cancelling: 'bg-orange-900/15 text-orange-400 border border-orange-500/20',
     cancelled: 'bg-slate-500/15 text-slate-400 border border-slate-500/20',
   };
 
+  // Returns a 0-100 percentage, or null when progress is genuinely unknown
+  // (total_rows not set yet). Never fabricate a percentage.
   const getProgress = (batch) => {
-    if (batch.status === 'completed') return 100;
+    if (batch.status === 'completed' || batch.status === 'completed_with_errors') return 100;
     if (batch.status === 'failed' || batch.status === 'cancelled') return 0;
     const total = batch.total_rows || 0;
-    if (total === 0) {
-      if (batch.status === 'paused') return 35;
-      if (batch.status === 'processing') return 50;
-      if (batch.status === 'validating') return 15;
-      return 0;
-    }
+    if (total === 0) return null;
     if (batch.status === 'validating') {
       const validated = (batch.valid_rows || 0) + (batch.invalid_rows || 0);
       return Math.min(Math.round((validated / total) * 50), 49);
     }
-    // processing or paused
+    // processing, pausing or paused
     const processed = (batch.imported_rows || 0) + (batch.updated_rows || 0) + (batch.skipped_rows || 0) + (batch.invalid_rows || 0) + (batch.excluded_rows || 0);
     return Math.min(50 + Math.round((processed / total) * 50), 99);
   };
@@ -686,7 +692,10 @@ export default function ImportMonitoring() {
               >
                 <option value="all">All Statuses</option>
                 <option value="completed">Completed</option>
+                <option value="completed_with_errors">Completed with Errors</option>
                 <option value="failed">Failed</option>
+                <option value="pausing">Pausing</option>
+                <option value="cancelling">Cancelling</option>
                 <option value="cancelled">Cancelled</option>
               </select>
               <select
@@ -769,7 +778,9 @@ export default function ImportMonitoring() {
             </div>
           ) : (
             <div className="space-y-4">
-              {displayBatches.map((batch) => (
+              {displayBatches.map((batch) => {
+                const progress = getProgress(batch);
+                return (
                 <div key={batch.id} className={`p-4 border rounded-lg hover:bg-slate-800/30 transition-colors ${
                   bulkRetryMode && batch.status === 'failed' && (batch.retry_count || 0) < MAX_RETRIES
                     ? selectedForRerun.has(batch.id)
@@ -861,21 +872,25 @@ export default function ImportMonitoring() {
                   </div>
 
                   {/* Progress Bar */}
-                  {(batch.status === 'processing' || batch.status === 'validating' || batch.status === 'paused') && (
+                  {(batch.status === 'processing' || batch.status === 'validating' || batch.status === 'paused' || batch.status === 'pausing') && (
                     <div className="mb-2">
                       <div className="flex justify-between text-xs mb-1">
                         <span className="text-slate-300">
-                          {batch.status === 'validating' ? 'Validating rows...' : batch.status === 'processing' ? 'Importing data...' : 'Paused'}
+                          {batch.status === 'validating' ? 'Validating rows...' : batch.status === 'processing' ? 'Importing data...' : batch.status === 'pausing' ? 'Pausing…' : 'Paused'}
                         </span>
-                        <span className="font-medium text-slate-200">{getProgress(batch)}%</span>
+                        <span className="font-medium text-slate-200">{progress === null ? '—' : `${progress}%`}</span>
                       </div>
                       <div className="w-full h-2 rounded-full bg-slate-700/80 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            batch.status === 'paused' ? 'bg-amber-500' : batch.status === 'validating' ? 'bg-yellow-500' : 'bg-cyan-500'
-                          }`}
-                          style={{ width: `${getProgress(batch)}%` }}
-                        />
+                        {progress === null ? (
+                          <div className="h-full w-full rounded-full bg-cyan-500/40 animate-pulse" />
+                        ) : (
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              batch.status === 'paused' || batch.status === 'pausing' ? 'bg-amber-500' : batch.status === 'validating' ? 'bg-yellow-500' : 'bg-cyan-500'
+                            }`}
+                            style={{ width: `${progress}%` }}
+                          />
+                        )}
                       </div>
                       {batch.total_rows > 0 && (
                         <div className="flex gap-4 mt-1 text-[10px] text-slate-400">
@@ -938,7 +953,8 @@ export default function ImportMonitoring() {
                     <div className="ml-auto text-slate-400 text-xs">{formatTimestamp(batch.created_date)}</div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -1035,8 +1051,11 @@ function ImportHistoryView({ batches, formatTimestamp }) {
     processing: 'bg-blue-900/15 text-blue-400',
     validating: 'bg-yellow-900/15 text-yellow-400',
     completed: 'bg-emerald-900/15 text-emerald-400',
+    completed_with_errors: 'bg-amber-900/15 text-amber-400',
     failed: 'bg-red-900/15 text-red-400',
     paused: 'bg-amber-900/15 text-amber-400',
+    pausing: 'bg-amber-900/15 text-amber-300',
+    cancelling: 'bg-orange-900/15 text-orange-400',
     cancelled: 'bg-slate-500/15 text-slate-400',
   };
 
@@ -1111,6 +1130,7 @@ function ImportHistoryView({ batches, formatTimestamp }) {
           </CardContent>
         </Card>
       </div>
+      <p className="text-[11px] text-slate-500">Totals cover the 100 most recent imports only — they are partial, not lifetime figures.</p>
 
       {/* Filters */}
       <Card className="bg-[#141d30] border-slate-700/50">
