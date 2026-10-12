@@ -105,7 +105,7 @@ build** on every pull request (any base branch) and on pushes to `main`.
 
 ## Deployment
 
-Configured for Replit autoscale (`.replit`): `npm run build` then
+Deployed on Railway: `npm run build` then
 `NODE_ENV=production node --import tsx server/index.ts` (also `npm start`).
 In production the Express server serves the built SPA from `dist/`
 same-origin, so set `JWT_SECRET` and (if serving a separate frontend origin)
@@ -142,7 +142,7 @@ The public Terms, Privacy and Data Use pages are at `/terms`, `/privacy` and
 ### Keeping the data fresh
 
 Nothing imports or refreshes without a maintenance tick. Either point a cron
-(a Railway cron service, a Replit Scheduled Deployment, system cron) at
+(a Railway cron job, system cron) at
 `sh scripts/maintenance-tick.sh` every 10 minutes with `MAINTENANCE_URL` and
 `MAINTENANCE_TOKEN` set, or set `MAINTENANCE_INPROCESS_INTERVAL_MS=600000` on
 the server. Each tick starts the import schedules that are due, settles the
@@ -197,7 +197,5 @@ future guide change cannot silently retain stale provenance.
 
 ## Further reading
 
-- **`replit.md`** — the deep architecture reference: feature-by-feature
-  breakdown, security model, database performance notes, and changelog.
 - **`CLAUDE.md`** — a practical guide for working in this repo (commands,
   conventions, and gotchas).

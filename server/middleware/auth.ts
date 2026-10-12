@@ -7,7 +7,7 @@ import { isOrgAdmin, isPlatformAdmin } from "../lib/roles";
 let JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   if (process.env.NODE_ENV === "production") {
-    throw new Error("JWT_SECRET environment variable is required in production. Set it via Replit Secrets.");
+    throw new Error("JWT_SECRET environment variable is required in production. Set it in the Railway service variables.");
   }
   JWT_SECRET = crypto.randomBytes(48).toString("hex");
   console.warn("[auth] JWT_SECRET not set — generated ephemeral dev secret. Sessions will be invalidated on restart.");

@@ -1,6 +1,6 @@
 # CareMetric Intel — Pilot Operational Setup Checklist
 
-This checklist covers the **must-have operational setup** before releasing the app to employees for pilot. Follow it for Railway (recommended), Replit, or local.
+This checklist covers the **must-have operational setup** before releasing the app to employees for pilot. Follow it for Railway or local.
 
 **Goal:** A running instance with migrations applied, an admin account, maintenance ticks for data freshness, and the secrets needed for AI / email / optional billing.
 
@@ -40,7 +40,7 @@ The server starts an in-process ticker (shared across instances with an advisory
 **External cron alternative:**
 
 - Set a strong `MAINTENANCE_TOKEN`.
-- Point a cron (Railway Cron Service, Replit Scheduled Deployment, system cron) every 10 minutes at:
+- Point a cron (Railway cron job, system cron) every 10 minutes at:
   ```bash
   MAINTENANCE_URL=https://your-app.example.com \
   MAINTENANCE_TOKEN=your-token \
@@ -78,13 +78,9 @@ See `.env.example` for the complete commented list (CORS, model overrides, quota
 6. Health check is already in `railway.toml` (`/api/health`).
 7. (Optional) Add a Cron Service that runs `sh scripts/maintenance-tick.sh` if you prefer external ticks instead of in-process.
 
-### Replit
-
-`.replit` is already configured for autoscale deployment (`npm run build` then production start). Set the same secrets. Use a Scheduled Deployment or in-process ticker for maintenance.
-
 ### Note on Vercel
 
-The app is designed for same-origin serving (Express serves the SPA in production). The previously mentioned Vercel URL returns 404; use Railway or Replit for the pilot.
+The app is designed for same-origin serving (Express serves the SPA in production). The previously mentioned Vercel URL returns 404; use Railway for the pilot.
 
 ## Post-Deploy Verification
 
@@ -100,4 +96,4 @@ The app is designed for same-origin serving (Express serves the SPA in productio
 
 - `.env.example` — full documented environment
 - `README.md` — Deployment and Keeping the data fresh
-- `replit.md` / `CLAUDE.md` — architecture and conventions
+- `CLAUDE.md` — architecture and conventions
