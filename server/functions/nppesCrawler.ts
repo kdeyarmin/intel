@@ -8,7 +8,7 @@ import {
   providerTaxonomies,
   dataQualityAlerts,
 } from "../db/schema";
-import { eq, and, inArray, desc, asc, sql, lt } from "drizzle-orm";
+import { eq, and, inArray, notInArray, desc, asc, sql, lt, or, isNull, ne } from "drizzle-orm";
 import { sleep, withRetry, stripSystemFields, isIdentical } from "./helpers";
 import { isValidNpi } from "../lib/npiValidation";
 
@@ -485,12 +485,24 @@ async function processQueueWorker(dryRun: boolean) {
       }
 
       if (prefetchedTasks.length === 0) {
-        prefetchedTasks = await safeCrawlerQuery(
-          () => db.select().from(nppesQueueItems)
-            .where(eq(nppesQueueItems.status, "pending"))
+        // A paused batch's items stay queued: claiming them would keep the
+        // batch processing after the pause. Filter by batch status up front
+        // (items whose batch vanished are still prefetched; the per-task
+        // check below fails them as before).
+        const prefetchRows = await safeCrawlerQuery(
+          () => db.select({ item: nppesQueueItems }).from(nppesQueueItems)
+            .leftJoin(importBatches, eq(nppesQueueItems.batch_id, importBatches.id))
+            .where(and(
+              eq(nppesQueueItems.status, "pending"),
+              or(
+                isNull(importBatches.id),
+                notInArray(importBatches.status, ["paused", "pausing", "cancelled", "cancelling"]),
+              ),
+            ))
             .orderBy(asc(nppesQueueItems.created_date)).limit(10),
           [] as any[], "prefetch tasks"
         );
+        prefetchedTasks = prefetchRows.map((r: any) => r.item);
       }
 
       if (prefetchedTasks.length === 0) {
@@ -515,7 +527,9 @@ async function processQueueWorker(dryRun: boolean) {
           const runnableItems = items.filter((i) => i.status === "pending" || i.status === "processing");
           const pausedItems = items.filter((i) => i.status === "paused");
           if (runnableItems.length === 0 && pausedItems.length > 0) {
-            await db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, b.id));
+            // A system auto-pause (all items paused): may be auto-woken later,
+            // unlike an explicit user pause (paused_by='user').
+            await db.update(importBatches).set({ status: "paused", paused_by: "system", updated_date: new Date() }).where(eq(importBatches.id, b.id));
             continue;
           }
           const remaining = [...runnableItems, ...pausedItems];
@@ -540,16 +554,34 @@ async function processQueueWorker(dryRun: boolean) {
               const activeCrawlerBatches = currentlyProcessing.filter((pb) => pb.file_name?.startsWith("crawler_"));
               const maxConcurrentBatches = config.concurrency || 4;
               if (activeCrawlerBatches.length < maxConcurrentBatches) {
+                // Only auto-wake system-paused batches; an explicit user pause
+                // (paused_by='user') stays paused until the user resumes it.
+                // Null paused_by = paused before the column existed: wakeable.
                 const pausedBatches = await db.select().from(importBatches)
-                  .where(and(eq(importBatches.import_type, "nppes_registry"), eq(importBatches.status, "paused")))
+                  .where(and(
+                    eq(importBatches.import_type, "nppes_registry"),
+                    eq(importBatches.status, "paused"),
+                    or(isNull(importBatches.paused_by), ne(importBatches.paused_by, "user")),
+                  ))
                   .orderBy(asc(importBatches.created_date)).limit(5);
                 const nextPaused = pausedBatches.find((pb) => pb.file_name?.startsWith("crawler_"));
                 if (nextPaused) {
-                  await db.update(importBatches).set({ status: "processing", updated_date: new Date() }).where(eq(importBatches.id, nextPaused.id));
-                  await db.update(nppesQueueItems)
-                    .set({ status: "pending", updated_date: new Date() })
-                    .where(and(eq(nppesQueueItems.batch_id, nextPaused.id), eq(nppesQueueItems.status, "paused")));
-                  wokePausedBatch = true;
+                  // Conditional flip: a user pause that landed between the
+                  // select and this update wins; the batch stays paused.
+                  const [woke] = await db.update(importBatches)
+                    .set({ status: "processing", paused_by: null, updated_date: new Date() })
+                    .where(and(
+                      eq(importBatches.id, nextPaused.id),
+                      eq(importBatches.status, "paused"),
+                      or(isNull(importBatches.paused_by), ne(importBatches.paused_by, "user")),
+                    ))
+                    .returning({ id: importBatches.id });
+                  if (woke) {
+                    await db.update(nppesQueueItems)
+                      .set({ status: "pending", updated_date: new Date() })
+                      .where(and(eq(nppesQueueItems.batch_id, nextPaused.id), eq(nppesQueueItems.status, "paused")));
+                    wokePausedBatch = true;
+                  }
                 }
               }
             } catch (e: any) { console.error("Failed to wake next batch:", e.message); }
@@ -591,6 +623,14 @@ async function processQueueWorker(dryRun: boolean) {
       }
       if (!taskBatch || taskBatch.status === "cancelled" || taskBatch.status === "failed") {
         await db.update(nppesQueueItems).set({ status: "failed", error_message: `Batch ${taskBatch?.status || "deleted"}`, updated_date: new Date() }).where(eq(nppesQueueItems.id, task.id));
+        continue;
+      }
+      if (taskBatch.status === "paused" || taskBatch.status === "pausing" || taskBatch.status === "cancelling") {
+        // The batch was paused after this item was prefetched/claimed: put
+        // the item back to pending (unclaimed) instead of processing it, so
+        // in-flight pauses actually stop new work.
+        await db.update(nppesQueueItems).set({ status: "pending", updated_date: new Date() })
+          .where(and(eq(nppesQueueItems.id, task.id), eq(nppesQueueItems.status, "processing")));
         continue;
       }
       const effectiveDryRun = dryRun || taskBatch.dry_run;
@@ -708,15 +748,26 @@ async function processQueueWorker(dryRun: boolean) {
           // Base44 raises a DataQualityAlert on a sustained error streak so
           // operators are notified. The port kept its own backoff policy
           // (threshold 5, sleep-and-continue) but dropped the alert; restore it.
+          // Dedup: one open alert per streak — without this the reset of
+          // consecutiveErrors below would insert a new alert every 5 errors.
           try {
-            await db.insert(dataQualityAlerts).values({
-              alert_type: "new_issue_detected",
-              severity: "high",
-              title: "Sustained Crawler Error Rate",
-              description: `Worker hit ${consecutiveErrors} consecutive errors on state ${task.state}. Last error: ${e.message}`,
-              status: "new",
-              action_required: true,
-            });
+            const [openAlert] = await db.select({ id: dataQualityAlerts.id }).from(dataQualityAlerts)
+              .where(and(
+                eq(dataQualityAlerts.alert_type, "new_issue_detected"),
+                eq(dataQualityAlerts.status, "new"),
+                eq(dataQualityAlerts.title, "Sustained Crawler Error Rate"),
+              ))
+              .limit(1);
+            if (!openAlert) {
+              await db.insert(dataQualityAlerts).values({
+                alert_type: "new_issue_detected",
+                severity: "high",
+                title: "Sustained Crawler Error Rate",
+                description: `Worker hit ${consecutiveErrors} consecutive errors on state ${task.state}. Last error: ${e.message}`,
+                status: "new",
+                action_required: true,
+              });
+            }
           } catch (alertErr: any) {
             console.warn(`[Crawler Worker] Failed to create sustained-error alert: ${alertErr.message}`);
           }
@@ -1052,7 +1103,8 @@ export async function handleNppesCrawler(payload: any, user: any) {
       .where(and(eq(importBatches.import_type, "nppes_registry"), eq(importBatches.status, "processing")));
     for (const b of processingBatchList) {
       if (b.file_name?.startsWith("crawler_")) {
-        await db.update(importBatches).set({ status: "paused", updated_date: new Date() }).where(eq(importBatches.id, b.id));
+        // Explicit user pause: the queue worker must not auto-wake these.
+        await db.update(importBatches).set({ status: "paused", paused_by: "user", updated_date: new Date() }).where(eq(importBatches.id, b.id));
       }
     }
     return { success: true, message: `Crawler paused. ${paused} items paused.` };
@@ -1078,10 +1130,14 @@ export async function handleNppesCrawler(payload: any, user: any) {
         return { success: false, message: `Batch ${batch_id} is not a resumable crawler batch (status: ${targetBatch?.status || 'not found'}).` };
       }
     } else {
+      // Never auto-resume an explicit user pause (paused_by='user'); only
+      // system-paused batches (or rows paused before the column existed) wake.
+      // A batch_id resume is always explicit and bypasses this filter.
       const resumableBatches = await db.select().from(importBatches)
         .where(and(
           eq(importBatches.import_type, "nppes_registry"),
-          inArray(importBatches.status, ["paused", "failed"])
+          inArray(importBatches.status, ["paused", "failed"]),
+          or(isNull(importBatches.paused_by), ne(importBatches.paused_by, "user")),
         ))
         .orderBy(asc(importBatches.created_date)).limit(200);
       const crawlerBatches = resumableBatches.filter((pb) => pb.file_name?.startsWith("crawler_"));
@@ -1093,7 +1149,7 @@ export async function handleNppesCrawler(payload: any, user: any) {
     }
 
     for (const pb of batchesToResume) {
-      await db.update(importBatches).set({ status: "processing", updated_date: new Date() }).where(eq(importBatches.id, pb.id));
+      await db.update(importBatches).set({ status: "processing", paused_by: null, updated_date: new Date() }).where(eq(importBatches.id, pb.id));
       await db.update(nppesQueueItems)
         .set({ status: "pending", updated_date: new Date() })
         .where(and(
