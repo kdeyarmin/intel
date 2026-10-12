@@ -1,0 +1,46 @@
+[
+ {
+  "npi": "1003000126",
+  "ind_pac_id": "7517003643",
+  "provider_last_name": "ENKESHAFI",
+  "provider_first_name": "ARDALAN",
+  "provider_middle_name": "",
+  "suff": "",
+  "facility_type": "Hospital",
+  "facility_affiliations_certification_number": "090012",
+  "facility_type_certification_number": ""
+ },
+ {
+  "npi": "1003000142",
+  "ind_pac_id": "9931380672",
+  "provider_last_name": "KHALIL",
+  "provider_first_name": "RASHID",
+  "provider_middle_name": "",
+  "suff": "",
+  "facility_type": "Hospital",
+  "facility_affiliations_certification_number": "360112",
+  "facility_type_certification_number": ""
+ },
+ {
+  "npi": "1003000423",
+  "ind_pac_id": "9133397268",
+  "provider_last_name": "VELOTTA",
+  "provider_first_name": "JENNIFER",
+  "provider_middle_name": "A",
+  "suff": "",
+  "facility_type": "Hospital",
+  "facility_affiliations_certification_number": "360098",
+  "facility_type_certification_number": ""
+ },
+ {
+  "npi": "1003000480",
+  "ind_pac_id": "0446348254",
+  "provider_last_name": "ROTHCHILD",
+  "provider_first_name": "KEVIN",
+  "provider_middle_name": "B",
+  "suff": "",
+  "facility_type": "Hospital",
+  "facility_affiliations_certification_number": "060024",
+  "facility_type_certification_number": ""
+ }
+]

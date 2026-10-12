@@ -75,7 +75,26 @@ export default function DataFreshnessPanel({ onlyLoaded = false }) {
             </table>
           </div>
         )}
+        <ReferenceData geography={data?.geography} taxonomy={data?.taxonomy} />
       </CardContent>
     </Card>
+  );
+}
+
+/** The bundled reference data every page relies on: Census geography and the NUCC taxonomy. */
+function ReferenceData({ geography, taxonomy }) {
+  if (!geography && !taxonomy) return null;
+  const items = [
+    geography?.loaded
+      ? `U.S. Census ${geography.vintage} geography (${fmtCount(geography.counts?.counties)} counties, ${fmtCount(geography.counts?.zctas)} ZIP areas)`
+      : 'Census geography not loaded',
+    taxonomy?.loaded
+      ? `NUCC taxonomy ${taxonomy.version} (${fmtCount(taxonomy.counts?.taxonomies)} codes)`
+      : 'NUCC taxonomy not loaded',
+  ];
+  return (
+    <p className="text-xs text-slate-400 mt-3">
+      Reference data: {items.join('; ')}. Bundled with the app and loaded at start-up.
+    </p>
   );
 }

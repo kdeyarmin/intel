@@ -24,8 +24,10 @@
     "db:status": "tsx scripts/db/migration-status.ts",
     "db:backfill-facilities-raw": "tsx scripts/db/backfill-facilities-raw.ts",
     "db:backfill-facility-years": "tsx scripts/db/backfill-facility-years.ts",
+    "db:retire-typed-facility-rows": "tsx scripts/db/retire-typed-facility-rows.ts",
     "db:seed-demo": "tsx scripts/dev/seed-demo.ts",
-    "geo:load": "tsx scripts/census/load-census-geo.ts"
+    "geo:load": "tsx scripts/census/load-census-geo.ts",
+    "nucc:load": "tsx scripts/nucc/load-nucc-taxonomy.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
@@ -115,6 +117,7 @@
     "three": "^0.184.0",
     "tsx": "^4.22.4",
     "vaul": "^1.1.2",
+    "yauzl": "^3.4.0",
     "zod": "^4.4.3"
   },
   "overrides": {
@@ -141,6 +144,7 @@
     "@types/node": "^22.19.21",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@types/yauzl": "^3.4.0",
     "@vitejs/plugin-react": "^6.0.2",
     "axe-core": "^4.10.3",
     "baseline-browser-mapping": "^2.10.38",

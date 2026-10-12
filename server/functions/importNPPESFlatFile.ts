@@ -3,6 +3,7 @@ import { importBatches, providers, nppesCrawlerConfigs } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
 import { parseCSVLine } from "../lib/csv";
+import { isValidNpi } from "../lib/npiValidation";
 
 const MAX_EXEC_MS = 50000;
 const BULK_INSERT_SIZE = 1000;
@@ -183,7 +184,7 @@ function normalizeCredential(cred: string): string {
   return cred.replace(/\./g, "").trim().toUpperCase();
 }
 
-function isCredentialExcluded(credential: string, excludedSet: Set<string>): boolean {
+export function isCredentialExcluded(credential: string, excludedSet: Set<string>): boolean {
   if (excludedSet.size === 0 || !credential) return false;
   const normalized = normalizeCredential(credential);
   return excludedSet.has(normalized);
@@ -191,7 +192,7 @@ function isCredentialExcluded(credential: string, excludedSet: Set<string>): boo
 
 let _excludedCredentialCache: { set: Set<string>; fetchedAt: number } | null = null;
 
-async function getExcludedCredentials(): Promise<Set<string>> {
+export async function getExcludedCredentials(): Promise<Set<string>> {
   if (_excludedCredentialCache && Date.now() - _excludedCredentialCache.fetchedAt < 60000) {
     return _excludedCredentialCache.set;
   }
@@ -217,8 +218,12 @@ async function processBulkRows(rows: any[], dryRun: boolean): Promise<{ excluded
   const providerRows: any[] = [];
   let excludedCount = 0;
   for (const row of rows) {
-    const npi = row["NPI"] || row["npi"];
-    if (!npi) continue;
+    const npi = String(row["NPI"] || row["npi"] || "").trim();
+    // Luhn-checked: a mistyped or truncated NPI is excluded, not stored.
+    if (!isValidNpi(npi)) {
+      if (npi) excludedCount++;
+      continue;
+    }
 
     const isIndividual = row["Entity Type Code"] === "1";
     if (isIndividual && excludedSet.size > 0) {

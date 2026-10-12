@@ -6,31 +6,29 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, Save, AlertCircle, Loader2 } from 'lucide-react';
+import { Calculator, Save, AlertCircle, Loader2, Clock } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import PageHeader from '../components/shared/PageHeader';
 import { useConfirm } from '@/components/shared/ConfirmDialog';
 import { toast } from 'sonner';
 import PageTabs from '@/components/layout/PageTabs';
+import { CONDITION_FIELDS, conditionList, parseList } from '@/lib/scoringRules';
+import { SPECIALTY_GROUPS } from '@/lib/specialtyGroups';
 
-// rule_type identifies which scoring signal a rule weights (see the score
-// calculation below). Only weights are editable: each signal's cutoffs are
-// fixed in that calculation, so an editable threshold would change nothing.
-const DEFAULT_RULES = [
-  { name: 'Specialty Match', rule_type: 'specialty_match', weight: 20, description: 'Family Medicine, Internal Med, NP, Geriatrics, Psychiatry' },
-  { name: 'Medicare Participation', rule_type: 'medicare_participation', weight: 15, description: 'Active Medicare ordering eligibility' },
-  { name: 'Patient Volume', rule_type: 'patient_volume', weight: 20, description: 'Estimated Medicare beneficiary count' },
-  { name: 'Service Intensity', rule_type: 'service_intensity', weight: 15, description: 'Service-per-patient intensity indicators' },
-  { name: 'Geographic Priority', rule_type: 'geographic_priority', weight: 10, description: 'Pennsylvania county location' },
-  { name: 'Practice Type', rule_type: 'practice_type', weight: 10, description: 'Solo or small group practice preference' },
-  { name: 'Behavioral Health Potential', rule_type: 'behavioral_health', weight: 10, description: 'Mental health referral likelihood' },
-];
+// The score is computed on the server (server/lib/leadScoring.ts) for every
+// individual provider located in the configured states. This page edits each
+// rule's weight and, for two rules, its Conditions, and starts the job.
+// Each signal's cutoffs are fixed in the server calculation, so an editable
+// threshold would change nothing.
+
+const fmtWhen = (v) => (v ? new Date(v).toLocaleString() : '—');
+const fmtCount = (v) => (v == null ? '—' : Number(v).toLocaleString());
+const ruleLabel = (rule) => (rule.name || rule.rule_type || '').replace(/_/g, ' ');
 
 export default function ScoringRules() {
   const confirm = useConfirm();
   const [user, setUser] = useState(null);
   const [editingRule, setEditingRule] = useState(null);
-  const [calculating, setCalculating] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -41,172 +39,70 @@ export default function ScoringRules() {
     loadUser();
   }, []);
 
-  const { data: rules = [] } = useQuery({
-    queryKey: ['scoringRules'],
-    queryFn: async () => {
-      const existing = await base44.entities.ScoringRule.list('-created_date', 200);
-
-      if (existing.length === 0) {
-        await Promise.all(DEFAULT_RULES.map(rule => base44.entities.ScoringRule.create({ ...rule, enabled: true })));
-        return await base44.entities.ScoringRule.list('-created_date', 200);
-      }
-
-      // Rules seeded before the field fix were saved without name/rule_type
-      // (the UI wrote rule_name/category, which aren't columns), so scoring
-      // could never match a rule and every score came out 0. Repair them by
-      // their description, which did persist.
-      const broken = existing.filter(r => !r.rule_type);
-      if (broken.length > 0) {
-        await Promise.all(broken.map(r => {
-          const match = DEFAULT_RULES.find(d => d.description === r.description);
-          return match
-            ? base44.entities.ScoringRule.update(r.id, { name: match.name, rule_type: match.rule_type })
-            : null;
-        }));
-        return await base44.entities.ScoringRule.list('-created_date', 200);
-      }
-
-      return existing;
-    },
+  // Seeds the default rules on first use and reports the last scoring run.
+  const { data: status, isLoading } = useQuery({
+    queryKey: ['leadScoringStatus'],
+    queryFn: async () => (await base44.functions.invoke('getLeadScoringStatus', {})).data,
+    enabled: user?.role === 'admin',
+    refetchInterval: (q) => (q.state.data?.job?.running ? 4000 : false),
   });
+  const rules = status?.rules || [];
+  const job = status?.job || {};
+  const territory = status?.territory || { states: [], counties: [] };
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.ScoringRule.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['scoringRules'] });
+      queryClient.invalidateQueries({ queryKey: ['leadScoringStatus'] });
       setEditingRule(null);
     },
+    onError: (error) => toast.error('Could not save the rule: ' + error.message),
   });
 
-  const handleSave = (rule) => {
-    updateMutation.mutate({ id: rule.id, data: { weight: editingRule.weight } });
+  const startEdit = (rule) => {
+    const fields = CONDITION_FIELDS[rule.rule_type] || [];
+    const conditions = {};
+    for (const f of fields) conditions[f.key] = conditionList(rule, f.key).join(', ');
+    setEditingRule({ id: rule.id, rule_type: rule.rule_type, weight: rule.weight, conditions });
   };
 
+  const handleSave = (rule) => {
+    const data = { weight: editingRule.weight };
+    const fields = CONDITION_FIELDS[rule.rule_type] || [];
+    if (fields.length) {
+      const next = { ...(rule.conditions || {}) };
+      for (const f of fields) next[f.key] = parseList(editingRule.conditions[f.key]);
+      if (JSON.stringify(next) !== JSON.stringify(rule.conditions || {})) data.conditions = next;
+    }
+    if (!Number.isFinite(data.weight) || data.weight < 0 || data.weight > 100) {
+      toast.error('The weight must be a number from 0 to 100.');
+      return;
+    }
+    updateMutation.mutate({ id: rule.id, data });
+  };
+
+  const recalcMutation = useMutation({
+    mutationFn: async () => (await base44.functions.invoke('recalculateLeadScores', {})).data,
+    onSuccess: (r) => {
+      if (r?.started) toast.success(`Scoring started for ${r.territory?.states?.join(', ') || 'the configured states'}. This runs in the background.`);
+      else toast.info('Scoring is already running.');
+      queryClient.invalidateQueries({ queryKey: ['leadScoringStatus'] });
+    },
+    onError: (error) => toast.error('Scoring failed to start: ' + error.message),
+  });
+
   const handleRecalculate = async () => {
+    if (territory.states.length === 0) {
+      toast.error("Add at least one state to the Geographic Priority rule's conditions first.");
+      return;
+    }
     const ok = await confirm({
-      title: 'Recalculate referral propensity scores?',
-      description: 'Scores are recalculated for the 100 most recently added providers. This may take a minute.',
+      title: 'Recalculate scores?',
+      description: `Every individual provider with a practice location in ${territory.states.join(', ')} is re-scored in the background. Existing scores are replaced as each batch finishes.`,
       confirmLabel: 'Recalculate',
     });
     if (!ok) return;
-    
-    setCalculating(true);
-    try {
-      const providers = await base44.entities.Provider.list('-created_date', 5000);
-      const rawUtil = await base44.entities.ProviderServiceUtilization.list('-data_year', 5000);
-      const utilizations = rawUtil.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0 }));
-      const locations = await base44.entities.ProviderLocation.list('-created_date', 5000);
-      const taxonomies = await base44.entities.ProviderTaxonomy.list('-created_date', 5000);
-      const currentRules = rules.filter(r => r.enabled !== false);
-
-      // Validate total weight
-      const totalWeight = currentRules.reduce((sum, r) => sum + r.weight, 0);
-      if (Math.abs(totalWeight - 100) > 1) {
-        toast.warning(`Rule weights add up to ${totalWeight}%. Scores are most meaningful when they total 100%.`);
-      }
-
-      const batch = providers.slice(0, 100);
-      for (const provider of batch) {
-        const util = utilizations.find(u => u.npi === provider.npi);
-        const providerLocs = locations.filter(l => l.npi === provider.npi);
-        const providerTax = taxonomies.filter(t => t.npi === provider.npi);
-        const primaryTax = providerTax.find(t => t.is_primary) || providerTax[0];
-
-        const scores = {};
-        const breakdown = {};
-        const reasons = [];
-
-        // 1. Specialty Match
-        const targetSpecialties = ['family medicine', 'internal medicine', 'nurse practitioner', 'geriatric', 'psychiatry'];
-        const taxonomyDesc = (primaryTax?.taxonomy_description || '').toLowerCase();
-        const specialtyMatch = targetSpecialties.some(s => taxonomyDesc.includes(s));
-        scores.specialty_match = specialtyMatch ? 100 : 40;
-        if (specialtyMatch) reasons.push(`Specialty: ${primaryTax?.taxonomy_description}`);
-
-        // 2. Medicare Participation
-        scores.medicare_participation = util ? 100 : 0;
-        if (util) reasons.push('Active Medicare participation');
-
-        // 3. Patient Volume
-        const volume = util?.total_medicare_beneficiaries || 0;
-        scores.patient_volume = volume >= 500 ? 100 : volume >= 200 ? 75 : volume >= 50 ? 50 : volume > 0 ? 25 : 0;
-        if (volume > 0) reasons.push(`${volume} Medicare beneficiaries`);
-
-        // 4. Service Intensity
-        const intensity = volume > 0 ? (util?.total_services || 0) / volume : 0;
-        scores.service_intensity = intensity >= 12 ? 100 : intensity >= 8 ? 70 : intensity >= 4 ? 40 : 0;
-        if (intensity >= 8) reasons.push('High service intensity');
-
-        // 5. Geographic Priority
-        const primaryLoc = providerLocs.find(l => l.is_primary) || providerLocs[0];
-        const isPa = primaryLoc?.state === 'PA';
-        scores.geographic_priority = isPa ? 100 : 20;
-        if (isPa) reasons.push(`PA Location: ${primaryLoc?.city}`);
-
-        // 6. Practice Type
-        const locCount = providerLocs.length;
-        scores.practice_type = locCount === 1 ? 100 : locCount <= 3 ? 80 : locCount <= 5 ? 60 : 30;
-        if (locCount <= 3) reasons.push(`${locCount === 1 ? 'Solo' : 'Small group'} practice`);
-
-        // 7. Behavioral Health
-        const behavioralTerms = ['psychiatry', 'psychology', 'behavioral', 'mental health'];
-        const isBehavioral = behavioralTerms.some(t => taxonomyDesc.includes(t));
-        scores.behavioral_health = isBehavioral ? 100 : 50;
-        if (isBehavioral) reasons.push('Behavioral health specialty');
-
-        // Calculate final score
-        let finalScore = 0;
-        Object.keys(scores).forEach(category => {
-          const rule = currentRules.find(r => r.rule_type === category);
-          if (!rule) return;
-
-          const weight = rule.weight / 100;
-          const contribution = (scores[category] * weight);
-          finalScore += contribution;
-
-          breakdown[category] = {
-            value: scores[category],
-            weight: rule.weight,
-            contribution: Math.round(contribution)
-          };
-        });
-
-        finalScore = Math.round(finalScore);
-
-        // Save score
-        const existingScore = await base44.entities.LeadScore.filter({ npi: provider.npi });
-        const scoreData = {
-          npi: provider.npi,
-          score: finalScore,
-          last_calculated: new Date().toISOString(),
-          // Stored in LeadScore.details (jsonb) by the entity API.
-          score_date: new Date().toISOString(),
-          score_breakdown: breakdown,
-          reasons,
-        };
-
-        if (existingScore.length > 0) {
-          await base44.entities.LeadScore.update(existingScore[0].id, scoreData);
-        } else {
-          await base44.entities.LeadScore.create(scoreData);
-        }
-      }
-
-      // Log audit event (best-effort; never throws).
-      await base44.audit.record('scoring_run', {
-        action: 'Recalculate Scores',
-        entity: 'LeadScore',
-        row_count: batch.length,
-        message: 'Scores recalculated (latest 100 providers)',
-      });
-
-      toast.success(`Scores updated for ${batch.length} providers.`);
-      queryClient.invalidateQueries();
-    } catch (error) {
-      toast.error('Scoring failed: ' + error.message);
-    } finally {
-      setCalculating(false);
-    }
+    recalcMutation.mutate();
   };
 
   if (!user) {
@@ -230,6 +126,9 @@ export default function ScoringRules() {
     );
   }
 
+  const totalWeight = rules.filter(r => r.enabled !== false).reduce((sum, r) => sum + (Number(r.weight) || 0), 0);
+  const running = !!job.running || recalcMutation.isPending;
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <PageTabs current="ScoringRules" />
@@ -243,32 +142,63 @@ export default function ScoringRules() {
         <div />
         <Button
           onClick={handleRecalculate}
-          disabled={calculating}
-          className="bg-teal-600 hover:bg-teal-700"
+          disabled={running || isLoading}
+          className="bg-teal-700 hover:bg-teal-800 text-white"
         >
-          <Calculator className="w-4 h-4 mr-2" />
-          {calculating ? 'Calculating...' : 'Recalculate Scores (latest 100)'}
+          <Calculator className="w-4 h-4 mr-2" aria-hidden="true" />
+          {running ? 'Scoring…' : 'Recalculate scores'}
         </Button>
       </div>
 
-      <Card className="mb-6 bg-cyan-900/10 border-cyan-500/20">
-        <CardContent className="pt-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="font-semibold text-cyan-300 mb-1">Scoring Methodology</h2>
-              <p className="text-sm text-slate-300">
-                Each provider receives a score based on weighted factors. Adjust weights to match your targeting strategy.
-              </p>
+      <div className="grid gap-4 md:grid-cols-2 mb-6">
+        <Card className="bg-cyan-900/10 border-cyan-500/20">
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="font-semibold text-cyan-300 mb-1">Scoring Methodology</h2>
+                <p className="text-sm text-slate-300">
+                  Each individual provider located in the scored states gets a weighted score from its NUCC specialty group,
+                  the CMS Order &amp; Referring list, Medicare volume and intensity (Physician &amp; Other Practitioners by Provider),
+                  location and practice size. Adjust the weights to match your targeting strategy.
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-cyan-300">{totalWeight}%</p>
+                <p className="text-xs text-cyan-400/70">Total Weight</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-cyan-300">
-                {rules.reduce((sum, r) => sum + (r.weight || 0), 0)}%
-              </p>
-              <p className="text-xs text-cyan-400/70">Total Weight</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            {Math.abs(totalWeight - 100) > 1 && (
+              <p className="text-xs text-amber-400 mt-2">Weights total {totalWeight}%; scores are most meaningful when they total 100%.</p>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="bg-[#141d30] border-slate-700/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-slate-200 text-base flex items-center gap-2">
+              <Clock className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+              Last scoring run
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-slate-300 space-y-1">
+            {isLoading ? (
+              <p className="text-slate-400">Loading…</p>
+            ) : (
+              <>
+                <p>
+                  Status: <Badge variant="outline" className={job.running ? 'bg-sky-900/30 text-sky-400 border-sky-500/30' : job.status === 'failed' ? 'bg-rose-900/30 text-rose-400 border-rose-500/30' : job.status === 'success' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30' : 'bg-slate-800 text-slate-400 border-slate-600'}>
+                    {job.running ? 'Running' : job.status === 'success' ? 'Completed' : job.status === 'failed' ? 'Failed' : 'Never run'}
+                  </Badge>
+                  {job.running && job.progress ? <span className="text-xs text-slate-400 ml-2">{job.progress.phase === 'scoring' ? `${fmtCount(job.progress.done)} of ${fmtCount(job.progress.candidates)} providers` : `reading locations (${fmtCount(job.progress.chunk)} of ${fmtCount(job.progress.chunks)} chunks)`}</span> : null}
+                </p>
+                <p>Scored states: <span className="text-slate-200">{territory.states.length ? territory.states.join(', ') : 'none configured'}</span>{territory.counties.length ? ` · ${territory.counties.length} priority ${territory.counties.length === 1 ? 'county' : 'counties'}` : ''}</p>
+                <p>Last completed: <span className="text-slate-200">{fmtWhen(job.last_success_at)}</span>{job.scored != null ? ` · ${fmtCount(job.scored)} of ${fmtCount(job.candidates)} candidates scored` : ''}</p>
+                <p>Providers with a score: <span className="text-slate-200">{fmtCount(job.scored_total)}</span></p>
+                {job.error && !job.running ? <p className="text-rose-400 text-xs">{job.error}</p> : null}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="bg-[#141d30] border-slate-700/50">
         <CardHeader>
@@ -282,28 +212,32 @@ export default function ScoringRules() {
                 <TableHead>Rule Name</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Weight</TableHead>
+                <TableHead>Conditions</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rules.map(rule => (
+              {rules.map(rule => {
+                const editing = editingRule?.id === rule.id;
+                const fields = CONDITION_FIELDS[rule.rule_type] || [];
+                return (
                 <TableRow key={rule.id}>
                   <TableCell className="font-medium capitalize text-slate-200">
-                    {(rule.name || rule.rule_type)?.replace(/_/g, ' ')}
+                    {ruleLabel(rule)}
                   </TableCell>
                   <TableCell className="text-sm text-slate-400">
                     {rule.description || '-'}
                   </TableCell>
                   <TableCell>
-                   {editingRule?.id === rule.id ? (
+                   {editing ? (
                      <div className="flex items-center gap-1">
                        <Input
                          type="number"
                          min="0"
                          max="100"
                          value={editingRule.weight}
-                         aria-label={`Weight for ${(rule.name || rule.rule_type)?.replace(/_/g, ' ')} (%)`}
+                         aria-label={`Weight for ${ruleLabel(rule)} (%)`}
                          onChange={(e) => setEditingRule({
                            ...editingRule,
                            weight: parseFloat(e.target.value)
@@ -316,20 +250,44 @@ export default function ScoringRules() {
                      <Badge variant="outline">{rule.weight}%</Badge>
                    )}
                   </TableCell>
+                  <TableCell className="text-sm text-slate-400">
+                    {fields.length === 0 ? '—' : editing ? (
+                      <div className="space-y-2 min-w-[16rem]">
+                        {fields.map(f => (
+                          <div key={f.key}>
+                            <Input
+                              type="text"
+                              value={editingRule.conditions[f.key]}
+                              aria-label={`${f.label} for ${ruleLabel(rule)}`}
+                              placeholder={f.hint}
+                              onChange={(e) => setEditingRule({ ...editingRule, conditions: { ...editingRule.conditions, [f.key]: e.target.value } })}
+                            />
+                            <p className="text-[11px] text-slate-400 mt-1">{f.hint}{f.key === 'groups' ? ` (${SPECIALTY_GROUPS.map(g => g.key).join(', ')})` : ''}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      fields.map(f => (
+                        <div key={f.key}>
+                          <span className="text-slate-300">{f.label}:</span> {conditionList(rule, f.key).length ? conditionList(rule, f.key).join(', ') : 'none'}
+                        </div>
+                      ))
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={rule.enabled ? 'default' : 'secondary'}>
                       {rule.enabled ? 'Active' : 'Disabled'}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {editingRule?.id === rule.id ? (
+                    {editing ? (
                       <div className="flex gap-2">
                         <Button
                           size="sm"
                           onClick={() => handleSave(rule)}
                           disabled={updateMutation.isPending}
                         >
-                          <Save className="w-4 h-4 mr-1" />
+                          <Save className="w-4 h-4 mr-1" aria-hidden="true" />
                           Save
                         </Button>
                         <Button
@@ -344,14 +302,15 @@ export default function ScoringRules() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setEditingRule({ id: rule.id, weight: rule.weight })}
+                        onClick={() => startEdit(rule)}
                       >
                         Edit
                       </Button>
                     )}
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
             </Table>
           </div>

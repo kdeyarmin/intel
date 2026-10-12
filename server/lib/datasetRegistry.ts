@@ -99,8 +99,13 @@ export async function refreshCatalog(opts: { urls: Record<string, string>; now?:
   const fetcher = opts.fetch ?? fetchJson;
   const result: CatalogRefreshResult = { checked: 0, unresolved: [], updates_available: [], woken: 0, errors: [] };
 
+  const types = Object.keys(opts.urls);
+
   if (!opts.force) {
-    const { rows } = await pool.query("SELECT max(catalog_checked_at) AS last FROM dataset_versions");
+    // Only the rows this check owns: other sources (the NPPES files) stamp catalog_checked_at
+    // too when they look at their own pages, and would otherwise keep the CMS catalogs
+    // from ever being checked on a host that imports NPPES files daily.
+    const { rows } = await pool.query("SELECT max(catalog_checked_at) AS last FROM dataset_versions WHERE import_type = ANY($1)", [types]);
     const last = rows[0]?.last ? new Date(rows[0].last).getTime() : 0;
     if (last && now.getTime() - last < CATALOG_CHECK_INTERVAL_MS) {
       return { ...result, skipped: `checked ${Math.round((now.getTime() - last) / 60000)} minutes ago` };
@@ -126,7 +131,6 @@ export async function refreshCatalog(opts: { urls: Record<string, string>; now?:
   lastFetchFailure = null;
   const index = indexCatalog([...dcat, ...providerItems]);
 
-  const types = Object.keys(opts.urls);
   const { rows: existingRows } = await pool.query("SELECT * FROM dataset_versions WHERE import_type = ANY($1)", [types]);
   const existing = new Map<string, any>(existingRows.map((r: any) => [r.import_type, r]));
   const { rows: activeRows } = await pool.query(
@@ -180,6 +184,19 @@ export async function refreshCatalog(opts: { urls: Record<string, string>; now?:
     result.woken = rowCount || 0;
   }
   return result;
+}
+
+/** Record a source file (not from the CMS catalogs) as the version an import type loads. */
+export async function recordSourceFile(importType: string, file: { source: string; title: string; periodStart?: string | null; periodEnd: string | null; modified?: Date | string | null }, now = new Date()): Promise<void> {
+  await pool.query(
+    `INSERT INTO dataset_versions (import_type, source, source_title, catalog_modified, temporal_start, temporal_end, catalog_checked_at, data_year, status, updated_date)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'never_imported', $7)
+     ON CONFLICT (import_type) DO UPDATE SET source = EXCLUDED.source, source_title = EXCLUDED.source_title,
+       catalog_modified = EXCLUDED.catalog_modified, temporal_start = EXCLUDED.temporal_start, temporal_end = EXCLUDED.temporal_end,
+       catalog_checked_at = EXCLUDED.catalog_checked_at, updated_date = EXCLUDED.updated_date`,
+    [importType, file.source, file.title, file.modified ? new Date(file.modified) : file.periodEnd ? new Date(file.periodEnd) : null,
+      file.periodStart ?? null, file.periodEnd, now, file.periodEnd ? file.periodEnd.slice(0, 4) : null],
+  );
 }
 
 export interface ImportVersion {

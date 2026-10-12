@@ -4,12 +4,21 @@ import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
 import { CMS_NATURAL_KEYS, partition, partitionRefresh, distinctValues } from "./cmsUpsert";
 import { settleBatchCompletion } from "../lib/importCompletion";
+import { mergeRetryParams, endedWithoutFinishing } from "../lib/importProgress";
 import { STALLED_AFTER_MS } from "../lib/scheduling";
 import { markImportFinished, markImportStarted, resolveImportVersion } from "../lib/datasetRegistry";
 import { sourceForUrl } from "../lib/cmsCatalog";
 import { csvSourceRecords, isLocalUpload, sourceKindFor } from "../lib/importSources";
 import { pageRecords } from "../lib/csv";
+import { TYPED_ROUTES, mapTypedRows } from "./cmsTypedTables";
+import { NPPES_FILE_TYPES } from "./importNPPESFile";
+import { resolveNppesFile, classifyNppesLink } from "../lib/nppesFiles";
+import { recordSourceFile } from "../lib/datasetRegistry";
+import { getTableColumns } from "drizzle-orm";
 import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
+
+// Shared with the NPPES file importer; re-exported for the callers that import them from here.
+export { mergeRetryParams, endedWithoutFinishing };
 
 const LOOKUP_PRIMARY_BATCH_SIZE = 100;
 
@@ -177,6 +186,8 @@ export function isAllowedUrl(url: string): boolean {
 }
 
 const CMS_DATASET_CATALOG = [
+  { id: "nppes_weekly_incremental", title: "NPPES Weekly Update (V.2 file)", description: "CMS's weekly NPPES dissemination file: new NPIs, changed records and deactivations for the week. Providers are updated in place, and each NPI's addresses and taxonomies are replaced with the file's. The current file is found on CMS's NPI files page automatically.", category: "Physicians & Clinicians", records: "~100K/week", priority: "high" },
+  { id: "nppes_monthly_full", title: "NPPES Monthly Full File (V.2)", description: "The complete NPPES registry (about 1.1 GB zipped, 8M+ records). Replaces every provider, address and taxonomy with the current registry. Needs disk for the download; run on demand.", category: "Physicians & Clinicians", records: "~8.5M", priority: "medium" },
   { id: "cms_order_referring", title: "Order & Referring Providers", description: "Complete list of providers eligible to order and refer Medicare services including Part B, DME, HHA, PMD, and Hospice designations.", category: "Physicians & Clinicians", records: "~2M", priority: "high" },
   { id: "physician_shared_patient_patterns", title: "Physician Shared Patient Patterns", description: "Real provider-to-provider relationships: directed pairs of providers who treated the same Medicare beneficiaries within a 30/60/90/180-day window, with shared-patient and encounter counts. Populates referred_to_npi + total_referrals so the Network/County/Dashboard referral features show real relationships. Not on the data.cms.gov data-api — import by supplying a CMS FOIA file_url (the rows must reach the importer as named-field JSON; a headerless FOIA CSV must have a header row / be converted first).", category: "Physicians & Clinicians", records: "~35M", priority: "high" },
   { id: "provider_service_utilization", title: "Physician & Other Practitioners - by Provider and Service", description: "Utilization and payment data for Medicare Part B services by individual provider and HCPCS code.", category: "Physicians & Clinicians", records: "~10M", priority: "high" },
@@ -303,8 +314,8 @@ export function getCMSDatasetCatalog() {
     datasets: CMS_DATASET_CATALOG.map(ds => ({
       ...ds,
       url: IMPORT_TYPE_URLS[ds.id] || null,
-      // Upload-capable datasets have no CMS endpoint; they are available as files.
-      available: !!(IMPORT_TYPE_URLS[ds.id] || UPLOAD_CAPABLE_TYPES.has(ds.id)),
+      // Upload-capable datasets and the NPPES files have no CMS data-api endpoint; they are available as files.
+      available: !!(IMPORT_TYPE_URLS[ds.id] || NPPES_FILE_TYPES[ds.id] || UPLOAD_CAPABLE_TYPES.has(ds.id)),
       unavailable: !!(ds as any).unavailable,
     })),
     total: CMS_DATASET_CATALOG.length,
@@ -351,28 +362,23 @@ async function insertBatchAtomically(
   });
 }
 
-/**
- * retry_params is shared with other writers: the auto-retry and auto-resume
- * workers keep their attempt counters in it. Progress writes therefore merge
- * into it (a JSONB `||`) instead of replacing it, or every progress write would
- * wipe MAX_AUTO_RETRY_ATTEMPTS' count and the retry cap would never apply.
- * Keys whose value is undefined are dropped by JSON.stringify and so left as is.
- */
-export function mergeRetryParams(patch: Record<string, unknown>) {
-  return sql`COALESCE(${importBatches.retry_params}, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb`;
+/** After a complete, unfiltered import of a snapshot dataset, the rows the release no longer lists come out (in the background). */
+function retireSnapshotRows(importType: string, batchId: number, opts: { dry_run?: boolean; npi_filter?: unknown; state_filter?: unknown; errors?: number }) {
+  import("../lib/snapshotRetire")
+    .then(({ retiresSnapshot, retireStaleSnapshotRows }) => (retiresSnapshot(importType, opts) ? retireStaleSnapshotRows(importType, batchId) : null))
+    .catch((err) => console.warn(`[triggerImport] retiring stale ${importType} rows:`, err?.message));
 }
 
 /**
- * An import that stops before it finishes (the source kept failing, or it was
- * cancelled) tells the dataset registry and the schedule that started it, so
- * neither waits for a sweep: a dataset left "importing" would hide newer
- * releases, and a schedule left "running" would sit out its whole lease. A
- * paused batch is neither: it is resumed, and keeps its place.
+ * The release date a snapshot import's rows are stamped with (`as_of`): the resumed batch's
+ * own, else the last day the newest release covers, else the day it was published. The Care
+ * Compare catalog gives no coverage dates, only the publication date, so without the last
+ * fallback the ZIP service areas and affiliations would carry no vintage at all.
  */
-export async function endedWithoutFinishing(importType: string, batchId: number, status: string, note?: string): Promise<void> {
-  if (status === "paused") return;
-  await markImportFinished(importType, { batchId, ok: false, note: (note || (status === "cancelled" ? "cancelled" : "stopped")).slice(0, 200) }).catch(() => {});
-  await settleBatchCompletion(batchId);
+export function importAsOf(o: { inherited?: string | null; temporalEnd?: string | null; stated?: string | null; catalogModified?: Date | string | null }): string | null {
+  const modified = o.catalogModified instanceof Date ? (Number.isNaN(o.catalogModified.getTime()) ? null : o.catalogModified.toISOString().slice(0, 10))
+    : typeof o.catalogModified === "string" && /^\d{4}-\d{2}-\d{2}/.test(o.catalogModified) ? o.catalogModified.slice(0, 10) : null;
+  return o.inherited ?? o.temporalEnd ?? o.stated ?? modified ?? null;
 }
 
 export async function handleTriggerImport(payload: any, user: any) {
@@ -458,6 +464,40 @@ export async function handleTriggerImport(payload: any, user: any) {
     };
   }
 
+  if (NPPES_FILE_TYPES[import_type]) {
+    // NPPES V.2 dissemination zips (server/functions/importNPPESFile.ts). The
+    // current file is read off CMS's NPI files page unless a link is given.
+    const kind = NPPES_FILE_TYPES[import_type];
+    const resolved = file_url ? classifyNppesLink(file_url) : await resolveNppesFile(kind);
+    const url = file_url || resolved?.url;
+    if (!url) throw { status: 502, message: `Couldn't find the current NPPES ${kind} file on CMS's NPI files page; pass file_url.` };
+    if (!isAllowedUrl(url)) throw { status: 400, message: "NPPES files must come from download.cms.gov" };
+    const fileName = url.split("/").pop() || import_type;
+    let activeBatchId: number;
+    if (batch_id) {
+      await db.update(importBatches).set({
+        status: "processing", cancel_reason: null, cancelled_at: null, error_samples: null,
+        retry_params: mergeRetryParams({ file_url: url, import_type, resume_offset: resume_offset || 0, retry_of, retry_count: (retry_count || 0) + 1, retry_tags }),
+        updated_date: new Date(),
+      }).where(eq(importBatches.id, batch_id));
+      activeBatchId = batch_id;
+    } else {
+      const { batch, conflict } = await insertBatchAtomically(import_type, {
+        import_type, file_name: fileName, status: "processing", dry_run: !!dry_run, total_rows: 0, imported_rows: 0,
+        retry_params: { file_url: url, import_type, resume_offset: 0 },
+      });
+      if (conflict) throw conflict;
+      activeBatchId = batch.id;
+    }
+    if (resolved) await recordSourceFile(import_type, { source: "nppes_file", title: fileName, periodStart: resolved.periodStart, periodEnd: resolved.periodEnd }).catch(() => {});
+    await markImportStarted(import_type, activeBatchId, "nppes_file").catch(() => {});
+    setTimeout(() => {
+      import("./importNPPESFile").then(({ handleImportNPPESFile }) => handleImportNPPESFile({ batch_id: activeBatchId, file_url: url, import_type, resume_offset: resume_offset || 0, dry_run: !!dry_run }))
+        .catch((e) => console.error(`[triggerImport] NPPES file import error:`, e?.message));
+    }, 100);
+    return { success: true, message: `NPPES ${kind} file import started in the background (${fileName}). Check Data Center for progress.`, import_type, batch_id: activeBatchId, file_url: url, resumed: !!batch_id };
+  }
+
   const validTypes = Object.keys(IMPORT_TYPE_URLS);
   if (!validTypes.includes(import_type) && !file_url) {
     throw {
@@ -499,7 +539,7 @@ export async function handleTriggerImport(payload: any, user: any) {
     if (!effHeaders && Array.isArray(prevParams.headers) && prevParams.headers.length) effHeaders = prevParams.headers.map(String);
     inheritedAsOf = typeof prevParams.as_of === "string" ? prevParams.as_of : null;
   }
-  const effAsOf = inheritedAsOf ?? version?.temporalEnd ?? null;
+  const effAsOf = importAsOf({ inherited: inheritedAsOf, temporalEnd: version?.temporalEnd, catalogModified: version?.catalogModified });
 
   if (batch_id) {
     await db.update(importBatches).set({
@@ -1225,8 +1265,44 @@ export async function dualWriteFacilityRows(
  *   - `skipped`: number of rows skipped due to deduplication or per-row insert failures,
  *   - `filtered`: number of input rows removed before mapping (e.g., invalid or missing required keys).
  */
+// Typed destinations (server/functions/cmsTypedTables.ts): map, drop rows
+// without a key, and upsert on the natural key so a re-import or a newer
+// vintage replaces rather than duplicates or collapses.
+async function insertTypedRows(importType: string, rows: any[], year: number, batchId: number, asOf: string | null | undefined): Promise<{ inserted: number; skipped: number; filtered: number }> {
+  const route = TYPED_ROUTES[importType];
+  const { rows: mapped, dropped } = mapTypedRows(route, rows, { year, asOf, batchId });
+  if (mapped.length === 0) return { inserted: 0, skipped: 0, filtered: dropped };
+  const columns = Object.keys(getTableColumns(route.table));
+  const set = Object.fromEntries(columns.filter((c) => c !== "id" && !route.key.includes(c)).map((c) => [c, sql.raw(`excluded."${c}"`)]));
+  const target = route.key.map((k) => route.table[k]);
+  let inserted = 0;
+  let skipped = 0;
+  const CHUNK = 500;
+  for (let i = 0; i < mapped.length; i += CHUNK) {
+    const chunk = mapped.slice(i, i + CHUNK);
+    const ok = await safeImportQuery(async () => {
+      await db.insert(route.table).values(chunk).onConflictDoUpdate({ target, set });
+      return chunk.length;
+    }, -1, `typed upsert ${importType}`);
+    if (ok >= 0) {
+      inserted += ok;
+      continue;
+    }
+    for (const row of chunk) {
+      const one = await safeImportQuery(async () => {
+        await db.insert(route.table).values(row).onConflictDoUpdate({ target, set });
+        return true;
+      }, false, `typed upsert ${importType} (row)`);
+      if (one) inserted++;
+      else skipped++;
+    }
+  }
+  return { inserted, skipped, filtered: dropped };
+}
+
 async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number, opts: { asOf?: string | null } = {}): Promise<{ inserted: number; skipped: number; filtered: number }> {
   if (rows.length === 0) return { inserted: 0, skipped: 0, filtered: 0 };
+  if (TYPED_ROUTES[importType]) return insertTypedRows(importType, rows, year, batchId, opts.asOf);
 
   const CHUNK_SIZE = 500;
   let inserted = 0;
@@ -1363,7 +1439,7 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
 // A CSV file (an upload, or an https link) through the same page/insert/
 // progress/completion path as the CMS APIs. resume_offset counts data rows.
 async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | null) {
-  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, headers, as_of = null } = params;
+  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, headers, as_of = null, npi_filter, state_filter } = params;
   const PAGE_SIZE = 1000;
   const PAUSE_CHECK_INTERVAL = 5;
   const PROGRESS_UPDATE_INTERVAL = 5;
@@ -1442,6 +1518,7 @@ async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | n
     );
     console.log(`[CsvImport] Completed ${import_type}: rows=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
     await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: totalFetched, dataYear: year, note: dry_run ? "dry run" : `file ${String(file_url).split("/").pop()}` }).catch(() => {});
+    retireSnapshotRows(import_type, batch_id, { dry_run, npi_filter, state_filter, errors: errors.length });
   } catch (e: any) {
     console.error(`[CsvImport] Fatal error:`, e.message);
     await saveProgress({ status: "failed", error_samples: [{ message: e.message, phase: "csv_import" }] });
@@ -1670,6 +1747,7 @@ export async function handleAutoImportCMSData(params: any) {
     );
     console.log(`[AutoImportCMS] Completed ${import_type}: fetched=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
     await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: totalFetched, dataYear: year, note: dry_run ? "dry run" : null }).catch(() => {});
+    retireSnapshotRows(import_type, batch_id, { dry_run, npi_filter, state_filter, errors: errors.length });
     if (import_type === "cms_order_referring" && !dry_run) {
       // The eligibility rows that used to land in cms_referrals come out now
       // that the typed table holds this release; long on a big table, so it

@@ -1,0 +1,17 @@
+{
+  "version": "26.1",
+  "released": "2026-07",
+  "description": "NUCC Health Care Provider Taxonomy code set (nucc.org). Codes, grouping, classification, specialization, display name, section and definition; the Notes column is not kept.",
+  "source": {
+    "url": "https://www.nucc.org/images/stories/CSV/nucc_taxonomy_261.csv",
+    "sha256": "0615cce1dac2fae75e8a0497657fd3ad81f9505c829fb6129a6551583f4fe0fb"
+  },
+  "outputs": {
+    "nucc_taxonomies": {
+      "file": "nucc_taxonomies.csv.gz",
+      "sha256": "717f4f627a29c924f17b10e4b38894f70bc4a1bea9d5c50feb5715c997112200",
+      "rows": 883
+    }
+  },
+  "dataset_sha256": "d92b493ee3d57a1636e14df30522be0e2d114f32da057f4fab11be226f1659f3"
+}

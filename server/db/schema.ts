@@ -180,6 +180,20 @@ export const geoZctaCounties = pgTable("geo_zcta_counties", {
   index("geo_zcta_counties_county_idx").on(table.county_fips),
 ]);
 
+// NUCC taxonomy code set (server/data/nucc, loaded by server/lib/nucc/load.ts).
+export const nuccTaxonomies = pgTable("nucc_taxonomies", {
+  code: varchar("code", { length: 10 }).primaryKey(),
+  grouping: text("grouping"),
+  classification: text("classification"),
+  specialization: text("specialization"),
+  display_name: text("display_name"),
+  section: varchar("section", { length: 20 }),
+  definition: text("definition"),
+  version: varchar("version", { length: 10 }),
+}, (table) => [
+  index("nucc_taxonomies_grouping_idx").on(table.grouping),
+]);
+
 export const geoMeta = pgTable("geo_meta", {
   key: varchar("key", { length: 50 }).primaryKey(),
   vintage: varchar("vintage", { length: 20 }),
@@ -1219,3 +1233,275 @@ export const tableMap: Record<string, any> = {
   ColumnMappingRule: columnMappingRules,
   ApiInteractionLog: apiInteractionLogs,
 };
+
+// ─── Typed CMS datasets (migration 0016; mappers in server/functions/cmsTypedTables.ts) ───
+// Geography and time-series datasets that medicare_facilities collapsed to one
+// row per provider. Each natural key carries the period and the place.
+
+/** Hospital Service Area: Medicare inpatient cases by hospital and the ZIP the beneficiary lives in. */
+export const cmsHospitalServiceArea = pgTable("cms_hospital_service_area", {
+  id: serial("id").primaryKey(),
+  ccn: varchar("ccn", { length: 10 }).notNull(),
+  zip5: varchar("zip5", { length: 5 }).notNull(),
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  total_cases: integer("total_cases"),
+  total_days: integer("total_days"),
+  total_charges: doublePrecision("total_charges"),
+  raw_data: jsonb("raw_data"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_cms_hsa").on(table.ccn, table.zip5, table.data_year),
+  index("idx_cms_hsa_zip_year").on(table.zip5, table.data_year),
+]);
+
+/** Post-acute care utilization (SNF/HHA/hospice/IRF/LTCH) by provider, with the state and national summary rows. */
+export const cmsPacUtilization = pgTable("cms_pac_utilization", {
+  id: serial("id").primaryKey(),
+  setting: varchar("setting", { length: 10 }).notNull(),
+  summary_level: varchar("summary_level", { length: 10 }).notNull(),
+  ccn: varchar("ccn", { length: 10 }).notNull().default(""),
+  state: varchar("state", { length: 2 }).notNull().default(""),
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  year_type: varchar("year_type", { length: 4 }),
+  provider_name: text("provider_name"),
+  city: varchar("city", { length: 100 }),
+  zip5: varchar("zip5", { length: 5 }),
+  bene_count: integer("bene_count"),
+  stays: integer("stays"),
+  service_days: integer("service_days"),
+  charges: doublePrecision("charges"),
+  allowed: doublePrecision("allowed"),
+  medicare_payment: doublePrecision("medicare_payment"),
+  standardized_payment: doublePrecision("standardized_payment"),
+  avg_age: doublePrecision("avg_age"),
+  dual_pct: doublePrecision("dual_pct"),
+  rural_pct: doublePrecision("rural_pct"),
+  avg_risk_score: doublePrecision("avg_risk_score"),
+  chronic_conditions: jsonb("chronic_conditions"),
+  metrics: jsonb("metrics"),
+  raw_data: jsonb("raw_data"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_cms_pac").on(table.setting, table.summary_level, table.ccn, table.state, table.data_year),
+  index("idx_cms_pac_state_zip").on(table.setting, table.state, table.zip5, table.data_year),
+]);
+
+/** Medicare Hospital Spending by Claim: spend per episode around an index admission, by claim type. */
+export const cmsHospitalSpendingByClaim = pgTable("cms_hospital_spending_by_claim", {
+  id: serial("id").primaryKey(),
+  ccn: varchar("ccn", { length: 10 }).notNull(),
+  period: varchar("period", { length: 80 }).notNull(),
+  claim_type: varchar("claim_type", { length: 80 }).notNull(),
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  period_start: date("period_start"),
+  period_end: date("period_end"),
+  facility_name: text("facility_name"),
+  state: varchar("state", { length: 2 }),
+  avg_spend_hospital: doublePrecision("avg_spend_hospital"),
+  avg_spend_state: doublePrecision("avg_spend_state"),
+  avg_spend_national: doublePrecision("avg_spend_national"),
+  pct_spend_hospital: doublePrecision("pct_spend_hospital"),
+  pct_spend_state: doublePrecision("pct_spend_state"),
+  pct_spend_national: doublePrecision("pct_spend_national"),
+  raw_data: jsonb("raw_data"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_cms_hsbc").on(table.ccn, table.period, table.claim_type, table.data_year),
+]);
+
+/** Market Saturation & Utilization by county or CBSA and type of service. */
+export const cmsMarketSaturation = pgTable("cms_market_saturation", {
+  id: serial("id").primaryKey(),
+  reference_period: varchar("reference_period", { length: 40 }).notNull(),
+  geo_level: varchar("geo_level", { length: 30 }).notNull(),
+  geo_code: varchar("geo_code", { length: 10 }).notNull().default(""),
+  service: varchar("service", { length: 120 }).notNull(),
+  state: varchar("state", { length: 2 }),
+  geo_name: text("geo_name"),
+  ffs_benes: bigint("ffs_benes", { mode: "number" }),
+  providers: integer("providers"),
+  users: bigint("users", { mode: "number" }),
+  users_per_provider: doublePrecision("users_per_provider"),
+  users_pct: doublePrecision("users_pct"),
+  dual_users: bigint("dual_users", { mode: "number" }),
+  dual_users_pct: doublePrecision("dual_users_pct"),
+  total_payment: doublePrecision("total_payment"),
+  moratorium: boolean("moratorium"),
+  providers_change_pct: doublePrecision("providers_change_pct"),
+  users_change_pct: doublePrecision("users_change_pct"),
+  raw_data: jsonb("raw_data"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_cms_mktsat").on(table.reference_period, table.geo_level, table.geo_code, table.service),
+]);
+
+/** Medicare Monthly Enrollment by nation, state and county (period "YYYY-MM", or "YYYY-ALL" for the yearly row). */
+export const cmsMonthlyEnrollment = pgTable("cms_monthly_enrollment", {
+  id: serial("id").primaryKey(),
+  period: varchar("period", { length: 8 }).notNull(),
+  geo_level: varchar("geo_level", { length: 10 }).notNull(),
+  geo_code: varchar("geo_code", { length: 5 }).notNull().default(""),
+  state: varchar("state", { length: 2 }),
+  county_name: text("county_name"),
+  total_benes: bigint("total_benes", { mode: "number" }),
+  original_medicare: bigint("original_medicare", { mode: "number" }),
+  ma_and_other: bigint("ma_and_other", { mode: "number" }),
+  aged: bigint("aged", { mode: "number" }),
+  disabled: bigint("disabled", { mode: "number" }),
+  dual: bigint("dual", { mode: "number" }),
+  full_dual: bigint("full_dual", { mode: "number" }),
+  age_85_plus: bigint("age_85_plus", { mode: "number" }),
+  metrics: jsonb("metrics"),
+  raw_data: jsonb("raw_data"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_cms_enroll").on(table.period, table.geo_level, table.geo_code),
+]);
+
+/** Medicare Geographic Variation by nation, state and county. */
+export const cmsGeoVariation = pgTable("cms_geo_variation", {
+  id: serial("id").primaryKey(),
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  geo_level: varchar("geo_level", { length: 10 }).notNull(),
+  geo_code: varchar("geo_code", { length: 10 }).notNull().default(""),
+  age_level: varchar("age_level", { length: 10 }).notNull().default("All"),
+  geo_desc: text("geo_desc"),
+  state: varchar("state", { length: 2 }),
+  benes: bigint("benes", { mode: "number" }),
+  ma_benes: bigint("ma_benes", { mode: "number" }),
+  ma_participation_rate: doublePrecision("ma_participation_rate"),
+  avg_age: doublePrecision("avg_age"),
+  dual_pct: doublePrecision("dual_pct"),
+  avg_hcc_score: doublePrecision("avg_hcc_score"),
+  std_per_capita_total: doublePrecision("std_per_capita_total"),
+  std_per_capita_ip: doublePrecision("std_per_capita_ip"),
+  std_per_capita_snf: doublePrecision("std_per_capita_snf"),
+  std_per_capita_hha: doublePrecision("std_per_capita_hha"),
+  std_per_capita_hospice: doublePrecision("std_per_capita_hospice"),
+  readmission_rate: doublePrecision("readmission_rate"),
+  er_visits_per_1000: doublePrecision("er_visits_per_1000"),
+  snf_stays_per_1000: doublePrecision("snf_stays_per_1000"),
+  metrics: jsonb("metrics"),
+  raw_data: jsonb("raw_data"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_cms_geovar").on(table.data_year, table.geo_level, table.geo_code, table.age_level),
+]);
+
+/** Care Compare "Zip Data": the ZIP codes each home health agency or hospice serves. */
+export const cmsZipServiceArea = pgTable("cms_zip_service_area", {
+  id: serial("id").primaryKey(),
+  setting: varchar("setting", { length: 10 }).notNull(),
+  ccn: varchar("ccn", { length: 10 }).notNull(),
+  zip5: varchar("zip5", { length: 5 }).notNull(),
+  state: varchar("state", { length: 2 }),
+  as_of: date("as_of"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_cms_zipsvc").on(table.setting, table.ccn, table.zip5),
+  index("idx_cms_zipsvc_zip").on(table.setting, table.zip5),
+]);
+
+/** Medicare Physician & Other Practitioners by Provider (Part B totals per NPI and year). */
+export const cmsPhysicianByProvider = pgTable("cms_physician_by_provider", {
+  id: serial("id").primaryKey(),
+  npi: varchar("npi", { length: 10 }).notNull(),
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  entity_code: varchar("entity_code", { length: 1 }),
+  provider_type: varchar("provider_type", { length: 120 }),
+  state: varchar("state", { length: 2 }),
+  zip5: varchar("zip5", { length: 5 }),
+  ruca: varchar("ruca", { length: 5 }),
+  benes: integer("benes"),
+  services: doublePrecision("services"),
+  hcpcs_codes: integer("hcpcs_codes"),
+  submitted_charges: doublePrecision("submitted_charges"),
+  allowed: doublePrecision("allowed"),
+  medicare_payment: doublePrecision("medicare_payment"),
+  standardized_payment: doublePrecision("standardized_payment"),
+  avg_age: doublePrecision("avg_age"),
+  dual_count: integer("dual_count"),
+  avg_risk_score: doublePrecision("avg_risk_score"),
+  chronic_conditions: jsonb("chronic_conditions"),
+  metrics: jsonb("metrics"),
+  raw_data: jsonb("raw_data"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_cms_phys").on(table.npi, table.data_year),
+  index("idx_cms_phys_state_zip").on(table.state, table.zip5, table.data_year),
+]);
+
+/** Doctors & Clinicians facility affiliations: clinician NPI → facility CCN. */
+export const cmsFacilityAffiliation = pgTable("cms_facility_affiliation", {
+  id: serial("id").primaryKey(),
+  npi: varchar("npi", { length: 10 }).notNull(),
+  facility_type: varchar("facility_type", { length: 60 }).notNull(),
+  facility_ccn: varchar("facility_ccn", { length: 10 }).notNull().default(""),
+  ind_pac_id: varchar("ind_pac_id", { length: 20 }),
+  as_of: date("as_of"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_cms_affil").on(table.npi, table.facility_type, table.facility_ccn),
+  index("idx_cms_affil_ccn").on(table.facility_ccn),
+]);
+
+/** Medicare DME by Referring Provider (per NPI and year). */
+export const cmsDmeByReferring = pgTable("cms_dme_by_referring", {
+  id: serial("id").primaryKey(),
+  npi: varchar("npi", { length: 10 }).notNull(),
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  state: varchar("state", { length: 2 }),
+  zip5: varchar("zip5", { length: 5 }),
+  specialty: varchar("specialty", { length: 120 }),
+  suppliers: integer("suppliers"),
+  benes: integer("benes"),
+  claims: integer("claims"),
+  services: doublePrecision("services"),
+  medicare_payment: doublePrecision("medicare_payment"),
+  standardized_payment: doublePrecision("standardized_payment"),
+  avg_age: doublePrecision("avg_age"),
+  avg_risk_score: doublePrecision("avg_risk_score"),
+  chronic_conditions: jsonb("chronic_conditions"),
+  raw_data: jsonb("raw_data"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_cms_dmeref").on(table.npi, table.data_year),
+]);
+
+/** Long-Term Care Facility Characteristics (CMS-671): quarterly nursing-home census and payer mix. */
+export const cmsLtcFacilityCharacteristics = pgTable("cms_ltc_facility_characteristics", {
+  id: serial("id").primaryKey(),
+  ccn: varchar("ccn", { length: 10 }).notNull(),
+  period_end: date("period_end").notNull(),
+  facility_name: text("facility_name"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 2 }),
+  zip5: varchar("zip5", { length: 5 }),
+  certification_date: date("certification_date"),
+  medicare_census: integer("medicare_census"),
+  medicaid_census: integer("medicaid_census"),
+  other_census: integer("other_census"),
+  total_residents: integer("total_residents"),
+  participation: varchar("participation", { length: 60 }),
+  hospital_based: boolean("hospital_based"),
+  ownership_type: varchar("ownership_type", { length: 80 }),
+  multi_facility: boolean("multi_facility"),
+  multi_facility_org_name: text("multi_facility_org_name"),
+  special_care_beds: jsonb("special_care_beds"),
+  ccrc: boolean("ccrc"),
+  raw_data: jsonb("raw_data"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_cms_ltc671").on(table.ccn, table.period_end),
+]);

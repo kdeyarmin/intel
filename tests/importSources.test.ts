@@ -9,7 +9,8 @@ vi.mock("../server/db", () => ({ db: {}, pool: {} }));
 
 import { csvRecords, normalizeHeader, pageRecords, parseCSVLine } from "../server/lib/csv";
 import { localUploadPath, sourceKindFor, withIdleTimeout } from "../server/lib/importSources";
-import { fileUrlProblem, getCMSDatasetCatalog, UPLOAD_CAPABLE_TYPES } from "../server/functions/triggerImport";
+import { fileUrlProblem, getCMSDatasetCatalog, importAsOf, UPLOAD_CAPABLE_TYPES } from "../server/functions/triggerImport";
+import { NPPES_FILE_TYPES } from "../server/functions/importNPPESFile";
 
 async function collect<T>(it: AsyncIterable<T>): Promise<T[]> {
   const out: T[] = [];
@@ -130,9 +131,9 @@ describe("getCMSDatasetCatalog", () => {
     const listed = [...UPLOAD_CAPABLE_TYPES].filter((id) => byId.has(id));
     expect(listed).toContain("physician_shared_patient_patterns");
     for (const id of listed) expect(byId.get(id)?.available, id).toBe(true);
-    // Everything else needs a CMS endpoint.
+    // Everything else needs a CMS endpoint, or is one of the NPPES files.
     for (const d of byId.values() as Iterable<any>) {
-      if (!UPLOAD_CAPABLE_TYPES.has(d.id)) expect(d.available, d.id).toBe(!!d.url);
+      if (!UPLOAD_CAPABLE_TYPES.has(d.id)) expect(d.available, d.id).toBe(!!d.url || !!NPPES_FILE_TYPES[d.id]);
     }
   });
 });
@@ -166,5 +167,23 @@ describe("withIdleTimeout", () => {
     }
     expect(seen).toEqual([1, 2, 3]);
     expect(controller.signal.aborted).toBe(false);
+  });
+});
+
+describe("importAsOf", () => {
+  it("prefers the resumed batch's date, then the release's last day, then the day it was published", () => {
+    const modified = new Date("2026-07-06T14:30:00Z");
+    expect(importAsOf({ inherited: "2026-06-30", temporalEnd: "2026-07-01", catalogModified: modified })).toBe("2026-06-30");
+    expect(importAsOf({ temporalEnd: "2026-07-01", catalogModified: modified })).toBe("2026-07-01");
+    // Care Compare gives no coverage dates: the publication date is the vintage.
+    expect(importAsOf({ temporalEnd: null, catalogModified: modified })).toBe("2026-07-06");
+    expect(importAsOf({ catalogModified: "2026-07-06T00:00:00.000Z" })).toBe("2026-07-06");
+    expect(importAsOf({ stated: "2025-12-31", catalogModified: modified })).toBe("2025-12-31");
+  });
+
+  it("is null when nothing says", () => {
+    expect(importAsOf({})).toBeNull();
+    expect(importAsOf({ catalogModified: new Date("nope") })).toBeNull();
+    expect(importAsOf({ catalogModified: "soon" })).toBeNull();
   });
 });

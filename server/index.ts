@@ -242,6 +242,7 @@ app.listen(PORT, "0.0.0.0", async () => {
       console.log(`[CareMetric API] Recovering ${cmsActive.length} import batch(es)`);
       const { handleAutoImportCMSData, endedWithoutFinishing } = await import("./functions/triggerImport");
       const { handleImportNPPESFlatFile } = await import("./functions/importNPPESFlatFile");
+      const { handleImportNPPESFile } = await import("./functions/importNPPESFile");
       const { planRecovery } = await import("./lib/importRecovery");
 
       for (let i = 0; i < cmsActive.length; i++) {
@@ -260,7 +261,7 @@ app.listen(PORT, "0.0.0.0", async () => {
         }
 
         await db.update(importBatches).set({ updated_date: new Date() }).where(eq(importBatches.id, batch.id));
-        const run = plan.action === "nppes_flat_file" ? handleImportNPPESFlatFile : handleAutoImportCMSData;
+        const run = plan.action === "nppes_flat_file" ? handleImportNPPESFlatFile : plan.action === "nppes_file" ? handleImportNPPESFile : handleAutoImportCMSData;
         setTimeout(() => {
           run(plan.params as any).catch((e: any) => console.error(`[CareMetric API] Batch ${batch.id} resume failed:`, e.message));
         }, 10000 + i * 5000);
@@ -295,6 +296,9 @@ app.listen(PORT, "0.0.0.0", async () => {
     (async () => {
       const { autoloadCensusGeography } = await import("./lib/census/load");
       await autoloadCensusGeography(dbPool);
+      // The NUCC taxonomy code set (server/data/nucc) loads the same way.
+      const { autoloadNuccTaxonomies } = await import("./lib/nucc/load");
+      await autoloadNuccTaxonomies(dbPool);
     })();
 
     // Large-table indexes build in the background (see server/lib/bootIndexes.ts).

@@ -8,6 +8,8 @@ const DATA_DESTINATION_MAP = {
   cms_service_utilization: { page: 'Utilization', label: 'Utilization' },
   provider_service_utilization: { page: 'Utilization', label: 'Utilization' },
   cms_order_referring: { page: 'Providers', label: 'Referral eligibility' },
+  nppes_weekly_incremental: { page: 'Providers', label: 'Providers' },
+  nppes_monthly_full: { page: 'Providers', label: 'Providers' },
   physician_shared_patient_patterns: { page: 'ReferralNetworkIntelligence', label: 'Referrals' },
 
   hospital_general_info: { page: 'Facilities', params: { type: 'hospital' }, label: 'Hospitals' },

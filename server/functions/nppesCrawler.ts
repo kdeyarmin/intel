@@ -10,6 +10,7 @@ import {
 } from "../db/schema";
 import { eq, and, inArray, desc, asc, sql, lt } from "drizzle-orm";
 import { sleep, withRetry, stripSystemFields, isIdentical } from "./helpers";
+import { isValidNpi } from "../lib/npiValidation";
 
 const NPPES_API_BASE =
   "https://npiregistry.cms.hhs.gov/api/?version=2.1";
@@ -159,8 +160,8 @@ function transformResults(allResults: any[], excludedCredentials?: Set<string>) 
   const errors: any[] = [];
   const excludedSet = excludedCredentials || new Set<string>();
   for (const result of allResults) {
-    const npi = String(result.number || "");
-    if (!npi || npi.length !== 10) { invalidRows++; continue; }
+    const npi = String(result.number || "").trim();
+    if (!isValidNpi(npi)) { invalidRows++; continue; }
     if (seenNPIs.has(npi)) { duplicateRows++; continue; }
     seenNPIs.add(npi);
     const basic = result.basic || {};

@@ -1,5 +1,7 @@
 const CMS_IMPORT_TYPE_DEFINITIONS = [
   { id: 'nppes_registry', label: 'NPPES Registry', supportsUrl: true },
+  { id: 'nppes_weekly_incremental', label: 'NPPES Weekly Update (file)', supportsUrl: true },
+  { id: 'nppes_monthly_full', label: 'NPPES Monthly Full File', supportsUrl: true },
   { id: 'cms_order_referring', label: 'Order & Referring', supportsUrl: true, availableYears: [2023, 2022, 2021, 2020, 2019] },
   { id: 'provider_service_utilization', label: 'Provider Service Util', supportsUrl: true, availableYears: [2022, 2021, 2020, 2019] },
   { id: 'hospice_enrollments', label: 'Hospice Enrollments', supportsUrl: true, availableYears: [2024, 2023, 2022] },
@@ -126,6 +128,8 @@ export const CMS_IMPORT_TYPE_LABELS = Object.fromEntries(
 export const BASE_IMPORT_TYPE_LABELS = {
   nppes_monthly: 'NPPES Monthly',
   nppes_registry: 'NPPES Registry',
+  nppes_weekly_incremental: 'NPPES Weekly Update',
+  nppes_monthly_full: 'NPPES Monthly Full File',
   cms_utilization: 'CMS Utilization',
   pa_home_health: 'PA Home Health',
   hospice_providers: 'Hospice Providers',

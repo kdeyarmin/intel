@@ -548,6 +548,56 @@ describe("migration 0015_import_completion", () => {
   });
 });
 
+describe("migration 0016_cms_typed_tables", () => {
+  const sql = readMigration("0016_cms_typed_tables.sql");
+  const schema = readSchema();
+
+  it("only creates tables and indexes, idempotently", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    expect(statements.length).toBeGreaterThan(20);
+    for (const stmt of statements) expect(stmt).toMatch(/^CREATE (TABLE|UNIQUE INDEX|INDEX) IF NOT EXISTS "cms_|^CREATE (UNIQUE INDEX|INDEX) IF NOT EXISTS "(uq|idx)_cms_/);
+  });
+
+  it("declares every typed table in the Drizzle schema with its natural-key index", () => {
+    const tables = [...sql.matchAll(/CREATE TABLE IF NOT EXISTS "(\w+)"/g)].map((m) => m[1]);
+    expect(tables).toHaveLength(11);
+    for (const table of tables) {
+      expect(schema, table).toContain(`pgTable("${table}"`);
+      const uq = new RegExp(`CREATE UNIQUE INDEX IF NOT EXISTS "(\\w+)" ON "${table}"`).exec(sql);
+      expect(uq, `${table} unique index`).not.toBeNull();
+      expect(schema, `${table} uniqueIndex`).toContain(`uniqueIndex("${uq![1]}")`);
+    }
+  });
+
+  it("is registered in the drizzle journal after 0015", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const tags = journal.entries.map((e: { tag: string }) => e.tag);
+    expect(tags.indexOf("0016_cms_typed_tables")).toBe(tags.indexOf("0015_import_completion") + 1);
+  });
+});
+
+describe("migration 0017_nucc_taxonomies", () => {
+  const sql = readMigration("0017_nucc_taxonomies.sql");
+  const schema = readSchema();
+
+  it("creates the table and its index idempotently, nothing else", () => {
+    const statements = sql.split("--> statement-breakpoint").map((s) => s.replace(/^--.*$/gm, "").trim()).filter(Boolean);
+    expect(statements).toHaveLength(2);
+    expect(statements[0]).toMatch(/^CREATE TABLE IF NOT EXISTS "nucc_taxonomies"/);
+    expect(statements[1]).toMatch(/^CREATE INDEX IF NOT EXISTS "nucc_taxonomies_grouping_idx"/);
+    expect(schema).toContain('pgTable("nucc_taxonomies"');
+    expect(schema).toContain('index("nucc_taxonomies_grouping_idx")');
+  });
+
+  it("is registered in the drizzle journal after 0016", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const tags = journal.entries.map((e: { tag: string }) => e.tag);
+    expect(tags.indexOf("0017_nucc_taxonomies")).toBe(tags.indexOf("0016_cms_typed_tables") + 1);
+    const whens = journal.entries.map((e: { when: number }) => e.when);
+    expect(whens[whens.length - 1]).toBeGreaterThan(whens[whens.length - 2]);
+  });
+});
+
 describe("migration 0012_assistant", () => {
   const sql = readMigration("0012_assistant.sql");
   const schema = readSchema();

@@ -568,6 +568,16 @@ Be concise and helpful. Use markdown formatting for readability.`;
         return res.json(await handleRefreshRollups(req.body, req.user));
       }
 
+      case "getLeadScoringStatus": {
+        const { handleGetLeadScoringStatus } = await import("../functions/leadScoring");
+        return res.json(await handleGetLeadScoringStatus());
+      }
+
+      case "recalculateLeadScores": {
+        const { handleRecalculateLeadScores } = await import("../functions/leadScoring");
+        return res.json(await handleRecalculateLeadScores(req.body, req.user));
+      }
+
       case "getGeoStatus": {
         const { handleGetGeoStatus } = await import("../functions/geography");
         return res.json(await handleGetGeoStatus());
