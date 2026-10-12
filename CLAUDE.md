@@ -130,7 +130,10 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   network and exports of provider data are not territory-limited.
   Billing is Stripe (`server/lib/billing.ts`, `/api/billing`, `/api/webhooks/stripe`;
   one subscription per organization, events apply only to the current one and
-  in time order via `stripe_event_at`).
+  in time order via `stripe_event_at`). A second checkout for an organization
+  that already pays is audited (`duplicate_subscription`) and emailed to the
+  active admins (`server/lib/billingNotices.ts`, after the webhook has answered
+  Stripe); it is never cancelled automatically, because it is the customer's money.
   Public legal pages: `/terms`, `/privacy`, `/data-use`.
 - **Audit:** server code writes `recordAudit()` (`server/lib/audit.ts`), passing
   the `org_id` the event belongs to (an owner reads their organization's events;

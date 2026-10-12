@@ -132,6 +132,10 @@ requests, exports, outreach emails) counted in `org_usage`. Billing is Stripe
 Checkout plus the customer portal (`/api/billing`), with subscription events
 on `/api/webhooks/stripe`; set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 and a price id per plan (`STRIPE_PRICE_<CODE>` or `plans.stripe_price_id`).
+If a customer completes a second checkout while already subscribed, both
+subscriptions keep billing: the webhook records it in the audit trail and emails
+the active admins (with mail configured), who decide in Stripe which to keep
+and whether to refund the other. Nothing is cancelled automatically.
 The public Terms, Privacy and Data Use pages are at `/terms`, `/privacy` and
 `/data-use`; signup records the accepted terms version.
 
