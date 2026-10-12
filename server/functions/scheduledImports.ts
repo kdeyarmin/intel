@@ -120,6 +120,10 @@ export async function handleRunScheduledImports(_payload?: any, _user?: any) {
           .map((b) => b.id),
   );
 
+  // Looked up at most once a tick, and only when a schedule is the crawl or waits on it.
+  let crawl: Promise<boolean> | null = null;
+  const crawlRunning = () => (crawl = crawl ?? crawlInProgress());
+
   // Bucket due schedules by family so two same-family imports don't run in parallel.
   const dueByFamily = new Map<string, any[]>();
   for (let i = 0; i < schedules.length; i++) {
@@ -133,8 +137,14 @@ export async function handleRunScheduledImports(_payload?: any, _user?: any) {
     // A crawl is one batch per state, queued in a single call and finishing days later, so the schedule can't wait
     // on one batch like the other imports do. Without this, the next cadence queued a second crawl on top of the
     // first one's states.
-    if (s.import_type === "nppes_registry" && (await crawlInProgress())) {
+    if (s.import_type === "nppes_registry" && (await crawlRunning())) {
       skipped.push({ id: s.id, label: shapes[i].label, reason: "a crawl is still in progress" });
+      continue;
+    }
+    // The crawl reports success once its states are queued, so a schedule that depends on it would start at once on
+    // a registry that is still being filled. It waits for the states to finish instead.
+    if (s.depends_on_import_type === "nppes_registry" && (await crawlRunning())) {
+      skipped.push({ id: s.id, label: shapes[i].label, reason: "waiting for the NPPES crawl it depends on to finish" });
       continue;
     }
     const dep = dependencyBlocked(shapes[i], shapes);
