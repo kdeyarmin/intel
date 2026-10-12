@@ -15,7 +15,7 @@ const row = (type: string) => (JSON.parse(fs.readFileSync(path.join(dir, `${type
 
 const EXPECTED: Record<string, Record<string, string | number | null>> = {
   hospital_general_info: { quality_rating: 4, provider_id: "390164", facility_name: "UPMC PRESBYTERIAN SHADYSIDE", address: "200 LOTHROP STREET", city: "PITTSBURGH", state: "PA", zip: "15213" },
-  home_health_agencies: { quality_rating: null, provider_id: "397001", facility_name: "TOWER HEALTH AT HOME", address: "739 READING AVENUE VF BLDG 202", city: "WEST READING", state: "PA", zip: "19611" },
+  home_health_agencies: { quality_rating: 3, provider_id: "397001", facility_name: "TOWER HEALTH AT HOME", address: "739 READING AVENUE VF BLDG 202", city: "WEST READING", state: "PA", zip: "19611" },
   hospice_general_info: { quality_rating: null, provider_id: "391501", facility_name: "PENN MEDICINE HOSPICE", address: "150 MONUMENT ROAD SUITE 600", city: "BALA CYNWYD", state: "PA", zip: "19004" },
   nursing_home_providers: { quality_rating: 2, provider_id: "395001", facility_name: "PASSAVANT RETIREMENT AND HEALT", address: "105 BURGESS DRIVE", city: "ZELIENOPLE", state: "PA", zip: "16063" },
   inpatient_rehab_general_info: { quality_rating: null, provider_id: "393025", facility_name: "BRYN MAWR REHABILITATION HOSPITAL", address: "414 PAOLI PIKE", city: "MALVERN", state: "PA", zip: "19355" },
@@ -64,12 +64,31 @@ describe("the overall star rating of a facility", () => {
     expect(starRatingOf({ overall_rating: " 5 " }, "nursing_home_providers")).toBe(5);
   });
 
-  it("is not taken from datasets that are not the facility's own listing, nor from home health agencies' half stars", () => {
+  it("takes home health quality-of-patient-care stars, including half stars, and not a half star for a nursing home", () => {
+    expect(starRatingOf({ quality_of_patient_care_star_rating: "3" }, "home_health_agencies")).toBe(3);
+    expect(starRatingOf({ quality_of_patient_care_star_rating: "3.5" }, "home_health_agencies")).toBe(3.5);
+    expect(starRatingOf({ quality_of_patient_care_star_rating: "3.2" }, "home_health_agencies")).toBeNull();
+    expect(starRatingOf({ quality_of_patient_care_star_rating: "0.5" }, "home_health_agencies")).toBeNull();
     expect(starRatingOf({ overall_rating: "4" }, "nursing_home_ownership")).toBeNull();
-    expect(starRatingOf({ quality_of_patient_care_star_rating: "3" }, "home_health_agencies")).toBeNull();
+    expect(starRatingOf({ hospital_overall_rating: "3.5" }, "hospital_general_info")).toBeNull();
     expect(starRatingOf({ overall_rating: "4" }, "toString")).toBeNull();
     expect(hasStarRating("nursing_home_providers")).toBe(true);
+    expect(hasStarRating("home_health_agencies")).toBe(true);
     expect(hasStarRating("hospice_general_info")).toBe(false);
     expect(hasStarRating(undefined)).toBe(false);
+  });
+
+  it("maps inpatient-by-provider discharge and payment totals onto the facility row", () => {
+    const mapped = mapMedicareFacilityRow({
+      Rndrng_Prvdr_CCN: "010001",
+      Rndrng_Prvdr_Org_Name: "Southeast Health",
+      Tot_Dschrgs: "4299",
+      Tot_Cvrd_Days: "21000",
+      Tot_Submtd_Cvrd_Chrg: "1000000",
+      Tot_Mdcr_Pymt_Amt: "52228590",
+    }, "medicare_inpatient_by_provider", 1, 2024);
+    expect(mapped).toMatchObject({ provider_id: "010001", total_discharges: 4299, total_days_of_care: 21000, total_charges: 1000000, total_payments: 52228590 });
+    const hospital = mapMedicareFacilityRow({ facility_id: "390164", facility_name: "X", Tot_Dschrgs: "9" }, "hospital_general_info", 1, 2024);
+    expect(hospital.total_discharges).toBeUndefined();
   });
 });

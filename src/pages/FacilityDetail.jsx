@@ -522,7 +522,7 @@ export default function FacilityDetail() {
           <div className="flex items-center gap-2 bg-amber-900/30 border border-amber-500/30 rounded-lg px-4 py-2">
             <Star className="w-5 h-5 text-amber-400" />
             <div>
-              <div className="text-lg font-bold text-amber-400">{data.quality_rating}/5</div>
+              <div className="text-lg font-bold text-amber-400">{Number.isInteger(Number(data.quality_rating)) ? data.quality_rating : Number(data.quality_rating).toFixed(1)}/5</div>
               <div className="text-[10px] text-amber-400/70">Quality Rating</div>
             </div>
           </div>

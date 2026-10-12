@@ -152,7 +152,7 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
                 <div className="hidden md:flex md:col-span-1 justify-center">
                   {f.quality_rating ? (
                     <Badge className="bg-amber-900/30 text-amber-400 border-amber-500/30 text-xs">
-                      <Star className="w-3 h-3 mr-0.5" />{f.quality_rating}
+                      <Star className="w-3 h-3 mr-0.5" />{Number.isInteger(Number(f.quality_rating)) ? f.quality_rating : Number(f.quality_rating).toFixed(1)}
                     </Badge>
                   ) : (
                     <span className="text-slate-400 text-xs">—</span>

@@ -8,6 +8,7 @@
 // transaction. One run at a time per database (advisory lock); progress and
 // the last result live in rollup_runs under job 'lead_scores'.
 import { planChunks } from "./rollups/core";
+import { inSequence } from "./pgSequence";
 import { getGeoIndex, zipToCounty, type GeoIndex } from "./geo";
 import { specialtyGroupFor } from "./specialtyGroups";
 import { recordAudit } from "./audit";
@@ -108,12 +109,12 @@ const truthy = (v: unknown) => v === true || v === "t" || v === "true" || v === 
 
 /** Looks up one batch of NPIs and scores the individual, active ones. */
 export async function scoreBatch(client: any, npis: string[], locs: Map<string, Loc[]>, rules: ScoringRule[], geo: GeoIndex | null) {
-  const [providers, taxonomies, utilization, ordering, affiliations] = await Promise.all([
-    client.query("SELECT npi, entity_type, email, phone, status FROM providers WHERE npi = ANY($1)", [npis]),
-    client.query("SELECT npi, taxonomy_code, taxonomy_description, is_primary FROM provider_taxonomies WHERE npi = ANY($1)", [npis]),
-    client.query("SELECT DISTINCT ON (npi) npi, data_year, benes, services FROM cms_physician_by_provider WHERE npi = ANY($1) ORDER BY npi, data_year DESC", [npis]),
-    client.query("SELECT npi, partb, dme, hha, pmd, hospice FROM cms_order_referring WHERE npi = ANY($1)", [npis]),
-    client.query("SELECT npi, count(*)::int AS n FROM cms_facility_affiliation WHERE npi = ANY($1) GROUP BY npi", [npis]),
+  const [providers, taxonomies, utilization, ordering, affiliations] = await inSequence([
+    () => client.query("SELECT npi, entity_type, email, phone, status FROM providers WHERE npi = ANY($1)", [npis]),
+    () => client.query("SELECT npi, taxonomy_code, taxonomy_description, is_primary FROM provider_taxonomies WHERE npi = ANY($1)", [npis]),
+    () => client.query("SELECT DISTINCT ON (npi) npi, data_year, benes, services FROM cms_physician_by_provider WHERE npi = ANY($1) ORDER BY npi, data_year DESC", [npis]),
+    () => client.query("SELECT npi, partb, dme, hha, pmd, hospice FROM cms_order_referring WHERE npi = ANY($1)", [npis]),
+    () => client.query("SELECT npi, count(*)::int AS n FROM cms_facility_affiliation WHERE npi = ANY($1) GROUP BY npi", [npis]),
   ]);
   const taxByNpi = new Map<string, any[]>();
   for (const t of taxonomies.rows) (taxByNpi.get(t.npi) || taxByNpi.set(t.npi, []).get(t.npi)!).push(t);

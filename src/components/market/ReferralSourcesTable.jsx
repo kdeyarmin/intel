@@ -56,7 +56,9 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
           <Stethoscope className="w-4 h-4 text-cyan-400" aria-hidden="true" /> Likely referral sources in {countyName || state}
         </CardTitle>
         <p className="text-[11px] text-slate-400">
-          Clinicians ranked by a referral index built from {data?.certifications_loaded ? 'the patients they certified for home health (Physician & Other Practitioners by Provider and Service), ' : ''}Medicare volume (Physician &amp; Other Practitioners by Provider{data?.data_year ? ` ${data.data_year}` : ''}), patient risk and Order &amp; Referring eligibility. {data?.index_note}
+          {setting === 'hospice'
+            ? <>Clinicians who can order hospice, ranked by a hospice index. Specialty fit gates the volume term, so a radiologist does not rank on panel size, and hospice care-plan oversight is only a small bonus. {data?.index_note}</>
+            : <>Clinicians ranked by a referral index built from {data?.certifications_loaded ? 'the patients they certified for home health (Physician & Other Practitioners by Provider and Service), ' : ''}Medicare volume (Physician & Other Practitioners by Provider{data?.data_year ? ` ${data.data_year}` : ''}), patient risk and Order & Referring eligibility. {data?.index_note}</>}
         </p>
         <div className="flex flex-wrap items-end gap-3 pt-2">
           <div className="space-y-1">
@@ -101,9 +103,10 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
                   <tr className="text-left text-slate-400 border-b border-slate-700/60">
                     <th scope="col" className="py-1.5 pr-2">#</th>
                     <th scope="col" className="py-1.5 pr-2">Clinician</th>
-                    <th scope="col" className="py-1.5 pr-2 text-right">Index</th>
+                    <th scope="col" className="py-1.5 pr-2 text-right">{setting === 'hospice' ? 'Hospice index' : 'Index'}</th>
                     <th scope="col" className="py-1.5 pr-2 text-right">Medicare patients</th>
                     <th scope="col" className="py-1.5 pr-2 text-right">Home health certified</th>
+                    {setting === 'hospice' ? <th scope="col" className="py-1.5 pr-2 text-right">Hospice oversight</th> : null}
                     <th scope="col" className="py-1.5 pr-2 text-right">Risk</th>
                     <th scope="col" className="py-1.5 pr-2 text-right">Alzheimer's</th>
                     <th scope="col" className="py-1.5 pr-2 text-right">Heart failure</th>
@@ -115,14 +118,15 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
                 <tbody>
                   {rows.map((r, i) => (
                     <tr key={r.npi} className="border-b border-slate-800/60">
-                      <td className="py-1.5 pr-2 text-slate-400">{countyFips ? r.rank_in_county ?? i + 1 : i + 1}</td>
+                      <td className="py-1.5 pr-2 text-slate-400">{countyFips ? (setting === 'hospice' ? r.hospice_rank_in_county : r.rank_in_county) ?? i + 1 : i + 1}</td>
                       <td className="py-1.5 pr-2">
                         <Link to={createPageUrl(`ProviderDetail?npi=${r.npi}`)} className="text-cyan-400 hover:underline">{r.name}</Link>
                         <span className="block text-[10px] text-slate-400">{r.specialty || r.specialty_group_label}{!countyFips && r.county_name ? ` · ${r.county_name}` : ''}</span>
                       </td>
-                      <td className="py-1.5 pr-2 text-right text-slate-100 font-medium">{r.referral_index ?? '—'}</td>
+                      <td className="py-1.5 pr-2 text-right text-slate-100 font-medium">{setting === 'hospice' ? (r.hospice_index ?? '—') : (r.referral_index ?? '—')}</td>
                       <td className="py-1.5 pr-2 text-right text-slate-200">{fmtCount(r.benes)}</td>
                       <td className="py-1.5 pr-2 text-right text-slate-200">{certified(r.hh_cert_benes)}</td>
+                      {setting === 'hospice' ? <td className="py-1.5 pr-2 text-right text-slate-200">{certified(r.hospice_oversight_benes)}</td> : null}
                       <td className="py-1.5 pr-2 text-right text-slate-300">{fmtRate(r.avg_risk_score, 2)}</td>
                       <td className="py-1.5 pr-2 text-right text-slate-300">{fmtShare(r.chronic?.alzheimer)}</td>
                       <td className="py-1.5 pr-2 text-right text-slate-300">{fmtShare(r.chronic?.chf)}</td>

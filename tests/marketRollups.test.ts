@@ -69,6 +69,8 @@ describe("market rollup jobs", () => {
     expect(jobByName("referral_sources")!.sql).toContain("cms_order_referring");
     // A clinician with no county isn't ranked against the others with none.
     expect(jobByName("referral_sources")!.sql).toMatch(/CASE WHEN county_fips IS NOT NULL THEN rank\(\) OVER \(PARTITION BY county_fips/);
+    // The hospice list filters to clinicians who can order hospice, so their rank is among that group, not the whole county.
+    expect(jobByName("referral_sources")!.sql).toMatch(/CASE WHEN county_fips IS NOT NULL AND hospice_eligible THEN rank\(\) OVER \(PARTITION BY county_fips, hospice_eligible ORDER BY hospice_index DESC/);
     expect(jobByName("referral_sources")!.sql).toContain("Bene_CC_PH_HF_NonIHD_V2_Pct");
   });
 
@@ -111,9 +113,15 @@ describe("market rollup jobs", () => {
   it("carry the year of the certification file, which is not the physician file's year", () => {
     const job = jobByName("referral_sources")!;
     expect(job.sql).toMatch(/\(SELECT y FROM cert_year\) AS hh_cert_year/);
-    expect(job.sql).toMatch(/hh_cert_benes, hospice_oversight_benes, hh_cert_year\s+FROM scored/);
-    // Appended last, after the two counts, as migration 0022 adds them.
-    expect(job.resultColumns.slice(-3)).toEqual(["hh_cert_benes", "hospice_oversight_benes", "hh_cert_year"]);
+    expect(job.sql).toMatch(/hh_cert_benes, hospice_oversight_benes, hh_cert_year, hospice_index/);
+    // 0022 appends the certification year after the two counts; 0023 appends the hospice rank after that.
+    expect(job.resultColumns.slice(-5)).toEqual(["hh_cert_benes", "hospice_oversight_benes", "hh_cert_year", "hospice_index", "hospice_rank_in_county"]);
+  });
+
+  it("keeps the published user share when year-over-year is computed from the prior period", () => {
+    const sql = jobByName("county_market_profile")!.sql;
+    expect(sql).toMatch(/sat_hist AS \(\s+SELECT s\.geo_code, s\.service, s\.reference_period, s\.providers, s\.users, s\.users_pct,/);
+    expect(sql).toContain("max(users_pct) FILTER (WHERE service ILIKE 'home health%')");
   });
 
   it("count the county's post-acute providers at each setting's own latest year", () => {
