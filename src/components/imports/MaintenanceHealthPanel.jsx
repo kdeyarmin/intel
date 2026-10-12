@@ -45,8 +45,9 @@ function summarizeWorkerResult(result) {
   if (!result) return null;
   if (Array.isArray(result.workers)) {
     const ok = result.workers.filter(w => w.ok).length;
-    const failed = result.workers.length - ok;
-    return `${ok} ok, ${failed} failed`;
+    const timedOut = result.workers.filter(w => w.timedOut).length;
+    const failed = result.workers.length - ok - timedOut;
+    return `${ok} ok, ${failed} failed${timedOut > 0 ? `, ${timedOut} still running` : ''}`;
   }
   const w = result.worker;
   if (!w) return result.success ? 'ok' : 'failed';
@@ -221,7 +222,11 @@ export default function MaintenanceHealthPanel() {
   const lastRun = event?.timestamp ?? event?.created_date ?? null;
   const stale = lastRun && (Date.now() - new Date(lastRun).getTime() > STALE_AFTER_MS);
   const workers = Array.isArray(event?.details?.workers) ? event.details.workers : [];
-  const failed = workers.filter(w => !w.ok);
+  // Heartbeat worker ok is tri-state: true / false / "timeout". A "timeout"
+  // means the worker was still running when the reporting budget elapsed —
+  // unknown outcome, not a failure.
+  const failed = workers.filter(w => w.ok === false);
+  const timedOut = workers.filter(w => w.ok === 'timeout' || w.timed_out);
   const skippedReason = event?.details?.skipped_reason;
   const invokedBy = event?.details?.invoked_by;
   // An empty workers array (or a skipped-due-to-budget heartbeat) is a partial
@@ -240,6 +245,10 @@ export default function MaintenanceHealthPanel() {
     tone = { border: 'border-amber-500/30', bg: 'bg-amber-500/10', icon: 'text-amber-400', text: 'text-amber-200', sub: 'text-amber-300/80' };
     Icon = AlertCircle;
     headline = `Maintenance ran ${formatRelative(lastRun)}${stale ? ' (stale)' : ''}`;
+  } else if (timedOut.length > 0 && failed.length === 0) {
+    tone = { border: 'border-amber-500/30', bg: 'bg-amber-500/10', icon: 'text-amber-400', text: 'text-amber-200', sub: 'text-amber-300/80' };
+    Icon = AlertCircle;
+    headline = `Maintenance ran ${formatRelative(lastRun)} — ${timedOut.length} worker${timedOut.length === 1 ? '' : 's'} still running past the reporting window`;
   } else if (failed.length > 0) {
     tone = { border: 'border-orange-500/30', bg: 'bg-orange-500/10', icon: 'text-orange-400', text: 'text-orange-200', sub: 'text-orange-300/80' };
     Icon = AlertCircle;
@@ -275,6 +284,11 @@ export default function MaintenanceHealthPanel() {
               {failed.length > 0 && (
                 <span className="text-orange-400">
                   {' '}— {failed.length} failed: {failed.map(w => w.worker).join(', ')}
+                </span>
+              )}
+              {timedOut.length > 0 && (
+                <span className="text-amber-400">
+                  {' '}— {timedOut.length} still running: {timedOut.map(w => w.worker).join(', ')}
                 </span>
               )}
             </p>

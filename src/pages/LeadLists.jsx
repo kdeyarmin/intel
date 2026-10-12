@@ -267,10 +267,10 @@ function ViewListDialog({ listId, listName }) {
     try {
       await base44.entities.LeadListMember.delete(memberId);
       setLeads(prev => prev.filter(l => l.member.id !== memberId));
-      const list = await base44.entities.LeadList.filter({ id: listId });
-      if (list[0]) {
-        await base44.entities.LeadList.update(listId, { member_count: Math.max((list[0].member_count || 0) - 1, 0) });
-      }
+      // member_count is recomputed from what is actually stored, not derived
+      // from the old value: concurrent edits would otherwise drift it.
+      const remaining = await listMembers(listId);
+      await base44.entities.LeadList.update(listId, { member_count: remaining.length });
     } catch (err) {
       toast.error(`Couldn't remove provider: ${err.message}`);
     }
