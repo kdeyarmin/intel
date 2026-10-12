@@ -317,7 +317,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
           return res.status(429).json({ message: "Too many network analyses. Try again in a minute." });
         }
         const { handleAnalyzeProviderNetwork } = await import("../functions/networkAnalysis");
-        return res.json(await handleAnalyzeProviderNetwork(req.body));
+        return res.json(await handleAnalyzeProviderNetwork(req.body, req.user));
       }
       case "reconcileProviderData": {
         const { handleReconcileProviderData } = await import("../functions/reconciliation");

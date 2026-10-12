@@ -215,3 +215,63 @@ describe("a platform admin", () => {
     expect((await (await signedIn(h, "plain@example.com")).call("GET", "/api/auth/me")).body.isPlatformAdmin).toBe(false);
   });
 });
+
+describe("an owner in the platform's own organization", () => {
+  // Every account from before organizations was folded into organization 1, and a platform admin who delegates
+  // by inviting an owner puts them there too: so the owner and the platform admin can share an organization.
+  let owner: Client;
+  let platform: Client;
+  beforeEach(async () => {
+    await h.seed({ email: "platform@example.com", role: "admin" });
+    await h.seed({ email: "owner@example.com", role: "user", org_id: 1, org_role: "owner" });
+    await h.seed({ email: "member@example.com", role: "user", org_id: 1 });
+    owner = await signedIn(h, "owner@example.com");
+    platform = await signedIn(h, "platform@example.com");
+  });
+
+  it("doesn't see platform admins among the organization's people", async () => {
+    const r = await owner.call("GET", "/api/admin/users");
+    expect(r.status).toBe(200);
+    expect(r.body.users.map((u: any) => u.email).sort()).toEqual(["member@example.com", "owner@example.com"]);
+    // The platform admin still sees everyone, platform admins included.
+    expect((await platform.call("GET", "/api/admin/users")).body.users.map((u: any) => u.email).sort())
+      .toEqual(["member@example.com", "owner@example.com", "platform@example.com"]);
+  });
+
+  it("can't reset, disable, sign out, rename, re-role or delete a platform admin: the account answers 404", async () => {
+    const admin = idOf("platform@example.com");
+    for (const [method, path, body] of [
+      ["POST", `/api/admin/users/${admin}/reset-link`, undefined],
+      ["POST", `/api/admin/users/${admin}/disable`, undefined],
+      ["POST", `/api/admin/users/${admin}/revoke-sessions`, undefined],
+      ["POST", `/api/admin/users/${admin}/enable`, undefined],
+      ["POST", `/api/admin/users/${admin}/approve`, undefined],
+      ["PATCH", `/api/admin/users/${admin}`, { full_name: "Not the admin" }],
+      ["PATCH", `/api/admin/users/${admin}`, { org_role: "member" }],
+      ["DELETE", `/api/admin/users/${admin}`, undefined],
+    ] as const) {
+      const r = await owner.call(method, path, body);
+      expect(r.status, `${method} ${path}`).toBe(404);
+    }
+    const stored = h.repo.users.find((u) => u.email === "platform@example.com")!;
+    expect(stored).toMatchObject({ status: "active", full_name: null });
+    // No reset link was minted for it, and its session still works.
+    expect(h.repo.tokens.filter((t) => t.user_id === admin)).toEqual([]);
+    expect((await platform.call("GET", "/api/auth/me")).status).toBe(200);
+  });
+
+  it("also can't touch an account that carries only the platform-admin flag", async () => {
+    await h.seed({ email: "flagged@example.com", role: "user", is_platform_admin: true, org_id: 1 });
+    const flagged = idOf("flagged@example.com");
+    expect((await owner.call("POST", `/api/admin/users/${flagged}/reset-link`)).status).toBe(404);
+    expect((await owner.call("POST", `/api/admin/users/${flagged}/disable`)).status).toBe(404);
+    expect(h.repo.tokens.filter((t) => t.user_id === flagged)).toEqual([]);
+  });
+
+  it("still manages the organization's ordinary people, and a platform admin still manages the owner", async () => {
+    const member = idOf("member@example.com");
+    expect((await owner.call("POST", `/api/admin/users/${member}/revoke-sessions`)).status).toBe(200);
+    expect((await owner.call("PATCH", `/api/admin/users/${member}`, { full_name: "Mia Member" })).status).toBe(200);
+    expect((await platform.call("POST", `/api/admin/users/${idOf("owner@example.com")}/revoke-sessions`)).status).toBe(200);
+  });
+});

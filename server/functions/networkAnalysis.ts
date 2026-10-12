@@ -34,10 +34,17 @@ const withClient = <T,>(timeout: string, fn: (client: any) => Promise<T>) => wit
 const isTimeout = isStatementTimeout;
 const dedupe = (rows: any[]) => [...new Set(rows.map((r) => r.npi).filter(Boolean))] as string[];
 
-export async function loadSeeds(client: any, payload: any): Promise<{ seeds: string[]; scope: AnalysisScope }> {
+/**
+ * The providers a scope starts from. A lead list belongs to one organization: with `orgId` it must be that
+ * organization's, and another organization's list (or any list for a caller in none) answers 404, exactly like one
+ * that doesn't exist.
+ */
+export async function loadSeeds(client: any, payload: any, orgId?: number | null): Promise<{ seeds: string[]; scope: AnalysisScope }> {
   const listId = Number(payload?.lead_list_id);
   if (Number.isInteger(listId) && listId > 0) {
-    const { rows: [list] } = await client.query("SELECT id, name FROM lead_lists WHERE id = $1", [listId]);
+    const { rows: [list] } = orgId == null
+      ? { rows: [] as any[] }
+      : await client.query("SELECT id, name FROM lead_lists WHERE id = $1 AND org_id = $2", [listId, orgId]);
     if (!list) throw new HttpError(404, "Lead list not found.");
     const { rows } = await client.query(
       "SELECT npi FROM lead_list_members WHERE list_id = $1 AND npi IS NOT NULL LIMIT $2", [listId, MAX_SEEDS + 1]);
@@ -113,9 +120,10 @@ const analysisCache = new Map<string, { at: number; analysis: NetworkAnalysis }>
 // analysis never comes back with recommendations from the old metrics.
 const aiCache = new Map<string, { at: number; analysisAt: number; recommendations: NetworkRecommendations }>();
 
-function cacheKey(payload: any) {
+/** A lead list's analysis is cached per organization: another organization's request for the same id must reach the ownership check, not a cached answer. */
+function cacheKey(payload: any, orgId?: number | null) {
   const listId = Number(payload?.lead_list_id);
-  if (Number.isInteger(listId) && listId > 0) return `list:${listId}`;
+  if (Number.isInteger(listId) && listId > 0) return `list:${orgId ?? "none"}:${listId}`;
   const state = String(payload?.state || "").trim().toUpperCase();
   return /^[A-Z]{2}$/.test(state) ? `state:${state}` : "sample";
 }
@@ -156,13 +164,14 @@ ${JSON.stringify(facts)}`,
   }
 }
 
-export async function handleAnalyzeProviderNetwork(payload: any) {
-  const key = cacheKey(payload);
+export async function handleAnalyzeProviderNetwork(payload: any, user?: { orgId?: number | null } | null) {
+  const orgId = user?.orgId ?? null;
+  const key = cacheKey(payload, orgId);
   const fresh = payload?.force_refresh !== true;
   let analysis = fresh ? analysisCache.get(key) : undefined;
   if (!analysis || Date.now() - analysis.at > ANALYSIS_TTL_MS) {
     const built = await withClient("15s", async (client) => {
-      const { seeds, scope } = await loadSeeds(client, payload);
+      const { seeds, scope } = await loadSeeds(client, payload, orgId);
       if (seeds.length === 0) return null;
       const edges = await loadEdges(client, seeds, scope);
       const info = await loadProviderInfo(client, seeds);

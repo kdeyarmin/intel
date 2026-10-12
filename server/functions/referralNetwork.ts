@@ -25,10 +25,11 @@ const cache = new Map<string, { at: number; body: any }>();
 
 const isNpi = (v: unknown): v is string => typeof v === "string" && /^\d{10}$/.test(v);
 
-function scopeKey(payload: any) {
+function scopeKey(payload: any, orgId?: number | null) {
   if (isNpi(payload?.npi)) return `npi:${payload.npi}`;
   const listId = Number(payload?.lead_list_id);
-  if (Number.isInteger(listId) && listId > 0) return `list:${listId}`;
+  // Per organization: another organization's request for the same list id must reach the ownership check, not a cached answer.
+  if (Number.isInteger(listId) && listId > 0) return `list:${orgId ?? "none"}:${listId}`;
   const state = String(payload?.state || "").trim().toUpperCase();
   return /^[A-Z]{2}$/.test(state) ? `state:${state}` : "sample";
 }
@@ -83,10 +84,11 @@ async function loadDetails(client: any, npis: string[], state: string | null) {
   return buildNodeDetails(npis, { providers: providers.rows, taxonomies: taxonomies.rows, locations: locations.rows });
 }
 
-export async function handleGetReferralNetworkData(payload: any, user?: { id: number } | null) {
+export async function handleGetReferralNetworkData(payload: any, user?: { id: number; orgId?: number | null } | null) {
   const maxNodes = clampLimit(payload?.limit_nodes, DEFAULT_NODES, MAX_NODES);
   const maxEdges = clampLimit(payload?.limit_edges, DEFAULT_EDGES, MAX_EDGES);
-  const key = `${scopeKey(payload)}|${maxNodes}|${maxEdges}`;
+  const orgId = user?.orgId ?? null;
+  const key = `${scopeKey(payload, orgId)}|${maxNodes}|${maxEdges}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return { ...hit.body, cached: true };
 
@@ -110,7 +112,7 @@ export async function handleGetReferralNetworkData(payload: any, user?: { id: nu
       const loaded = isNpi(payload?.npi)
         ? await providerScope(client, payload.npi)
         : await (async () => {
-            const { seeds, scope } = await loadSeeds(client, payload);
+            const { seeds, scope } = await loadSeeds(client, payload, orgId);
             return { seeds, scope, edges: seeds.length ? await loadEdges(client, seeds, scope) : [] };
           })();
 
