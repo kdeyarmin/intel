@@ -89,6 +89,7 @@ const pageLoaders = {
     ScoringRules: () => import('./pages/ScoringRules.jsx'),
     SecurityAudit: () => import('./pages/SecurityAudit.jsx'),
     TerritoryIntelligence: () => import('./pages/TerritoryIntelligence.jsx'),
+    TeamMarketing: () => import('./pages/TeamMarketing.jsx'),
     Utilization: () => import('./pages/Utilization.jsx'),
 };
 
@@ -131,6 +132,7 @@ export const PAGE_LOADERS = {
     ScoringRules: pageLoaders.ScoringRules,
     SecurityAudit: pageLoaders.SecurityAudit,
     TerritoryIntelligence: pageLoaders.TerritoryIntelligence,
+    TeamMarketing: pageLoaders.TeamMarketing,
     Utilization: pageLoaders.Utilization,
 };
 

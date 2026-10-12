@@ -37,14 +37,16 @@ async function listAll(entity, sort) {
 }
 
 async function loadBook() {
-  const [accounts, contacts, activities, referrals] = await Promise.all([
+  const [accounts, contacts, activities, referrals, me] = await Promise.all([
     listAll(base44.entities.CrmAccount, '-updated_date'),
     listAll(base44.entities.CrmContact, '-id'),
     listAll(base44.entities.CrmActivity, '-activity_date'),
     listAll(base44.entities.CrmReferral, '-received_on'),
+    base44.auth.me().catch(() => null),
   ]);
   return {
     accounts: accounts.rows, contacts: contacts.rows, activities: activities.rows, referrals: referrals.rows,
+    me,
     truncated: accounts.truncated || contacts.truncated || activities.truncated || referrals.truncated,
   };
 }
@@ -99,6 +101,7 @@ export default function Marketing() {
       {!isLoading && account && (
         <Account
           account={account}
+          me={data?.me}
           contacts={(data.contacts || []).filter((c) => c.account_id === account.id)}
           activities={(data.activities || []).filter((a) => a.account_id === account.id)}
           referrals={(data.referrals || []).filter((r) => r.account_id === account.id)}
@@ -114,19 +117,22 @@ export default function Marketing() {
         } catch (e) { fail(e); }
       }} />}
       {!isLoading && !account && url.view !== 'month' && (
-        <Book report={report} activities={data?.activities || []} month={month} onOpen={(id) => setUrl({ account: id })} onAdded={refresh} onFail={fail} />
+        <Book report={report} activities={data?.activities || []} month={month} me={data?.me} rawAccounts={data?.accounts || []} onOpen={(id) => setUrl({ account: id })} onAdded={refresh} onFail={fail} />
       )}
     </div>
   );
 }
 
-function Book({ report, activities, month, onOpen, onAdded, onFail }) {
+function Book({ report, activities, month, me, rawAccounts, onOpen, onAdded, onFail }) {
   const [name, setName] = useState('');
   const [type, setType] = useState('hospital');
   const [city, setCity] = useState('');
   const [saving, setSaving] = useState(false);
+  const [scope, setScope] = useState('all');
   const upcoming = activities.filter((a) => !a.done && a.activity_date >= `${month}-01`).sort((a, b) => a.activity_date.localeCompare(b.activity_date)).slice(0, 8);
   const byId = new Map(report.accounts.map((a) => [a.id, a]));
+  const mine = new Set((rawAccounts || []).filter((a) => a.claimed_by_user_id != null && me?.id != null && Number(a.claimed_by_user_id) === Number(me.id)).map((a) => a.id));
+  const rows = scope === 'mine' ? report.accounts.filter((a) => mine.has(a.id)) : report.accounts;
 
   const add = async (e) => {
     e.preventDefault();
@@ -176,10 +182,19 @@ function Book({ report, activities, month, onOpen, onAdded, onFail }) {
       )}
 
       <section>
-        <h2 className="text-sm font-medium text-slate-200 mb-2">Accounts this month</h2>
-        {report.accounts.length === 0 ? <p className="text-sm text-slate-400">Add the facilities and physicians you work. Then log the visits and the referrals they send.</p> : (
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <h2 className="text-sm font-medium text-slate-200">Accounts this month</h2>
+          <div className="flex gap-1" role="group" aria-label="Scope">
+            {[['all', 'All'], ['mine', 'My book']].map(([id, label]) => (
+              <Button key={id} type="button" size="sm" variant={scope === id ? 'default' : 'outline'} aria-pressed={scope === id} className={scope === id ? 'bg-cyan-700 hover:bg-cyan-800 h-7 text-xs' : 'border-slate-700 h-7 text-xs'} onClick={() => setScope(id)}>{label}</Button>
+            ))}
+          </div>
+        </div>
+        {rows.length === 0 ? (scope === 'mine'
+          ? <p className="text-sm text-slate-400">Nothing on your book yet. Open an account and claim it to build your book of business.</p>
+          : <p className="text-sm text-slate-400">Add the facilities and physicians you work. Then log the visits and the referrals they send.</p>) : (
           <ul className="space-y-1">
-            {report.accounts.map((a) => (
+            {rows.map((a) => (
               <li key={a.id}>
                 <button type="button" className="w-full text-left rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 hover:border-slate-600" onClick={() => onOpen(a.id)}>
                   <span className="flex items-baseline justify-between gap-2">
@@ -292,12 +307,24 @@ function Rank({ title, rows, empty, onOpen }) {
   );
 }
 
-function Account({ account, contacts, activities, referrals, onChange, onFail }) {
+function Account({ account, contacts, activities, referrals, me, onChange, onFail }) {
   const [note, setNote] = useState('');
   const [when, setWhen] = useState(today());
   const [role, setRole] = useState('administrator');
   const [person, setPerson] = useState('');
   const [phone, setPhone] = useState('');
+  const [claiming, setClaiming] = useState(false);
+
+  const claimedByMe = account.claimed_by_user_id != null && me?.id != null && Number(account.claimed_by_user_id) === Number(me.id);
+  const claim = async () => {
+    if (me?.id == null) return;
+    setClaiming(true);
+    try {
+      await base44.entities.CrmAccount.update(account.id, { claimedByUserId: claimedByMe ? null : me.id });
+      toast.success(claimedByMe ? 'Released from your book.' : 'Claimed — this account is now on your book.');
+      onChange();
+    } catch (e) { onFail(e); } finally { setClaiming(false); }
+  };
 
   const log = async (kind, done, date) => {
     try {
@@ -346,6 +373,16 @@ function Account({ account, contacts, activities, referrals, onChange, onFail })
       <div>
         <h2 className="text-xl font-semibold text-slate-100">{account.name}</h2>
         <p className="text-sm text-slate-400">{accountTypeLabel(account.account_type)}{account.city ? ` · ${account.city}` : ''}</p>
+        <div className="flex items-center gap-2 mt-1.5">
+          {claimedByMe ? (
+            <span className="text-[11px] rounded-full bg-cyan-950 border border-cyan-800 text-cyan-200 px-2 py-0.5">On your book</span>
+          ) : account.claimed_by_user_id != null ? (
+            <span className="text-[11px] rounded-full bg-slate-800 border border-slate-700 text-slate-400 px-2 py-0.5">Claimed</span>
+          ) : null}
+          <Button type="button" size="sm" variant="outline" className="border-slate-700 h-7 text-xs" onClick={claim} disabled={claiming || me?.id == null}>
+            {claiming ? 'Saving…' : claimedByMe ? 'Release from my book' : 'Claim for my book'}
+          </Button>
+        </div>
       </div>
 
       <section className="space-y-2">

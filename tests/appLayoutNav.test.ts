@@ -44,9 +44,9 @@ function pageFiles(): string[] {
 const pages = new Set(registeredPageKeys());
 
 describe('sidebar', () => {
-  it('has five sections and at most 23 entries, each page once', () => {
+  it('has five sections and at most 24 entries, each page once', () => {
     expect(NAV_SECTIONS.map((s) => s.label)).toEqual(['Overview', 'Directory', 'Analytics', 'Sales & Outreach', 'Administration']);
-    expect(allItems.length).toBeLessThanOrEqual(23);
+    expect(allItems.length).toBeLessThanOrEqual(24);
     expect(navPages.size).toBe(allItems.length);
   });
 
@@ -72,7 +72,7 @@ describe('sidebar', () => {
     const userPages = getVisibleNavSections('user').flatMap((s) => s.items.map((i) => i.page));
     // An owner is a member of their organization first: the dashboard, directory and analytics are theirs too.
     expect(userPages.filter((p) => !ownerPages.includes(p))).toEqual([]);
-    expect(ownerPages.filter((p) => !userPages.includes(p))).toEqual(['ProviderOutreach', 'AdminSettings']);
+    expect(ownerPages.filter((p) => !userPages.includes(p))).toEqual(['ProviderOutreach', 'TeamMarketing', 'AdminSettings']);
     // …but not the platform's own pages.
     for (const page of ['ProviderIntelligence', 'DataCenter', 'APIConnectors', 'NPPESCrawler', 'DataQuality']) expect(ownerPages).not.toContain(page);
   });
