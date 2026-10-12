@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
+import { createPageUrl } from '@/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart3, TrendingUp, GitCompare, Sparkles, LayoutDashboard } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { BarChart3, TrendingUp, GitCompare, Sparkles, LayoutDashboard, Lock } from 'lucide-react';
 
 import TrendAnalysisPanel from '../components/advancedAnalytics/TrendAnalysisPanel';
 import ComparativeAnalysisPanel from '../components/advancedAnalytics/ComparativeAnalysisPanel';
@@ -16,15 +21,28 @@ export default function AdvancedAnalytics() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeDashboardId, setActiveDashboardId] = useState(null);
   const queryClient = useQueryClient();
+  const { user, isLoadingAuth } = useAuth();
+
+  // Plans whose coverage is only the places chosen on the Billing page. The
+  // entity lists below are national, so for these plans the page shows an
+  // upgrade notice and never loads them (mirrors server TERRITORY_PLANS in
+  // server/lib/entitlements.ts). Unknown user/plan defaults to the full
+  // view, matching the server's isUnrestricted.
+  const territoryLimited = !!user && !user.is_platform_admin
+    && !!user.plan_code && ['county_pack', 'state'].includes(user.plan_code);
+  // Don't fire the national lists until the plan is known.
+  const mayLoad = !isLoadingAuth && !territoryLimited;
 
   // Core data
   const { data: providers = [], isLoading: lp } = useQuery({
     queryKey: ['aaProviders'],
     queryFn: () => base44.entities.Provider.list('-created_date', 500),
+    enabled: mayLoad,
     staleTime: 120000,
   });
   const { data: utilization = [], isLoading: lu } = useQuery({
     queryKey: ['aaUtil'],
+    enabled: mayLoad,
     queryFn: async () => {
       const rows = await base44.entities.ProviderServiceUtilization.list('-data_year', 500);
       return rows.map(r => ({
@@ -32,13 +50,14 @@ export default function AdvancedAnalytics() {
         year: r.data_year,
         total_medicare_payment: r.total_medicare_payment_amt || 0,
         total_medicare_beneficiaries: r.total_unique_benes || 0,
-        total_submitted_charges: (r.average_submitted_chrg_amt || 0) * (r.total_services || 1),
+        total_submitted_charges: r.total_services ? (r.average_submitted_chrg_amt || 0) * r.total_services : null,
       }));
     },
     staleTime: 120000,
   });
   const { data: referrals = [], isLoading: lr } = useQuery({
     queryKey: ['aaRef'],
+    enabled: mayLoad,
     queryFn: async () => {
       // cms_referrals holds CMS "Order & Referring" eligibility rows whose
       // only real volume column is total_referrals (null unless a genuine
@@ -69,16 +88,19 @@ export default function AdvancedAnalytics() {
   const { data: locations = [], isLoading: _ll } = useQuery({
     queryKey: ['aaLoc'],
     queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
+    enabled: mayLoad,
     staleTime: 120000,
   });
   const { data: taxonomies = [], isLoading: _lt } = useQuery({
     queryKey: ['aaTax'],
     queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 500),
+    enabled: mayLoad,
     staleTime: 120000,
   });
   const { data: dashboards = [] } = useQuery({
     queryKey: ['analyticsDashboards'],
     queryFn: () => base44.entities.AnalyticsDashboard.list('-created_date', 50),
+    enabled: mayLoad,
     staleTime: 30000,
   });
 
@@ -117,6 +139,29 @@ export default function AdvancedAnalytics() {
         breadcrumbs={[{ label: 'Analytics', page: 'AdvancedAnalytics' }]}
       />
 
+      {territoryLimited ? (
+        <Card className="bg-slate-800/50 border-slate-700/50">
+          <CardContent className="py-12 text-center space-y-4">
+            <Lock className="w-10 h-10 text-slate-500 mx-auto" aria-hidden="true" />
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-slate-200">National analytics need a national plan</h2>
+              <p className="text-sm text-slate-400 max-w-xl mx-auto">
+                Advanced Analytics works across the full national dataset, but your plan covers only the
+                places you chose. Upgrade to a national plan, or use the county and market views for your
+                territory instead.
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button asChild variant="outline" className="border-slate-700 text-slate-300">
+                <Link to={createPageUrl('Billing')}>View plans</Link>
+              </Button>
+              <Button asChild variant="outline" className="border-slate-700 text-slate-300">
+                <Link to={createPageUrl('MarketIntelligence')}>Open Market Intelligence</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-slate-800/50 w-full grid grid-cols-2 sm:grid-cols-4 h-auto">
           <TabsTrigger value="dashboard" className="gap-1.5 text-xs">
@@ -205,6 +250,7 @@ export default function AdvancedAnalytics() {
           )}
         </TabsContent>
       </Tabs>
+      )}
 
 
     </div>
