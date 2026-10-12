@@ -167,6 +167,12 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   while CMS "percent" columns that are passed through (`*_users_pct`) stay in
   percent units (`fmtPct`); the county profile counts each post-acute setting
   at that setting's own latest year, because CMS releases them separately.
+  Provider counts come in two kinds that differ: *in county* (`snf_facilities`,
+  from the post-acute file by provider location) and *billing* (`snf_providers`,
+  from Market Saturation: every provider paid for the county's residents, in
+  neighbouring counties too). Label them as such. Leave out a tile that has
+  nothing behind it in the data in use (the HCC risk score, the inpatient totals
+  of a nursing home) instead of showing 0 or a dash.
 - **Geography:** counties and ZIP areas come from the bundled 2020 Census
   files in `server/data/census` (built by `scripts/census/build-census-geo.ts`,
   checked against `manifest.json`), loaded into `geo_*` tables and read through
@@ -276,7 +282,11 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   release no longer lists are retired (`server/lib/snapshotRetire.ts`).
   A `state_filter` reads a row's state from its state column, else from its CCN
   prefix or FIPS code (`server/lib/rowState.ts`: Hospital Service Area, facility
-  affiliations and Medicare Geographic Variation have no state column); a dataset
+  affiliations and Medicare Geographic Variation have no state column). The CCN
+  prefixes are the full table in CMS's State Operations Manual (chapter 2,
+  section 2779A1: a state has several, letter-and-digit codes such as A7 or D3
+  included) and a test holds them to the live Provider of Services file; a prefix
+  not in the table names no state, so recheck it when CMS revises the manual. A dataset
   that names no state at all (Order & Referring, CBSA saturation) fails the batch
   after its first 5,000 rows with the reason, instead of reading to the end and
   importing nothing. The pinned ids in `IMPORT_TYPE_URLS` for the typed datasets

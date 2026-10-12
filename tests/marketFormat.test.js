@@ -32,7 +32,9 @@ describe('market formatting', () => {
 
   it('describes the vintages a view used', () => {
     expect(describeVintages({ enrollment: '2026-06', saturation: '2025-01-01 to 2025-12-31', hospital_service_area: '2025', pac_utilization: null }))
-      .toBe('Data: Medicare enrollment 2026-06; Market saturation 2025-01-01; Hospital Service Area 2025.');
+      .toBe('Data: Medicare enrollment 2026-06; Market saturation 2025; Hospital Service Area 2025.');
+    // A range that is not a calendar year keeps its start date.
+    expect(describeVintages({ saturation: '2025-04-01 to 2026-03-31' })).toBe('Data: Market saturation 2025-04-01.');
     expect(describeVintages(null)).toBeNull();
     expect(describeVintages({})).toBeNull();
   });

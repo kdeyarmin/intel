@@ -94,6 +94,13 @@ function pacVintage(vintages) {
   return vintages.pac_utilization ? String(vintages.pac_utilization).slice(0, 10) : null;
 }
 
+/** A vintage as one short token: a calendar-year range reads as the year, any other range as its start date. */
+function vintageToken(value) {
+  const text = String(value);
+  const year = /^(\d{4})-01-01 to \1-12-31$/.exec(text);
+  return year ? year[1] : text.replace(/ to .*$/, '').slice(0, 10);
+}
+
 /** One sentence naming the vintages a market view used ("Enrollment June 2026; Hospital Service Area 2025"). */
 export function describeVintages(vintages) {
   if (!vintages || typeof vintages !== 'object') return null;
@@ -103,7 +110,7 @@ export function describeVintages(vintages) {
     acs: 'Census ACS', licensed: 'State licensing',
   };
   const parts = Object.entries(labels)
-    .map(([k, label]) => [label, k === 'pac_utilization' ? pacVintage(vintages) : vintages[k] ? String(vintages[k]).replace(/ to .*$/, '').slice(0, 10) : null])
+    .map(([k, label]) => [label, k === 'pac_utilization' ? pacVintage(vintages) : vintages[k] ? vintageToken(vintages[k]) : null])
     .filter(([, value]) => value)
     .map(([label, value]) => `${label} ${value}`);
   return parts.length ? `Data: ${parts.join('; ')}.` : null;

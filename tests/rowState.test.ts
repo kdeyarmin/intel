@@ -1,10 +1,12 @@
 /**
  * Which state a CMS row belongs to when it has no state column: the state its CCN was issued in, or its geography.
- * The CCN table was read from CMS's own Care Compare files (hospitals, nursing homes, home health agencies and
- * hospices, October 2026); the rows below are shaped like live ones.
+ * The CCN table is the one in CMS's State Operations Manual (chapter 2, section 2779A1, Rev. 226), and is held to
+ * the prefixes of the live Provider of Services file (tests/fixtures/cms/ccn_prefixes.json, October 2026); the rows
+ * below are shaped like live ones.
  */
 import { describe, expect, it } from "vitest";
-import { CCN_PREFIX_STATE, STATE_PROBE_ROWS, derivedStateOf, stateOfCcn, stateProbe } from "../server/lib/rowState";
+import ccnPrefixes from "./fixtures/cms/ccn_prefixes.json";
+import { CCN_PREFIX_STATE, CCN_STATE_CODES, STATE_PROBE_ROWS, derivedStateOf, stateOfCcn, stateProbe } from "../server/lib/rowState";
 import { STATE_FIPS, stateOfFips } from "../server/lib/stateFips";
 
 describe("stateOfCcn", () => {
@@ -17,12 +19,68 @@ describe("stateOfCcn", () => {
     expect(stateOfCcn("676001")).toBe("TX");
   });
 
-  it("names no state for something that is not a CCN", () => {
+  it("reads the later codes a state is given when its first ones fill up, letter-and-digit codes included", () => {
+    // The prefixes the review of this table named, and one of each kind besides.
+    expect(stateOfCcn("691400")).toBe("FL");
+    expect(stateOfCcn("A21400")).toBe("FL");
+    expect(stateOfCcn("C11400")).toBe("FL");
+    expect(stateOfCcn("A71400")).toBe("PA");
+    expect(stateOfCcn("D31000")).toBe("PA");
+    expect(stateOfCcn("B71400")).toBe("AL");
+    expect(stateOfCcn("D11400")).toBe("NY");
+    expect(stateOfCcn("731400")).toBe("PA");
+    expect(stateOfCcn("541400")).toBe("ID");
+    expect(stateOfCcn("E21400")).toBe("TX");
+    expect(stateOfCcn("B81400")).toBe("MP");
+    expect(stateOfCcn("C31400")).toBe("GU");
+  });
+
+  it("names no state for something that is not a CCN, or for a country other than ours", () => {
     for (const v of ["", null, undefined, "N/A", "ZZ1234", "9", "99xxxx"]) expect(stateOfCcn(v), String(v)).toBeNull();
+    for (const v of ["561400", "591400", "991400"]) expect(stateOfCcn(v), `${v} is Canada, Mexico or abroad`).toBeNull();
   });
 
   it("only ever names a state or territory the app knows", () => {
     for (const [prefix, state] of Object.entries(CCN_PREFIX_STATE)) expect(STATE_FIPS[state], `${prefix} -> ${state}`).toBeDefined();
+  });
+});
+
+describe("the CCN state-code table", () => {
+  const entries = Object.entries(CCN_STATE_CODES);
+
+  it("is the manual's table: 56 states and territories, 135 prefixes", () => {
+    expect(entries.length).toBe(56);
+    expect(entries.flatMap(([, codes]) => codes).length).toBe(135);
+  });
+
+  it("gives every state and territory the app knows at least one prefix, and no others", () => {
+    expect(Object.keys(CCN_STATE_CODES).sort()).toEqual(Object.keys(STATE_FIPS).sort());
+  });
+
+  it("gives each prefix to exactly one state", () => {
+    const owners = new Map<string, string>();
+    for (const [state, codes] of entries) {
+      for (const code of codes) {
+        expect(owners.get(code), `${code} is listed for ${owners.get(code)} and ${state}`).toBeUndefined();
+        owners.set(code, state);
+      }
+    }
+    expect(Object.keys(CCN_PREFIX_STATE).length).toBe(owners.size);
+  });
+
+  it("starts each state's list with its original two-digit code", () => {
+    const first: Record<string, string> = { AL: "01", AK: "02", PA: "39", TX: "45", CA: "05", FL: "10", NY: "33" };
+    for (const [state, code] of Object.entries(first)) expect(CCN_STATE_CODES[state][0], state).toBe(code);
+  });
+
+  it("matches every prefix in use in the live Provider of Services file, state for state", () => {
+    const live = ccnPrefixes.prefixes as Record<string, string>;
+    expect(Object.keys(live).length).toBe(95);
+    for (const [prefix, state] of Object.entries(live)) {
+      const named = stateOfCcn(`${prefix}0000`);
+      if (state === "CN" || state === "MX") expect(named, `${prefix} is ${state}`).toBeNull();
+      else expect(named, `${prefix} is ${state} in the Provider of Services file`).toBe(state);
+    }
   });
 });
 

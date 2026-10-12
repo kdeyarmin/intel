@@ -24,12 +24,15 @@ vi.mock('recharts', () => ({
 import CountyIntelligence from '../src/pages/CountyIntelligence';
 import MarketIntelligence from '../src/pages/MarketIntelligence';
 import TerritoryIntelligence from '../src/pages/TerritoryIntelligence';
+import CountyMarketProfile from '../src/components/market/CountyMarketProfile';
+import { FacilitySummaryCard } from '../src/pages/FacilityDetail';
 import ReferralPotentialCard from '../src/components/market/ReferralPotentialCard';
 import CountyMetricLayer from '../src/components/market/CountyMetricLayer';
 import PacCompetitorsTable from '../src/components/market/PacCompetitorsTable';
 import MarketPositionCard from '../src/components/market/MarketPositionCard';
 import HospitalCatchmentCard from '../src/components/market/HospitalCatchmentCard';
 import ComplianceDisclaimer from '../src/components/compliance/ComplianceDisclaimer';
+import { COUNTY_LAYER_METRICS } from '../src/lib/marketLayers';
 
 function Probe() {
   return <output data-testid="url">{useLocation().search}</output>;
@@ -255,6 +258,20 @@ describe('MarketIntelligence', () => {
     expect(screen.getByRole('button', { name: /Download CSV/ })).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'Remove Hospitals serving residents column' }));
     expect(screen.queryByRole('button', { name: /Hospitals serving residents/ })).toBeNull();
+  });
+
+  it('counts the facilities located in each county by default and names the billing counts as such', async () => {
+    invoke.mockReset().mockResolvedValue({
+      ...LAYER,
+      counties: LAYER.counties.map((c, i) => ({ ...c, values: { ...c.values, snf_facilities: i ? 8 : 52 } })),
+    });
+    renderAt('/MarketIntelligence', MarketIntelligence, '/MarketIntelligence');
+    await screen.findByRole('link', { name: 'Allegheny County' });
+    // 52 facilities are located in the county; the 70 in the saturation file also bill for its residents.
+    expect(screen.getByRole('button', { name: 'Skilled nursing facilities in county' })).toBeInTheDocument();
+    expect(within(screen.getAllByRole('row')[1]).getByText('52')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Skilled nursing facilities billing' })).toBeNull();
+    expect(COUNTY_LAYER_METRICS.find((m) => m.key === 'snf_providers').label).toBe('Skilled nursing facilities billing');
   });
 
   it('keeps "no metric columns" in the URL when the last column is removed, instead of bringing the defaults back', async () => {
@@ -594,5 +611,48 @@ describe('cards', () => {
     render(<ComplianceDisclaimer />);
     expect(screen.getByRole('note')).toHaveTextContent(/not confirmed referrals/);
     expect(screen.getByRole('note')).not.toHaveTextContent(/discharge mix/);
+  });
+});
+
+describe('CountyMarketProfile tiles', () => {
+  const profile = (extra = {}) => ({ available: true, benes: 310000, original_medicare: 118000, ma_penetration: 0.62, benes_85_plus: 21700, dual: 40000, enrollment_period: '2026-06', ...extra });
+  const tile = (label) => screen.getByText(label).closest('div').parentElement;
+
+  it('puts the dual-eligible count with all beneficiaries, not under the 85-and-over tile it is not about', () => {
+    render(<CountyMarketProfile profile={profile()} />);
+    expect(within(tile('Medicare beneficiaries')).getByText('Enrollment 2026-06 · 40,000 dual-eligible')).toBeInTheDocument();
+    expect(within(tile('Aged 85 and over')).getByText('7.0% of beneficiaries')).toBeInTheDocument();
+    expect(screen.queryByText('40,000 dual-eligible')).toBeNull();
+  });
+
+  it('says nothing under a tile it has nothing to say for', () => {
+    render(<CountyMarketProfile profile={profile({ dual: null, enrollment_period: null, benes_85_plus: null })} />);
+    expect(within(tile('Medicare beneficiaries')).queryByText(/dual-eligible|Enrollment/)).toBeNull();
+    expect(within(tile('Aged 85 and over')).queryByText(/of beneficiaries/)).toBeNull();
+  });
+
+  it('shows the average HCC risk score when the county has one, and no empty tile when it does not', () => {
+    const { unmount } = render(<CountyMarketProfile profile={profile({ avg_hcc_score: 1.12 })} />);
+    expect(screen.getByText('Average HCC risk score')).toBeInTheDocument();
+    unmount();
+    render(<CountyMarketProfile profile={profile({ avg_hcc_score: null })} />);
+    expect(screen.queryByText('Average HCC risk score')).toBeNull();
+  });
+});
+
+describe('FacilitySummaryCard', () => {
+  const data = { by_type: { nursing_home_providers: [{}] }, data_years: [2026] };
+
+  it('leaves out the inpatient figures a facility does not have, instead of showing them as zero', () => {
+    render(<FacilitySummaryCard data={data} financials={{ totalPayments: 0, totalCharges: 0, totalDischarges: 0, totalDaysOfCare: 0 }} facilityTypes={['nursing_home_providers']} />);
+    for (const label of ['Total Payments', 'Total Charges', 'Discharges', 'Days of Care']) expect(screen.queryByText(label)).toBeNull();
+    expect(screen.getByText('Data Sources')).toBeInTheDocument();
+    expect(screen.getByText('2026–2026')).toBeInTheDocument();
+  });
+
+  it('shows them when any of them has a value', () => {
+    render(<FacilitySummaryCard data={data} financials={{ totalPayments: 5e6, totalCharges: 0, totalDischarges: 1200, totalDaysOfCare: 0 }} facilityTypes={['hospital_general_info']} />);
+    for (const label of ['Total Payments', 'Total Charges', 'Discharges', 'Days of Care']) expect(screen.getByText(label)).toBeInTheDocument();
+    expect(screen.getByText('1,200')).toBeInTheDocument();
   });
 });

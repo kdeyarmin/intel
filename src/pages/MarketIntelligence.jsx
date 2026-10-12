@@ -21,7 +21,7 @@ import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import MarketFreshness from '../components/market/MarketFreshness';
 
 // The columns shown by default; the rest are in the CSV and the metric picker.
-const DEFAULT_COLUMNS = ['benes', 'ma_penetration', 'benes_85_plus', 'hha_users_pct', 'hospice_users_pct', 'snf_users_pct', 'snf_providers', 'hospitals_serving'];
+const DEFAULT_COLUMNS = ['benes', 'ma_penetration', 'benes_85_plus', 'hha_users_pct', 'hospice_users_pct', 'snf_users_pct', 'snf_facilities', 'hospitals_serving'];
 const URL_DEFAULTS = { state: 'PA', sort: 'benes', dir: 'desc', cols: DEFAULT_COLUMNS.join(',') };
 // An empty value means "the default" in the URL, so "no metric columns" needs a word of its own.
 const NO_COLUMNS = 'none';
