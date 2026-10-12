@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseFilterList, buildImportRowFilter } from "../server/functions/triggerImport";
+import { parseFilterList, buildImportRowFilter, stateOfRow } from "../server/functions/triggerImport";
 
 describe("parseFilterList", () => {
   it("returns [] for null/undefined/empty", () => {
@@ -129,5 +129,33 @@ describe("buildImportRowFilter", () => {
     expect(f({ NPI: "1234567890", state: "PA" })).toBe(true);
     expect(f({ NPI: "1234567890", state: "NJ" })).toBe(false);
     expect(f({ NPI: "0000000000", state: "PA" })).toBe(false);
+  });
+});
+
+describe("buildImportRowFilter on feeds that have no state column", () => {
+  it("keeps a Hospital Service Area row when its hospital is in the state, whatever state the patient's ZIP is in", () => {
+    const f = buildImportRowFilter(null, "PA")!;
+    expect(f({ MEDICARE_PROV_NUM: "390164", ZIP_CD_OF_RESIDENCE: "44444", TOTAL_CASES: "20" })).toBe(true);
+    expect(f({ MEDICARE_PROV_NUM: "010001", ZIP_CD_OF_RESIDENCE: "15213", TOTAL_CASES: "20" })).toBe(false);
+    expect(buildImportRowFilter(null, "Pennsylvania")!({ MEDICARE_PROV_NUM: "390050" })).toBe(true);
+  });
+
+  it("keeps a Medicare Geographic Variation county or state row of the state, and drops the national row", () => {
+    const f = buildImportRowFilter(null, "PA")!;
+    expect(f({ BENE_GEO_LVL: "County", BENE_GEO_DESC: "PA-Allegheny", BENE_GEO_CD: "42003" })).toBe(true);
+    expect(f({ BENE_GEO_LVL: "State", BENE_GEO_DESC: "PA", BENE_GEO_CD: "42" })).toBe(true);
+    expect(f({ BENE_GEO_LVL: "County", BENE_GEO_DESC: "OH-Cuyahoga", BENE_GEO_CD: "39035" })).toBe(false);
+    expect(f({ BENE_GEO_LVL: "National", BENE_GEO_DESC: "National", BENE_GEO_CD: "" })).toBe(false);
+  });
+
+  it("prefers a row's own state column over the state its CCN would name", () => {
+    expect(stateOfRow({ state: "NJ", MEDICARE_PROV_NUM: "390164" })).toBe("NJ");
+    expect(stateOfRow({ MEDICARE_PROV_NUM: "390164" })).toBe("PA");
+    expect(stateOfRow({ NPI: "1003000126" })).toBeNull();
+  });
+
+  it("still drops a row that names no state, unless the filter names the file's own state", () => {
+    expect(buildImportRowFilter(null, "PA")!({ NPI: "1003000126" })).toBe(false);
+    expect(buildImportRowFilter(null, "PA", { stateOptional: true })!({ NPI: "1003000126" })).toBe(true);
   });
 });

@@ -274,6 +274,13 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   service areas, clinician affiliations: `snapshot` on their typed route) are
   keyed without a period, so after a complete, unfiltered import the rows the
   release no longer lists are retired (`server/lib/snapshotRetire.ts`).
+  A `state_filter` reads a row's state from its state column, else from its CCN
+  prefix or FIPS code (`server/lib/rowState.ts`: Hospital Service Area, facility
+  affiliations and Medicare Geographic Variation have no state column); a dataset
+  that names no state at all (Order & Referring, CBSA saturation) fails the batch
+  after its first 5,000 rows with the reason, instead of reading to the end and
+  importing nothing. The pinned ids in `IMPORT_TYPE_URLS` for the typed datasets
+  are checked against the live catalogs by title (`tests/importPins.test.ts`).
 - **Import progress is merged, never replaced.** `import_batches.retry_params`
   is shared by the importers, auto-retry and auto-resume, so write it with
   `mergeRetryParams` (`triggerImport.ts`) or the attempt counters are lost and
