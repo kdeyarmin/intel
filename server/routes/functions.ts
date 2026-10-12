@@ -551,6 +551,16 @@ Be concise and helpful. Use markdown formatting for readability.`;
         return res.json(await handleGetServiceAreaOverlap(req.body, req.user));
       }
 
+      case "getStateMarketLeaders": {
+        const { handleGetStateMarketLeaders } = await import("../functions/market");
+        return res.json(await handleGetStateMarketLeaders(req.body, req.user));
+      }
+
+      case "getMarketRoster": {
+        const { handleGetMarketRoster } = await import("../functions/callSheets");
+        return res.json(await handleGetMarketRoster(req.body, req.user));
+      }
+
       case "getAvailableStatesCounties": {
         const { handleGetAvailableStatesCounties } = await import("../functions/countyIntelligence");
         return res.json(await handleGetAvailableStatesCounties(req.body));

@@ -9,7 +9,7 @@ import { STALLED_AFTER_MS } from "../lib/scheduling";
 import { markImportFinished, markImportStarted, resolveImportVersion } from "../lib/datasetRegistry";
 import { sourceForUrl } from "../lib/cmsCatalog";
 import { csvSourceRecords, isLocalUpload, sourceKindFor } from "../lib/importSources";
-import { pageRecords } from "../lib/csv";
+import { looksLikeSharedPatientLine, pageRecords, SHARED_PATIENT_FOIA_HEADERS } from "../lib/csv";
 import { CERTIFICATION_HCPCS, TYPED_ROUTES, int, mapTypedRows, num } from "./cmsTypedTables";
 import { NPPES_FILE_TYPES } from "./importNPPESFile";
 import { resolveNppesFile, classifyNppesLink } from "../lib/nppesFiles";
@@ -226,7 +226,7 @@ const CMS_DATASET_CATALOG = [
   { id: "nppes_monthly_full", title: "NPPES Monthly Full File (V.2)", description: "The complete NPPES registry (about 1.1 GB zipped, 8M+ records). Replaces every provider, address and taxonomy with the current registry. Needs disk for the download; run on demand.", category: "Physicians & Clinicians", records: "~8.5M", priority: "medium" },
   { id: "cms_order_referring", title: "Order & Referring Providers", description: "Complete list of providers eligible to order and refer Medicare services including Part B, DME, HHA, PMD, and Hospice designations.", category: "Physicians & Clinicians", records: "~2M", priority: "high" },
   { id: "licensed_facilities", title: "State-Licensed Homes (personal care, assisted living)", description: "Personal care homes, assisted living residences and similar state-licensed homes that CMS files never list. Import a state licensing export as a CSV upload (or an https link): columns are matched by name (name, address, city, state, zip, license number, license type, capacity, status, licensee); set state_filter and license_type for files that don't carry them, and year for the export's date. Each home gets its county from its ZIP (the Census geography must be loaded first) and shows on the Facilities page (Licensed Homes) and County Intel's Competitors tab; the county profile counts the personal care, assisted living, memory care and domiciliary care homes and beds (nursing homes are counted from the CMS files).", category: "Nursing Homes & SNF", records: "varies by state", priority: "high", available: true },
-  { id: "physician_shared_patient_patterns", title: "Physician Shared Patient Patterns", description: "Real provider-to-provider relationships: directed pairs of providers who treated the same Medicare beneficiaries within a 30/60/90/180-day window, with shared-patient and encounter counts. Populates referred_to_npi + total_referrals so the Network/County/Dashboard referral features show real relationships. Not on the data.cms.gov data-api — import by supplying a CMS FOIA file_url (the rows must reach the importer as named-field JSON; a headerless FOIA CSV must have a header row / be converted first).", category: "Physicians & Clinicians", records: "~35M", priority: "high" },
+  { id: "physician_shared_patient_patterns", title: "Physician Shared Patient Patterns", description: "Provider pairs who treated the same Medicare beneficiaries within a 30/60/90/180-day window, with claim-pair and patient counts. Not a confirmed referral, and not on the data.cms.gov API. Import the CMS FOIA zip (or the headerless .txt inside it): NPI 1, NPI 2, claim-pair count, unique beneficiaries, same-day count. That layout is recognized automatically, as is a CSV headed npi1, npi2, paircount, benecount, samedaycount. A days30/60/90/180 in the file name is stored with the row.", category: "Physicians & Clinicians", records: "~35M", priority: "high" },
   { id: "provider_service_utilization", title: "Physician & Other Practitioners - by Provider and Service", description: "Utilization and payment data for Medicare Part B services by individual provider and HCPCS code.", category: "Physicians & Clinicians", records: "~10M", priority: "high" },
   { id: "physician_certifications", title: "Home Health Certifications by Physician", description: "Who certifies Medicare patients for home health: the clinicians billing home health certification (G0180) and recertification (G0179) and home health (G0181) or hospice (G0182) care plan oversight, with their patients and services. Read from the by-provider-and-service file with a server-side filter on those codes (~27K rows nationally, a few minutes). CMS lists a clinician only above 10 patients for a code in a care setting. Ranks the county's referral sources.", category: "Physicians & Clinicians", records: "~27K", priority: "high" },
   { id: "medicare_physician_by_provider", title: "Physician & Other Practitioners - by Provider", description: "Aggregate utilization and payment data for Medicare Part B services summarized at the provider level.", category: "Physicians & Clinicians", records: "~1.2M", priority: "high" },
@@ -800,6 +800,7 @@ const FILTER_NPI_FIELDS = [
   // Shared-patient-pattern (PSPP) source-NPI aliases, matching the keys
   // mapSharedPatientPatternRow reads, so an npi_filter on that dataset works.
   "from_npi", "FROM_NPI", "src_npi", "referring_npi", "provider_1_npi",
+  "npi1", "NPI1",
 ];
 const FILTER_STATE_FIELDS = [
   "state", "State", "STATE", "st", "ST", "state_cd", "STATE_CD",
@@ -878,36 +879,41 @@ export function buildImportRowFilter(
 
 // The CMS "Physician Shared Patient Patterns" (PSPP) dataset records pairs of
 // providers who shared the same Medicare beneficiaries within a time window
-// (30/60/90/180 days) — i.e. real provider-to-provider relationships, unlike the
-// "Order & Referring" eligibility registry. Each row is a directed edge with
-// shared-patient / encounter counts; we store it in cms_referrals so the
-// Network/County/Dashboard referral features can surface true relationships.
+// (30/60/90/180 days). Each row is a directed edge with claim-pair and
+// beneficiary counts; we store it in cms_referrals. It is not a confirmed
+// referral.
 //
-// PSPP is distributed as headerless/variant CSV (CMS FOIA, NBER mirror) and is
-// NOT on the data.cms.gov JSON data-api, so column names vary by source. We read
-// a tolerant set of aliases per logical field and keep the full row in raw_data
-// so nothing is lost. Destination columns are derived from aliases and normalized.
+// The FOIA file is headerless, five comma-separated fields:
+//   npi1, npi2, paircount, benecount, samedaycount
+// (counts are space-padded). A headed CSV may use those names or the older
+// npi_1 / pair_count aliases. csvRecords names a headerless file when asked.
 /**
  * Normalize a physician shared-patient-pattern row into the shape used for `cms_referrals`.
  *
- * @param row - Raw input record (CSV/JSON) which may use multiple header aliases for NPIs and counts; original row is preserved on `raw_data`.
+ * @param row - Raw input record (CSV/JSON). Official FOIA names (`npi1`, `paircount`, `benecount`, `samedaycount`) and the older aliases are accepted. The original row is preserved on `raw_data`, with `same_day` and `days` added when they are known.
  * @param year - Numeric data year to populate `data_year`.
  * @param batchId - Import batch identifier stored as `import_batch_id`.
+ * @param windowDays - The file's window (30/60/90/180) when the row itself doesn't say, usually taken from the file name.
  * @returns An object with:
- *  - `npi` — referring provider NPI (trimmed string or `null`),
- *  - `referred_to_npi` — referred-to provider NPI (trimmed string or `null`),
+ *  - `npi` — first provider NPI (trimmed string or `null`),
+ *  - `referred_to_npi` — second provider NPI (trimmed string or `null`),
  *  - `referred_to_name` — always `null` (placeholder),
- *  - `total_referrals` — referrals count if present, otherwise falls back to beneficiary count (`number` or `null`),
+ *  - `total_referrals` — claim-pair count if present, otherwise the beneficiary count (`number` or `null`),
  *  - `total_beneficiaries` — beneficiary count (`number` or `null`),
  *  - `data_year` — stringified `year`,
- *  - `raw_data` — the original input `row`,
+ *  - `raw_data` — the original input `row`, plus `same_day` / `days` when known,
  *  - `import_batch_id` — stringified `batchId`.
  */
-export function mapSharedPatientPatternRow(row: any, year: number, batchId: number) {
-  const npi = firstField(row, ["npi_1", "NPI_1", "from_npi", "FROM_NPI", "src_npi", "referring_npi", "provider_1_npi", "npi", "NPI"]);
-  const referredToNpi = firstField(row, ["npi_2", "NPI_2", "to_npi", "TO_NPI", "dst_npi", "referred_npi", "paired_npi", "provider_2_npi"]);
-  const referrals = toIntOrNull(firstField(row, ["transaction_count", "TRANSACTION_COUNT", "transactions", "pair_count", "PAIR_COUNT", "shared_count", "referral_count", "count", "COUNT", "total_referrals"]));
-  const beneficiaries = toIntOrNull(firstField(row, ["bene_count", "BENE_COUNT", "beneficiary_count", "unique_bene_count", "patient_count", "shared_patient_count", "benes", "total_beneficiaries"]));
+export function mapSharedPatientPatternRow(row: any, year: number, batchId: number, windowDays?: number | null) {
+  const npi = firstField(row, ["npi_1", "NPI_1", "npi1", "NPI1", "from_npi", "FROM_NPI", "src_npi", "referring_npi", "provider_1_npi", "npi", "NPI"]);
+  const referredToNpi = firstField(row, ["npi_2", "NPI_2", "npi2", "NPI2", "to_npi", "TO_NPI", "dst_npi", "referred_npi", "paired_npi", "provider_2_npi"]);
+  const referrals = toIntOrNull(firstField(row, ["transaction_count", "TRANSACTION_COUNT", "transactions", "paircount", "PAIRCOUNT", "pair_count", "PAIR_COUNT", "shared_count", "referral_count", "count", "COUNT", "total_referrals"]));
+  const beneficiaries = toIntOrNull(firstField(row, ["benecount", "BENECOUNT", "bene_count", "BENE_COUNT", "beneficiary_count", "unique_bene_count", "patient_count", "shared_patient_count", "benes", "total_beneficiaries"]));
+  const sameDay = toIntOrNull(firstField(row, ["samedaycount", "SAMEDAYCOUNT", "same_day_count", "SAME_DAY_COUNT", "same_day", "SAME_DAY"]));
+  const days = toIntOrNull(firstField(row, ["days", "DAYS"])) ?? (windowDays == null ? null : windowDays);
+  const extra: Record<string, number> = {};
+  if (sameDay != null && row?.same_day == null && row?.SAME_DAY == null) extra.same_day = sameDay;
+  if (days != null && row?.days == null && row?.DAYS == null) extra.days = days;
   return {
     npi: npi != null ? String(npi).trim().slice(0, 20) : null,
     referred_to_npi: referredToNpi != null ? String(referredToNpi).trim().slice(0, 20) : null,
@@ -917,9 +923,18 @@ export function mapSharedPatientPatternRow(row: any, year: number, batchId: numb
     total_referrals: referrals != null ? referrals : beneficiaries,
     total_beneficiaries: beneficiaries,
     data_year: String(year),
-    raw_data: row,
+    raw_data: Object.keys(extra).length ? { ...row, ...extra } : row,
     import_batch_id: String(batchId),
   };
+}
+
+/** 30, 60, 90, or 180 when the FOIA file name says which window it is. */
+export function sharedPatientWindowDays(fileUrl: unknown): number | null {
+  if (typeof fileUrl !== "string") return null;
+  const named = /days[-_]?(\d{2,3})/i.exec(fileUrl);
+  const nber = /[_-](30|60|90|180)[_-]csv/i.exec(fileUrl);
+  const n = Number((named || nber)?.[1]);
+  return n === 30 || n === 60 || n === 90 || n === 180 ? n : null;
 }
 
 /**
@@ -1510,7 +1525,8 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
     table = providerServiceUtilization;
   } else if (importType === "physician_shared_patient_patterns") {
     // Provider-to-provider shared-patient edges -> cms_referrals.
-    mapped = rows.map(r => mapSharedPatientPatternRow(r, year, batchId));
+    const windowDays = sharedPatientWindowDays(opts.params?.file_url);
+    mapped = rows.map(r => mapSharedPatientPatternRow(r, year, batchId, windowDays));
     mapped = mapped.filter(r => r.npi && r.referred_to_npi);
     table = cmsReferrals;
   } else {
@@ -1660,7 +1676,15 @@ async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | n
   };
 
   try {
-    const records = csvSourceRecords(file_url, { headers: Array.isArray(headers) && headers.length ? headers : null });
+    const explicitHeaders = Array.isArray(headers) && headers.length ? headers.map(String) : null;
+    // A caller that treated the first data line as a header (two NPIs and counts) is corrected.
+    const foiaHeaders = explicitHeaders && looksLikeSharedPatientLine(explicitHeaders.join(","))
+      ? [...SHARED_PATIENT_FOIA_HEADERS]
+      : explicitHeaders;
+    const records = csvSourceRecords(file_url, {
+      headers: foiaHeaders,
+      detectSharedPatient: import_type === "physician_shared_patient_patterns" && !foiaHeaders,
+    });
     for await (const page of pageRecords(records, PAGE_SIZE, Number(resume_offset) || 0)) {
       pages++;
       if (pages % PAUSE_CHECK_INTERVAL === 0 && await stoppedByUser()) return;

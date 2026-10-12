@@ -4,11 +4,14 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import path from "path";
+import fs from "fs";
+import os from "os";
+import { execFileSync } from "child_process";
 
 vi.mock("../server/db", () => ({ db: {}, pool: {} }));
 
-import { csvRecords, normalizeHeader, pageRecords, parseCSVLine } from "../server/lib/csv";
-import { localUploadPath, sourceKindFor, withIdleTimeout } from "../server/lib/importSources";
+import { csvRecords, looksLikeSharedPatientLine, normalizeHeader, pageRecords, parseCSVLine } from "../server/lib/csv";
+import { isZipFileUrl, localUploadPath, openZipTextEntry, sourceKindFor, withIdleTimeout } from "../server/lib/importSources";
 import { fileUrlProblem, getCMSDatasetCatalog, importAsOf, UPLOAD_CAPABLE_TYPES } from "../server/functions/triggerImport";
 import { NPPES_FILE_TYPES } from "../server/functions/importNPPESFile";
 
@@ -70,6 +73,18 @@ describe("csv", () => {
     ]);
   });
 
+  it("names a headerless CMS FOIA shared-patient file, and leaves a real header alone", async () => {
+    const foia = "1000026017,1598773715,56        ,23        ,29\n1000310429,1144645573,68,12,36\n";
+    expect(looksLikeSharedPatientLine(foia.split("\n")[0])).toBe(true);
+    const rows = await collect(csvRecords(chunks(foia), { detectSharedPatient: true }));
+    expect(rows).toEqual([
+      { npi1: "1000026017", npi2: "1598773715", paircount: "56", benecount: "23", samedaycount: "29" },
+      { npi1: "1000310429", npi2: "1144645573", paircount: "68", benecount: "12", samedaycount: "36" },
+    ]);
+    const headed = await collect(csvRecords(chunks("npi_1,npi_2,pair_count\n11,22,5\n"), { detectSharedPatient: true }));
+    expect(headed).toEqual([{ npi_1: "11", npi_2: "22", pair_count: "5" }]);
+  });
+
   it("pages rows and skips already-imported rows on resume", async () => {
     async function* nums() { for (let i = 1; i <= 7; i++) yield i; }
     expect(await collect(pageRecords(nums(), 3))).toEqual([
@@ -78,6 +93,30 @@ describe("csv", () => {
       { rows: [7], offset: 6, nextOffset: 7 },
     ]);
     expect(await collect(pageRecords(nums(), 3, 5))).toEqual([{ rows: [6, 7], offset: 5, nextOffset: 7 }]);
+  });
+});
+
+describe("zip source", () => {
+  it("recognizes a zip url and reads the text member as the FOIA shared-patient file", async () => {
+    expect(isZipFileUrl("https://downloads.cms.gov/foia/physician-shared-patient-patterns-2015-days30.zip")).toBe(true);
+    expect(isZipFileUrl("https://downloads.cms.gov/foia/physician-shared-patient-patterns-2015-days30.zip?x=1")).toBe(true);
+    expect(isZipFileUrl("/api/storage/pairs.csv")).toBe(false);
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pspp-"));
+    const txt = path.join(dir, "rows.txt");
+    fs.writeFileSync(txt, "1000026017,1598773715,56        ,23        ,29\n1000310429,1144645573,68,12,36\n");
+    const zip = path.join(dir, "physician-shared-patient-patterns-2015-days30.zip");
+    const entry = "physician-shared-patient-patterns-2015-days30.txt";
+    execFileSync("python3", ["-c", "import sys, zipfile\nsrc, dest, name = sys.argv[1:]\nwith zipfile.ZipFile(dest, 'w', compression=zipfile.ZIP_DEFLATED) as z:\n    z.write(src, arcname=name)\n", txt, zip, entry]);
+
+    const opened = await openZipTextEntry(zip);
+    expect(opened.entryName).toBe("physician-shared-patient-patterns-2015-days30.txt");
+    const rows = await collect(csvRecords(opened.stream, { detectSharedPatient: true }));
+    opened.close();
+    expect(rows).toEqual([
+      { npi1: "1000026017", npi2: "1598773715", paircount: "56", benecount: "23", samedaycount: "29" },
+      { npi1: "1000310429", npi2: "1144645573", paircount: "68", benecount: "12", samedaycount: "36" },
+    ]);
   });
 });
 

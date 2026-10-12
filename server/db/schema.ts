@@ -1473,6 +1473,97 @@ export const apiInteractionLogs = pgTable("api_interaction_logs", {
 
 // Addresses that must never receive outreach: unsubscribed, bounced or
 // reported as spam. Checked before every campaign or direct send.
+export const callSheets = pgTable("call_sheets", {
+  id: serial("id").primaryKey(),
+  org_id: integer("org_id"),
+  name: varchar("name", { length: 255 }).notNull(),
+  state: varchar("state", { length: 2 }),
+  county_fips: varchar("county_fips", { length: 5 }),
+  county_name: text("county_name"),
+  account_count: integer("account_count").default(0),
+  created_by: varchar("created_by", { length: 255 }),
+  created_date: timestamp("created_date").defaultNow(),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  index("call_sheets_org_idx").on(table.org_id),
+]);
+
+export const callSheetAccounts = pgTable("call_sheet_accounts", {
+  id: serial("id").primaryKey(),
+  sheet_id: integer("sheet_id").notNull(),
+  account_kind: varchar("account_kind", { length: 20 }).notNull(),
+  account_key: varchar("account_key", { length: 64 }).notNull(),
+  account_type: varchar("account_type", { length: 40 }).notNull(),
+  name: text("name"),
+  city: varchar("city", { length: 100 }),
+  phone: varchar("phone", { length: 50 }),
+  detail: text("detail"),
+  status: varchar("status", { length: 40 }).notNull().default("new"),
+  next_date: varchar("next_date", { length: 10 }),
+  notes: text("notes"),
+  created_date: timestamp("created_date").defaultNow(),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("call_sheet_accounts_unique").on(table.sheet_id, table.account_type, table.account_key),
+  index("call_sheet_accounts_sheet_idx").on(table.sheet_id),
+]);
+
+// The marketer's book of accounts (one organization). Contacts, visits and
+// referrals hang off the account and are removed with it.
+export const crmAccounts = pgTable("crm_accounts", {
+  id: serial("id").primaryKey(),
+  org_id: integer("org_id"),
+  account_key: varchar("account_key", { length: 64 }).notNull(),
+  account_type: varchar("account_type", { length: 40 }).notNull(),
+  name: text("name").notNull(),
+  city: varchar("city", { length: 100 }),
+  phone: varchar("phone", { length: 50 }),
+  created_date: timestamp("created_date").defaultNow(),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("crm_accounts_org_key_uq").on(table.org_id, table.account_type, table.account_key),
+  index("crm_accounts_org_idx").on(table.org_id),
+]);
+
+export const crmContacts = pgTable("crm_contacts", {
+  id: serial("id").primaryKey(),
+  account_id: integer("account_id").notNull(),
+  role: varchar("role", { length: 40 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  email: varchar("email", { length: 255 }),
+  created_date: timestamp("created_date").defaultNow(),
+}, (table) => [
+  index("crm_contacts_account_idx").on(table.account_id),
+]);
+
+// A visit or call the marketer made or scheduled, or a note. `done` is false
+// for something still on the schedule.
+export const crmActivities = pgTable("crm_activities", {
+  id: serial("id").primaryKey(),
+  account_id: integer("account_id").notNull(),
+  kind: varchar("kind", { length: 20 }).notNull(),
+  activity_date: varchar("activity_date", { length: 10 }).notNull(),
+  done: boolean("done").notNull().default(true),
+  note: text("note"),
+  created_date: timestamp("created_date").defaultNow(),
+}, (table) => [
+  index("crm_activities_account_idx").on(table.account_id, table.activity_date),
+]);
+
+// A referral the account sent. No patient name. outcome: open, admitted, lost.
+export const crmReferrals = pgTable("crm_referrals", {
+  id: serial("id").primaryKey(),
+  account_id: integer("account_id").notNull(),
+  received_on: varchar("received_on", { length: 10 }).notNull(),
+  outcome: varchar("outcome", { length: 20 }).notNull().default("open"),
+  admitted_on: varchar("admitted_on", { length: 10 }),
+  note: text("note"),
+  created_date: timestamp("created_date").defaultNow(),
+}, (table) => [
+  index("crm_referrals_account_idx").on(table.account_id, table.received_on),
+]);
+
 export const emailSuppressions = pgTable("email_suppressions", {
   email: varchar("email", { length: 255 }).primaryKey(),
   reason: varchar("reason", { length: 50 }),
@@ -1498,6 +1589,12 @@ export const tableMap: Record<string, any> = {
   CampaignTemplate: campaignTemplates,
   LeadList: leadLists,
   LeadListMember: leadListMembers,
+  CallSheet: callSheets,
+  CallSheetAccount: callSheetAccounts,
+  CrmAccount: crmAccounts,
+  CrmContact: crmContacts,
+  CrmActivity: crmActivities,
+  CrmReferral: crmReferrals,
   CMSUtilization: cmsUtilization,
   CMSReferral: cmsReferrals,
   MedicareFacility: medicareFacilities,

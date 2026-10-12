@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BookTemplate, FileBarChart2, Users, MapPin, Activity, Building2 } from 'lucide-react';
+import { BookTemplate, Users, MapPin, Activity, Building2 } from 'lucide-react';
 
 export const TEMPLATES = [
   {
@@ -45,20 +45,6 @@ export const TEMPLATES = [
     schedule_day: 'Friday',
     filters: {},
     category: 'Utilization',
-  },
-  {
-    id: 'monthly_referral_analysis',
-    name: 'Monthly Referral Analysis',
-    description: 'Referral volumes and beneficiaries by year',
-    icon: FileBarChart2,
-    dataset: 'cms_referrals',
-    metrics: ['total_referrals', 'total_beneficiaries'],
-    group_by: 'data_year',
-    chart_type: 'bar',
-    frequency: 'monthly',
-    schedule_day: '1',
-    filters: {},
-    category: 'Referrals',
   },
   {
     id: 'weekly_ma_inpatient',

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mapSharedPatientPatternRow } from "../server/functions/triggerImport";
+import { mapSharedPatientPatternRow, sharedPatientWindowDays } from "../server/functions/triggerImport";
 
 // A representative directed edge from the CMS "Physician Shared Patient
 // Patterns" dataset: two providers, the count of shared encounters, and the
@@ -123,6 +123,35 @@ describe("mapSharedPatientPatternRow", () => {
     );
     // toIntOrNull returns 0 for "0" since parseInt("0") === 0 which is finite
     expect(m.total_referrals).toBe(0);
+  });
+
+  it("reads the official CMS FOIA columns, including space-padded counts", () => {
+    const row = { npi1: "1003000126", npi2: "1093886657", paircount: "354", benecount: "48", samedaycount: "13" };
+    const m = mapSharedPatientPatternRow(row, 2015, 1, 30);
+    expect(m.npi).toBe("1003000126");
+    expect(m.referred_to_npi).toBe("1093886657");
+    expect(m.total_referrals).toBe(354);
+    expect(m.total_beneficiaries).toBe(48);
+    expect(m.raw_data).toMatchObject({ ...row, same_day: 13, days: 30 });
+  });
+
+  it("parses space-padded FOIA counts", () => {
+    const m = mapSharedPatientPatternRow(
+      { npi1: "1000026017", npi2: "1598773715", paircount: "56        ", benecount: "23        ", samedaycount: "29" },
+      2015,
+      1,
+    );
+    expect(m.total_referrals).toBe(56);
+    expect(m.total_beneficiaries).toBe(23);
+    expect(m.raw_data.same_day).toBe(29);
+  });
+
+  it("takes the window from a days30/days180 file name, and ignores anything else", () => {
+    expect(sharedPatientWindowDays("https://downloads.cms.gov/foia/physician-shared-patient-patterns-2015-days30.zip")).toBe(30);
+    expect(sharedPatientWindowDays("/api/storage/physician-shared-patient-patterns-2014-days180.txt")).toBe(180);
+    expect(sharedPatientWindowDays("2015_90_csv.zip")).toBe(90);
+    expect(sharedPatientWindowDays("/api/storage/pairs.csv")).toBeNull();
+    expect(sharedPatientWindowDays("days15.txt")).toBeNull();
   });
 
   it("produces string data_year and string import_batch_id regardless of numeric input", () => {
