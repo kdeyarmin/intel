@@ -1,5 +1,6 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts';
+import { fmtCount } from '@/lib/marketFormat';
 
 /** Medicare beneficiaries served and providers in a market by year (one post-acute setting). */
 export default function MarketShareTrendChart({ trend = [], label }) {
@@ -7,6 +8,22 @@ export default function MarketShareTrendChart({ trend = [], label }) {
   return (
     <div>
       <p className="text-xs text-slate-400 mb-1">{label}: beneficiaries served and providers by year</p>
+      {/* The bars say it visually; this says it to a screen reader, with the numbers. */}
+      <table className="sr-only">
+        <caption>{label}: Medicare beneficiaries served and providers by year</caption>
+        <thead>
+          <tr><th scope="col">Year</th><th scope="col">Beneficiaries</th><th scope="col">Providers</th></tr>
+        </thead>
+        <tbody>
+          {trend.map((t) => (
+            <tr key={t.data_year}>
+              <th scope="row">{t.data_year}</th>
+              <td>{fmtCount(t.benes)}</td>
+              <td>{fmtCount(t.providers)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
       <ResponsiveContainer width="100%" height={180}>
         <BarChart data={trend}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />

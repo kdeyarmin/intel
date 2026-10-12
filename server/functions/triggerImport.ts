@@ -5,6 +5,7 @@ import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
 import { CMS_NATURAL_KEYS, partition, partitionRefresh, distinctValues } from "./cmsUpsert";
 import { settleBatchCompletion } from "../lib/importCompletion";
 import { mergeRetryParams, endedWithoutFinishing } from "../lib/importProgress";
+import { STALLED_AFTER_MS } from "../lib/scheduling";
 import { markImportFinished, markImportStarted, resolveImportVersion } from "../lib/datasetRegistry";
 import { sourceForUrl } from "../lib/cmsCatalog";
 import { csvSourceRecords, isLocalUpload, sourceKindFor } from "../lib/importSources";
@@ -364,7 +365,7 @@ async function insertBatchAtomically(
 }
 
 /** After a complete, unfiltered import of a snapshot dataset, the rows the release no longer lists come out (in the background). */
-function retireSnapshotRows(importType: string, batchId: number, opts: { dry_run?: boolean; npi_filter?: unknown; state_filter?: unknown }) {
+function retireSnapshotRows(importType: string, batchId: number, opts: { dry_run?: boolean; npi_filter?: unknown; state_filter?: unknown; errors?: number }) {
   import("../lib/snapshotRetire")
     .then(({ retiresSnapshot, retireStaleSnapshotRows }) => (retiresSnapshot(importType, opts) ? retireStaleSnapshotRows(importType, batchId) : null))
     .catch((err) => console.warn(`[triggerImport] retiring stale ${importType} rows:`, err?.message));
@@ -392,11 +393,34 @@ export function importAsOf(o: { inherited?: string | null; temporalEnd?: string 
   return o.inherited ?? o.temporalEnd ?? o.stated ?? modified ?? null;
 }
 
+/**
+ * A client that creates its batch first (the Data Center wizard) passes it as batch_id while it is still
+ * "validating". When the request is refused before the import starts, nothing would ever move that batch on,
+ * and it would sit in "validating" until the stall sweep: fail it now, with the reason. A batch being resumed
+ * (paused, failed) is in another state and keeps it.
+ */
+async function failPrecreatedBatch(batchId: unknown, message: string) {
+  const id = Number(batchId);
+  if (!Number.isInteger(id) || id <= 0) return;
+  await db.update(importBatches)
+    .set({ status: "failed", error_samples: [{ message }], updated_date: new Date() })
+    .where(and(eq(importBatches.id, id), eq(importBatches.status, "validating")))
+    .catch(() => {});
+}
+
 export async function handleTriggerImport(payload: any, user: any) {
   if (!user || !(user.role === "admin" || user.isPlatformAdmin)) {
     throw { status: 403, message: "Forbidden: Admin access required" };
   }
+  try {
+    return await startImport(payload);
+  } catch (err: any) {
+    await failPrecreatedBatch(payload?.batch_id, String(err?.message || "The import could not be started."));
+    throw err;
+  }
+}
 
+async function startImport(payload: any) {
   const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter, headers, license_type } = payload;
 
   if (!raw_import_type) {
@@ -411,7 +435,8 @@ export async function handleTriggerImport(payload: any, user: any) {
   }
   const noGeography = await geographyProblem(import_type);
   if (noGeography) {
-    throw { status: 409, message: noGeography };
+    // 412, not 409: the clients read a 409 as "this import is already running" and would hide the reason.
+    throw { status: 412, message: noGeography };
   }
 
   const activeImports = await db.select().from(importBatches)
@@ -423,7 +448,9 @@ export async function handleTriggerImport(payload: any, user: any) {
   if (realActive.length > 0) {
     const existing = realActive[0];
     const stuckMs = Date.now() - new Date(existing.updated_date || existing.created_date!).getTime();
-    if (stuckMs > 60 * 60 * 1000) {
+    // The same threshold as the stall sweep: a healthy import can be quiet for an hour while a very large page is
+    // written, so asking for another import of the same type must not fail it before the sweep would.
+    if (stuckMs > STALLED_AFTER_MS) {
       await db.update(importBatches).set({
         status: "failed",
         cancel_reason: `Auto-cancelled: stuck in "${existing.status}" for ${Math.round(stuckMs / 60000)} minutes`,
@@ -748,10 +775,25 @@ const FILTER_STATE_FIELDS = [
 ];
 
 // Parse a comma/space/semicolon-separated filter string (or array) into a
-// trimmed, de-duplicated list. Exported for unit testing.
+// trimmed, de-duplicated list. A state spelled out ("New York", "District of
+// Columbia") stays one item instead of being split at its spaces. Exported for
+// unit testing.
 export function parseFilterList(value: unknown): string[] {
-  const raw = Array.isArray(value) ? value : String(value ?? "").split(/[,\s;]+/);
-  return [...new Set(raw.map((v) => String(v).trim()).filter(Boolean))];
+  if (Array.isArray(value)) return [...new Set(value.map((v) => String(v).trim()).filter(Boolean))];
+  const items: string[] = [];
+  for (const segment of String(value ?? "").split(/[,;\n]+/)) {
+    const words = segment.split(/\s+/).filter(Boolean);
+    for (let i = 0; i < words.length;) {
+      // The longest run of words that names a state (up to "Northern Mariana Islands"), else the word alone.
+      let take = 1;
+      for (let n = Math.min(3, words.length - i); n >= 2; n -= 1) {
+        if (stateCodeOf(words.slice(i, i + n).join(" "))) { take = n; break; }
+      }
+      items.push(words.slice(i, i + take).join(" "));
+      i += take;
+    }
+  }
+  return [...new Set(items)];
 }
 
 // Build a row predicate from the optional npi_filter / state_filter inputs, or
@@ -1553,7 +1595,7 @@ async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | n
     );
     console.log(`[CsvImport] Completed ${import_type}: rows=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
     await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: totalFetched, dataYear: year, note: dry_run ? "dry run" : `file ${String(file_url).split("/").pop()}` }).catch(() => {});
-    retireSnapshotRows(import_type, batch_id, { dry_run, npi_filter, state_filter });
+    retireSnapshotRows(import_type, batch_id, { dry_run, npi_filter, state_filter, errors: errors.length });
   } catch (e: any) {
     console.error(`[CsvImport] Fatal error:`, e.message);
     await saveProgress({ status: "failed", error_samples: [{ message: e.message, phase: "csv_import" }] });
@@ -1782,7 +1824,7 @@ export async function handleAutoImportCMSData(params: any) {
     );
     console.log(`[AutoImportCMS] Completed ${import_type}: fetched=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
     await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: totalFetched, dataYear: year, note: dry_run ? "dry run" : null }).catch(() => {});
-    retireSnapshotRows(import_type, batch_id, { dry_run, npi_filter, state_filter });
+    retireSnapshotRows(import_type, batch_id, { dry_run, npi_filter, state_filter, errors: errors.length });
     if (import_type === "cms_order_referring" && !dry_run) {
       // The eligibility rows that used to land in cms_referrals come out now
       // that the typed table holds this release; long on a big table, so it

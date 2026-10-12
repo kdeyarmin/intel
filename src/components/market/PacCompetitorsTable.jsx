@@ -12,6 +12,8 @@ import MarketFreshness from './MarketFreshness';
 const ORDER = ['snf', 'hha', 'hospice', 'irf', 'ltch', 'licensed'];
 const LICENSE_LABELS = { personal_care_home: 'Personal care home', assisted_living: 'Assisted living', memory_care: 'Memory care', nursing_home: 'Nursing home', adult_day: 'Adult day', domiciliary_care: 'Domiciliary care' };
 const licenseLabel = (t) => LICENSE_LABELS[t] || String(t || '').replace(/_/g, ' ');
+// The county's licensed homes: the totals cover every home, while the rows listed are capped.
+const licensedHomeCount = (licensed) => (licensed?.totals || []).reduce((sum, t) => sum + (Number(t.homes) || 0), 0) || licensed?.rows?.length || 0;
 
 /** State-licensed homes (personal care, assisted living): not in CMS files, so no Medicare share, just who is there and how big. */
 function LicensedHomes({ licensed, countyName }) {
@@ -21,6 +23,7 @@ function LicensedHomes({ licensed, countyName }) {
     return <p className="text-sm text-slate-400">No state-licensed homes loaded for {countyName || 'this county'}. Import a state licensing export (Data Center › State-Licensed Homes) to see personal care homes and assisted living residences here.</p>;
   }
   const max = Math.max(1, ...rows.map((r) => r.capacity ?? 0));
+  const homes = licensedHomeCount(licensed);
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-1">
@@ -62,6 +65,7 @@ function LicensedHomes({ licensed, countyName }) {
           </tbody>
         </table>
       </div>
+      {homes > rows.length ? <p className="text-[11px] text-slate-400">Showing the {fmtCount(rows.length)} largest of {fmtCount(homes)} licensed homes in {countyName || 'this county'}; the counts above cover all of them.</p> : null}
     </div>
   );
 }
@@ -87,7 +91,7 @@ export default function PacCompetitorsTable({ competitors = {}, trends = {}, cov
         <div className="flex flex-wrap gap-1 pt-1" role="group" aria-label="Setting">
           {ORDER.map((s) => {
             // The county's provider count, not the number of rows listed (the list is capped).
-            const n = s === 'licensed' ? licensed?.rows?.length : (competitors[s]?.rows?.[0]?.providers_in_market ?? competitors[s]?.rows?.length);
+            const n = s === 'licensed' ? licensedHomeCount(licensed) : (competitors[s]?.rows?.[0]?.providers_in_market ?? competitors[s]?.rows?.length);
             return (
             <Button key={s} size="sm" variant={s === setting ? 'default' : 'outline'} aria-pressed={s === setting}
               className={s === setting ? 'bg-cyan-700 hover:bg-cyan-800 text-white h-7 text-xs' : 'border-slate-700 text-slate-300 h-7 text-xs'}

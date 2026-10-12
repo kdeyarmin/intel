@@ -8,7 +8,7 @@ import { AuthRequest, authMiddleware, isOrgAdmin } from "../middleware/auth";
 import { rateLimit } from "../middleware/rateLimit";
 import { appBaseUrl } from "../lib/accounts";
 import { recordAudit } from "../lib/audit";
-import { billingView, buildCheckoutParams, priceIdFor, stripeConfigured, type PlanRow } from "../lib/billing";
+import { billingView, buildCheckoutParams, checkoutIdempotencyKey, priceIdFor, stripeConfigured, type PlanRow } from "../lib/billing";
 import { needsTerritoryChoice, stateFipsOf } from "../lib/entitlements";
 import { getOrg, normalizeTerritory, seatUsage } from "../lib/orgs";
 import { consumeQuota, QuotaError, usageToday } from "../lib/orgQuota";
@@ -80,7 +80,13 @@ router.post("/checkout", authMiddleware, rateLimit("billing_checkout", 10, 60_00
     // An organization that already pays changes its subscription (prorated) instead of starting a second
     // one: a second subscription would bill twice, and the old one's events would fight the new one's.
     if (org.stripe_subscription_id && org.status !== "canceled") {
-      const current = await stripe.subscriptions.retrieve(org.stripe_subscription_id).catch(() => null);
+      // Only a subscription Stripe says doesn't exist can be replaced by a new Checkout. A timeout, a rate limit
+      // or an outage says nothing about it, and falling through would start a second subscription for an
+      // organization that still has its first: that fails the request instead (the caller answers 502).
+      const current = await stripe.subscriptions.retrieve(org.stripe_subscription_id).catch((e: any) => {
+        if (e?.code === "resource_missing" || e?.statusCode === 404) return null;
+        throw e;
+      });
       if (current && ["active", "trialing", "past_due"].includes(current.status)) {
         const item = current.items.data[0];
         if (item?.price?.id === priceId) return res.status(409).json({ message: `You're already on the ${plan.name} plan.` });
@@ -94,9 +100,11 @@ router.post("/checkout", authMiddleware, rateLimit("billing_checkout", 10, 60_00
         return res.json({ changed: true, plan_code: plan.code });
       }
     }
-    const session = await stripe.checkout.sessions.create(buildCheckoutParams({
+    const params = buildCheckoutParams({
       orgId, orgName: org.name, email: req.user!.email, plan, priceId, customerId: org.stripe_customer_id, baseUrl: base,
-    }) as any);
+    });
+    // A repeat of this request (double click, second tab) gets the same session back from Stripe, not another.
+    const session = await stripe.checkout.sessions.create(params as any, { idempotencyKey: checkoutIdempotencyKey(orgId, params) });
     await recordAudit({ event_type: "billing", action: "checkout_started", user_email: req.user!.email, entity_type: "Organization", entity_id: orgId, details: { plan_code: plan.code }, org_id: orgId });
     res.json({ url: session.url });
   } catch (e: any) {
@@ -159,11 +167,12 @@ router.patch("/territory", authMiddleware, async (req: AuthRequest, res: Respons
 router.post("/usage/export", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     await consumeQuota(req.user, "exports");
-    res.json({ ok: true });
+    res.json({ ok: true, counted: true });
   } catch (e: any) {
     if (e instanceof QuotaError) return res.status(429).json({ message: e.message, code: e.code, kind: e.kind, limit: e.limit });
+    // The file is built only after a confirmed count, so a count that failed is an error, not a free export.
     console.error("[billing] export count failed:", e?.message || e);
-    res.json({ ok: true, counted: false });
+    res.status(503).json({ message: "Couldn't count this export against your daily allowance. Try again in a moment.", counted: false });
   }
 });
 

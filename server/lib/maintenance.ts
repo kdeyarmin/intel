@@ -14,7 +14,7 @@ import { db } from "../db";
 import { importBatches, auditEvents } from "../db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { endedWithoutFinishing } from "./importProgress";
-import { SELF_RESUMING_IMPORT_TYPES } from "./scheduling";
+import { SELF_RESUMING_IMPORT_TYPES, STALLED_AFTER_MS } from "./scheduling";
 import {
   MAX_AUTO_RESUMES,
   MAX_AUTO_RETRY_ATTEMPTS,
@@ -26,11 +26,10 @@ import {
 const MAX_ERROR_MSG_LENGTH = 200;
 const PAUSED_BATCH_LIMIT = 50;
 const FAILED_BATCH_LIMIT = 50;
-// A processing/validating batch with no progress for this long is cancelled so
-// operators (and autoRetryFailedImports) can react. Two hours: the chunked CMS
-// importer saves progress every few pages, so an hour of silence on a healthy
-// import is possible only while a very large page is being written.
-export const STALLED_AFTER_MS = 2 * 60 * 60 * 1000;
+// A processing/validating batch with no progress for STALLED_AFTER_MS (defined with
+// the retry policy in scheduling.ts, which triggerImport's active-import guard uses
+// too) is cancelled so operators (and autoRetryFailedImports) can react.
+export { STALLED_AFTER_MS };
 
 // Import types the generic auto-retry/resume workers must NOT drive via
 // triggerImport: the NPPES crawler resumes itself (batch_resume/watchdog), and
@@ -102,11 +101,22 @@ export async function runAutoResumePausedImports(): Promise<WorkerResult> {
 
       try {
         // Stamp the counter BEFORE invoking so the cap holds even if the
-        // resume immediately re-pauses or fails.
-        await db.update(importBatches).set({
+        // resume immediately re-pauses or fails. The stamp is also the claim: it
+        // only applies while the batch is still paused with the count we read, so
+        // of two overlapping runs (a cron tick and an admin's button) one wins and
+        // the other leaves the batch alone instead of resuming it a second time.
+        const claimed = await db.update(importBatches).set({
           retry_params: { ...params, auto_resume_count: autoResumeCount + 1 },
           updated_date: new Date(),
-        }).where(eq(importBatches.id, batch.id));
+        }).where(and(
+          eq(importBatches.id, batch.id),
+          eq(importBatches.status, "paused"),
+          sql`COALESCE((retry_params->>'auto_resume_count')::int, 0) = ${autoResumeCount}`,
+        )).returning({ id: importBatches.id });
+        if (claimed.length === 0) {
+          skipped.push({ id: batch.id, reason: "claimed_by_another_run" });
+          continue;
+        }
 
         await handleTriggerImport({
           import_type: batch.import_type,
@@ -177,9 +187,12 @@ export async function runAutoRetryFailedImports(): Promise<WorkerResult> {
 
       const nextAttempt = decision.attemptCount + 1;
       const params = (batch.retry_params as Record<string, unknown> | null) ?? {};
+      const storedCount = typeof params.auto_retry_count === "number" ? params.auto_retry_count : 0;
 
       try {
-        await db.update(importBatches).set({
+        // The stamp is also the claim, as in the resume worker: it only applies while the batch is still
+        // failed with the retry count we read, so overlapping runs can't both resume the same batch.
+        const claimed = await db.update(importBatches).set({
           retry_params: {
             ...params,
             auto_retry_count: nextAttempt,
@@ -187,7 +200,15 @@ export async function runAutoRetryFailedImports(): Promise<WorkerResult> {
             last_auto_retry_reason: extractErrorMessage(batch as unknown as Record<string, unknown>).substring(0, 200),
           },
           updated_date: now,
-        }).where(eq(importBatches.id, batch.id));
+        }).where(and(
+          eq(importBatches.id, batch.id),
+          eq(importBatches.status, "failed"),
+          sql`COALESCE((retry_params->>'auto_retry_count')::int, 0) = ${storedCount}`,
+        )).returning({ id: importBatches.id });
+        if (claimed.length === 0) {
+          skipped.push({ id: batch.id, reason: "claimed_by_another_run" });
+          continue;
+        }
 
         // Resume the failed batch in place (batch_id) rather than opening a
         // second batch: the failed row keeps its history and the per-type

@@ -224,7 +224,15 @@ export async function resolveImportVersion(importType: string): Promise<ImportVe
   return {
     source: row.source,
     dataUrl,
-    dataYear: importDataYear({ temporalStart: toDay(row.temporal_start), temporalEnd, loadedYear: row.data_year, catalogModified, importedModified: row.imported_modified }),
+    dataYear: importDataYear({
+      temporalStart: toDay(row.temporal_start),
+      temporalEnd,
+      loadedYear: row.data_year,
+      catalogModified,
+      importedModified: row.imported_modified,
+      // Care Compare entries have a publication date but no period.
+      releaseYear: row.source === "cms_provider_data" && catalogModified && !Number.isNaN(catalogModified.getTime()) ? String(catalogModified.getUTCFullYear()) : null,
+    }),
     temporalEnd,
     catalogModified,
   };
@@ -244,9 +252,17 @@ export function importDataYear(input: {
   loadedYear: string | number | null | undefined;
   catalogModified: Date | string | null | undefined;
   importedModified: Date | string | null | undefined;
+  /**
+   * The year the catalog says the release was published, for datasets whose catalog gives no coverage
+   * period (the Care Compare files are quarterly or monthly snapshots with only a publication date).
+   */
+  releaseYear?: string | null;
 }): string | null {
   const fromPeriod = dataYearOf({ temporalEnd: input.temporalEnd, temporalStart: input.temporalStart });
   if (fromPeriod) return fromPeriod;
+  // A snapshot is as of its release: labelling it with the guess the importer falls back to (two years ago)
+  // would put a 2026 release in 2024.
+  if (input.releaseYear) return input.releaseYear;
   const newerThanLoaded = isNewer(input.catalogModified, input.importedModified);
   return !newerThanLoaded && input.loadedYear ? String(input.loadedYear) : null;
 }

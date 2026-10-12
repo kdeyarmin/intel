@@ -214,6 +214,15 @@ export function nextRetryDueAt(lastAttemptIso: string | Date | null | undefined,
 }
 
 /**
+ * A processing/validating batch with no progress for this long is stalled. Two hours: the chunked
+ * CMS importer saves progress every few pages, so an hour of silence on a healthy import is
+ * possible only while a very large page is being written. The stall sweep (maintenance.ts) and
+ * the active-import guard in handleTriggerImport both use it, so a healthy import is never failed
+ * at one hour by one and left alone until two by the other.
+ */
+export const STALLED_AFTER_MS = 2 * 60 * 60 * 1000;
+
+/**
  * Import types the retry and resume workers leave alone: their importers chain
  * themselves and are recovered on startup, and a worker resuming them in place
  * would restart them from row 0. The browser mirrors this set (src/components/

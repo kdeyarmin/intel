@@ -15,9 +15,14 @@ const s = vi.hoisted(() => ({
   org: null as Record<string, unknown> | null,
   subscription: null as Record<string, unknown> | null,
   retrieved: [] as string[],
+  /** What retrieving a subscription fails with (an outage), when it should. */
+  retrieveFailure: null as Error | null,
   updated: [] as Array<[string, any]>,
   sessions: [] as any[],
+  sessionOptions: [] as any[],
   audits: [] as any[],
+  /** What counting an export does: nothing, or fail. */
+  countFailure: null as Error | null,
 }));
 
 vi.mock("../server/db", () => ({
@@ -36,13 +41,19 @@ vi.mock("stripe", () => ({
     subscriptions = {
       retrieve: async (id: string) => {
         s.retrieved.push(id);
-        if (!s.subscription) throw new Error("No such subscription");
+        if (s.retrieveFailure) throw s.retrieveFailure;
+        // What Stripe answers for an id it doesn't know.
+        if (!s.subscription) throw Object.assign(new Error("No such subscription"), { code: "resource_missing", statusCode: 404 });
         return s.subscription;
       },
       update: async (id: string, params: unknown) => { s.updated.push([id, params]); return {}; },
     };
-    checkout = { sessions: { create: async (params: unknown) => { s.sessions.push(params); return { url: "https://checkout.stripe.test/c_1" }; } } };
+    checkout = { sessions: { create: async (params: unknown, options?: unknown) => { s.sessions.push(params); s.sessionOptions.push(options); return { url: "https://checkout.stripe.test/c_1" }; } } };
   },
+}));
+vi.mock("../server/lib/orgQuota", async (original) => ({
+  ...(await original<typeof import("../server/lib/orgQuota")>()),
+  consumeQuota: async () => { if (s.countFailure) throw s.countFailure; },
 }));
 vi.mock("../server/lib/audit", async (original) => ({
   ...(await original<typeof import("../server/lib/audit")>()),
@@ -75,7 +86,10 @@ beforeEach(async () => {
   s.retrieved.length = 0;
   s.updated.length = 0;
   s.sessions.length = 0;
+  s.sessionOptions.length = 0;
   s.audits.length = 0;
+  s.retrieveFailure = null;
+  s.countFailure = null;
   h = await startHarness();
   const app = express();
   app.use(express.json());
@@ -133,6 +147,87 @@ describe("checkout for an organization that already pays", () => {
     s.subscription = null;
     expect((await checkout("owner@riverbend.org", "state")).body).toEqual({ url: "https://checkout.stripe.test/c_1" });
     expect(s.updated).toHaveLength(0);
+  });
+});
+
+describe("checkout when Stripe can't say whether the organization's subscription still exists", () => {
+  it("starts no second subscription: a timeout, an outage or a rate limit fails the request instead", async () => {
+    for (const failure of [
+      Object.assign(new Error("connect ETIMEDOUT"), { type: "StripeConnectionError" }),
+      Object.assign(new Error("An error occurred with our API"), { type: "StripeAPIError", statusCode: 500 }),
+      Object.assign(new Error("Too many requests"), { type: "StripeRateLimitError", statusCode: 429, code: "rate_limit" }),
+    ]) {
+      s.retrieveFailure = failure;
+      const r = await checkout("owner@riverbend.org", "state");
+      expect(r.status).toBe(502);
+      expect(r.body.message).toMatch(/Couldn't start checkout/);
+    }
+    // Nothing was changed or opened for any of them.
+    expect(s.sessions).toHaveLength(0);
+    expect(s.updated).toHaveLength(0);
+    expect(s.audits).toHaveLength(0);
+  });
+
+  it("opens Checkout only for a subscription Stripe says does not exist (resource_missing / 404)", async () => {
+    s.retrieveFailure = Object.assign(new Error("No such subscription: 'sub_2'"), { type: "StripeInvalidRequestError", code: "resource_missing", statusCode: 404 });
+    expect((await checkout("owner@riverbend.org", "state")).body).toEqual({ url: "https://checkout.stripe.test/c_1" });
+    expect(s.sessions).toHaveLength(1);
+    s.retrieveFailure = Object.assign(new Error("Not found"), { statusCode: 404 });
+    expect((await checkout("owner@riverbend.org", "state")).status).toBe(200);
+    expect(s.sessions).toHaveLength(2);
+  });
+});
+
+describe("the Checkout session is created under an idempotency key", () => {
+  beforeEach(() => {
+    s.org = paying({ status: "trial", stripe_subscription_id: null, subscription_status: "trialing", plan_code: null });
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-12T10:07:00Z"));
+  });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it("so a double click or a second tab gets the same session back from Stripe, not another", async () => {
+    await checkout("owner@riverbend.org", "county_pack");
+    await checkout("owner@riverbend.org", "county_pack");
+    const [first, second] = s.sessionOptions.map((o) => o.idempotencyKey);
+    expect(first).toMatch(/^checkout-2-\d+-[0-9a-f]{24}$/);
+    expect(second).toBe(first);
+  });
+
+  it("but another plan, or the same plan half an hour later, is a new request", async () => {
+    await checkout("owner@riverbend.org", "county_pack");
+    await checkout("owner@riverbend.org", "state");
+    vi.setSystemTime(new Date("2026-10-12T10:41:00Z"));
+    await checkout("owner@riverbend.org", "county_pack");
+    const keys = s.sessionOptions.map((o) => o.idempotencyKey);
+    expect(new Set(keys).size).toBe(3);
+  });
+});
+
+describe("counting an export", () => {
+  async function count(as: string) {
+    const cookie = (await signedIn(h, as)).cookie!;
+    const res = await fetch(`${base}/api/billing/usage/export`, { method: "POST", headers: { Cookie: cookie } });
+    return { status: res.status, body: await res.json().catch(() => null) };
+  }
+
+  it("confirms it was counted", async () => {
+    expect(await count("owner@riverbend.org")).toEqual({ status: 200, body: { ok: true, counted: true } });
+  });
+
+  it("fails when it couldn't be counted: the browser builds the file only after a confirmed count", async () => {
+    s.countFailure = new Error("connection terminated");
+    const r = await count("owner@riverbend.org");
+    expect(r.status).toBe(503);
+    expect(r.body).toMatchObject({ counted: false, message: expect.stringMatching(/Couldn't count this export/) });
+  });
+
+  it("stops an organization that has used up its day with a 429", async () => {
+    const { QuotaError } = await import("../server/lib/orgQuota");
+    s.countFailure = new QuotaError("Your organization has used its 50 exports for today.", "exports", 50);
+    const r = await count("member@riverbend.org");
+    expect(r.status).toBe(429);
+    expect(r.body.message).toMatch(/50 exports/);
   });
 });
 

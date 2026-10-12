@@ -3,6 +3,7 @@
 // here so they can be tested without Stripe; server/routes/billing.ts and the
 // webhook handler call them. Prices are configured in Stripe and matched to
 // plans by plans.stripe_price_id (or STRIPE_PRICE_<CODE> at runtime).
+import { createHash } from "node:crypto";
 import { normalizeTerritory, TERMS_VERSION, type Territory } from "./orgs";
 import type { AuditEntry } from "./audit";
 
@@ -69,6 +70,21 @@ export function buildCheckoutParams(input: CheckoutInput) {
   };
 }
 
+/** How long a Checkout request is treated as the same one: a double click, a second tab, a retry. */
+export const CHECKOUT_REUSE_MS = 30 * 60 * 1000;
+
+/**
+ * The Stripe idempotency key for creating a Checkout session. Stripe answers a repeat of the same key and
+ * parameters with the first response, so two requests for the same organization and plan in the same
+ * half hour open one session, not two (two completed sessions would be two subscriptions, billed twice).
+ * The parameters are part of the key, so a request that differs (another plan, a customer that now exists)
+ * gets its own session instead of a conflict.
+ */
+export function checkoutIdempotencyKey(orgId: number, params: unknown, now = Date.now()): string {
+  const digest = createHash("sha256").update(JSON.stringify(params)).digest("hex").slice(0, 24);
+  return `checkout-${orgId}-${Math.floor(now / CHECKOUT_REUSE_MS)}-${digest}`;
+}
+
 export interface BillingDb {
   query(sql: string, params?: unknown[]): Promise<{ rows: any[] }>;
 }
@@ -130,7 +146,7 @@ export async function applyStripeEvent(
   event: StripeEventLike,
   db: BillingDb,
   log: Pick<Console, "log" | "warn"> = console,
-  opts: { env?: NodeJS.ProcessEnv; audit?: (entry: AuditEntry) => Promise<void> } = {},
+  opts: { env?: NodeJS.ProcessEnv; audit?: (entry: AuditEntry) => Promise<void>; fetchSubscription?: FetchSubscription } = {},
 ): Promise<StripeEventResult> {
   const result = await applyEvent(event, db, log, opts);
   if (opts.audit && result.handled && result.org_id) {
@@ -139,9 +155,14 @@ export async function applyStripeEvent(
   return result;
 }
 
+/** Reads a subscription as Stripe holds it now (stripe.subscriptions.retrieve); a failure throws. */
+export type FetchSubscription = (subscriptionId: string) => Promise<any>;
+
 export interface StripeEventLike { id?: string; type: string; created?: number; data: { object: any } }
 export interface StripeEventResult {
   handled: boolean; org_id?: number; status?: string; ignored?: string;
+  /** A checkout completed for an organization that already had another subscription: both are billing. */
+  duplicate_subscription?: { kept: string; previous: string };
   /** Owners whose pending accounts this event approved (a payment approves a self-serve signup). */
   approved?: Array<{ id: number; email: string }>;
 }
@@ -167,6 +188,13 @@ export function billingAuditEntries(event: StripeEventLike, result: StripeEventR
     event_type: "billing", action, user_email: "stripe", entity_type: "Organization", entity_id: result.org_id,
     details: { status: result.status ?? null, event: event.type, event_id: event.id ?? null }, org_id: result.org_id,
   }];
+  // Two live subscriptions for one organization: the earlier one is still billing and no longer tracked.
+  if (result.duplicate_subscription) {
+    entries.push({
+      event_type: "billing", action: "duplicate_subscription", user_email: "stripe", entity_type: "Organization", entity_id: result.org_id,
+      details: { ...result.duplicate_subscription, event_id: event.id ?? null }, org_id: result.org_id,
+    });
+  }
   for (const user of result.approved ?? []) {
     entries.push({
       event_type: "account", action: "approve", user_email: "stripe", entity_type: "User", entity_id: user.id,
@@ -180,7 +208,7 @@ async function applyEvent(
   event: StripeEventLike,
   db: BillingDb,
   log: Pick<Console, "log" | "warn">,
-  opts: { env?: NodeJS.ProcessEnv },
+  opts: { env?: NodeJS.ProcessEnv; fetchSubscription?: FetchSubscription },
 ): Promise<StripeEventResult> {
   const env = opts.env ?? process.env;
   const obj = event.data?.object ?? {};
@@ -210,6 +238,36 @@ async function applyEvent(
   const staleSubscription = (org: OrgRef, subscriptionId: string | null) => !!org.stripe_subscription_id && !!subscriptionId && org.stripe_subscription_id !== subscriptionId;
   const loadPlans = async () => (await db.query("SELECT code, stripe_price_id, seat_limit, territory_scope, max_counties FROM plans", [])).rows as Array<Pick<PlanRow, "code" | "stripe_price_id" | "seat_limit" | "territory_scope" | "max_counties">>;
 
+  /**
+   * Stripe stamps an event to the second, so two events about one subscription can carry the same time and
+   * arrive in either order: an "updated" that lands after a same-second "deleted" would reopen the account.
+   * When the event ties with the last one applied, the live subscription, not the event's copy of it, says where
+   * things stand. A failed fetch throws: the webhook answers 5xx and Stripe redelivers the event.
+   */
+  const liveWhenTied = async (org: OrgRef, copy: any, subscriptionId: string | null): Promise<{ sub: any; live: boolean }> => {
+    if (!opts.fetchSubscription || !subscriptionId || !eventAt) return { sub: copy, live: false };
+    const { rows } = await db.query("SELECT 1 FROM organizations WHERE id = $1 AND stripe_event_at = $2::timestamp", [org.id, eventAt]);
+    if (!rows[0]) return { sub: copy, live: false };
+    return { sub: await opts.fetchSubscription(subscriptionId), live: true };
+  };
+  /** Writes a subscription's state (status, period, plan, seats, territory) to its organization. */
+  const applySubscription = async (org: OrgRef, sub: any): Promise<StripeEventResult> => {
+    const status = mapSubscriptionStatus(sub.status);
+    const priceId = sub.items?.data?.[0]?.price?.id ?? null;
+    const plan = planForPrice(await loadPlans(), priceId, env);
+    const { rows } = await db.query(
+      `UPDATE organizations SET status = $2, subscription_status = $3, stripe_subscription_id = COALESCE($4, stripe_subscription_id),
+              current_period_end = COALESCE($5, current_period_end), trial_ends_at = COALESCE($6, trial_ends_at),
+              plan_code = COALESCE($7, plan_code), seat_limit = COALESCE($8::int, seat_limit), territory = COALESCE($9::jsonb, territory),
+              ${SET_AT(10)}, updated_date = now()
+        WHERE id = $1 ${FRESH(10)} RETURNING id`,
+      [org.id, status, sub.status ?? null, sub.id ?? null, periodEnd(sub), toDate(sub.trial_end), plan?.code ?? null, plan?.seat_limit ?? null,
+        plan ? JSON.stringify(territoryForPlan(org.territory, plan)) : null, eventAt],
+    );
+    if (!rows[0]) return { handled: false, ignored: "stale" };
+    return { handled: true, org_id: org.id, status };
+  };
+
   switch (event.type) {
     case "checkout.session.completed": {
       const org = await findOrg();
@@ -217,8 +275,12 @@ async function applyEvent(
       const planCode = obj.metadata?.plan_code ?? null;
       const subscriptionId = typeof obj.subscription === "string" ? obj.subscription : obj.subscription?.id ?? null;
       const plan = planCode ? (await loadPlans()).find((p) => p.code === planCode) ?? null : null;
-      if (staleSubscription(org, subscriptionId)) {
-        log.warn(`[billing] organization ${org.id} now has subscription ${subscriptionId} besides ${org.stripe_subscription_id}: cancel the earlier one in Stripe`);
+      // The organization already pays through another subscription: this one becomes the tracked one, and the
+      // earlier keeps billing in Stripe until someone cancels it (never cancelled automatically: it is money the
+      // customer paid). The audit trail carries both ids so it is found.
+      const duplicate = staleSubscription(org, subscriptionId) ? { kept: subscriptionId as string, previous: org.stripe_subscription_id as string } : null;
+      if (duplicate) {
+        log.warn(`[billing] organization ${org.id} now has subscription ${duplicate.kept} besides ${duplicate.previous}: cancel one of them in Stripe`);
       }
       const { rows } = await db.query(
         `UPDATE organizations SET stripe_customer_id = COALESCE($2, stripe_customer_id), stripe_subscription_id = COALESCE($3, stripe_subscription_id),
@@ -237,33 +299,22 @@ async function applyEvent(
       );
       log.log(`[billing] organization ${org.id} subscribed (${planCode ?? "plan unchanged"})`);
       const people = (approved?.rows ?? []).map((r: any) => ({ id: Number(r.id), email: String(r.email) }));
-      return { handled: true, org_id: org.id, status: "active", ...(people.length ? { approved: people } : {}) };
+      return { handled: true, org_id: org.id, status: "active", ...(people.length ? { approved: people } : {}), ...(duplicate ? { duplicate_subscription: duplicate } : {}) };
     }
     case "customer.subscription.created":
     case "customer.subscription.updated": {
       const org = await findOrg();
       if (!org) return { handled: false };
       if (staleSubscription(org, obj.id ?? null)) return { handled: false, ignored: "other_subscription" };
-      const status = mapSubscriptionStatus(obj.status);
-      const priceId = obj.items?.data?.[0]?.price?.id ?? null;
-      const plan = planForPrice(await loadPlans(), priceId, env);
-      const { rows } = await db.query(
-        `UPDATE organizations SET status = $2, subscription_status = $3, stripe_subscription_id = COALESCE($4, stripe_subscription_id),
-                current_period_end = COALESCE($5, current_period_end), trial_ends_at = COALESCE($6, trial_ends_at),
-                plan_code = COALESCE($7, plan_code), seat_limit = COALESCE($8::int, seat_limit), territory = COALESCE($9::jsonb, territory),
-                ${SET_AT(10)}, updated_date = now()
-          WHERE id = $1 ${FRESH(10)} RETURNING id`,
-        [org.id, status, obj.status ?? null, obj.id ?? null, periodEnd(obj), toDate(obj.trial_end), plan?.code ?? null, plan?.seat_limit ?? null,
-          plan ? JSON.stringify(territoryForPlan(org.territory, plan)) : null, eventAt],
-      );
-      if (!rows[0]) return { handled: false, ignored: "stale" };
-      return { handled: true, org_id: org.id, status };
+      return applySubscription(org, (await liveWhenTied(org, obj, obj.id ?? null)).sub);
     }
     case "customer.subscription.deleted": {
       const org = await findOrg();
       if (!org) return { handled: false };
       // An old subscription ending (after a plan change, say) must not cancel the one the organization pays for now.
       if (staleSubscription(org, obj.id ?? null)) return { handled: false, ignored: "other_subscription" };
+      const tied = await liveWhenTied(org, obj, obj.id ?? null);
+      if (tied.live) return applySubscription(org, tied.sub);
       const { rows } = await db.query(
         `UPDATE organizations SET status = 'canceled', subscription_status = 'canceled', ${SET_AT(2)}, updated_date = now() WHERE id = $1 ${FRESH(2)} RETURNING id`,
         [org.id, eventAt],
@@ -275,6 +326,8 @@ async function applyEvent(
       const org = await findOrg();
       if (!org) return { handled: false };
       if (staleSubscription(org, invoiceSubscriptionId(obj))) return { handled: false, ignored: "other_subscription" };
+      const tied = await liveWhenTied(org, null, invoiceSubscriptionId(obj));
+      if (tied.live) return applySubscription(org, tied.sub);
       const { rows } = await db.query(
         `UPDATE organizations SET status = 'past_due', subscription_status = 'past_due', ${SET_AT(2)}, updated_date = now() WHERE id = $1 AND status <> 'canceled' ${FRESH(2)} RETURNING id`,
         [org.id, eventAt],
@@ -286,6 +339,8 @@ async function applyEvent(
       const org = await findOrg();
       if (!org) return { handled: false };
       if (staleSubscription(org, invoiceSubscriptionId(obj))) return { handled: false, ignored: "other_subscription" };
+      const tied = await liveWhenTied(org, null, invoiceSubscriptionId(obj));
+      if (tied.live) return applySubscription(org, tied.sub);
       const { rows } = await db.query(
         `UPDATE organizations SET status = 'active', subscription_status = 'active', ${SET_AT(2)}, updated_date = now() WHERE id = $1 AND status IN ('past_due', 'trial') ${FRESH(2)} RETURNING id`,
         [org.id, eventAt],

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { invokeOrThrow } from '@/api/functionResult';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { TrendingUp } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { fmtCount, fmtShare, ordinal } from '@/lib/marketFormat';
@@ -11,7 +12,7 @@ import ComplianceDisclaimer from '../compliance/ComplianceDisclaimer';
 
 /** A post-acute provider's share and rank in its county and state, the competitors around it, and (for agencies) the counties it serves. */
 export default function MarketPositionCard({ ccn, setting }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['facilityMarket', ccn, setting],
     queryFn: () => invokeOrThrow('getFacilityMarket', { ccn, setting }),
     enabled: !!ccn && !!setting,
@@ -19,6 +20,15 @@ export default function MarketPositionCard({ ccn, setting }) {
   });
   if (!ccn || !setting) return null;
   if (isLoading) return <p className="text-sm text-slate-400">Loading market position…</p>;
+  // A failed request is not "this provider isn't in the market data": say so, and let the user retry.
+  if (isError) {
+    return (
+      <div className="flex flex-wrap items-center gap-3 text-sm text-red-400" role="alert">
+        <span>Couldn't load this provider's market position: {error?.message || 'try again'}</span>
+        <Button variant="outline" size="sm" onClick={() => refetch()} className="border-red-500/30 text-red-400">Try again</Button>
+      </div>
+    );
+  }
   if (!data?.found) return null;
   const pos = data.position || {};
   const peers = (data.market || []).slice(0, 10);
@@ -35,11 +45,12 @@ export default function MarketPositionCard({ ccn, setting }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {!data.county && <p className="text-xs text-slate-400">This provider has no county in the post-acute file, so only its state position is shown.</p>}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+        <div className={`grid grid-cols-2 gap-3 text-center ${data.county ? 'md:grid-cols-5' : 'md:grid-cols-3'}`}>
           {data.county && <div className="rounded-lg bg-slate-900/40 p-3"><p className="text-xl font-bold text-slate-100">{ordinal(pos.rank)}</p><p className="text-[11px] text-slate-400">of {fmtCount(pos.providers_in_market)} in county</p></div>}
           {data.county && <div className="rounded-lg bg-slate-900/40 p-3"><p className="text-xl font-bold text-slate-100">{fmtShare(pos.share, 1)}</p><p className="text-[11px] text-slate-400">county share</p></div>}
           <div className="rounded-lg bg-slate-900/40 p-3"><p className="text-xl font-bold text-slate-100">{fmtCount(pos.benes)}</p><p className="text-[11px] text-slate-400">beneficiaries · {fmtCount(pos.stays)} stays</p></div>
           <div className="rounded-lg bg-slate-900/40 p-3"><p className="text-xl font-bold text-slate-100">{ordinal(pos.state_rank)}</p><p className="text-[11px] text-slate-400">of {fmtCount(pos.state_providers)} in state</p></div>
+          <div className="rounded-lg bg-slate-900/40 p-3"><p className="text-xl font-bold text-slate-100">{fmtShare(pos.state_share, 1)}</p><p className="text-[11px] text-slate-400">state share</p></div>
         </div>
         {peers.length > 0 && (
           <ul className="space-y-1">
