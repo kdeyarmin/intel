@@ -77,8 +77,7 @@ export default function ProviderOutreach() {
       ready: 'bg-cyan-900/30 text-cyan-400',
       scheduled: 'bg-blue-900/30 text-blue-400',
       sending: 'bg-amber-900/30 text-amber-400',
-      completed: 'bg-green-900/30 text-green-400',
-      paused: 'bg-orange-900/30 text-orange-400'
+      completed: 'bg-green-900/30 text-green-400'
     };
     return colors[status] || 'bg-slate-700/40 text-slate-200';
   };
