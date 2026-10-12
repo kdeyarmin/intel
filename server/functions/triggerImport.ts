@@ -888,6 +888,16 @@ export function mapSharedPatientPatternRow(row: any, year: number, batchId: numb
 }
 
 /**
+ * Care Compare's hospital files name a hospital by `facility_id`, its CMS Certification Number, and have no other
+ * id column. Without it a row has no provider_id: the Hospitals list skips it and its Facility page can't be opened.
+ */
+const HOSPITAL_FACILITY_ID_TYPES: ReadonlySet<string> = new Set([
+  "hospital_general_info", "hospital_readmissions", "hospital_complications", "hospital_infections", "hospital_value_based_purchasing",
+  "hospital_hcahps_survey", "hospital_timely_effective_care", "hospital_unplanned_visits", "hospital_imaging_efficiency",
+  "hospital_spending_per_beneficiary", "hospital_spending_by_claim", "hospital_hac_reduction",
+]);
+
+/**
  * Compute a stable statistical identifier for a dataset row based on the dataset's import type.
  *
  * The returned identifier is derived from one or more dataset fields according to the import type
@@ -934,7 +944,7 @@ function deriveStatisticalId(row: any, importType: string, index?: number): stri
     id = row.npi || row.NPI || null;
   } else if (importType === "clinician_group_measures" || importType === "clinician_group_experience") {
     id = row.org_pac_id || row.Org_PAC_ID || null;
-  } else if (importType === "hospital_hcahps_survey" || importType === "hospital_timely_effective_care" || importType === "hospital_unplanned_visits" || importType === "hospital_imaging_efficiency" || importType === "hospital_spending_per_beneficiary" || importType === "hospital_spending_by_claim" || importType === "hospital_hac_reduction") {
+  } else if (HOSPITAL_FACILITY_ID_TYPES.has(importType)) {
     id = row.facility_id || row.Facility_ID || row.provider_id || row.Provider_ID || null;
   } else if (importType === "hospital_psychiatric_facility" || importType === "ambulatory_surgical_center" || importType === "hospital_joint_replacement") {
     id = row.cms_certification_number_ccn || row.facility_id || row.ccn || null;
@@ -1114,7 +1124,7 @@ export function rowDataYear(row: any, fallbackYear?: number | string | null): st
   return fallbackYear != null && String(fallbackYear).trim() ? String(fallbackYear).trim().slice(0, 10) : null;
 }
 
-function mapMedicareFacilityRow(row: any, importType: string, batchId: number, year?: number | string | null) {
+export function mapMedicareFacilityRow(row: any, importType: string, batchId: number, year?: number | string | null) {
   const statId = deriveStatisticalId(row, importType);
   const statName = deriveStatisticalName(row, importType);
 
@@ -1152,6 +1162,7 @@ function mapMedicareFacilityRow(row: any, importType: string, batchId: number, y
       row.practiceaddress1 ||
       row.Rndrng_Prvdr_St1 || row.Suplr_Prvdr_St1 || row.Rfrg_Prvdr_St1 ||
       row.Prscrbr_St1 || row.Hosp_Address ||
+      row.address ||
       null,
     city:
       row.citytown || row["City/Town"] ||
