@@ -56,7 +56,7 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
           <Stethoscope className="w-4 h-4 text-cyan-400" aria-hidden="true" /> Likely referral sources in {countyName || state}
         </CardTitle>
         <p className="text-[11px] text-slate-400">
-          Clinicians ranked by a referral index built from {data?.certifications_loaded ? 'the patients they certified for home health (Physician &amp; Other Practitioners by Provider and Service), ' : ''}Medicare volume (Physician &amp; Other Practitioners by Provider{data?.data_year ? ` ${data.data_year}` : ''}), patient risk and Order &amp; Referring eligibility. {data?.index_note}
+          Clinicians ranked by a referral index built from {data?.certifications_loaded ? 'the patients they certified for home health (Physician & Other Practitioners by Provider and Service), ' : ''}Medicare volume (Physician &amp; Other Practitioners by Provider{data?.data_year ? ` ${data.data_year}` : ''}), patient risk and Order &amp; Referring eligibility. {data?.index_note}
         </p>
         <div className="flex flex-wrap items-end gap-3 pt-2">
           <div className="space-y-1">

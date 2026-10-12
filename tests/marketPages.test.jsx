@@ -195,7 +195,9 @@ describe('referral sources list', () => {
     expect(certifiedCell('Bo Hart')).toHaveTextContent(/^≤10$/);
     expect(screen.getByText(/CMS lists a clinician only above 10 patients, so “≤10” means not listed/)).toBeInTheDocument();
     expect(screen.queryByText(/has not been imported yet, so who certifies/)).toBeNull();
-    expect(screen.getByText(/ranked by a referral index built from the patients they certified for home health/)).toBeInTheDocument();
+    // The entity is written out in the string, so it must read as an ampersand, not as "&amp;".
+    expect(screen.getByText(/ranked by a referral index built from the patients they certified for home health \(Physician & Other Practitioners by Provider and Service\), Medicare volume/)).toBeInTheDocument();
+    expect(screen.queryByText(/&amp;/)).toBeNull();
   });
 
   it('shows a dash, and says why, while the Home Health Certifications file has not been imported (never 0)', async () => {
