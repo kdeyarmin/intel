@@ -33,9 +33,9 @@ export default function CountyMarketProfile({ profile, vintages, rollups, county
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Kpi icon={Users} color="text-cyan-400" label="Medicare beneficiaries" value={fmtCount(p.benes)} sub={p.enrollment_period ? `Enrollment ${p.enrollment_period}` : null} />
+        <Kpi icon={Users} color="text-cyan-400" label="Medicare beneficiaries" value={fmtCount(p.benes)} sub={[p.enrollment_period ? `Enrollment ${p.enrollment_period}` : null, p.dual != null ? `${fmtCount(p.dual)} dual-eligible` : null].filter(Boolean).join(' · ') || null} />
         <Kpi icon={Percent} color="text-violet-400" label="Medicare Advantage share" value={fmtShare(p.ma_penetration)} sub={`${fmtCount(p.original_medicare)} in Original Medicare`} />
-        <Kpi icon={HeartPulse} color="text-rose-400" label="Aged 85 and over" value={fmtCount(p.benes_85_plus)} sub={`${fmtCount(p.dual)} dual-eligible`} />
+        <Kpi icon={HeartPulse} color="text-rose-400" label="Aged 85 and over" value={fmtCount(p.benes_85_plus)} sub={p.benes > 0 && p.benes_85_plus != null ? `${fmtShare(p.benes_85_plus / p.benes, 1)} of beneficiaries` : null} />
         <Kpi icon={Hospital} color="text-blue-400" label="Hospitals serving residents" value={fmtCount(p.hospitals_serving)} sub={p.top_hospital_share != null ? `Top hospital takes ${fmtShare(p.top_hospital_share)} of cases (${p.hsa_year})` : null} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -72,7 +72,7 @@ export default function CountyMarketProfile({ profile, vintages, rollups, county
         <Kpi icon={DollarSign} color="text-emerald-400" label="Standardized spend per beneficiary" value={fmtMoney(p.std_per_capita_total)} sub={p.variation_year ? `Geographic variation ${p.variation_year}` : null} />
         <Kpi icon={Activity} color="text-amber-400" label="Hospital readmission rate" value={fmtShare(p.readmission_rate, 1)} />
         <Kpi icon={Activity} color="text-orange-400" label="ER visits per 1,000" value={fmtRate(p.er_visits_per_1000, 0)} />
-        <Kpi icon={Activity} color="text-sky-400" label="Average HCC risk score" value={fmtRate(p.avg_hcc_score, 2)} />
+        {p.avg_hcc_score != null && <Kpi icon={Activity} color="text-sky-400" label="Average HCC risk score" value={fmtRate(p.avg_hcc_score, 2)} />}
       </div>
       <MarketFreshness rollups={rollups} jobs={['county_market_profile']} vintages={vintages} />
     </div>

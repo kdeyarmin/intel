@@ -3,24 +3,33 @@
  * queries and resolve names from the typed CMS tables before the facility
  * records. The pool is faked by SQL shape; the geography is a small built index.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
   queries: [] as Array<{ sql: string; params?: any[] }>,
   answers: [] as Array<[RegExp, any]>,
   /** Statements that fail with this error instead of answering. */
   failures: [] as Array<[RegExp, Error]>,
+  /** Queries running at once on the one client (a pg client takes one at a time; pg@9 stops queueing a second). */
+  inFlight: 0,
+  maxInFlight: 0,
 }));
 
 vi.mock("../server/db", () => {
   const client = {
     async query(sql: string, params?: any[]) {
       h.queries.push({ sql, params });
-      const failure = h.failures.find(([re]) => re.test(sql));
-      if (failure) throw failure[1];
-      const hit = h.answers.find(([re]) => re.test(sql));
-      const rows = hit ? (typeof hit[1] === "function" ? hit[1](params) : hit[1]) : [];
-      return { rows };
+      h.maxInFlight = Math.max(h.maxInFlight, ++h.inFlight);
+      try {
+        await Promise.resolve(); // a caller that started a second query without waiting would be in flight now
+        const failure = h.failures.find(([re]) => re.test(sql));
+        if (failure) throw failure[1];
+        const hit = h.answers.find(([re]) => re.test(sql));
+        const rows = hit ? (typeof hit[1] === "function" ? hit[1](params) : hit[1]) : [];
+        return { rows };
+      } finally {
+        h.inFlight--;
+      }
     },
     release() {},
   };
@@ -45,8 +54,11 @@ vi.mock("../server/lib/geo", async (orig) => {
   return { ...real, getGeoIndex: async () => index };
 });
 
+import { pool } from "../server/db";
+import { RESIDENTIAL_LICENSE_TYPES } from "../server/lib/licenseTypes";
 import {
   LAYER_METRICS,
+  facilityNames,
   handleGetCountyMarket,
   handleGetCountyMarketLayer,
   handleGetFacilityMarket,
@@ -58,9 +70,16 @@ import { PUBLIC_FUNCTIONS } from "../server/lib/functionAcl";
 
 const sql = () => h.queries.map((q) => q.sql);
 
+afterEach(() => {
+  // Every handler, on every path the tests below take, runs its queries one after another.
+  expect(h.maxInFlight).toBeLessThanOrEqual(1);
+});
+
 beforeEach(() => {
   h.queries.length = 0;
   h.failures.length = 0;
+  h.inFlight = 0;
+  h.maxInFlight = 0;
   h.answers = [
     [/FROM rollup_runs/, [{ job: "county_market_profile", status: "success", last_success_at: "2026-10-10T03:00:00Z" }, { job: "cms_service_types", status: "success" }]],
     [/DISTINCT ON \(ccn\) ccn, provider_name, city, state FROM cms_pac_utilization/, (p: any[]) => p[0].filter((c: string) => /^39[5-8]/.test(c)).map((ccn: string) => ({ ccn, provider_name: `PAC ${ccn}`, city: "Pittsburgh", state: "PA" }))],
@@ -96,8 +115,8 @@ describe("getCountyMarket", () => {
       [/sum\(benes\)::bigint AS benes, sum\(stays\)::bigint AS stays, count\(\*\)::int AS providers/, [{ setting: "snf", data_year: "2023", benes: "7000", stays: "9000", providers: 72 }, { setting: "snf", data_year: "2024", benes: "7400", stays: "9500", providers: 70 }]],
       [/FROM rollup_agency_coverage\s+WHERE county_fips/, [{ setting: "hha", ccn: "397001", zips_served: 40, county_zips: 50, share_of_county_zips: 0.8 }, { setting: "hospice", ccn: "398001", zips_served: 25, county_zips: 50, share_of_county_zips: 0.5 }]],
       [/FROM cms_ltc_facility_characteristics WHERE ccn = ANY/, (p: any[]) => p[0].filter((c: string) => c === "395001").map((ccn: string) => ({ ccn, period_end: "2026-06-30", medicare_census: 30, medicaid_census: 60, other_census: 30, total_residents: 120, ownership_type: "For profit", multi_facility_org_name: "KANE SYSTEM", ccrc: false, special_care_beds: null }))],
-      [/FROM licensed_facilities WHERE county_fips = \$1 ORDER BY capacity/, [{ license_type: "personal_care_home", license_number: "PCH-1234", name: "Sunny Hill Personal Care", address: "1 Main St", city: "Pittsburgh", state: "PA", zip5: "15213", capacity: 48, status: "Regular", licensee: "Sunny Hill LLC", phone: null, as_of: "2026-09-30" }]],
-      [/FROM licensed_facilities WHERE county_fips = \$1 GROUP BY/, [{ license_type: "personal_care_home", homes: 2, beds: 90, as_of: "2026-09-30" }]],
+      [/FROM licensed_facilities WHERE county_fips = \$1 AND license_type = ANY\(\$3\) ORDER BY capacity/, [{ license_type: "personal_care_home", license_number: "PCH-1234", name: "Sunny Hill Personal Care", address: "1 Main St", city: "Pittsburgh", state: "PA", zip5: "15213", capacity: 48, status: "Regular", licensee: "Sunny Hill LLC", phone: null, as_of: "2026-09-30" }]],
+      [/FROM licensed_facilities WHERE county_fips = \$1 AND license_type = ANY\(\$2\) GROUP BY/, [{ license_type: "personal_care_home", homes: 2, beds: 90, as_of: "2026-09-30" }]],
     );
     const r: any = await handleGetCountyMarket({ state: "PA", county_fips: "42003" });
     expect(r.county).toEqual({ fips: "42003", name: "Allegheny County", state: "PA" });
@@ -500,8 +519,8 @@ describe("a rollup that can't be read is an error, not an empty market", () => {
     ["a county's competitors", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /SELECT p\.\* FROM rollup_pac_market_share p/],
     ["a county's trends", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /sum\(benes\)::bigint AS benes, sum\(stays\)::bigint AS stays/],
     ["a county's agency coverage", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM rollup_agency_coverage\s+WHERE county_fips/],
-    ["a county's licensed homes", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM licensed_facilities WHERE county_fips = \$1 ORDER BY capacity/],
-    ["a county's licensed-home totals", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM licensed_facilities WHERE county_fips = \$1 GROUP BY 1/],
+    ["a county's licensed homes", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM licensed_facilities WHERE county_fips = \$1 AND license_type = ANY\(\$3\) ORDER BY capacity/],
+    ["a county's licensed-home totals", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM licensed_facilities WHERE county_fips = \$1 AND license_type = ANY\(\$2\) GROUP BY 1/],
     ["a hospital's catchment years", () => handleGetHospitalCatchment({ ccn: "390001" }), /SELECT DISTINCT data_year FROM rollup_hospital_catchment/],
     ["a hospital's discharge mix", () => handleGetHospitalCatchment({ ccn: "390001" }), /FROM rollup_hospital_discharge_mix WHERE ccn = \$1/],
     ["a facility's market position", () => handleGetFacilityMarket({ ccn: "395001", setting: "snf" }), /FROM rollup_pac_market_share WHERE ccn = \$1 AND setting = \$2/],
@@ -538,5 +557,39 @@ describe("a rollup that can't be read is an error, not an empty market", () => {
     expect(county.hospital_sources.rows[0]).toMatchObject({ ccn: "390001", name: null, share: 0.31 });
     const referrals: any = await handleGetReferralSources({ state: "PA", county_fips: "42003" });
     expect(referrals.rows[0]).toMatchObject({ npi: "1000000001", name: "Ada Lovelace, MD", lead_score: null });
+  });
+});
+
+describe("facility names", () => {
+  it("gives a hospital named by the spending file its city from the facility records, and names what nothing else does", async () => {
+    // 390001 is named by the discharge-mix rollup (no city), 395001 by the post-acute file (with one), 390002 only by the facility records.
+    const records: Record<string, any> = {
+      "390001": { facility_name: "UPMC PRESBYTERIAN SHADYSIDE", city: "PITTSBURGH", state: "PA" },
+      "390002": { facility_name: "ALLEGHENY GENERAL", city: "Pittsburgh", state: "PA" },
+    };
+    h.answers.unshift([/FROM medicare_facilities/, (p: any[]) => p[0].filter((c: string) => records[c]).map((c: string) => ({ provider_id: c, ...records[c] }))]);
+    const names = await facilityNames(pool, ["390001", "395001", "390002"]);
+    expect(names.get("390001")).toEqual({ name: "UPMC PRESBYTERIAN", city: "PITTSBURGH", state: "PA" });
+    expect(names.get("395001")).toEqual({ name: "PAC 395001", city: "Pittsburgh", state: "PA" });
+    expect(names.get("390002")).toEqual({ name: "ALLEGHENY GENERAL", city: "Pittsburgh", state: "PA" });
+    // The facility records are asked only about the two that have no city yet.
+    const asked = h.queries.filter((q) => /FROM medicare_facilities/.test(q.sql));
+    expect(asked).toHaveLength(1);
+    expect([...asked[0].params![0]].sort()).toEqual(["390001", "390002"]);
+  });
+
+  it("does not ask the facility records when every name came with a city", async () => {
+    await facilityNames(pool, ["395001", "397001"]);
+    expect(h.queries.some((q) => /FROM medicare_facilities/.test(q.sql))).toBe(false);
+  });
+});
+
+describe("a county's licensed homes", () => {
+  it("are the residential ones: adult day centers and other license types are not competitors of a personal care home", async () => {
+    await handleGetCountyMarket({ state: "PA", county_fips: "42003" });
+    const licensed = h.queries.filter((q) => /FROM licensed_facilities/.test(q.sql));
+    expect(licensed).toHaveLength(2);
+    for (const q of licensed) expect(q.params).toContainEqual(RESIDENTIAL_LICENSE_TYPES);
+    expect(RESIDENTIAL_LICENSE_TYPES).not.toContain("adult_day");
   });
 });

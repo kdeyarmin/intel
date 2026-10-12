@@ -11,6 +11,7 @@
 // publication, so nothing here reveals a small cell.
 import { pool } from "../db";
 import { isStatementTimeout, withTimeoutClient } from "../lib/pgClient";
+import { RESIDENTIAL_LICENSE_TYPES } from "../lib/licenseTypes";
 import { countiesForState, getGeoIndex, resolveCounty, type GeoIndex } from "../lib/geo";
 import { normalizeStateFilter } from "../lib/providerSearch";
 import { specialtyGroupFor } from "../lib/specialtyGroups";
@@ -39,9 +40,14 @@ export const LAYER_METRICS: Record<string, { column: string; label: string; form
   hha_users_pct: { column: "hha_users_pct", label: "Home health use (% of FFS)", format: "pct_units", vintage: "saturation" },
   hospice_users_pct: { column: "hospice_users_pct", label: "Hospice use (% of FFS)", format: "pct_units", vintage: "saturation" },
   snf_users_pct: { column: "snf_users_pct", label: "Skilled nursing use (% of FFS)", format: "pct_units", vintage: "saturation" },
-  hha_providers: { column: "hha_providers", label: "Home health agencies", format: "count", vintage: "saturation" },
-  hospice_providers: { column: "hospice_providers", label: "Hospices", format: "count", vintage: "saturation" },
-  snf_providers: { column: "snf_providers", label: "Skilled nursing facilities", format: "count", vintage: "saturation" },
+  // Located in the county (post-acute utilization by provider) versus billing Medicare for its residents (market
+  // saturation): the second counts agencies and facilities in neighbouring counties too.
+  hha_agencies: { column: "hha_agencies", label: "Home health agencies in county", format: "count", vintage: "pac_utilization" },
+  hospice_agencies: { column: "hospice_agencies", label: "Hospices in county", format: "count", vintage: "pac_utilization" },
+  snf_facilities: { column: "snf_facilities", label: "Skilled nursing facilities in county", format: "count", vintage: "pac_utilization" },
+  hha_providers: { column: "hha_providers", label: "Home health agencies billing", format: "count", vintage: "saturation" },
+  hospice_providers: { column: "hospice_providers", label: "Hospices billing", format: "count", vintage: "saturation" },
+  snf_providers: { column: "snf_providers", label: "Skilled nursing facilities billing", format: "count", vintage: "saturation" },
   std_per_capita_snf: { column: "std_per_capita_snf", label: "SNF spend per beneficiary", format: "money", vintage: "variation" },
   std_per_capita_hha: { column: "std_per_capita_hha", label: "Home health spend per beneficiary", format: "money", vintage: "variation" },
   std_per_capita_hospice: { column: "std_per_capita_hospice", label: "Hospice spend per beneficiary", format: "money", vintage: "variation" },
@@ -84,6 +90,17 @@ export async function marketRollupFreshness() {
   return out;
 }
 
+/**
+ * Runs the steps one after another. A pg client runs one query at a time, so starting several on it at once only
+ * queues them (pg@8 warns that this is deprecated and pg@9 removes it); a step is a function so it starts when
+ * the one before has finished.
+ */
+async function inSequence<T extends Array<() => unknown>>(steps: [...T]): Promise<{ [K in keyof T]: T[K] extends () => infer R ? Awaited<R> : never }> {
+  const out: unknown[] = [];
+  for (const step of steps) out.push(await step());
+  return out as { [K in keyof T]: T[K] extends () => infer R ? Awaited<R> : never };
+}
+
 /** Names for CCNs: the post-acute file, then the hospital spending file, then the facility records (index-backed). */
 export async function facilityNames(client: any, ccns: string[]): Promise<Map<string, { name: string | null; city: string | null; state: string | null }>> {
   const out = new Map<string, { name: string | null; city: string | null; state: string | null }>();
@@ -93,18 +110,23 @@ export async function facilityNames(client: any, ccns: string[]): Promise<Map<st
     `SELECT DISTINCT ON (ccn) ccn, provider_name, city, state FROM cms_pac_utilization
       WHERE summary_level = 'provider' AND ccn = ANY($1) ORDER BY ccn, data_year DESC`, [wanted]).catch(() => ({ rows: [] }));
   for (const r of pac.rows) out.set(r.ccn, { name: r.provider_name, city: r.city, state: r.state });
-  let missing = wanted.filter((c) => !out.has(c));
+  const missing = wanted.filter((c) => !out.has(c));
   if (missing.length) {
     const mix = await client.query(
       "SELECT DISTINCT ON (ccn) ccn, facility_name, state FROM rollup_hospital_discharge_mix WHERE ccn = ANY($1) ORDER BY ccn, data_year DESC", [missing]).catch(() => ({ rows: [] }));
     for (const r of mix.rows) if (r.facility_name) out.set(r.ccn, { name: r.facility_name, city: null, state: r.state });
-    missing = wanted.filter((c) => !out.has(c));
   }
-  if (missing.length) {
+  // Facility records name what is still unnamed and give a city to what was named without one (the hospital
+  // spending file carries a hospital's name and state, not its city).
+  const lacking = wanted.filter((c) => !out.get(c)?.city);
+  if (lacking.length) {
     const fac = await client.query(
       `SELECT DISTINCT ON (provider_id) provider_id, facility_name, city, state FROM medicare_facilities
-        WHERE provider_id = ANY($1) ORDER BY provider_id, data_year DESC NULLS LAST, id DESC`, [missing]).catch(() => ({ rows: [] }));
-    for (const r of fac.rows) out.set(r.provider_id, { name: r.facility_name, city: r.city, state: r.state });
+        WHERE provider_id = ANY($1) ORDER BY provider_id, data_year DESC NULLS LAST, id DESC`, [lacking]).catch(() => ({ rows: [] }));
+    for (const r of fac.rows) {
+      const have = out.get(r.provider_id);
+      out.set(r.provider_id, { name: have?.name ?? r.facility_name, city: have?.city ?? r.city, state: have?.state ?? r.state });
+    }
   }
   return out;
 }
@@ -126,15 +148,21 @@ export async function nursingHomeCensus(client: any, ccns: string[]): Promise<Ma
   }]));
 }
 
-/** State-licensed homes (personal care, assisted living) in a county: the largest first, with totals by license type. */
+/**
+ * State-licensed residential homes (personal care, assisted living, memory care, domiciliary care) in a county: the
+ * largest first, with totals by license type. Adult day centers and other license types are not residential care,
+ * and the county profile leaves them out of its counts too.
+ */
 export async function licensedHomes(client: any, countyFips: string, limit = 50) {
-  const [{ rows }, { rows: totals }] = await Promise.all([
-    client.query(
+  const [{ rows }, { rows: totals }] = await inSequence([
+    () => client.query(
       `SELECT license_type, license_number, name, address, city, state, zip5, capacity, status, licensee, phone, as_of::text AS as_of
-         FROM licensed_facilities WHERE county_fips = $1 ORDER BY capacity DESC NULLS LAST, name LIMIT $2`, [countyFips, limit]),
-    client.query(
+         FROM licensed_facilities WHERE county_fips = $1 AND license_type = ANY($3) ORDER BY capacity DESC NULLS LAST, name LIMIT $2`,
+      [countyFips, limit, RESIDENTIAL_LICENSE_TYPES]),
+    () => client.query(
       `SELECT license_type, count(*)::int AS homes, sum(capacity)::int AS beds, max(as_of)::text AS as_of
-         FROM licensed_facilities WHERE county_fips = $1 GROUP BY 1 ORDER BY 2 DESC`, [countyFips]),
+         FROM licensed_facilities WHERE county_fips = $1 AND license_type = ANY($2) GROUP BY 1 ORDER BY 2 DESC`,
+      [countyFips, RESIDENTIAL_LICENSE_TYPES]),
   ]);
   return {
     as_of: totals.map((t: any) => t.as_of).filter(Boolean).sort().pop() ?? null,
@@ -150,10 +178,10 @@ async function providerNames(client: any, npis: string[]): Promise<Map<string, {
   const out = new Map<string, { name: string; specialty: string | null; code: string | null; score: number | null }>();
   const wanted = [...new Set(npis.filter(Boolean))];
   if (!wanted.length) return out;
-  const [provs, taxes, scores] = await Promise.all([
-    client.query("SELECT npi, first_name, last_name, organization_name, credential FROM providers WHERE npi = ANY($1)", [wanted]),
-    client.query("SELECT npi, taxonomy_code, taxonomy_description FROM provider_taxonomies WHERE npi = ANY($1) AND is_primary = true", [wanted]).catch(() => ({ rows: [] })),
-    client.query("SELECT npi, score FROM lead_scores WHERE npi = ANY($1) AND score IS NOT NULL", [wanted]).catch(() => ({ rows: [] })),
+  const [provs, taxes, scores] = await inSequence([
+    () => client.query("SELECT npi, first_name, last_name, organization_name, credential FROM providers WHERE npi = ANY($1)", [wanted]),
+    () => client.query("SELECT npi, taxonomy_code, taxonomy_description FROM provider_taxonomies WHERE npi = ANY($1) AND is_primary = true", [wanted]).catch(() => ({ rows: [] })),
+    () => client.query("SELECT npi, score FROM lead_scores WHERE npi = ANY($1) AND score IS NOT NULL", [wanted]).catch(() => ({ rows: [] })),
   ]);
   const tax = new Map<string, any>(taxes.rows.map((t: any) => [t.npi, t]));
   const score = new Map<string, number>();
@@ -220,24 +248,24 @@ export async function handleGetCountyMarket(payload: any, user?: EntitledUser | 
   assertTerritory(user, { state, county_fips: county.fips, county_name: county.name });
   const fips = county.fips;
   return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
-    const [profile, sources, competitors, trends, coverage] = await Promise.all([
-      client.query("SELECT * FROM rollup_county_market_profile WHERE county_fips = $1", [fips]),
-      client.query(
+    const [profile, sources, competitors, trends, coverage] = await inSequence([
+      () => client.query("SELECT * FROM rollup_county_market_profile WHERE county_fips = $1", [fips]),
+      () => client.query(
         `SELECT s.ccn, s.data_year, s.cases, s.days, s.share_of_county, s.rank, count(*) OVER ()::int AS total
            FROM rollup_county_hospital_sources s
            JOIN (SELECT max(data_year) AS y FROM rollup_county_hospital_sources WHERE county_fips = $1) l ON l.y = s.data_year
           WHERE s.county_fips = $1 ORDER BY s.rank LIMIT $2`, [fips, TOP]),
-      client.query(
+      () => client.query(
         `SELECT p.* FROM rollup_pac_market_share p
            JOIN (SELECT setting, max(data_year) AS y FROM rollup_pac_market_share WHERE geo_level = 'county' AND geo_code = $1 GROUP BY setting) l
              ON l.setting = p.setting AND l.y = p.data_year
           WHERE p.geo_level = 'county' AND p.geo_code = $1 AND p.rank <= $2 ORDER BY p.setting, p.rank`, [fips, TOP]),
-      client.query(
+      () => client.query(
         `SELECT setting, data_year, sum(benes)::bigint AS benes, sum(stays)::bigint AS stays, count(*)::int AS providers
            FROM rollup_pac_market_share WHERE geo_level = 'county' AND geo_code = $1 GROUP BY 1, 2 ORDER BY 1, 2`, [fips]),
       // The TOP best-covering agencies of each setting (one limit across both settings would let a county with many
       // home health agencies push every hospice out of the list).
-      client.query(
+      () => client.query(
         `SELECT setting, ccn, zips_served, county_zips, share_of_county_zips FROM (
            SELECT setting, ccn, zips_served, county_zips, share_of_county_zips,
                   row_number() OVER (PARTITION BY setting ORDER BY share_of_county_zips DESC, ccn) AS rn
@@ -310,18 +338,18 @@ export async function handleGetHospitalCatchment(payload: any, user?: EntitledUs
     const scope = territoryScope(user);
     const inScope = "(county_fips = ANY($3::text[]) OR left(county_fips, 2) = ANY($4::text[]))";
     const scopeParams = scope ? [scope.counties, scope.statePrefixes] : [];
-    const [zips, totals, byCounty, mix, names] = await Promise.all([
-      year ? client.query(
+    const [zips, totals, byCounty, mix, names] = await inSequence([
+      () => year ? client.query(
         `SELECT zip5, county_fips, cases, days, charges, share_of_hospital FROM rollup_hospital_catchment
           WHERE ccn = $1 AND data_year = $2${scope ? ` AND ${inScope}` : ""} ORDER BY cases DESC NULLS LAST, zip5 LIMIT ${CATCHMENT_ZIPS}`, [ccn, year, ...scopeParams]) : { rows: [] },
-      year ? client.query(
+      () => year ? client.query(
         `SELECT COALESCE(sum(cases), 0)::bigint AS cases, ${scope ? `count(*) FILTER (WHERE ${inScope})::int` : "count(*)::int"} AS zips FROM rollup_hospital_catchment WHERE ccn = $1 AND data_year = $2`, [ccn, year, ...scopeParams]) : { rows: [] },
-      year ? client.query(
+      () => year ? client.query(
         `SELECT county_fips, sum(cases)::bigint AS cases, sum(days)::bigint AS days, count(*)::int AS zips FROM rollup_hospital_catchment
           WHERE ccn = $1 AND data_year = $2 AND county_fips IS NOT NULL${scope ? ` AND ${inScope}` : ""}
           GROUP BY county_fips ORDER BY sum(cases) DESC NULLS LAST, county_fips LIMIT ${CATCHMENT_COUNTIES}`, [ccn, year, ...scopeParams]) : { rows: [] },
-      client.query("SELECT * FROM rollup_hospital_discharge_mix WHERE ccn = $1 ORDER BY data_year DESC LIMIT 1", [ccn]),
-      facilityNames(client, [ccn]),
+      () => client.query("SELECT * FROM rollup_hospital_discharge_mix WHERE ccn = $1 ORDER BY data_year DESC LIMIT 1", [ccn]),
+      () => facilityNames(client, [ccn]),
     ]);
     const total = num(totals.rows[0]?.cases) ?? 0;
     const zipsTotal = Number(totals.rows[0]?.zips) || 0;
@@ -372,14 +400,14 @@ export async function handleGetFacilityMarket(payload: any, user?: EntitledUser 
     const stateRow = own.find((r: any) => r.geo_level === "state" && r.data_year === latestYear);
     const countyFips = countyRow?.geo_code ?? null;
     assertFacilityTerritory(user, { state: countyRow?.state ?? stateRow?.state ?? stateRow?.geo_code ?? own[0]?.state ?? null, county_fips: countyFips, county_name: countyFips ? countyName(index, countyFips) : null });
-    const [market, marketTrend, coverage] = await Promise.all([
-      countyFips ? client.query(
+    const [market, marketTrend, coverage] = await inSequence([
+      () => countyFips ? client.query(
         `SELECT * FROM rollup_pac_market_share WHERE setting = $1 AND geo_level = 'county' AND geo_code = $2 AND data_year = $3 ORDER BY rank LIMIT 100`,
         [setting, countyFips, latestYear]) : { rows: [] },
-      countyFips ? client.query(
+      () => countyFips ? client.query(
         `SELECT data_year, sum(benes)::bigint AS benes, count(*)::int AS providers FROM rollup_pac_market_share
           WHERE setting = $1 AND geo_level = 'county' AND geo_code = $2 GROUP BY 1 ORDER BY 1`, [setting, countyFips]) : { rows: [] },
-      setting === "hha" || setting === "hospice"
+      () => setting === "hha" || setting === "hospice"
         ? client.query("SELECT county_fips, zips_served, county_zips, share_of_county_zips FROM rollup_agency_coverage WHERE setting = $1 AND ccn = $2 ORDER BY share_of_county_zips DESC LIMIT 50", [setting, ccn])
         : { rows: [] },
     ]);
@@ -539,9 +567,9 @@ export async function handleGetServiceAreaOverlap(payload: any, user?: EntitledU
          FROM rollup_agency_coverage a WHERE a.setting = $1 AND a.county_fips = $2
         ORDER BY a.share_of_county_zips DESC, a.ccn LIMIT 100`, [setting, county.fips]);
     const ccns = rows.map((r: any) => r.ccn);
-    const [names, share] = await Promise.all([
-      facilityNames(client, ccns),
-      ccns.length ? client.query(
+    const [names, share] = await inSequence([
+      () => facilityNames(client, ccns),
+      () => ccns.length ? client.query(
         `SELECT DISTINCT ON (ccn) ccn, data_year, benes, share_benes, rank FROM rollup_pac_market_share
           WHERE setting = $1 AND geo_level = 'county' AND geo_code = $2 AND ccn = ANY($3) ORDER BY ccn, data_year DESC`, [setting, county.fips, ccns]) : { rows: [] },
     ]);
