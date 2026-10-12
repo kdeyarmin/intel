@@ -28,7 +28,8 @@ describe("the hospice index note", () => {
   it("describes the formula used before that file is imported, without eligibility or the oversight count", () => {
     expect(sql).toContain("40 * s.hospice_fit");
     expect(sql).toContain("20 * least(COALESCE(s.avg_risk_score, 0) / 2.5, 1)");
-    expect(sql).not.toMatch(/hospice_eligible[\s\S]{0,80}hospice_index/);
+    const unloaded = sql.slice(sql.indexOf("(round(40 * s.hospice_fit"));
+    expect(unloaded.slice(0, unloaded.indexOf(")::int)"))).not.toMatch(/hospice_eligible|oversight/);
     const note = hospiceIndexNote(false);
     expect(note).toMatch(/specialty fit up to 40/);
     expect(note).toMatch(/not in the index yet/);

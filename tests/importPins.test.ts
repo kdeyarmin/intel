@@ -6,7 +6,7 @@
  * a changed id here should be a deliberate one.
  */
 import { describe, expect, it } from "vitest";
-import { IMPORT_TYPE_URLS, autoImportBlock, getCMSDatasetCatalog } from "../server/functions/triggerImport";
+import { IMPORT_TYPE_URLS, autoImportBlock, fileUrlProblem, getCMSDatasetCatalog } from "../server/functions/triggerImport";
 
 const PINNED: Record<string, { id: string; title: string }> = {
   hospital_service_area: { id: "8708ca8b-8636-44ed-8303-724cbfaf78ad", title: "Hospital Service Area" },
@@ -44,10 +44,13 @@ describe("pinned CMS datasets", () => {
   it("does not auto-import the retired Provider & Supplier Ownership file", () => {
     expect(IMPORT_TYPE_URLS.provider_ownership).toBeUndefined();
     const entry = getCMSDatasetCatalog().datasets.find((d: { id: string }) => d.id === "provider_ownership");
-    expect(entry?.available).toBe(false);
+    expect(entry?.url).toBeNull();
+    expect(entry?.available).toBe(true);
     expect(entry?.description).toMatch(/retired|All Owners/i);
     expect(autoImportBlock("provider_ownership", null)).toMatch(/404/);
     expect(autoImportBlock("provider_ownership", "https://example.com/owners.csv")).toBeNull();
+    expect(fileUrlProblem("provider_ownership", "/api/storage/owners.csv", 2024)).toBeNull();
+    expect(fileUrlProblem("provider_ownership", "/api/storage/owners.csv", undefined)).toMatch(/year is required/);
   });
 
   it("reads inpatient DRG from by Provider and Service, not the by-provider totals", () => {
