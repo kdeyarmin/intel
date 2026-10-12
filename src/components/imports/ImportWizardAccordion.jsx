@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   ChevronDown, ChevronUp, CheckCircle2, Circle, Upload, Loader2, AlertCircle, XCircle, RotateCcw, Sparkles
 } from 'lucide-react';
@@ -17,6 +19,12 @@ import { generateAIMapping, saveLearnedMapping, OPTIONAL_COLUMNS } from './colum
 import AIBatchCategorizer from './AIBatchCategorizer';
 import AICleaningSuggestions from './AICleaningSuggestions';
 import NPPESFlatFileHelper from './NPPESFlatFileHelper';
+import { FILE_IMPORT_FIELDS, LICENSE_TYPE_OPTIONS } from '@/lib/cmsImportTypes';
+import { US_STATES } from '@/lib/usStates';
+
+// A Select item can't be an empty string: this stands for "take it from the file".
+const FROM_FILE = '__from_file__';
+const THIS_YEAR = new Date().getFullYear();
 
 function _parseCSVLine(line) {
   const result = [];
@@ -99,6 +107,14 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
 
   // AI categorization
   const [aiCategory, setAiCategory] = useState(null);
+
+  // What a file import needs beside the file (see FILE_IMPORT_FIELDS): the data year it describes, and for a state
+  // licensing export the state and license type when the file has no such column.
+  const fileFields = FILE_IMPORT_FIELDS[selectedType?.id] || null;
+  const [fileYear, setFileYear] = useState(String(THIS_YEAR));
+  const [fileState, setFileState] = useState('');
+  const [fileLicenseType, setFileLicenseType] = useState('');
+  const yearOk = !fileFields?.year || (/^\d{4}$/.test(fileYear.trim()) && Number(fileYear) >= 2000 && Number(fileYear) <= THIS_YEAR + 1);
 
   // Import state
   const [dryRun, setDryRun] = useState(false);
@@ -204,7 +220,7 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
   }, [liveBatchId]);
 
   const handleImport = async () => {
-    if (!file || !fileUrl) return;
+    if (!file || !fileUrl || !yearOk) return;
     setProcessing(true);
     setImportStep(STEP_ACTIVE);
     setMapStep(STEP_DONE);
@@ -232,6 +248,9 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
         file_url: fileUrl,
         dry_run: dryRun,
         batch_id: batch.id,
+        ...(fileFields?.year ? { year: Number(fileYear) } : {}),
+        ...(fileFields?.state && fileState ? { state_filter: fileState } : {}),
+        ...(fileFields?.licenseType && fileLicenseType ? { license_type: fileLicenseType } : {}),
       }).catch((err) => {
         // If the background call itself fails, show error
         setResult({ success: false, error: err.message });
@@ -369,6 +388,61 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
               {/* Import options — show before import starts */}
               {!result && (
                 <>
+                  {fileFields && (
+                    <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/30 space-y-3">
+                      <div>
+                        <p className="text-sm text-slate-200">About this file</p>
+                        <p className="text-xs text-slate-400">
+                          {fileFields.state
+                            ? 'The year the export describes is shown with the data. Set the state and license type only if the file has no such columns.'
+                            : 'The year the data describes is shown with it.'}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <Label htmlFor={`${uid}-file-year`} id={`${uid}-file-year-label`} className="text-xs text-slate-300">Data year</Label>
+                          <Input
+                            id={`${uid}-file-year`}
+                            aria-labelledby={`${uid}-file-year-label`}
+                            type="text"
+                            inputMode="numeric"
+                            value={fileYear}
+                            onChange={(e) => setFileYear(e.target.value)}
+                            disabled={processing}
+                            aria-invalid={!yearOk}
+                            aria-describedby={yearOk ? undefined : `${uid}-file-year-error`}
+                            className="bg-slate-900 border-slate-700"
+                          />
+                          {!yearOk && <p id={`${uid}-file-year-error`} className="text-xs text-red-400" role="alert">Enter a four-digit year, 2000 or later.</p>}
+                        </div>
+                        {fileFields.state && (
+                          <div className="space-y-1">
+                            <Label htmlFor={`${uid}-file-state`} className="text-xs text-slate-300">State</Label>
+                            <Select value={fileState || FROM_FILE} onValueChange={(v) => setFileState(v === FROM_FILE ? '' : v)} disabled={processing}>
+                              <SelectTrigger id={`${uid}-file-state`} className="bg-slate-900 border-slate-700"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={FROM_FILE}>From the file</SelectItem>
+                                {US_STATES.map((st) => <SelectItem key={st} value={st}>{st}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                        {fileFields.licenseType && (
+                          <div className="space-y-1">
+                            <Label htmlFor={`${uid}-file-license`} className="text-xs text-slate-300">License type</Label>
+                            <Select value={fileLicenseType || FROM_FILE} onValueChange={(v) => setFileLicenseType(v === FROM_FILE ? '' : v)} disabled={processing}>
+                              <SelectTrigger id={`${uid}-file-license`} className="bg-slate-900 border-slate-700"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={FROM_FILE}>From the file</SelectItem>
+                                {LICENSE_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/40 border border-slate-700/30">
                     <div>
                       <Label htmlFor={`${uid}-dry-run`} id={`${uid}-dry-run-label`} className="text-sm">Dry Run Mode</Label>
@@ -426,7 +500,7 @@ export default function ImportWizardAccordion({ selectedType, onReset, onComplet
 
                   <Button
                     onClick={handleImport}
-                    disabled={!isMappingComplete || processing}
+                    disabled={!isMappingComplete || processing || !yearOk}
                     className="w-full bg-cyan-600 hover:bg-cyan-700"
                   >
                     {processing ? (

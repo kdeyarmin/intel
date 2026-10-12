@@ -130,10 +130,10 @@ export async function licensedHomes(client: any, countyFips: string, limit = 50)
   const [{ rows }, { rows: totals }] = await Promise.all([
     client.query(
       `SELECT license_type, license_number, name, address, city, state, zip5, capacity, status, licensee, phone, as_of::text AS as_of
-         FROM licensed_facilities WHERE county_fips = $1 ORDER BY capacity DESC NULLS LAST, name LIMIT $2`, [countyFips, limit]).catch(() => ({ rows: [] as any[] })),
+         FROM licensed_facilities WHERE county_fips = $1 ORDER BY capacity DESC NULLS LAST, name LIMIT $2`, [countyFips, limit]),
     client.query(
       `SELECT license_type, count(*)::int AS homes, sum(capacity)::int AS beds, max(as_of)::text AS as_of
-         FROM licensed_facilities WHERE county_fips = $1 GROUP BY 1 ORDER BY 2 DESC`, [countyFips]).catch(() => ({ rows: [] as any[] })),
+         FROM licensed_facilities WHERE county_fips = $1 GROUP BY 1 ORDER BY 2 DESC`, [countyFips]),
   ]);
   return {
     as_of: totals.map((t: any) => t.as_of).filter(Boolean).sort().pop() ?? null,

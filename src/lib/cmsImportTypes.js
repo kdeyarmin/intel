@@ -269,3 +269,23 @@ export function buildImportTypeLabels(overrides = {}) {
     ...overrides,
   };
 }
+
+/**
+ * Datasets that are read from a file the admin supplies need more than the file. The server refuses such an import
+ * without the data year the file describes; a state licensing export also takes the state and the license type
+ * when the file has no such column (server/functions/triggerImport.ts: UPLOAD_CAPABLE_TYPES, mapLicensedFacility).
+ */
+export const FILE_IMPORT_FIELDS = {
+  licensed_facilities: { year: true, state: true, licenseType: true },
+  physician_shared_patient_patterns: { year: true },
+};
+
+/** The license types a licensing export is normalized to (server/functions/cmsTypedTables.ts: normalizeLicenseType). */
+export const LICENSE_TYPE_OPTIONS = [
+  { value: 'personal_care_home', label: 'Personal care home' },
+  { value: 'assisted_living', label: 'Assisted living' },
+  { value: 'memory_care', label: 'Memory care' },
+  { value: 'domiciliary_care', label: 'Domiciliary care' },
+  { value: 'nursing_home', label: 'Nursing home' },
+  { value: 'adult_day', label: 'Adult day' },
+];

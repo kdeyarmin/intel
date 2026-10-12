@@ -20,6 +20,47 @@ describe("parseFilterList", () => {
   it("accepts an array input", () => {
     expect(parseFilterList(["1234567890", " 9876543210 "])).toEqual(["1234567890", "9876543210"]);
   });
+
+  it("keeps a state that is spelled out as one item instead of splitting it at its spaces", () => {
+    expect(parseFilterList("New York")).toEqual(["New York"]);
+    expect(parseFilterList("New York, Ohio; West Virginia")).toEqual(["New York", "Ohio", "West Virginia"]);
+    expect(parseFilterList("District of Columbia")).toEqual(["District of Columbia"]);
+    expect(parseFilterList("Northern Mariana Islands, Rhode Island")).toEqual(["Northern Mariana Islands", "Rhode Island"]);
+  });
+
+  it("still splits codes and numbers at spaces, next to a state spelled out", () => {
+    expect(parseFilterList("PA OH")).toEqual(["PA", "OH"]);
+    expect(parseFilterList("New York PA North Carolina")).toEqual(["New York", "PA", "North Carolina"]);
+    expect(parseFilterList("1234567890 9876543210")).toEqual(["1234567890", "9876543210"]);
+  });
+
+  it("reads the longest state name: West Virginia is not West and Virginia", () => {
+    expect(parseFilterList("West Virginia")).toEqual(["West Virginia"]);
+    expect(parseFilterList("Virginia West Virginia")).toEqual(["Virginia", "West Virginia"]);
+  });
+
+  it("leaves a word that is no state alone", () => {
+    expect(parseFilterList("New Jersey Newark")).toEqual(["New Jersey", "Newark"]);
+    expect(parseFilterList("New")).toEqual(["New"]);
+  });
+});
+
+describe("buildImportRowFilter with states spelled out", () => {
+  it("matches a row of the state written as a code or a name, for a filter written as a name", () => {
+    const f = buildImportRowFilter(null, "New York")!;
+    expect(f({ state: "NY" })).toBe(true);
+    expect(f({ state: "New York" })).toBe(true);
+    expect(f({ state: "NJ" })).toBe(false);
+    // Not the "NEW" and "YORK" the whitespace split used to make of it.
+    expect(f({ state: "NEW" })).toBe(false);
+  });
+
+  it("does not take Virginia for West Virginia", () => {
+    const f = buildImportRowFilter(null, "West Virginia, Ohio")!;
+    expect(f({ state: "WV" })).toBe(true);
+    expect(f({ state: "OH" })).toBe(true);
+    expect(f({ state: "VA" })).toBe(false);
+  });
 });
 
 describe("buildImportRowFilter", () => {

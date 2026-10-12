@@ -393,6 +393,8 @@ describe("a rollup that can't be read is an error, not an empty market", () => {
     ["a county's competitors", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /SELECT p\.\* FROM rollup_pac_market_share p/],
     ["a county's trends", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /sum\(benes\)::bigint AS benes, sum\(stays\)::bigint AS stays/],
     ["a county's agency coverage", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM rollup_agency_coverage\s+WHERE county_fips/],
+    ["a county's licensed homes", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM licensed_facilities WHERE county_fips = \$1 ORDER BY capacity/],
+    ["a county's licensed-home totals", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM licensed_facilities WHERE county_fips = \$1 GROUP BY 1/],
     ["a hospital's catchment years", () => handleGetHospitalCatchment({ ccn: "390001" }), /SELECT DISTINCT data_year FROM rollup_hospital_catchment/],
     ["a hospital's discharge mix", () => handleGetHospitalCatchment({ ccn: "390001" }), /FROM rollup_hospital_discharge_mix WHERE ccn = \$1/],
     ["a facility's market position", () => handleGetFacilityMarket({ ccn: "395001", setting: "snf" }), /FROM rollup_pac_market_share WHERE ccn = \$1 AND setting = \$2/],

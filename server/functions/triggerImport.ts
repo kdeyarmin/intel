@@ -393,11 +393,34 @@ export function importAsOf(o: { inherited?: string | null; temporalEnd?: string 
   return o.inherited ?? o.temporalEnd ?? o.stated ?? modified ?? null;
 }
 
+/**
+ * A client that creates its batch first (the Data Center wizard) passes it as batch_id while it is still
+ * "validating". When the request is refused before the import starts, nothing would ever move that batch on,
+ * and it would sit in "validating" until the stall sweep: fail it now, with the reason. A batch being resumed
+ * (paused, failed) is in another state and keeps it.
+ */
+async function failPrecreatedBatch(batchId: unknown, message: string) {
+  const id = Number(batchId);
+  if (!Number.isInteger(id) || id <= 0) return;
+  await db.update(importBatches)
+    .set({ status: "failed", error_samples: [{ message }], updated_date: new Date() })
+    .where(and(eq(importBatches.id, id), eq(importBatches.status, "validating")))
+    .catch(() => {});
+}
+
 export async function handleTriggerImport(payload: any, user: any) {
   if (!user || user.role !== "admin") {
     throw { status: 403, message: "Forbidden: Admin access required" };
   }
+  try {
+    return await startImport(payload);
+  } catch (err: any) {
+    await failPrecreatedBatch(payload?.batch_id, String(err?.message || "The import could not be started."));
+    throw err;
+  }
+}
 
+async function startImport(payload: any) {
   const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter, headers, license_type } = payload;
 
   if (!raw_import_type) {
@@ -412,7 +435,8 @@ export async function handleTriggerImport(payload: any, user: any) {
   }
   const noGeography = await geographyProblem(import_type);
   if (noGeography) {
-    throw { status: 409, message: noGeography };
+    // 412, not 409: the clients read a 409 as "this import is already running" and would hide the reason.
+    throw { status: 412, message: noGeography };
   }
 
   const activeImports = await db.select().from(importBatches)
@@ -751,10 +775,25 @@ const FILTER_STATE_FIELDS = [
 ];
 
 // Parse a comma/space/semicolon-separated filter string (or array) into a
-// trimmed, de-duplicated list. Exported for unit testing.
+// trimmed, de-duplicated list. A state spelled out ("New York", "District of
+// Columbia") stays one item instead of being split at its spaces. Exported for
+// unit testing.
 export function parseFilterList(value: unknown): string[] {
-  const raw = Array.isArray(value) ? value : String(value ?? "").split(/[,\s;]+/);
-  return [...new Set(raw.map((v) => String(v).trim()).filter(Boolean))];
+  if (Array.isArray(value)) return [...new Set(value.map((v) => String(v).trim()).filter(Boolean))];
+  const items: string[] = [];
+  for (const segment of String(value ?? "").split(/[,;\n]+/)) {
+    const words = segment.split(/\s+/).filter(Boolean);
+    for (let i = 0; i < words.length;) {
+      // The longest run of words that names a state (up to "Northern Mariana Islands"), else the word alone.
+      let take = 1;
+      for (let n = Math.min(3, words.length - i); n >= 2; n -= 1) {
+        if (stateCodeOf(words.slice(i, i + n).join(" "))) { take = n; break; }
+      }
+      items.push(words.slice(i, i + take).join(" "));
+      i += take;
+    }
+  }
+  return [...new Set(items)];
 }
 
 // Build a row predicate from the optional npi_filter / state_filter inputs, or
