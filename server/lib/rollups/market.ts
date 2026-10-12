@@ -220,7 +220,7 @@ export const MARKET_JOBS: MarketJob[] = [
                /* Specialty fit for a hospice referral. Volume is multiplied by this, so a radiologist scores nothing
                   from panel size. Physical medicine and rehabilitation refer to post-acute care; physical therapy does not. */
                CASE
-                 WHEN p.provider_type ~* 'radiolog|patholog|anesthesiolog|ophthalmolog|optometr|dermatolog|podiatr|chiropract|audiolog|physical therapy' THEN 0
+                 WHEN p.provider_type ~* 'radiolog|patholog|anesthesiolog|ophthalmolog|optometr|dermatolog|podiatr|chiropract|audiolog|physical therap' THEN 0
                  WHEN p.provider_type ~* 'hospice|palliative|geriatric' THEN 1
                  WHEN p.provider_type ~* 'internal medicine|family practice|general practice|hospitalist' THEN 0.85
                  WHEN p.provider_type ~* 'oncolog|hematolog|nephrolog|pulmon|cardiolog|neurolog|physiat|physical medicine|rehabilitation' THEN 0.7

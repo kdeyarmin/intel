@@ -366,6 +366,14 @@ describe("migration journal", () => {
   });
 });
 
+describe("migration 0031_referral_hospice_state_index", () => {
+  it("indexes a statewide hospice ranking in SQL and in the Drizzle schema", () => {
+    const migration = readMigration("0031_referral_hospice_state_index.sql");
+    expect(migration).toContain('CREATE INDEX IF NOT EXISTS "idx_rollup_ref_src_state_hospice" ON "rollup_referral_sources" ("state", "hospice_index")');
+    expect(readSchema()).toContain('index("idx_rollup_ref_src_state_hospice").on(table.state, table.hospice_index)');
+  });
+});
+
 describe("migration 0008_accounts", () => {
   const sql = readMigration("0008_accounts.sql");
   const schema = readSchema();

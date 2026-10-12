@@ -68,14 +68,14 @@ export const DATASET_CONFIG = {
   },
   inpatient_drg: {
     label: 'Inpatient DRG',
-    entity: 'InpatientDRG',
+    entity: 'CmsInpatientDrg',
     metrics: [
-      { key: 'total_discharges', label: 'Total Discharges' },
+      { key: 'discharges', label: 'Discharges' },
     ],
     groupOptions: [
       { key: 'data_year', label: 'Year' },
       { key: 'drg_code', label: 'DRG Code' },
-      { key: 'npi', label: 'Provider NPI' },
+      { key: 'ccn', label: 'Hospital CCN' },
     ],
     filters: ['year'],
     yearField: 'data_year',

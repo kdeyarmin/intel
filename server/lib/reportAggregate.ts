@@ -60,9 +60,9 @@ export const REPORT_DATASETS: Record<string, ReportDataset> = {
     groupOptions: [YEAR, STATE],
   },
   inpatient_drg: {
-    entity: "InpatientDRG", label: "Inpatient DRG", yearField: "data_year", filters: ["year"],
-    metrics: [{ key: "total_discharges", label: "Total Discharges" }],
-    groupOptions: [YEAR, { key: "drg_code", label: "DRG Code" }, NPI],
+    entity: "CmsInpatientDrg", label: "Inpatient DRG", yearField: "data_year", filters: ["year"],
+    metrics: [{ key: "discharges", label: "Discharges" }],
+    groupOptions: [YEAR, { key: "drg_code", label: "DRG Code" }, { key: "ccn", label: "Hospital CCN" }],
   },
   snf_stats: {
     entity: "MedicareSNFStats", label: "Medicare SNF", yearField: "data_year", filters: ["year", "state"],
