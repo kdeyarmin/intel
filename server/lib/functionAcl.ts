@@ -82,7 +82,7 @@ export const PLATFORM_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "runScheduledImports", "runScheduledImportsFanout", "runMaintenanceFanout", "autoResumePausedImports", "autoRetryFailedImports",
   "cancelStalledImports", "cleanupAllImports", "runDueScheduledReports",
   "cleanProviderData", "reconcileProviderData", "matchProvidersToLocations", "runDataQualityScan",
-  "loadCensusGeography", "refreshRollups", "getLeadScoringStatus", "recalculateLeadScores",
+  "loadCensusGeography", "refreshRollups", "getLeadScoringStatus", "recalculateLeadScores", "getOperationsAlerts",
   "enrichBulkServerSide", "proactiveScanServerSide", "enrichmentJobStart", "enrichmentJobStop", "intelJobStart", "intelJobStop",
   "startDMEEmailSearch", "stopDMEEmailSearch", "bulkVerifyEmails", "emailSearchBot",
   "enrichProviderWithAI", "enrichProviderDEAData", "enrichProviderMedicareData", "enrichProviderThirdParty",

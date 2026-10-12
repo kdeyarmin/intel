@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // Module-level mocks for the API client and auth context. base44.entities and
@@ -90,8 +90,8 @@ describe('MaintenanceHealthPanel — admin gating', () => {
     await user.click(await screen.findByRole('button', { name: /Cleanup all imports/i }));
     // Confirm dialog should appear
     const runAnyway = await screen.findByRole('button', { name: /Run anyway/i });
-    // Nothing fired yet
-    expect(invokeMock).not.toHaveBeenCalled();
+    // Nothing fired yet (the panel reads the operations alerts on mount; only the cleanup waits for the confirmation).
+    expect(invokeMock).not.toHaveBeenCalledWith('cleanupAllImports');
     await user.click(runAnyway);
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('cleanupAllImports'));
   });
@@ -102,6 +102,61 @@ describe('MaintenanceHealthPanel — admin gating', () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: /Cleanup all imports/i }));
     await user.click(await screen.findByRole('button', { name: /^Cancel$/ }));
-    expect(invokeMock).not.toHaveBeenCalled();
+    expect(invokeMock).not.toHaveBeenCalledWith('cleanupAllImports');
+  });
+
+  it('lists what needs attention for platform admins, and nothing for others', async () => {
+    useAuthMock.mockReturnValue({ user: { id: 1, role: 'admin', email: 'a@x' } });
+    invokeMock.mockImplementation(async (name) => (name === 'getOperationsAlerts'
+      ? { data: { alerts: [{ key: 'dataset_behind:x', severity: 'critical', subject: 'Hospital Service Area', message: 'A newer release hasn’t been imported.', since: null }], checked_at: '2026-10-11T12:00:00Z' } }
+      : { data: {} }));
+    render(<MaintenanceHealthPanel />);
+    expect(await screen.findByText('Needs attention (1)')).toBeInTheDocument();
+    expect(screen.getByText('Hospital Service Area:')).toBeInTheDocument();
+    expect(screen.getByText('critical')).toBeInTheDocument();
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith('getOperationsAlerts', {}));
+  });
+
+  it("says so when the alerts can't be read, instead of showing nothing (or 'nothing open')", async () => {
+    useAuthMock.mockReturnValue({ user: { id: 1, role: 'admin', email: 'a@x' } });
+    invokeMock.mockImplementation(async (name) => {
+      if (name === 'getOperationsAlerts') throw new Error('Request failed (500)');
+      return { data: {} };
+    });
+    render(<MaintenanceHealthPanel />);
+    const section = await screen.findByTestId('operations-alerts');
+    expect(await within(section).findByRole('alert')).toHaveTextContent(/Couldn.t load the operations alerts/);
+    expect(within(section).getByRole('alert')).toHaveTextContent(/Request failed \(500\)/);
+    expect(within(section).getByRole('alert')).toHaveTextContent(/nothing is checking the pipeline from here/);
+    expect(screen.queryByText(/Nothing open/)).toBeNull();
+  });
+
+  it("shows the alerts again once a later read works", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      useAuthMock.mockReturnValue({ user: { id: 1, role: 'admin', email: 'a@x' } });
+      let calls = 0;
+      invokeMock.mockImplementation(async (name) => {
+        if (name !== 'getOperationsAlerts') return { data: {} };
+        calls += 1;
+        if (calls === 1) throw new Error('Request failed (503)');
+        return { data: { alerts: [], checked_at: '2026-10-11T12:00:00Z' } };
+      });
+      render(<MaintenanceHealthPanel />);
+      expect(await screen.findByText(/Couldn.t load the operations alerts/)).toBeInTheDocument();
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 1000);
+      expect(await screen.findByText(/Nothing open/)).toBeInTheDocument();
+      expect(screen.queryByText(/Couldn.t load the operations alerts/)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not read or show the operations alerts for an organization's owner", async () => {
+    useAuthMock.mockReturnValue({ user: { id: 2, role: 'user', orgRole: 'owner', email: 'o@x' } });
+    render(<MaintenanceHealthPanel />);
+    await screen.findAllByText(/Maintenance ran|No maintenance runs/);
+    expect(screen.queryByTestId('operations-alerts')).not.toBeInTheDocument();
+    expect(invokeMock).not.toHaveBeenCalledWith('getOperationsAlerts', {});
   });
 });

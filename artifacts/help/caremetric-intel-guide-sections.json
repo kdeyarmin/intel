@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "9a08ea694a60fd5e46407923e954989e66f9b497",
+    "ref": "301444d30d0f858f95dd1599742c5328abbbb420",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 36,
-    "text_character_count": 17742,
-    "canonical_sha256": "d4c303b1e5204d1858dec23aec1fa33e3aa9528017c783b3eed83ff16bf9877d"
+    "text_character_count": 18209,
+    "canonical_sha256": "39fe10310202c45b44e2894c882a37d3072d82c77d4b58709c4d31c650ac183c"
   },
   "sections": [
     {
@@ -204,8 +204,8 @@
         },
         {
           "heading": "Import monitor",
-          "text": "Tracks every import with live progress, history, validation rules, alerts, performance and schedules (tabs at the top). Imports that fail for temporary reasons, such as a network error or rate limit, are retried automatically; the **Health** tab shows success rates, top errors and the retry pipeline, and warns when scheduled maintenance has stopped running.",
-          "sha256": "d793709d7fb1a348e8829abc5339cdc9e44a09719a3c5e53994686761817feb9"
+          "text": "Tracks every import with live progress, history, validation rules, alerts, performance and schedules (tabs at the top). Imports that fail for temporary reasons, such as a network error or rate limit, are retried automatically; the **Health** tab shows success rates, top errors and the retry pipeline, and warns when scheduled maintenance has stopped running. Its **Needs attention** list (platform admins) names datasets whose newer release hasn't been imported within a week, datasets marked importing whose import has ended or stopped moving, schedules failing three times in a row, a maintenance run that is overdue or had failing workers, and analytics rollups that are overdue (two days, or nine for the weekly lead scoring refresh); platform admins also get that list by email at most once a day while anything is open.",
+          "sha256": "7a0e820cbf10b695aec7fb21b03ff7c8021d8b29ff4b4b36fe0e1e791b8f34e2"
         },
         {
           "heading": "Dataset catalog",

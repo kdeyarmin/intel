@@ -584,6 +584,13 @@ Be concise and helpful. Use markdown formatting for readability.`;
         return res.json(await handleSearchProviders(req.body));
       }
 
+      case "getOperationsAlerts": {
+        const { pool } = await import("../db");
+        const { evaluateOperationsAlerts, loadOperationsSnapshot } = await import("../lib/operationsAlerts");
+        const snapshot = await loadOperationsSnapshot(pool);
+        return res.json({ alerts: evaluateOperationsAlerts(snapshot), checked_at: new Date().toISOString() });
+      }
+
       case "getRollupStatus": {
         const { handleGetRollupStatus } = await import("../functions/rollups");
         return res.json(await handleGetRollupStatus());

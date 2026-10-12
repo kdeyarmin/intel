@@ -13,6 +13,7 @@
 import { db } from "../db";
 import { importBatches, auditEvents } from "../db/schema";
 import { and, eq, sql } from "drizzle-orm";
+import { endedWithoutFinishing } from "./importProgress";
 import { SELF_RESUMING_IMPORT_TYPES, STALLED_AFTER_MS } from "./scheduling";
 import {
   MAX_AUTO_RESUMES,
@@ -258,7 +259,10 @@ export async function runAutoRetryFailedImports(): Promise<WorkerResult> {
 // STALLED_AFTER_MS are flagged failed so operators (and autoRetryFailedImports)
 // can react. NPPES crawler batches are left to the crawler watchdog, which
 // re-queues and restarts them itself. Idempotent — re-marking an already-failed
-// batch is a no-op because we only target the two live statuses.
+// batch is a no-op because we only target the two live statuses. The update
+// repeats the scan's condition: a batch that resumed, finished or was stopped
+// between the scan and its turn is left alone, and its dataset and schedule are
+// not told it failed.
 
 export async function runCancelStalledImports(): Promise<WorkerResult> {
   const started = Date.now();
@@ -277,14 +281,19 @@ export async function runCancelStalledImports(): Promise<WorkerResult> {
         skippedCrawler++;
         continue;
       }
-      await db.update(importBatches).set({
+      const failedNow = await db.update(importBatches).set({
         status: "failed",
         cancel_reason: `Auto-cancelled: stalled >${mins}m in "${batch.status}"`,
         cancelled_at: new Date(),
         error_samples: [{ message: `Stalled in "${batch.status}" with no progress for over ${mins} minutes`, phase: "stall_sweep" }],
         updated_date: new Date(),
-      }).where(eq(importBatches.id, batch.id));
+      }).where(and(eq(importBatches.id, batch.id), sql`status IN ('processing', 'validating') AND updated_date < ${cutoff}`))
+        .returning({ id: importBatches.id });
+      if (failedNow.length === 0) continue;
       cancelledBatches.push({ id: batch.id, type: batch.import_type });
+      // The dataset registry (and the schedule that started it) learn of it now: left "importing", the dataset
+      // would hide newer releases of itself until someone noticed.
+      if (batch.import_type) await endedWithoutFinishing(batch.import_type, batch.id, "failed", `stalled over ${mins} minutes`);
     }
 
     return {
@@ -511,6 +520,80 @@ export async function runCheckCmsCatalog(): Promise<WorkerResult> {
   }
 }
 
+// ─── Worker: operations alerts ───────────────────────────────────────────────
+// Evaluates the pipeline (datasets behind a newer release, failing schedules,
+// stale rollups, failing workers) and emails the platform admins a digest at
+// most once a day while anything is open. The same evaluation backs the
+// "Needs attention" list on the Import Monitor's Health tab.
+
+export async function runOperationsAlerts(): Promise<WorkerResult> {
+  const started = Date.now();
+  try {
+    const { pool } = await import("../db");
+    const { evaluateOperationsAlerts, loadOperationsSnapshot, formatAlertDigest, DIGEST_INTERVAL_MS, DIGEST_LOCK } = await import("./operationsAlerts");
+    const snapshot = await loadOperationsSnapshot(pool);
+    // This runs inside a fan-out, so the heartbeat it would complain about is
+    // the one being written right now; the tab shows that one on demand.
+    const alerts = evaluateOperationsAlerts(snapshot).filter((a) => a.key !== "heartbeat_stale");
+    if (alerts.length === 0) return { worker: "operationsAlerts", ok: true, durationMs: Date.now() - started, details: { alerts: 0, emailed: false } };
+
+    // Two overlapping fan-outs (a cron tick and an admin's "Run all maintenance") must not both send today's digest:
+    // the throttle check, the send and the record happen under one transaction-scoped advisory lock, and the run
+    // that doesn't get it stands down. Nothing commits unless somebody got the digest.
+    const client = await pool.connect();
+    let committed = false;
+    try {
+      await client.query("BEGIN");
+      const { rows: [lock] } = await client.query("SELECT pg_try_advisory_xact_lock(hashtext($1)) AS ok", [DIGEST_LOCK]);
+      if (!lock?.ok) return { worker: "operationsAlerts", ok: true, durationMs: Date.now() - started, details: { alerts: alerts.length, emailed: false, reason: "another run is sending the digest" } };
+
+      const { rows } = await client.query("SELECT created_date FROM audit_events WHERE event_type = 'operations_alert' ORDER BY created_date DESC LIMIT 1");
+      const lastAt = rows[0]?.created_date ? new Date(rows[0].created_date).getTime() : 0;
+      if (Date.now() - lastAt < DIGEST_INTERVAL_MS) {
+        return { worker: "operationsAlerts", ok: true, durationMs: Date.now() - started, details: { alerts: alerts.length, emailed: false, reason: "digest sent today" } };
+      }
+      const { getMailerStatus, sendMail } = await import("./mailer");
+      const { appBaseUrl } = await import("./accounts");
+      // Platform admins: the admin role or the flag (one thing, see server/lib/roles.ts).
+      const admins = await pool.query("SELECT email FROM users WHERE (is_platform_admin = true OR role = 'admin') AND status = 'active' ORDER BY id");
+      const extra = (process.env.OPERATIONS_ALERT_EMAILS || "").split(",").map((s) => s.trim()).filter(Boolean);
+      const recipients = [...new Set([...admins.rows.map((r: any) => String(r.email)), ...extra])];
+      const open = { alerts: alerts.length, recipients: recipients.length };
+      // Nothing is recorded as sent unless somebody got it: a digest nobody received must not silence the next
+      // day's attempts.
+      if (!getMailerStatus().configured) return { worker: "operationsAlerts", ok: true, durationMs: Date.now() - started, details: { ...open, emailed: false, reason: "email isn't configured" } };
+      if (recipients.length === 0) return { worker: "operationsAlerts", ok: true, durationMs: Date.now() - started, details: { ...open, emailed: false, reason: "no platform admin to email" } };
+      const digest = formatAlertDigest(alerts, appBaseUrl());
+      let emailed = 0;
+      let lastError = "";
+      for (const to of recipients) {
+        try {
+          await sendMail({ to, subject: digest.subject, text: digest.text });
+          emailed += 1;
+        } catch (e) {
+          lastError = (e as { message?: string })?.message || String(e);
+          console.warn(`[operationsAlerts] email to ${to} failed:`, lastError);
+        }
+      }
+      if (emailed === 0) return { worker: "operationsAlerts", ok: false, durationMs: Date.now() - started, details: { ...open, emailed: false }, error: truncErr(`the digest couldn't be emailed to anyone: ${lastError}`) };
+      await db.insert(auditEvents).values({
+        event_type: "operations_alert",
+        user_email: "system",
+        details: { alerts: alerts.map((a) => ({ key: a.key, severity: a.severity, subject: a.subject, message: a.message })), recipients, emailed },
+      });
+      // The record is in before the lock goes: the next run to get it sees today's digest.
+      await client.query("COMMIT");
+      committed = true;
+      return { worker: "operationsAlerts", ok: true, durationMs: Date.now() - started, details: { ...open, emailed: true } };
+    } finally {
+      if (!committed) await client.query("ROLLBACK").catch(() => undefined);
+      client.release();
+    }
+  } catch (e) {
+    return { worker: "operationsAlerts", ok: false, durationMs: Date.now() - started, error: truncErr(e) };
+  }
+}
+
 export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResult>; destructive?: boolean }> = [
   { name: "settleScheduledImports", run: runSettleScheduledImports },
   { name: "checkCmsCatalog", run: runCheckCmsCatalog },
@@ -521,6 +604,11 @@ export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResu
   { name: "runDueScheduledReports", run: runDueScheduledReportsWorker },
   { name: "refreshRollups", run: runRefreshRollupsWorker },
   { name: "refreshLeadScores", run: runRefreshLeadScoresWorker },
+  // The fan-out starts every worker at once, so this one doesn't wait for the others: it judges what earlier
+  // ticks left, and anything this tick settles shows on the next evaluation. Its thresholds are hours and days
+  // and the digest is daily, so that lag costs at most one tick. It is listed last so the heartbeat reports
+  // it after the workers it reports on.
+  { name: "operationsAlerts", run: runOperationsAlerts },
 ];
 
 export async function runMaintenanceFanout(
