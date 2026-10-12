@@ -12,7 +12,7 @@
 
 import { db } from "../db";
 import { importBatches, auditEvents } from "../db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, or, isNull, ne, sql } from "drizzle-orm";
 import { endedWithoutFinishing } from "./importProgress";
 import { SELF_RESUMING_IMPORT_TYPES, STALLED_AFTER_MS } from "./scheduling";
 import {
@@ -52,6 +52,10 @@ export type WorkerResult = {
   // treat it as opaque except for displaying counts to the UI.
   details?: Record<string, unknown>;
   error?: string;
+  // True when the worker was still running when the fan-out's reporting
+  // budget elapsed: the outcome is unknown, not a failure. Heartbeat readers
+  // must not count these as failing (see runMaintenanceFanout).
+  timedOut?: boolean;
 };
 
 function truncErr(e: unknown): string {
@@ -71,8 +75,13 @@ export async function runAutoResumePausedImports(): Promise<WorkerResult> {
   const errors: Array<{ id: number; error: string }> = [];
 
   try {
+    // Never auto-resume an explicit user pause (paused_by='user'); only
+    // system-paused batches (or rows paused before the column existed) wake.
     const paused = await db.select().from(importBatches)
-      .where(eq(importBatches.status, "paused"))
+      .where(and(
+        eq(importBatches.status, "paused"),
+        or(isNull(importBatches.paused_by), ne(importBatches.paused_by, "user")),
+      ))
       .orderBy(sql`updated_date DESC`)
       .limit(PAUSED_BATCH_LIMIT);
 
@@ -268,6 +277,18 @@ export async function runCancelStalledImports(): Promise<WorkerResult> {
   const started = Date.now();
   try {
     const cutoff = new Date(Date.now() - STALLED_AFTER_MS);
+    // Batches stuck in an intermediate pause/cancel state (their worker died
+    // before acknowledging) are settled to the final state the user asked
+    // for — not failed. The update repeats the scan's condition so a batch
+    // the worker acknowledged in the meantime is left alone.
+    const settledIntermediate: Array<{ id: number; from: string; to: string }> = [];
+    for (const [from, to] of [["pausing", "paused"], ["cancelling", "cancelled"]] as const) {
+      const settled = await db.update(importBatches)
+        .set({ status: to, updated_date: new Date() })
+        .where(and(eq(importBatches.status, from), sql`updated_date < ${cutoff}`))
+        .returning({ id: importBatches.id });
+      for (const b of settled) settledIntermediate.push({ id: b.id, from, to });
+    }
     const stalled = await db.select({ id: importBatches.id, import_type: importBatches.import_type, status: importBatches.status, file_name: importBatches.file_name })
       .from(importBatches)
       .where(sql`status IN ('processing', 'validating') AND updated_date < ${cutoff}`)
@@ -300,7 +321,7 @@ export async function runCancelStalledImports(): Promise<WorkerResult> {
       worker: "cancelStalledImports",
       ok: true,
       durationMs: Date.now() - started,
-      details: { scanned: stalled.length, cancelled: cancelledBatches.length, cancelled_batches: cancelledBatches, skipped_crawler: skippedCrawler, threshold_ms: STALLED_AFTER_MS },
+      details: { scanned: stalled.length, cancelled: cancelledBatches.length, cancelled_batches: cancelledBatches, skipped_crawler: skippedCrawler, settled_intermediate: settledIntermediate, threshold_ms: STALLED_AFTER_MS },
     };
   } catch (e) {
     return {
@@ -393,13 +414,18 @@ export async function writeMaintenanceHeartbeat(
         invoked_by: invokedBy,
         workers: workers.map(w => ({
           worker: w.worker,
-          ok: w.ok,
+          // Tri-state: true / false / "timeout". Readers that do a strict
+          // `ok === false` check (the operations-alerts snapshot) skip
+          // "timeout", so a slow worker is never emailed as a failing one.
+          ok: w.timedOut ? "timeout" : w.ok,
+          timed_out: w.timedOut === true,
           duration_ms: w.durationMs,
           error: w.error,
           details: w.details,
         })),
         succeeded: workers.filter(w => w.ok).length,
-        failed: workers.filter(w => !w.ok).length,
+        failed: workers.filter(w => !w.ok && !w.timedOut).length,
+        timed_out: workers.filter(w => w.timedOut).map(w => w.worker),
         skipped_reason: opts.skippedReason ?? null,
         budget_ms: opts.budgetMs,
         // What the schedule loop did on this tick (cron only): how many
@@ -622,8 +648,10 @@ export async function runMaintenanceFanout(
   for (const w of FANOUT_WORKERS) {
     // Honest default: if a worker hasn't reported by the budget it has exceeded
     // the *reporting* window — it is not cancelled and may still complete (the
-    // workers are idempotent). Don't label it a hard "timeout"/failure.
-    placeholders.set(w.name, { worker: w.name, ok: false, durationMs: 0, error: "exceeded reporting budget (still running)" });
+    // workers are idempotent). Mark it timedOut (unknown outcome) rather than
+    // failed: the heartbeat and the operations digest must not email "failing
+    // worker" alerts for workers that are simply slow.
+    placeholders.set(w.name, { worker: w.name, ok: false, timedOut: true, durationMs: 0, error: "exceeded reporting budget (still running)" });
   }
 
   const invocations = FANOUT_WORKERS.map(async w => {
