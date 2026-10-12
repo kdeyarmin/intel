@@ -26,6 +26,21 @@ export function parseCSVLine(line: string): string[] {
   return result;
 }
 
+/** Official CMS FOIA Physician Shared Patient Patterns columns, in file order. */
+export const SHARED_PATIENT_FOIA_HEADERS = ["npi1", "npi2", "paircount", "benecount", "samedaycount"] as const;
+
+/**
+ * A headerless CMS FOIA shared-patient row: NPI, NPI, claim-pair count,
+ * unique beneficiaries, and (optionally) a same-day count. Counts may be
+ * space-padded; `parseCSVLine` trims them.
+ */
+export function looksLikeSharedPatientLine(line: string): boolean {
+  const fields = parseCSVLine(line);
+  if (fields.length < 4 || fields.length > 5) return false;
+  if (!/^\d{10}$/.test(fields[0]) || !/^\d{10}$/.test(fields[1])) return false;
+  return fields.slice(2).every((f) => /^\d+$/.test(f));
+}
+
 /** "Total Referrals (count)" → "total_referrals_count"; a UTF-8 BOM is dropped. */
 export function normalizeHeader(header: string): string {
   return String(header || "")
@@ -41,6 +56,12 @@ export interface CsvRecordOptions {
   headers?: string[] | null;
   /** Normalize header names to lower snake case (default true). The original header is kept as well. */
   normalizeHeaders?: boolean;
+  /**
+   * When the file has no header row, recognize the CMS FOIA shared-patient
+   * layout (two 10-digit NPIs and integer counts) and name those columns.
+   * A real header row is left alone.
+   */
+  detectSharedPatient?: boolean;
 }
 
 /**
@@ -65,9 +86,14 @@ export async function* csvRecords(source: AsyncIterable<Uint8Array | string>, op
 
   const emit = (line: string): Record<string, string> | null => {
     if (!headers) {
-      headers = parseCSVLine(line);
-      keys = keysFor(headers);
-      return null;
+      if (opts.detectSharedPatient && looksLikeSharedPatientLine(line)) {
+        headers = [...SHARED_PATIENT_FOIA_HEADERS];
+        keys = keysFor(headers);
+      } else {
+        headers = parseCSVLine(line);
+        keys = keysFor(headers);
+        return null;
+      }
     }
     const values = parseCSVLine(line);
     const row: Record<string, string> = {};

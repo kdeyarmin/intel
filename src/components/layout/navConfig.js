@@ -36,7 +36,7 @@ export const NAV_SECTIONS = [
       { name: 'Utilization', icon: Stethoscope, page: 'Utilization', roles: ['admin', 'user'] },
       { name: 'Referral Network', icon: Network, page: 'ReferralNetworkIntelligence', roles: ['admin', 'user'] },
       { name: 'Territory & County', icon: MapIcon, page: 'TerritoryIntelligence', roles: ['admin', 'user'] },
-      { name: 'Reports', icon: FileBarChart2, page: 'CustomReports', roles: ['admin', 'user'] },
+      { name: 'Reports', icon: FileBarChart2, page: 'MarketBriefs', roles: ['admin', 'user'] },
     ]
   },
   {
@@ -65,6 +65,21 @@ export const NAV_SECTIONS = [
 // switched with a tab strip at the top of the page (PageTabs). Each keeps its
 // own URL, so bookmarks and links still work.
 export const PAGE_GROUPS = {
+  reports: {
+    label: 'Report views',
+    pages: [
+      { page: 'MarketBriefs', label: 'Briefs' },
+      { page: 'CustomReports', label: 'Builder' },
+    ],
+  },
+  lists: {
+    label: 'List views',
+    pages: [
+      { page: 'LeadLists', label: 'Lead lists' },
+      { page: 'CallSheets', label: 'Call sheets' },
+      { page: 'Marketing', label: 'Marketing' },
+    ],
+  },
   facilities: {
     label: 'Facility views',
     pages: [

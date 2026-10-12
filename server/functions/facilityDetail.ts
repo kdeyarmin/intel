@@ -1,6 +1,7 @@
 import { db, pool } from "../db";
 import { medicareFacilities, medicareFacilitiesRaw, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals, leadScores, cmsOrderReferring, rollupReferralSources } from "../db/schema";
 import { eq, sql, and, ilike, inArray, desc, asc } from "drizzle-orm";
+import { providerReference, facilityDme, facilityDrgs } from "./marketReference";
 
 const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
   hospital: [
@@ -168,6 +169,21 @@ export async function handleGetFacilityDetail(params: any) {
     }
   }
 
+  let dme = null;
+  let drgs = null;
+  try {
+    const client = await pool.connect();
+    try {
+      dme = await facilityDme(client, String(provider_id));
+      drgs = await facilityDrgs(client, String(provider_id));
+    } finally {
+      client.release();
+    }
+  } catch {
+    dme = null;
+    drgs = null;
+  }
+
   return {
     provider_id,
     facility_name: first.facility_name || "",
@@ -183,6 +199,8 @@ export async function handleGetFacilityDetail(params: any) {
     financials,
     by_type: byType,
     linked_provider: linkedProvider,
+    dme,
+    drgs,
   };
 }
 
@@ -302,6 +320,18 @@ export async function handleGetProviderCMSData(params: any) {
   const mipsRecords = hasMips ? Object.values(mipsByYear).reduce((sum: number, y: any) =>
     sum + (y.performance?.length || 0) + (y.measures?.length || 0), 0) : 0;
 
+  let reference = null;
+  try {
+    const client = await pool.connect();
+    try {
+      reference = await providerReference(client, String(npi));
+    } finally {
+      client.release();
+    }
+  } catch {
+    reference = null;
+  }
+
   return {
     npi,
     mips: {
@@ -328,6 +358,7 @@ export async function handleGetProviderCMSData(params: any) {
     referral_potential: referralPotential,
     // Freshness of the market rollups the card reads (present with referral_potential).
     rollups,
+    reference,
     total_records: allRows.length,
   };
 }

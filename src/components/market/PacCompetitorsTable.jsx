@@ -8,6 +8,7 @@ import { createPageUrl } from '@/utils';
 import { fmtCount, fmtPct, fmtRate, fmtShare, fmtMoney } from '@/lib/marketFormat';
 import MarketShareTrendChart from './MarketShareTrendChart';
 import MarketFreshness from './MarketFreshness';
+import { useBusinessLine } from '@/lib/BusinessLineContext';
 
 const ORDER = ['snf', 'hha', 'hospice', 'irf', 'ltch', 'licensed'];
 const LICENSE_LABELS = { personal_care_home: 'Personal care home', assisted_living: 'Assisted living', memory_care: 'Memory care', nursing_home: 'Nursing home', adult_day: 'Adult day', domiciliary_care: 'Domiciliary care' };
@@ -72,13 +73,17 @@ function LicensedHomes({ licensed, countyName }) {
 
 /** Post-acute providers located in a county, ranked by Medicare beneficiaries served, with agency coverage. */
 export default function PacCompetitorsTable({ competitors = {}, trends = {}, coverage = {}, licensed = null, labels = {}, rollups, countyName }) {
-  const [setting, setSetting] = useState(ORDER.find((s) => (s === 'licensed' ? licensed?.rows?.length : competitors[s]?.rows?.length)) || 'snf');
+  const { profile } = useBusinessLine();
+  const [showAll, setShowAll] = useState(false);
+  const [setting, setSetting] = useState(null);
+  const order = (!showAll && profile?.competitorSettings?.length) ? profile.competitorSettings : ORDER;
+  const active = order.includes(setting) ? setting : (order.find((s) => (s === 'licensed' ? licensed?.rows?.length : competitors[s]?.rows?.length)) || order[0]);
   const allLabels = { ...labels, licensed: 'Personal care / assisted living' };
-  const showCensus = setting === 'snf' && (competitors.snf?.rows || []).some((r) => r.census);
-  const current = competitors[setting] || { data_year: null, rows: [] };
+  const showCensus = active === 'snf' && (competitors.snf?.rows || []).some((r) => r.census);
+  const current = competitors[active] || { data_year: null, rows: [] };
   const rows = current.rows || [];
   const max = Math.max(1, ...rows.map((r) => r.share ?? 0));
-  const cover = coverage[setting] || [];
+  const cover = coverage[active] || [];
   return (
     <Card className="bg-slate-800/50 border-slate-700/50">
       <CardHeader className="pb-2">
@@ -89,28 +94,33 @@ export default function PacCompetitorsTable({ competitors = {}, trends = {}, cov
           Share of the Medicare FFS beneficiaries served by providers of each setting located in the county (post-acute utilization{current.data_year ? ` ${current.data_year}` : ''}).
         </p>
         <div className="flex flex-wrap gap-1 pt-1" role="group" aria-label="Setting">
-          {ORDER.map((s) => {
+          {order.map((s) => {
             // The county's provider count, not the number of rows listed (the list is capped).
             const n = s === 'licensed' ? licensedHomeCount(licensed) : (competitors[s]?.rows?.[0]?.providers_in_market ?? competitors[s]?.rows?.length);
             return (
-            <Button key={s} size="sm" variant={s === setting ? 'default' : 'outline'} aria-pressed={s === setting}
-              className={s === setting ? 'bg-cyan-700 hover:bg-cyan-800 text-white h-7 text-xs' : 'border-slate-700 text-slate-300 h-7 text-xs'}
+            <Button key={s} size="sm" variant={s === active ? 'default' : 'outline'} aria-pressed={s === active}
+              className={s === active ? 'bg-cyan-700 hover:bg-cyan-800 text-white h-7 text-xs' : 'border-slate-700 text-slate-300 h-7 text-xs'}
               onClick={() => setSetting(s)}>
               {allLabels[s] || s}{n ? ` (${n})` : ''}
             </Button>
             );
           })}
         </div>
+        {profile?.competitorSettings?.length > 0 && profile.competitorSettings.length < ORDER.length && (
+          <button type="button" className="text-xs text-cyan-400 hover:underline text-left" onClick={() => setShowAll((v) => !v)}>
+            {showAll ? `Show only ${profile.label}` : 'Show every setting'}
+          </button>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
-        {setting === 'licensed' ? (
+        {active === 'licensed' ? (
           <LicensedHomes licensed={licensed} countyName={countyName} />
         ) : rows.length === 0 ? (
-          <p className="text-sm text-slate-400">No {labels[setting] || setting} providers in the post-acute utilization file for this county.</p>
+          <p className="text-sm text-slate-400">No {labels[active] || active} providers in the post-acute utilization file for this county.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <caption className="sr-only">{labels[setting] || setting} providers by market share</caption>
+              <caption className="sr-only">{labels[active] || active} providers by market share</caption>
               <thead>
                 <tr className="text-left text-slate-400 border-b border-slate-700/60">
                   <th scope="col" className="py-1.5 pr-2">#</th>
@@ -151,10 +161,10 @@ export default function PacCompetitorsTable({ competitors = {}, trends = {}, cov
             {rows[0]?.providers_in_market > rows.length ? <p className="text-[11px] text-slate-400 mt-1">Showing the top {rows.length} of {rows[0].providers_in_market} providers.</p> : null}
           </div>
         )}
-        {setting !== 'licensed' && <MarketShareTrendChart trend={trends[setting] || []} label={labels[setting] || setting} />}
-        {(setting === 'hha' || setting === 'hospice') && cover.length > 0 && (
+        {active !== 'licensed' && <MarketShareTrendChart trend={trends[active] || []} label={labels[active] || active} />}
+        {(active === 'hha' || active === 'hospice') && cover.length > 0 && (
           <div>
-            <p className="text-xs text-slate-300 mb-1">{labels[setting]} agencies serving the county's ZIP areas (Care Compare service areas), wherever they are based</p>
+            <p className="text-xs text-slate-300 mb-1">{labels[active]} agencies serving the county's ZIP areas (Care Compare service areas), wherever they are based</p>
             <ul className="space-y-1">
               {cover.map((c) => (
                 <li key={c.ccn} className="flex items-center gap-2 text-xs">
@@ -166,7 +176,7 @@ export default function PacCompetitorsTable({ competitors = {}, trends = {}, cov
             </ul>
           </div>
         )}
-        {setting !== 'licensed' && <MarketFreshness rollups={rollups} jobs={['pac_market_share', 'agency_coverage']} />}
+        {active !== 'licensed' && <MarketFreshness rollups={rollups} jobs={['pac_market_share', 'agency_coverage']} />}
       </CardContent>
     </Card>
   );

@@ -20,7 +20,7 @@ function Kpi({ icon: Icon, color, label, value, sub }) {
 }
 
 /** The one-row county market card: demand, Medicare Advantage, post-acute use and supply, hospital sources. */
-export default function CountyMarketProfile({ profile, vintages, rollups, countyName }) {
+export default function CountyMarketProfile({ profile, vintages, rollups, countyName, line = null }) {
   if (!profile?.available) {
     return (
       <div className="space-y-2">
@@ -30,6 +30,12 @@ export default function CountyMarketProfile({ profile, vintages, rollups, county
     );
   }
   const p = profile;
+  const pac = [
+    { key: 'hha', label: 'Home health', providers: p.hha_providers, users: p.hha_users, pct: p.hha_users_pct, spend: p.std_per_capita_hha, agencies: p.hha_agencies, usersChange: p.hha_users_change_pct, providersChange: p.hha_providers_change_pct, color: 'text-green-400' },
+    { key: 'hospice', label: 'Hospice', providers: p.hospice_providers, users: p.hospice_users, pct: p.hospice_users_pct, spend: p.std_per_capita_hospice, agencies: p.hospice_agencies, usersChange: p.hospice_users_change_pct, providersChange: p.hospice_providers_change_pct, color: 'text-purple-400' },
+    { key: 'snf', label: 'Skilled nursing', providers: p.snf_providers, users: p.snf_users, pct: p.snf_users_pct, spend: p.std_per_capita_snf, agencies: p.snf_facilities, usersChange: p.snf_users_change_pct, providersChange: p.snf_providers_change_pct, color: 'text-amber-400' },
+  ].filter((s) => !line || line.pacSettings.includes(s.key));
+  const showResidential = !line || line.residential || line.pacSettings.length === 0;
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -38,12 +44,9 @@ export default function CountyMarketProfile({ profile, vintages, rollups, county
         <Kpi icon={HeartPulse} color="text-rose-400" label="Aged 85 and over" value={fmtCount(p.benes_85_plus)} sub={p.benes > 0 && p.benes_85_plus != null ? `${fmtShare(p.benes_85_plus / p.benes, 1)} of beneficiaries` : null} />
         <Kpi icon={Hospital} color="text-blue-400" label="Hospitals serving residents" value={fmtCount(p.hospitals_serving)} sub={p.top_hospital_share != null ? `Top hospital takes ${fmtShare(p.top_hospital_share)} of cases (${p.hsa_year})` : null} />
       </div>
+      {pac.length > 0 && (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          { key: 'hha', label: 'Home health', providers: p.hha_providers, users: p.hha_users, pct: p.hha_users_pct, spend: p.std_per_capita_hha, agencies: p.hha_agencies, usersChange: p.hha_users_change_pct, providersChange: p.hha_providers_change_pct, color: 'text-green-400' },
-          { key: 'hospice', label: 'Hospice', providers: p.hospice_providers, users: p.hospice_users, pct: p.hospice_users_pct, spend: p.std_per_capita_hospice, agencies: p.hospice_agencies, usersChange: p.hospice_users_change_pct, providersChange: p.hospice_providers_change_pct, color: 'text-purple-400' },
-          { key: 'snf', label: 'Skilled nursing', providers: p.snf_providers, users: p.snf_users, pct: p.snf_users_pct, spend: p.std_per_capita_snf, agencies: p.snf_facilities, usersChange: p.snf_users_change_pct, providersChange: p.snf_providers_change_pct, color: 'text-amber-400' },
-        ].map((s) => (
+        {pac.map((s) => (
           <Card key={s.key} className="bg-slate-800/50 border-slate-700/50">
             <CardContent className="p-4 space-y-1">
               <div className="flex items-center gap-2 mb-1">
@@ -62,7 +65,8 @@ export default function CountyMarketProfile({ profile, vintages, rollups, county
           </Card>
         ))}
       </div>
-      {(p.pop_65_plus != null || p.licensed_homes != null) && (
+      )}
+      {(showResidential && (p.pop_65_plus != null || p.licensed_homes != null)) && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Kpi icon={Users} color="text-teal-400" label="Residents aged 65+" value={fmtCount(p.pop_65_plus)} sub={p.pop_total != null && p.pop_65_plus != null ? `${fmtShare(p.pop_65_plus / p.pop_total)} of ${fmtCount(p.pop_total)} residents (ACS)` : 'Census ACS'} />
           <Kpi icon={HeartPulse} color="text-teal-400" label="Residents aged 85+" value={fmtCount(p.pop_85_plus)} sub={p.living_alone_65_plus != null ? `${fmtCount(p.living_alone_65_plus)} people 65+ live alone` : null} />
@@ -70,12 +74,14 @@ export default function CountyMarketProfile({ profile, vintages, rollups, county
           <Kpi icon={Building2} color="text-pink-400" label="Licensed personal care / assisted living" value={p.licensed_homes != null ? `${fmtCount(p.licensed_homes)} homes` : 'Not loaded'} sub={p.licensed_beds != null ? `${fmtCount(p.licensed_beds)} licensed beds` : 'Import a state licensing export'} />
         </div>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Kpi icon={DollarSign} color="text-emerald-400" label="Standardized spend per beneficiary" value={fmtMoney(p.std_per_capita_total)} sub={p.variation_year ? `Geographic variation ${p.variation_year}` : null} />
-        <Kpi icon={Activity} color="text-amber-400" label="Hospital readmission rate" value={fmtShare(p.readmission_rate, 1)} />
-        <Kpi icon={Activity} color="text-orange-400" label="ER visits per 1,000" value={fmtRate(p.er_visits_per_1000, 0)} />
-        {p.avg_hcc_score != null && <Kpi icon={Activity} color="text-sky-400" label="Average HCC risk score" value={fmtRate(p.avg_hcc_score, 2)} sub={p.avg_hcc_source === 'physician_panels' ? "Beneficiary-weighted average of physicians’ CMS patient risk scores; the county file has no risk score" : p.avg_hcc_source === 'geographic_variation' && p.variation_year ? `Geographic variation ${p.variation_year}` : null} />}
-      </div>
+      {!line && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Kpi icon={DollarSign} color="text-emerald-400" label="Standardized spend per beneficiary" value={fmtMoney(p.std_per_capita_total)} sub={p.variation_year ? `Geographic variation ${p.variation_year}` : null} />
+          <Kpi icon={Activity} color="text-amber-400" label="Hospital readmission rate" value={fmtShare(p.readmission_rate, 1)} />
+          <Kpi icon={Activity} color="text-orange-400" label="ER visits per 1,000" value={fmtRate(p.er_visits_per_1000, 0)} />
+          {p.avg_hcc_score != null && <Kpi icon={Activity} color="text-sky-400" label="Average HCC risk score" value={fmtRate(p.avg_hcc_score, 2)} sub={p.avg_hcc_source === 'physician_panels' ? "Beneficiary-weighted average of physicians’ CMS patient risk scores; the county file has no risk score" : p.avg_hcc_source === 'geographic_variation' && p.variation_year ? `Geographic variation ${p.variation_year}` : null} />}
+        </div>
+      )}
       <MarketFreshness rollups={rollups} jobs={['county_market_profile']} vintages={vintages} />
     </div>
   );

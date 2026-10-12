@@ -30,9 +30,9 @@ function certified(n) {
 }
 
 /** Clinicians in a county (or state) most likely to generate post-acute referrals, with the index's components. */
-export default function ReferralSourcesTable({ state, countyFips, countyName }) {
+export default function ReferralSourcesTable({ state, countyFips, countyName, initialSetting = 'all' }) {
   const ids = useId();
-  const [setting, setSetting] = useState('all');
+  const [setting, setSetting] = useState(initialSetting);
   const [group, setGroup] = useState('all');
   const [limit, setLimit] = useState(25);
   const [listNpis, setListNpis] = useState(null);

@@ -20,6 +20,7 @@ import { providerName } from "../lib/territory";
 import { rollupStatus } from "../lib/rollups/runner";
 import { MARKET_JOBS } from "../lib/rollups/market";
 import { assertTerritory, entitledCounties, inTerritory, isUnrestricted, territoryScope, TerritoryError, type EntitledUser } from "../lib/entitlements";
+import { countyReference } from "./marketReference";
 
 export const PAC_SETTINGS = ["snf", "hha", "hospice", "irf", "ltch"] as const;
 export type PacSetting = (typeof PAC_SETTINGS)[number];
@@ -299,6 +300,7 @@ export async function handleGetCountyMarket(payload: any, user?: EntitledUser | 
       list.push({ ccn: r.ccn, ...named(r.ccn), zips_served: Number(r.zips_served), county_zips: Number(r.county_zips), share_of_county_zips: num(r.share_of_county_zips), facility_group: SETTING_FACILITY_GROUP[r.setting] ?? null });
     }
     const p = profile.rows[0];
+    const reference = await countyReference(client, fips, county.state, county.name);
     return {
       state,
       county,
@@ -319,6 +321,7 @@ export async function handleGetCountyMarket(payload: any, user?: EntitledUser | 
       labels: SETTING_LABELS,
       vintages: p?.as_of ?? null,
       rollups: await marketRollupFreshness(),
+      reference,
     };
   }));
 }
@@ -443,6 +446,13 @@ export async function handleGetFacilityMarket(payload: any, user?: EntitledUser 
 
 const VINTAGE_KEYS = ["enrollment", "saturation", "variation", "hospital_service_area", "pac_utilization", "acs", "licensed"];
 
+/** User counts and year-over-year change. Not map colors: the choropleth stays on LAYER_METRICS. Change is percent units. */
+const VOLUME_COLUMNS = [
+  "hha_users", "hospice_users", "snf_users",
+  "hha_users_change_pct", "hospice_users_change_pct", "snf_users_change_pct",
+  "hha_providers_change_pct", "hospice_providers_change_pct", "snf_providers_change_pct",
+] as const;
+
 /** One metric for every county in a state (for a choropleth), or with `all` every metric (for the county table). */
 export async function handleGetCountyMarketLayer(payload: any, user?: EntitledUser | null) {
   const state = normalizeStateFilter(payload?.state);
@@ -453,7 +463,7 @@ export async function handleGetCountyMarketLayer(payload: any, user?: EntitledUs
   const keep = (rows: any[]) => (allowed ? rows.filter((r: any) => allowed.includes(r.county_fips)) : rows);
   if (payload?.all === true) {
     return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
-      const cols = Object.values(LAYER_METRICS).map((m) => m.column);
+      const cols = [...new Set([...Object.values(LAYER_METRICS).map((m) => m.column), ...VOLUME_COLUMNS])];
       const { rows: all } = await client.query(
         `SELECT county_fips, county_name, ${cols.join(", ")}, as_of FROM rollup_county_market_profile WHERE state = $1 ORDER BY county_name`, [state],
       );
@@ -463,7 +473,12 @@ export async function handleGetCountyMarketLayer(payload: any, user?: EntitledUs
       return {
         state, all: true, vintages,
         metrics: Object.entries(LAYER_METRICS).map(([key, m]) => ({ key, label: m.label, format: m.format })),
-        counties: rows.map((r: any) => ({ fips: r.county_fips, name: r.county_name, values: Object.fromEntries(Object.entries(LAYER_METRICS).map(([key, m]) => [key, num(r[m.column])])) })),
+        counties: rows.map((r: any) => ({
+          fips: r.county_fips,
+          name: r.county_name,
+          values: Object.fromEntries(Object.entries(LAYER_METRICS).map(([key, m]) => [key, num(r[m.column])])),
+          volume: Object.fromEntries(VOLUME_COLUMNS.map((column) => [column, num(r[column])])),
+        })),
         rollups: await marketRollupFreshness(),
       };
     }));
@@ -600,6 +615,57 @@ export async function handleGetServiceAreaOverlap(payload: any, user?: EntitledU
           benes: num(s?.benes), market_share: num(s?.share_benes), market_rank: num(s?.rank), market_year: s?.data_year ?? null,
         };
       }),
+      rollups: await marketRollupFreshness(),
+    };
+  }));
+}
+
+/**
+ * The largest post-acute providers located in a state, for an acquisition list.
+ * Share is among providers located in the state, not among residents who used the service.
+ * A plan that covers only some counties does not get the statewide ranking.
+ */
+export async function handleGetStateMarketLeaders(payload: any, user?: EntitledUser | null) {
+  const state = normalizeStateFilter(payload?.state);
+  if (!state) throw new HttpError(400, "Pick a state.");
+  const setting = String(payload?.setting ?? "").toLowerCase() as PacSetting;
+  if (!PAC_SETTINGS.includes(setting)) throw new HttpError(400, `setting must be one of ${PAC_SETTINGS.join(", ")}.`);
+  assertTerritory(user, { state });
+  if (entitledCounties(user, state)) {
+    throw new TerritoryError("This report ranks providers across the whole state. Your plan covers selected counties, so open a county instead.");
+  }
+  const limit = Math.min(25, Math.max(1, Number(payload?.limit) || 15));
+  return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
+    const { rows } = await client.query(
+      `SELECT p.ccn, p.provider_name, p.city, p.state, p.zip5, p.data_year, p.benes, p.stays, p.days, p.payment,
+              p.dual_pct, p.risk_score, p.share_benes, p.rank, p.providers_in_market
+         FROM rollup_pac_market_share p
+         JOIN (SELECT max(data_year) AS y FROM rollup_pac_market_share WHERE setting = $1 AND geo_level = 'state' AND geo_code = $2) l
+           ON l.y = p.data_year
+        WHERE p.setting = $1 AND p.geo_level = 'state' AND p.geo_code = $2 AND p.rank <= $3
+        ORDER BY p.rank, p.ccn`,
+      [setting, state, limit],
+    );
+    const ccns = rows.map((r: any) => r.ccn);
+    const coverage = (setting === "hha" || setting === "hospice") && ccns.length
+      ? await client.query(`SELECT ccn, count(*)::int AS counties FROM rollup_agency_coverage WHERE setting = $1 AND ccn = ANY($2) GROUP BY ccn`, [setting, ccns])
+      : { rows: [] as any[] };
+    const countiesBy = new Map<string, number>(coverage.rows.map((r: any) => [r.ccn, Number(r.counties)]));
+    const census = setting === "snf" ? await nursingHomeCensus(client, ccns) : new Map();
+    const names = await facilityNames(client, ccns);
+    return {
+      state, setting, label: SETTING_LABELS[setting],
+      data_year: rows[0]?.data_year ?? null,
+      providers_in_market: num(rows[0]?.providers_in_market),
+      rows: rows.map((r: any) => ({
+        ...shareRow(r),
+        name: r.provider_name || names.get(r.ccn)?.name || null,
+        city: r.city ?? names.get(r.ccn)?.city ?? null,
+        state: r.state ?? names.get(r.ccn)?.state ?? null,
+        counties_served: countiesBy.get(r.ccn) ?? null,
+        census: setting === "snf" ? census.get(r.ccn) ?? null : undefined,
+        facility_group: SETTING_FACILITY_GROUP[setting] ?? null,
+      })),
       rollups: await marketRollupFreshness(),
     };
   }));

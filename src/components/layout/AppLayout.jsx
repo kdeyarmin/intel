@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import NotificationBell from '../shared/NotificationBell';
 import AccountDialog from '../auth/AccountDialog';
 import BillingStatusWidget from './BillingStatusWidget';
+import BusinessLineSelect from '@/components/shared/BusinessLineSelect';
 import { getNavPageFor, getVisibleNavSections, roleLabel } from './navConfig';
 
 const loadGlobalSearchDialog = () => import('../search/GlobalSearchDialog');
@@ -161,6 +162,8 @@ export default function AppLayout({ children, currentPageName }) {
             <PanelLeftClose className="w-4 h-4" aria-hidden="true" />
           </Button>
         </div>
+
+        <BusinessLineSelect compact />
 
         {/* Search Button */}
         <div className="px-2 py-2 min-w-[14rem]">

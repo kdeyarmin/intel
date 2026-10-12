@@ -45,9 +45,13 @@ vi.mock('../src/pages/ProviderIntelligence.jsx', () => ({ default: () => null })
 vi.mock('../src/pages/FacilityDetail.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/Facilities.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/DMEProviderReport.jsx', () => ({ default: () => null }));
+vi.mock('../src/pages/MarketBriefs.jsx', () => ({ default: () => null }));
+vi.mock('../src/pages/Marketing.jsx', () => ({ default: () => null }));
+vi.mock('../src/pages/MarketIntelligence.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/Help.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/ImportMonitoring.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/LeadListBuilder.jsx', () => ({ default: () => null }));
+vi.mock('../src/pages/CallSheets.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/LeadLists.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/LocationDetail.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/Locations.jsx', () => ({ default: () => null }));
@@ -136,10 +140,13 @@ describe('pages.config.js – PAGES registry', () => {
       'DMEProviderReport',
       'Help',
       'ImportMonitoring',
+      'CallSheets',
       'LeadListBuilder',
       'LeadLists',
       'LocationDetail',
       'Locations',
+      'MarketBriefs',
+      'Marketing',
       'NPPESCrawler',
       'NPPESCrawlerSettings',
       'Organizations',

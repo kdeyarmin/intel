@@ -8,6 +8,10 @@ import { stateCodeOf } from "../lib/stateNames";
 import { derivedStateOf } from "../lib/rowState";
 import {
   cmsDmeByReferring,
+  cmsDmeBySupplier,
+  cmsDmeGeoService,
+  cmsDmeOrderLine,
+  cmsDmeSupplyLine,
   cmsFacilityAffiliation,
   cmsGeoVariation,
   cmsHospitalServiceArea,
@@ -364,10 +368,109 @@ export function mapDmeByReferring(row: any, ctx: MapContext) {
     services: num(row.Tot_Suplr_Srvcs),
     medicare_payment: num(row.Suplr_Mdcr_Pymt_Amt),
     standardized_payment: num(row.Suplr_Mdcr_Stdzd_Pymt_Amt),
+    hcpcs_codes: int(row.Tot_Suplr_HCPCS_Cds),
+    allowed: num(row.Suplr_Mdcr_Alowd_Amt),
+    submitted_charges: num(row.Suplr_Sbmtd_Chrgs),
+    ...dmeSplit(row),
     avg_age: num(row.Bene_Avg_Age),
     avg_risk_score: num(row.Bene_Avg_Risk_Scre),
     chronic_conditions: numericColumns(row, (k) => k.startsWith("Bene_CC_")),
     raw_data: row, import_batch_id: ctx.batchId,
+  };
+}
+
+/** Equipment, prosthetics, and drug columns of the by-provider DMEPOS files. A "*" is suppressed, not zero. */
+function dmeSplit(row: any) {
+  const flag = (v: unknown) => {
+    const s = String(v ?? "").trim();
+    if (s === "*") return true;
+    if (!s) return null;
+    return yn(s);
+  };
+  return {
+    dme_suppressed: flag(row.DME_Sprsn_Ind),
+    dme_benes: int(row.DME_Tot_Suplr_Benes),
+    dme_payment: num(row.DME_Suplr_Mdcr_Pymt_Amt),
+    pos_suppressed: flag(row.POS_Sprsn_Ind),
+    pos_benes: int(row.POS_Tot_Suplr_Benes),
+    pos_payment: num(row.POS_Suplr_Mdcr_Pymt_Amt),
+    drug_suppressed: flag(row.Drug_Sprsn_Ind),
+    drug_benes: int(row.Drug_Tot_Suplr_Benes),
+    drug_payment: num(row.Drug_Suplr_Mdcr_Pymt_Amt),
+  };
+}
+
+export function mapDmeBySupplier(row: any, ctx: MapContext) {
+  const npi = str(row.Suplr_NPI ?? row.npi, 10);
+  const data_year = yearOf(ctx);
+  if (!npi || !/^\d{10}$/.test(npi) || !data_year) return null;
+  return {
+    npi, data_year,
+    name: str(row.Suplr_Prvdr_Last_Name_Org, 500),
+    city: str(row.Suplr_Prvdr_City, 120),
+    state: str(row.Suplr_Prvdr_State_Abrvtn, 2),
+    zip5: zip5(row.Suplr_Prvdr_Zip5),
+    specialty: str(row.Suplr_Prvdr_Spclty_Desc, 200),
+    hcpcs_codes: int(row.Tot_Suplr_HCPCS_Cds),
+    benes: int(row.Tot_Suplr_Benes),
+    claims: int(row.Tot_Suplr_Clms),
+    services: num(row.Tot_Suplr_Srvcs),
+    medicare_payment: num(row.Suplr_Mdcr_Pymt_Amt),
+    allowed: num(row.Suplr_Mdcr_Alowd_Amt),
+    ...dmeSplit(row),
+  };
+}
+
+function dmeLine(row: any, ctx: MapContext, who: "Rfrg" | "Suplr") {
+  const npi = str(row[`${who}_NPI`] ?? row.npi, 10);
+  const hcpcs = str(row.HCPCS_CD ?? row.HCPCS_Cd ?? row.hcpcs, 10)?.toUpperCase() ?? null;
+  const data_year = yearOf(ctx);
+  if (!npi || !/^\d{10}$/.test(npi) || !hcpcs || !data_year) return null;
+  const rental = str(row.Suplr_Rentl_Ind, 1)?.toUpperCase() ?? "";
+  return {
+    data_year, npi, hcpcs, rental: rental === "Y" ? "Y" : "",
+    state: str(row[`${who}_Prvdr_State_Abrvtn`], 2),
+    rbcs_desc: str(row.RBCS_Desc, 200),
+    hcpcs_desc: str(row.HCPCS_Desc, 500),
+    ...(who === "Rfrg" ? { suppliers: int(row.Tot_Suplrs) } : {}),
+    benes: int(row.Tot_Suplr_Benes),
+    claims: int(row.Tot_Suplr_Clms),
+    services: num(row.Tot_Suplr_Srvcs),
+    avg_payment: num(row.Avg_Suplr_Mdcr_Pymt_Amt),
+  };
+}
+
+export function mapDmeOrderLine(row: any, ctx: MapContext) {
+  return dmeLine(row, ctx, "Rfrg");
+}
+
+export function mapDmeSupplyLine(row: any, ctx: MapContext) {
+  return dmeLine(row, ctx, "Suplr");
+}
+
+export function mapDmeGeoService(row: any, ctx: MapContext) {
+  const data_year = yearOf(ctx);
+  const levelRaw = str(row.Rfrg_Prvdr_Geo_Lvl, 16);
+  const geo_level = levelRaw?.toLowerCase() === "national" ? "National" : levelRaw?.toLowerCase() === "state" ? "State" : null;
+  const hcpcs = str(row.HCPCS_Cd ?? row.HCPCS_CD, 10)?.toUpperCase() ?? null;
+  if (!data_year || !geo_level || !hcpcs) return null;
+  const fips = str(row.Rfrg_Prvdr_Geo_Cd, 5);
+  const geo_code = geo_level === "National" ? "" : (fips ?? "");
+  if (geo_level === "State" && !geo_code) return null;
+  const rental = str(row.Suplr_Rentl_Ind, 1)?.toUpperCase() ?? "";
+  const state = geo_level === "State" ? stateCodeOf(row.Rfrg_Prvdr_Geo_Desc) : null;
+  return {
+    data_year, geo_level, geo_code, hcpcs, rental: rental === "Y" ? "Y" : "",
+    state: state ?? "",
+    geo_desc: str(row.Rfrg_Prvdr_Geo_Desc, 120),
+    rbcs_desc: str(row.RBCS_Desc, 200),
+    hcpcs_desc: str(row.HCPCS_Desc, 500),
+    referring_providers: int(row.Tot_Rfrg_Prvdrs),
+    suppliers: int(row.Tot_Suplrs),
+    benes: int(row.Tot_Suplr_Benes),
+    claims: int(row.Tot_Suplr_Clms),
+    services: num(row.Tot_Suplr_Srvcs),
+    avg_payment: num(row.Avg_Suplr_Mdcr_Pymt_Amt),
   };
 }
 
@@ -487,8 +590,8 @@ export function mapLicensedFacility(row: any, ctx: MapContext) {
     city: str(pick(row, ["city", "town", "municipality"]), 100),
     zip5: zip,
     county_fips: zip && ctx.countyForZip ? ctx.countyForZip(zip) : null,
-    capacity: int(pick(row, ["capacity", "licensed_capacity", "beds", "licensed_beds", "bed_count", "total_beds", "max_capacity"])),
-    status: str(pick(row, ["status", "license_status", "licence_status"]), 60),
+    capacity: int(pick(row, ["capacity", "licensed_capacity", "licensed_bed_count", "beds", "licensed_beds", "bed_count", "total_beds", "max_capacity"])),
+    status: str(pick(row, ["status", "license_status", "licence_status", "type_of_license"]), 60),
     licensee: str(pick(row, ["licensee", "owner", "operator", "legal_entity", "licensee_name"]), 500),
     phone: str(pick(row, ["phone", "telephone", "phone_number"]), 50),
     source_url: typeof params.file_url === "string" && /^https?:\/\//.test(params.file_url) ? params.file_url.slice(0, 500) : null,
@@ -532,6 +635,10 @@ export const TYPED_ROUTES: Record<string, TypedRoute> = {
   medicare_physician_by_provider: { table: cmsPhysicianByProvider, key: ["npi", "data_year"], map: mapPhysicianByProvider },
   facility_affiliation: { table: cmsFacilityAffiliation, key: ["npi", "facility_type", "facility_ccn"], map: mapFacilityAffiliation, snapshot: { table: "cms_facility_affiliation" } },
   medicare_dme_by_referring: { table: cmsDmeByReferring, key: ["npi", "data_year"], map: mapDmeByReferring },
+  medicare_dme_by_supplier: { table: cmsDmeBySupplier, key: ["data_year", "npi"], map: mapDmeBySupplier },
+  medicare_dme_by_referring_service: { table: cmsDmeOrderLine, key: ["data_year", "npi", "hcpcs", "rental"], map: mapDmeOrderLine },
+  medicare_dme_by_supplier_service: { table: cmsDmeSupplyLine, key: ["data_year", "npi", "hcpcs", "rental"], map: mapDmeSupplyLine },
+  medicare_dme_by_geography_service: { table: cmsDmeGeoService, key: ["data_year", "geo_level", "geo_code", "hcpcs", "rental"], map: mapDmeGeoService },
   physician_certifications: { table: cmsPhysicianCertifications, key: ["npi", "hcpcs_code", "place_of_service", "data_year"], map: mapPhysicianCertification },
   inpatient_drg: { table: cmsInpatientDrg, key: ["ccn", "drg_code", "data_year"], map: mapInpatientDrg },
   ltc_facility_characteristics: { table: cmsLtcFacilityCharacteristics, key: ["ccn", "period_end"], map: mapLtcFacilityCharacteristics },

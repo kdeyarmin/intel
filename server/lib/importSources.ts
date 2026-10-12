@@ -6,6 +6,8 @@
 import fs from "fs";
 import path from "path";
 import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import yauzl from "yauzl";
 import { safeFetchStream } from "./safeFetch";
 import { csvRecords, type CsvRecordOptions } from "./csv";
 import { datasetIdFromUrl } from "./cmsCatalog";
@@ -45,6 +47,102 @@ export function localUploadPath(fileUrl: string, uploadDir = UPLOAD_DIR): string
 
 /** A remote file that sends nothing for this long (or never answers) is given up on. */
 export const CSV_IDLE_TIMEOUT_MS = 2 * 60 * 1000;
+
+/** Downloaded zips live here, not under uploads/ (that directory is served to signed-in users). */
+export const IMPORT_ZIP_DIR = path.resolve("downloads/imports");
+
+/** The CMS FOIA shared-patient download is a zip of one headerless .txt. */
+export function isZipFileUrl(fileUrl: string | null | undefined): boolean {
+  if (!fileUrl) return false;
+  return /\.zip$/i.test(fileUrl.split(/[?#]/)[0]);
+}
+
+function isTextZipEntry(name: string): boolean {
+  const base = path.basename(name);
+  if (!base || base.startsWith(".") || name.includes("__MACOSX")) return false;
+  return /\.(txt|csv)$/i.test(base);
+}
+
+/**
+ * The first .txt or .csv member of a zip, as a byte stream. CMS publishes
+ * Physician Shared Patient Patterns as one headerless text file inside the zip.
+ */
+export function openZipTextEntry(zipPath: string): Promise<{ stream: Readable; entryName: string; close: () => void }> {
+  return new Promise((resolve, reject) => {
+    yauzl.open(zipPath, { lazyEntries: true, autoClose: false }, (err, zipfile) => {
+      if (err || !zipfile) return reject(err || new Error("Could not open zip"));
+      const names: string[] = [];
+      let settled = false;
+      const fail = (e: Error) => {
+        if (settled) return;
+        settled = true;
+        zipfile.close();
+        reject(e);
+      };
+      zipfile.on("entry", (entry: { fileName: string }) => {
+        if (entry.fileName.endsWith("/")) {
+          zipfile.readEntry();
+          return;
+        }
+        names.push(entry.fileName);
+        if (!isTextZipEntry(entry.fileName)) {
+          zipfile.readEntry();
+          return;
+        }
+        zipfile.openReadStream(entry as never, (e: Error | null, stream?: Readable) => {
+          if (e || !stream) return fail(e || new Error("Could not read the zip entry"));
+          settled = true;
+          resolve({ stream, entryName: entry.fileName, close: () => zipfile.close() });
+        });
+      });
+      zipfile.on("end", () => {
+        if (!settled) fail(new Error(`No .txt or .csv in the zip${names.length ? ` (${names.slice(0, 5).join(", ")})` : ""}`));
+      });
+      zipfile.on("error", fail);
+      zipfile.readEntry();
+    });
+  });
+}
+
+async function downloadToFile(fileUrl: string, dest: string, opts: { signal?: AbortSignal; idleMs?: number } = {}): Promise<void> {
+  const idleMs = opts.idleMs ?? CSV_IDLE_TIMEOUT_MS;
+  const controller = new AbortController();
+  if (opts.signal) {
+    if (opts.signal.aborted) controller.abort(opts.signal.reason);
+    else opts.signal.addEventListener("abort", () => controller.abort(opts.signal!.reason), { once: true });
+  }
+  const connectTimer = setTimeout(() => controller.abort(new Error(`No response from the server within ${Math.max(1, Math.round(idleMs / 1000))} seconds.`)), idleMs);
+  let res: Awaited<ReturnType<typeof safeFetchStream>>;
+  try {
+    res = await safeFetchStream(fileUrl, { signal: controller.signal });
+  } finally {
+    clearTimeout(connectTimer);
+  }
+  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status} fetching ${fileUrl}`);
+  await fs.promises.mkdir(path.dirname(dest), { recursive: true });
+  const tmp = `${dest}.part`;
+  const body = withIdleTimeout(Readable.fromWeb(res.body as any) as unknown as AsyncIterable<Uint8Array>, controller, idleMs);
+  await pipeline(Readable.from(body), fs.createWriteStream(tmp));
+  await fs.promises.rename(tmp, dest);
+}
+
+/** A zip on disk: an upload, or an https link downloaded once and reused. */
+async function zipPathFor(fileUrl: string, opts: { signal?: AbortSignal; idleMs?: number } = {}): Promise<string> {
+  const local = localUploadPath(fileUrl);
+  if (local) {
+    await fs.promises.access(local, fs.constants.R_OK).catch(() => {
+      throw new Error(`Uploaded file not found: ${path.basename(local)}. Upload it again and retry.`);
+    });
+    return local;
+  }
+  const name = path.basename(new URL(fileUrl).pathname);
+  if (!name || name === "." || name === "..") throw new Error("Zip URL has no file name");
+  const dest = path.join(IMPORT_ZIP_DIR, name);
+  const existing = await fs.promises.stat(dest).catch(() => null);
+  if (existing && existing.size > 0) return dest;
+  await downloadToFile(fileUrl, dest, opts);
+  return dest;
+}
 
 /**
  * Passes `stream` through, but gives up (aborting `controller`) when the next chunk takes
@@ -108,8 +206,18 @@ export async function openCsvSource(fileUrl: string, opts: { signal?: AbortSigna
   return withIdleTimeout(Readable.fromWeb(res.body as any) as unknown as AsyncIterable<Uint8Array>, controller, idleMs);
 }
 
-/** Rows of a CSV source (see csvRecords for header handling). */
+/** Rows of a CSV source (see csvRecords for header handling). A .zip is read from its .txt/.csv member. */
 export async function* csvSourceRecords(fileUrl: string, opts: CsvRecordOptions & { signal?: AbortSignal; idleMs?: number } = {}): AsyncGenerator<Record<string, string>> {
+  if (isZipFileUrl(fileUrl)) {
+    const zipPath = await zipPathFor(fileUrl, { signal: opts.signal, idleMs: opts.idleMs });
+    const opened = await openZipTextEntry(zipPath);
+    try {
+      yield* csvRecords(opened.stream, opts);
+    } finally {
+      opened.close();
+    }
+    return;
+  }
   const stream = await openCsvSource(fileUrl, { signal: opts.signal, idleMs: opts.idleMs });
   yield* csvRecords(stream, opts);
 }

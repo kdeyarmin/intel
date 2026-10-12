@@ -4,6 +4,7 @@ import FacilityListPage from '@/components/facilities/FacilityListPage';
 import PageTabs from '@/components/layout/PageTabs';
 import { FACILITY_TYPES } from '@/components/layout/navConfig';
 import { useUrlState } from '@/hooks/useUrlState';
+import { useBusinessLine } from '@/lib/BusinessLineContext';
 
 // One page for every Medicare facility type (it replaces eight identical
 // pages); ?type= picks the type and old page URLs redirect here.
@@ -23,10 +24,13 @@ const URL_DEFAULTS = { type: 'hospital', page: 1 };
 
 export default function Facilities() {
   const [url, setUrl] = useUrlState(URL_DEFAULTS);
-  // Own keys only: `?type=toString` or `__proto__` would otherwise find an
-  // inherited property and render without an icon.
-  const type = Object.hasOwn(LOOK, url.type) ? url.type : 'hospital';
+  const { profile } = useBusinessLine();
+  const [showAll, setShowAll] = React.useState(false);
+  const allowed = !showAll && profile?.facilityTypes?.length ? profile.facilityTypes : null;
+  const requested = Object.hasOwn(LOOK, url.type) ? url.type : 'hospital';
+  const type = allowed && !allowed.includes(requested) ? profile.facilityTypes[0] : requested;
   const look = LOOK[type];
+  const types = allowed ? FACILITY_TYPES.filter((t) => allowed.includes(t.type)) : FACILITY_TYPES;
 
   return (
     <div>
@@ -34,7 +38,7 @@ export default function Facilities() {
         <PageTabs current="Facilities" />
         <nav aria-label="Facility type" className="overflow-x-auto">
           <ul className="flex w-max gap-1.5">
-            {FACILITY_TYPES.map((t) => {
+            {types.map((t) => {
               const active = t.type === type;
               return (
                 <li key={t.type}>
@@ -55,6 +59,11 @@ export default function Facilities() {
             })}
           </ul>
         </nav>
+        {profile && (
+          <button type="button" className="mt-2 text-xs text-cyan-400 hover:underline" onClick={() => setShowAll((v) => !v)}>
+            {showAll ? `Show only ${profile.label}` : 'Show every facility type'}
+          </button>
+        )}
       </div>
       <FacilityListPage key={type} facilityGroup={type} title={look.title} icon={look.icon} iconCls={look.iconCls} detailPage="FacilityDetail" />
     </div>

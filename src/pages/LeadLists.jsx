@@ -16,6 +16,7 @@ import LeadListAnalytics from '../components/leadlists/LeadListAnalytics';
 import LeadListStatusExport from '../components/leadlists/LeadListStatusExport';
 import { listMembers } from '../components/leadlists/leadListService';
 import PageHeader from '../components/shared/PageHeader';
+import PageTabs from '@/components/layout/PageTabs';
 import { ListCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -72,6 +73,7 @@ export default function LeadLists() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
+      <PageTabs current="LeadLists" />
       <PageHeader
         title="Lead Lists"
         subtitle="Create and manage targeted provider lists"

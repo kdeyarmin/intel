@@ -28,6 +28,7 @@ import AIEmailFinder from '../components/providers/AIEmailFinder';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import UtilizationSummaryCard from '../components/providers/UtilizationSummaryCard';
 import ReferralSummaryCard from '../components/providers/ReferralSummaryCard';
+import { ProviderReferenceCard } from '../components/market/MarketReferenceCards';
 import ReferralPotentialCard from '../components/market/ReferralPotentialCard';
 import DataQualityInsightsCard from '../components/providers/DataQualityInsightsCard';
 import AIContactEnrichment from '../components/ai/AIContactEnrichment';
@@ -315,6 +316,7 @@ export default function ProviderDetail() {
             <ReferralSummaryCard referrals={referrals} orderReferring={orderReferring} />
           </div>
           <ReferralPotentialCard potential={cmsData?.referral_potential} rollups={cmsData?.rollups} />
+          <ProviderReferenceCard reference={cmsData?.reference} />
           <UtilizationInsights utilization={latestUtil} />
           <UtilizationTrendChart utilizations={utilizations} />
           <PatientPopulationFingerprint

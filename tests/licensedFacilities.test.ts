@@ -45,6 +45,25 @@ describe("mapLicensedFacility", () => {
     expect(mapLicensedFacility({ name: "Maple Manor", zip: "16002" }, ctx)!.facility_key).not.toBe(a.facility_key);
   });
 
+  it("reads the Pennsylvania DOH nursing-facility export (NCFOwnerLicense), not a synthetic header row", () => {
+    // apps.health.pa.gov/NCFFacilities/NCFOwnerLicensePull_202606.aspx, exported as CSV.
+    // "TYPE OF LICENSE" is REGULAR/PROVISIONAL (the license status), not the facility category,
+    // so the import's license_type still names the kind of home.
+    const row = {
+      facility_id: "231302", medicare_id_ccn: "395199", name: "ABBEYVILLE SKILLED NURSING AND REHABILITATION CENTER",
+      address: "100 ABBEYVILLE ROAD", city: "LANCASTER", state: "PA", zip: "17603", county: "LANCASTER",
+      telephone: "(717)397-4261", administrator: "CARA FISCHER-YOHN", owner: "100 Abbeyville Road Operations LLC",
+      ownership_type: "FOR PROFIT - C", licensed_bed_count: "172", type_of_license: "REGULAR",
+    };
+    const m = mapLicensedFacility(row, { ...ctx, params: { state_filter: "PA", license_type: "nursing_home" } })!;
+    expect(m).toMatchObject({
+      state: "PA", license_type: "nursing_home", facility_key: "231302", license_number: "231302",
+      name: "ABBEYVILLE SKILLED NURSING AND REHABILITATION CENTER", address: "100 ABBEYVILLE ROAD",
+      city: "LANCASTER", zip5: "17603", capacity: 172, status: "REGULAR", licensee: "100 Abbeyville Road Operations LLC",
+      phone: "(717)397-4261",
+    });
+  });
+
   it("drops rows without a name or a usable state", () => {
     expect(mapLicensedFacility({ city: "Erie", state: "PA" }, ctx)).toBeNull();
     expect(mapLicensedFacility({ name: "No State Home" }, { ...ctx, params: {} })).toBeNull();

@@ -10,7 +10,6 @@ import cookieParser from "cookie-parser";
 import type { AddressInfo } from "net";
 import type { Server } from "http";
 import { signedIn, startHarness, type Harness } from "./helpers/accountHarness";
-import { resetRateLimits } from "../server/middleware/rateLimit";
 
 const s = vi.hoisted(() => ({
   org: null as Record<string, unknown> | null,
@@ -68,6 +67,7 @@ const PLANS = [
 ];
 
 import billingRouter from "../server/routes/billing";
+import { clearRateLimits } from "../server/middleware/rateLimit";
 
 let h: Harness;
 let server: Server;
@@ -80,9 +80,7 @@ const paying = (over: Record<string, unknown> = {}) => ({
 const subscription = (price: string, status = "active") => ({ id: "sub_2", status, items: { data: [{ id: "si_1", price: { id: price } }] } });
 
 beforeEach(async () => {
-  // The checkout route is rate-limited per user (10 a minute) in a process-wide map; every test here
-  // checks out as the same owner, and the idempotency tests move the clock, so start each test clean.
-  resetRateLimits();
+  clearRateLimits();
   process.env.STRIPE_SECRET_KEY = "sk_test_x";
   process.env.PUBLIC_APP_URL = "https://app.example.com";
   s.org = paying();

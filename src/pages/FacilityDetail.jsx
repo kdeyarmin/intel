@@ -13,6 +13,7 @@ import AffiliatedProvidersCard from '../components/facilities/AffiliatedProvider
 import ComprehensiveReport from '../components/reports/ComprehensiveReport';
 import HospitalCatchmentCard from '../components/market/HospitalCatchmentCard';
 import MarketPositionCard from '../components/market/MarketPositionCard';
+import { DmeFacilityCard, DrgCard } from '../components/market/MarketReferenceCards';
 
 // Facility groups with a post-acute market view (getFacilityMarket setting).
 const MARKET_SETTING = { snf: 'snf', home_health: 'hha', hospice: 'hospice', irf: 'irf', ltch: 'ltch' };
@@ -532,7 +533,9 @@ export default function FacilityDetail() {
       <FacilitySummaryCard data={data} financials={financials} facilityTypes={facilityTypes} config={config} />
 
       {group === 'hospital' && <HospitalCatchmentCard ccn={providerId} />}
+      {group === 'hospital' && data.drgs && <DrgCard drgs={data.drgs} />}
       {MARKET_SETTING[group] && <MarketPositionCard ccn={providerId} setting={MARKET_SETTING[group]} />}
+      {data.dme && <DmeFacilityCard dme={data.dme} />}
 
       <LinkedProviderCard linked={linked} navigate={navigate} config={config} />
 
