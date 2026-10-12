@@ -149,6 +149,21 @@ describe("refreshFacilityRows", () => {
     expect(raw().values).toEqual([{ facility_id: 10, raw_data: { a: 1 } }, { facility_id: 11, raw_data: { b: 2 } }]);
   });
 
+  it("replaces the star rating of a dataset that carries one and keeps the stored rating of the others", async () => {
+    const { tx, executed } = refreshTx();
+    await refreshFacilityRows(tx as any, [
+      { id: 20, row: { facility_type: "nursing_home_providers", quality_rating: 4, data_year: "2026", raw_data: {} } },
+      { id: 21, row: { facility_type: "nursing_home_providers", quality_rating: null, data_year: "2026", raw_data: {} } },
+      { id: 22, row: { facility_type: "hospice_general_info", quality_rating: null, data_year: "2026", raw_data: {} } },
+    ]);
+    const { sql, params } = executed[0];
+    expect(sql).toMatch(/quality_rating = CASE WHEN v\.rated THEN v\.quality_rating ELSE m\.quality_rating END/);
+    expect(sql).toMatch(/AS v\(id, facility_name, address, city, state, zip, quality_rating, rated, data_year, import_batch_id, raw_data\)/);
+    // (id, name, address, city, state, zip, rating, rated, ...) per row: 4 and true; null and true (no longer rated); null and false.
+    expect(params.filter((p: any) => typeof p === "boolean")).toEqual([true, true, false]);
+    expect(params).toContain(4);
+  });
+
   it("does nothing for an empty list", async () => {
     const { tx, executed } = refreshTx();
     await refreshFacilityRows(tx as any, []);

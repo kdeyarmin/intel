@@ -1124,6 +1124,28 @@ export function rowDataYear(row: any, fallbackYear?: number | string | null): st
   return fallbackYear != null && String(fallbackYear).trim() ? String(fallbackYear).trim().slice(0, 10) : null;
 }
 
+/** The Care Compare column holding a facility's overall star rating, for the datasets that have one the lists can show. */
+const OVERALL_RATING_COLUMN: Record<string, string> = {
+  nursing_home_providers: "overall_rating",
+  hospital_general_info: "hospital_overall_rating",
+};
+
+/** Whether a dataset's facility rows carry a star rating (so a refresh replaces it, blank or not). */
+export function hasStarRating(importType: unknown): boolean {
+  return typeof importType === "string" && Object.hasOwn(OVERALL_RATING_COLUMN, importType);
+}
+
+/**
+ * A facility's overall star rating (1 to 5) for the Facilities lists, or null: "Not Available" and a blank are not
+ * ratings. Home health agencies are not mapped: their quality-of-patient-care rating moves in half stars and the
+ * column is an integer, so some agencies would show a rating and others, rated 3.5, none.
+ */
+export function starRatingOf(row: any, importType: string): number | null {
+  if (!hasStarRating(importType)) return null;
+  const n = Number(String(row?.[OVERALL_RATING_COLUMN[importType]] ?? "").trim());
+  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : null;
+}
+
 export function mapMedicareFacilityRow(row: any, importType: string, batchId: number, year?: number | string | null) {
   const statId = deriveStatisticalId(row, importType);
   const statName = deriveStatisticalName(row, importType);
@@ -1192,6 +1214,7 @@ export function mapMedicareFacilityRow(row: any, importType: string, batchId: nu
       row.PRVDR_ZIP ||
       null
     ),
+    quality_rating: starRatingOf(row, importType),
     raw_data: row,
     import_batch_id: String(batchId),
   };
@@ -1294,13 +1317,15 @@ async function dedupeFacilities(importType: string, chunk: any[]): Promise<{ toC
  * one UPDATE per chunk, and the raw_data side table follows in the same
  * transaction. Identity fields keep their old value when the new release leaves
  * them blank; the vintage, batch and raw record always move to the new release.
+ * The star rating of a dataset that carries one (OVERALL_RATING_COLUMN) is replaced
+ * as well, so a facility the release no longer rates loses its stars.
  */
 export async function refreshFacilityRows(
   tx: { execute: (q: any) => Promise<any>; insert: (table: any) => any },
   rows: Array<{ id: number; row: Record<string, any> }>,
 ): Promise<void> {
   if (rows.length === 0) return;
-  const tuples = rows.map(({ id, row }) => sql`(${id}::int, ${row.facility_name ?? null}::text, ${row.address ?? null}::text, ${row.city ?? null}::text, ${row.state ?? null}::text, ${row.zip ?? null}::text, ${row.data_year ?? null}::text, ${row.import_batch_id ?? null}::text, ${JSON.stringify(row.raw_data ?? null)}::jsonb)`);
+  const tuples = rows.map(({ id, row }) => sql`(${id}::int, ${row.facility_name ?? null}::text, ${row.address ?? null}::text, ${row.city ?? null}::text, ${row.state ?? null}::text, ${row.zip ?? null}::text, ${row.quality_rating ?? null}::int, ${hasStarRating(row.facility_type)}::boolean, ${row.data_year ?? null}::text, ${row.import_batch_id ?? null}::text, ${JSON.stringify(row.raw_data ?? null)}::jsonb)`);
   await tx.execute(sql`
     UPDATE medicare_facilities AS m SET
       facility_name = COALESCE(v.facility_name, m.facility_name),
@@ -1308,11 +1333,12 @@ export async function refreshFacilityRows(
       city = COALESCE(v.city, m.city),
       state = COALESCE(v.state, m.state),
       zip = COALESCE(v.zip, m.zip),
+      quality_rating = CASE WHEN v.rated THEN v.quality_rating ELSE m.quality_rating END,
       data_year = v.data_year,
       import_batch_id = v.import_batch_id,
       raw_data = v.raw_data,
       updated_date = NOW()
-    FROM (VALUES ${sql.join(tuples, sql`, `)}) AS v(id, facility_name, address, city, state, zip, data_year, import_batch_id, raw_data)
+    FROM (VALUES ${sql.join(tuples, sql`, `)}) AS v(id, facility_name, address, city, state, zip, quality_rating, rated, data_year, import_batch_id, raw_data)
     WHERE m.id = v.id`);
   const rawRows = rows.filter(({ row }) => row.raw_data != null).map(({ id, row }) => ({ facility_id: id, raw_data: row.raw_data }));
   if (rawRows.length > 0) {
