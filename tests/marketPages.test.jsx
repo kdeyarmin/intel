@@ -125,6 +125,9 @@ describe('CountyIntelligence market tabs', () => {
     expect(screen.getByRole('button', { name: 'Skilled nursing (70)', pressed: true })).toBeInTheDocument();
     expect(screen.getByText('Showing the top 1 of 70 providers.')).toBeInTheDocument();
     expect(screen.getByTestId('chart')).toBeInTheDocument();
+    // The chart's numbers are also there as a table, for a screen reader.
+    const table = screen.getByRole('table', { name: 'Skilled nursing: Medicare beneficiaries served and providers by year' });
+    expect(within(table).getAllByRole('row').map((r) => r.textContent)).toEqual(['YearBeneficiariesProviders', '20237,00072', '20247,40070']);
     fireEvent.click(screen.getByRole('button', { name: 'Hospice' }));
     expect(screen.getByText(/No Hospice providers in the post-acute utilization file/)).toBeInTheDocument();
   });
@@ -134,6 +137,8 @@ describe('CountyIntelligence market tabs', () => {
     renderAt('/CountyIntelligence?state=PA&county=42003&tab=referrals', CountyIntelligence, '/CountyIntelligence');
     const link = await screen.findByRole('link', { name: 'Ada Lovelace, MD' });
     expect(invoke).toHaveBeenCalledWith('getReferralSources', { state: 'PA', county_fips: '42003', limit: 25 });
+    // The tab asks for its own list; the county market payload (five rollup reads) is for the tabs that show it.
+    expect(invoke).not.toHaveBeenCalledWith('getCountyMarket', expect.anything());
     const row = link.closest('tr');
     expect(within(row).getByText('96')).toBeInTheDocument();
     expect(within(row).getByText('620')).toBeInTheDocument();
@@ -326,6 +331,12 @@ describe('CountyMetricLayer', () => {
     expect(screen.getByText('All 45 counties')).toBeInTheDocument();
   });
 
+  it('carries the market disclaimer: the layer is a market view', () => {
+    render(<MemoryRouter><CountyMetricLayer layer={layer(5)} state="PA" /></MemoryRouter>);
+    expect(screen.getByRole('note')).toHaveTextContent(/Hospital sources show where/);
+    expect(screen.getByRole('note')).toHaveTextContent(/not confirmed referrals/);
+  });
+
   it('has no "show all" control when every county already fits', () => {
     render(<MemoryRouter><CountyMetricLayer layer={layer(12)} state="PA" /></MemoryRouter>);
     expect(screen.getAllByRole('link')).toHaveLength(12);
@@ -374,6 +385,86 @@ describe('market cards on a facility page', () => {
     expect(await screen.findByText(/Where this hospital's patients live/)).toBeInTheDocument();
     expect(screen.getByRole('note')).toHaveTextContent(/discharge mix/);
   });
+
+  it('HospitalCatchmentCard says the request failed, with a retry, instead of vanishing like a hospital with no data', async () => {
+    invoke.mockReset().mockRejectedValueOnce(new Error('statement timeout')).mockResolvedValue({
+      ccn: '390001', data_year: '2025', total_cases: 1000, counties: [{ county_fips: '42003', name: 'Allegheny County', state: 'PA', cases: 900, share: 0.9 }], zips: [], discharge_mix: null, rollups: ROLLUPS,
+    });
+    wrap(<HospitalCatchmentCard ccn="390001" />);
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load where this hospital's patients live: statement timeout");
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText(/Where this hospital's patients live/)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  describe('HospitalCatchmentCard ZIP areas', () => {
+    const zips = (n) => Array.from({ length: n }, (_, i) => ({ zip5: String(15200 + i), county_fips: '42003', county_name: 'Allegheny County', cases: 500 - i, share: (500 - i) / 10000 }));
+    const catchment = (n, extra = {}) => ({
+      ccn: '390001', data_year: '2025', total_cases: 10000, zips_total: n, zips_truncated: false, zips: zips(n), counties: [{ county_fips: '42003', name: 'Allegheny County', state: 'PA', cases: 9000, share: 0.9 }],
+      discharge_mix: null, rollups: ROLLUPS, ...extra,
+    });
+
+    it('lists the busiest ZIP areas, ten at first, with a control that shows the rest', async () => {
+      invoke.mockReset().mockResolvedValue(catchment(25));
+      wrap(<HospitalCatchmentCard ccn="390001" />);
+      const list = await screen.findByRole('list', { name: "ZIP areas where this hospital's patients live" });
+      expect(within(list).getAllByRole('listitem')).toHaveLength(10);
+      expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent('15200');
+      expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent('Allegheny County');
+      expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent('500 (5%)');
+      const more = screen.getByRole('button', { name: 'Show all 25 ZIP areas' });
+      expect(more).toHaveAttribute('aria-expanded', 'false');
+      fireEvent.click(more);
+      expect(within(list).getAllByRole('listitem')).toHaveLength(25);
+      expect(screen.getByRole('button', { name: 'Show fewer ZIP areas' })).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.queryByText(/Showing the busiest/)).toBeNull();
+    });
+
+    it('says when the server sent only the busiest of the hospital’s ZIP areas', async () => {
+      invoke.mockReset().mockResolvedValue(catchment(300, { zips_total: 812, zips_truncated: true }));
+      wrap(<HospitalCatchmentCard ccn="390001" />);
+      expect(await screen.findByText(/Showing the busiest 300 of 812 ZIP areas; the totals and the county split count all of them\./)).toBeInTheDocument();
+    });
+
+    it('has no ZIP list, and no toggle, for a short list or none', async () => {
+      invoke.mockReset().mockResolvedValue(catchment(4));
+      wrap(<HospitalCatchmentCard ccn="390001" />);
+      const list = await screen.findByRole('list', { name: "ZIP areas where this hospital's patients live" });
+      expect(within(list).getAllByRole('listitem')).toHaveLength(4);
+      expect(screen.queryByRole('button', { name: /ZIP areas/ })).toBeNull();
+      cleanup();
+      invoke.mockReset().mockResolvedValue(catchment(0));
+      wrap(<HospitalCatchmentCard ccn="390001" />);
+      await screen.findByText(/Where this hospital's patients live/);
+      expect(screen.queryByRole('list', { name: "ZIP areas where this hospital's patients live" })).toBeNull();
+    });
+  });
+
+  it('MarketPositionCard says the request failed, with a retry, instead of vanishing like a provider with no market data', async () => {
+    invoke.mockReset().mockRejectedValueOnce(new Error('connection terminated')).mockResolvedValue({
+      found: true, label: 'Skilled nursing', data_year: '2024', county: { fips: '42003', name: 'Allegheny County', state: 'PA' },
+      position: { rank: 2, providers_in_market: 70, share: 0.12, benes: 900, stays: 1200, state_rank: 15, state_providers: 680, state_share: 0.011 },
+      market: [], trend: [], coverage: [], rollups: ROLLUPS,
+    });
+    wrap(<MarketPositionCard ccn="395001" setting="snf" />);
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load this provider's market position: connection terminated");
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('county share')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('MarketPositionCard shows the state share beside the state rank', async () => {
+    invoke.mockReset().mockResolvedValue({
+      found: true, label: 'Skilled nursing', data_year: '2024', county: { fips: '42003', name: 'Allegheny County', state: 'PA' },
+      position: { rank: 2, providers_in_market: 70, share: 0.12, benes: 900, stays: 1200, state_rank: 15, state_providers: 680, state_share: 0.011 },
+      market: [], trend: [], coverage: [], rollups: ROLLUPS,
+    });
+    wrap(<MarketPositionCard ccn="395001" setting="snf" />);
+    const tile = (await screen.findByText('state share')).closest('div');
+    expect(tile).toHaveTextContent('1.1%');
+    expect(screen.getByText('of 680 in state')).toBeInTheDocument();
+    expect(screen.getByText('county share').closest('div')).toHaveTextContent('12.0%');
+  });
 });
 
 describe('cards', () => {
@@ -398,6 +489,21 @@ describe('cards', () => {
     // Three affiliations on file, two of them hospitals.
     rerender(<ReferralPotentialCard potential={{ ...base, hospital_ccns: ['390001', '390002'], affiliations: 3 }} />);
     expect(hospitals()).toHaveTextContent(/^2$/);
+  });
+
+  it('carries the market disclaimer and says when the referral rollup last computed', () => {
+    const potential = { data_year: '2024', referral_index: 96, rank_in_county: 1, county_name: 'Allegheny County', benes: 620, hospital_ccns: [], affiliations: 0 };
+    const rollups = { referral_sources: { status: 'success', refreshed_at: '2026-10-10T03:00:00Z', error: null } };
+    render(<ReferralPotentialCard potential={potential} rollups={rollups} />);
+    expect(screen.getByRole('note')).toHaveTextContent(/not confirmed referrals/);
+    expect(screen.getByRole('note')).toHaveTextContent(/discharge mix/);
+    expect(screen.getByText(/Computed /)).toBeInTheDocument();
+  });
+
+  it('says a failed refresh of the referral rollup on the card', () => {
+    const potential = { data_year: '2024', referral_index: 96, benes: 620, hospital_ccns: [], affiliations: 0 };
+    render(<ReferralPotentialCard potential={potential} rollups={{ referral_sources: { status: 'failed', refreshed_at: null, error: 'out of memory' } }} />);
+    expect(screen.getByText(/Last refresh failed: out of memory/)).toBeInTheDocument();
   });
 
   it('renders the compliance note', () => {

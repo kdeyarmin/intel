@@ -7,6 +7,7 @@ import { AlertTriangle, BarChart3 } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { formatMetric } from '@/lib/marketFormat';
 import MarketFreshness from './MarketFreshness';
+import ComplianceDisclaimer from '../compliance/ComplianceDisclaimer';
 
 const INITIAL_COUNTIES = 30;
 
@@ -57,7 +58,10 @@ export default function CountyMetricLayer({ layer, state, loading = false, error
             )}
           </>
         )}
-        <div className="mt-3"><MarketFreshness rollups={layer?.rollups} jobs={['county_market_profile']} /></div>
+        <div className="mt-3 space-y-2">
+          <MarketFreshness rollups={layer?.rollups} jobs={['county_market_profile']} />
+          <ComplianceDisclaimer variant="market" />
+        </div>
       </CardContent>
     </Card>
   );

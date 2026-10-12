@@ -5,7 +5,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const h = vi.hoisted(() => ({ rows: {} as Record<string, any[]> }));
+const h = vi.hoisted(() => ({ rows: {} as Record<string, any[]>, runs: [] as any[] }));
 
 vi.mock("../server/db", async () => {
   const { getTableName } = await import("drizzle-orm");
@@ -18,7 +18,8 @@ vi.mock("../server/db", async () => {
     };
     return b;
   };
-  return { pool: {}, db: { select: () => ({ from: (t: any) => query(getTableName(t)) }) } };
+  // The pool answers the rollup run table (the freshness the card shows).
+  return { pool: { query: async () => ({ rows: h.runs }) }, db: { select: () => ({ from: (t: any) => query(getTableName(t)) }) } };
 });
 vi.mock("../server/lib/geo", () => ({
   getGeoIndex: async () => ({ counties: new Map([["42003", { fips: "42003", name: "Allegheny County", state: "PA" }]]) }),
@@ -28,6 +29,7 @@ import { handleGetProviderCMSData } from "../server/functions/facilityDetail";
 
 beforeEach(() => {
   h.rows = {};
+  h.runs = [];
 });
 
 describe("handleGetProviderCMSData", () => {
@@ -39,9 +41,19 @@ describe("handleGetProviderCMSData", () => {
     expect(r.order_referring).toMatchObject({ hha: true, hospice: true, as_of: "2026-10-03" });
   });
 
+  it("says when the referral rollup last computed, so the card can show it with the market caveat", async () => {
+    h.rows.rollup_referral_sources = [{ npi: "1000000001", data_year: "2024", county_fips: "42003", referral_index: 96 }];
+    h.runs = [{ job: "referral_sources", status: "success", last_success_at: "2026-10-10T03:00:00Z" }, { job: "cms_service_types", status: "success" }];
+    const r: any = await handleGetProviderCMSData({ npi: "1000000001" });
+    expect(r.rollups.referral_sources).toEqual({ status: "success", refreshed_at: "2026-10-10T03:00:00Z", error: null });
+    // Only the market rollups are reported.
+    expect(r.rollups.cms_service_types).toBeUndefined();
+  });
+
   it("returns null for a clinician the rollup doesn't cover", async () => {
     const r: any = await handleGetProviderCMSData({ npi: "1000000009" });
     expect(r.referral_potential).toBeNull();
+    expect(r.rollups).toBeNull();
     expect(r.order_referring).toBeNull();
     expect(r.total_records).toBe(0);
   });

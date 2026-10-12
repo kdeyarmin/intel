@@ -3,12 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Target } from 'lucide-react';
 import { fmtCount, fmtRate, fmtShare, ordinal } from '@/lib/marketFormat';
+import MarketFreshness from './MarketFreshness';
+import ComplianceDisclaimer from '../compliance/ComplianceDisclaimer';
 
 /**
  * A clinician's standing as a post-acute referral source: the referral
  * index and the published figures behind it (rollup_referral_sources).
  */
-export default function ReferralPotentialCard({ potential }) {
+export default function ReferralPotentialCard({ potential, rollups = null }) {
   if (!potential) return null;
   const p = potential;
   const chronic = [
@@ -58,6 +60,10 @@ export default function ReferralPotentialCard({ potential }) {
             ))}
           </ul>
         )}
+        <div className="mt-3 space-y-2">
+          <MarketFreshness rollups={rollups} jobs={['referral_sources']} />
+          <ComplianceDisclaimer variant="market" />
+        </div>
       </CardContent>
     </Card>
   );
