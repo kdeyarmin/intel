@@ -48,15 +48,6 @@ export default function AdvancedAnalytics() {
       const rows = await base44.entities.CMSReferral.list('-created_date', 500);
       return rows.map(r => {
         const rd = r.raw_data || {};
-        const referralSubtypeFields = ['home_health_referrals', 'hospice_referrals', 'snf_referrals', 'dme_referrals', 'imaging_referrals'];
-        const referralTypeCounts = Object.fromEntries(
-          referralSubtypeFields
-            .filter((field) => Object.prototype.hasOwnProperty.call(r, field))
-            .map((field) => {
-              const numericValue = Number(r[field]);
-              return [field, Number.isFinite(numericValue) ? numericValue : 0];
-            })
-        );
         // Prefer the real total_referrals column. Fall back to a count in
         // raw_data only if a genuine referral-counts dataset stored one
         // there; otherwise 0 — never a fabricated default.
@@ -66,7 +57,6 @@ export default function AdvancedAnalytics() {
         const realCount = Number(r.total_referrals);
         return {
           ...r,
-          ...referralTypeCounts,
           year: r.data_year,
           total_referrals: Number.isFinite(realCount)
             ? realCount

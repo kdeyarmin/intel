@@ -14,6 +14,9 @@ export const MAX_SCHEDULES_PER_INVOCATION = 5;
 export const FAILURE_BACKOFF_CAP_HOURS = 24;
 // Spread schedules within ±N minutes to avoid a thundering herd.
 export const SCHEDULE_JITTER_MINUTES = 15;
+// An on_release schedule only becomes due when the catalog check finds a newer
+// release of its dataset; between releases it is parked this far out.
+export const ON_RELEASE_PARK_DAYS = 365;
 // Minimum gap between now and the computed next_run_at, so negative jitter can't
 // push a schedule into the immediate past and cause a tight reschedule loop.
 export const NEXT_RUN_MIN_BUFFER_MS = 5 * 60_000;
@@ -43,7 +46,7 @@ export function backoffHours(consecutiveFailures: number): number {
 
 export type Schedule = {
   schedule_time?: string | null;
-  schedule_frequency?: "daily" | "weekly" | "monthly" | "on_completion" | string | null;
+  schedule_frequency?: "daily" | "weekly" | "monthly" | "on_completion" | "on_release" | string | null;
   last_run_at?: string | Date | null;
   last_successful_run_at?: string | Date | null;
   last_run_status?: string | null;
@@ -83,6 +86,18 @@ export function computeNextRun(
     // No regular cadence — the dependency check handles it. Sentinel ~1h out.
     next.setUTCHours(next.getUTCHours() + 1);
     return next;
+  } else if (schedule.schedule_frequency === "on_release") {
+    if (failures > 0) {
+      // A failed run retries on the usual backoff. Parking it for a year would
+      // wait for a catalog wake-up that never comes for a dataset with nothing
+      // imported yet (the catalog only wakes datasets with an update available).
+      next.setTime(now.getTime() + backoffHours(failures) * 60 * 60_000 + jitterMs(SCHEDULE_JITTER_MINUTES, random));
+      next.setTime(Math.max(next.getTime(), now.getTime() + NEXT_RUN_MIN_BUFFER_MS));
+      return next;
+    }
+    // Due only when checkCmsCatalog sees a newer release (it sets next_run_at).
+    next.setUTCDate(next.getUTCDate() + ON_RELEASE_PARK_DAYS);
+    return next;
   }
   next.setUTCHours(hours, minutes, 0, 0);
 
@@ -98,10 +113,12 @@ export function computeNextRun(
   return next;
 }
 
-// Whether a schedule's `depends_on_import_type` parent has completed
-// successfully since this schedule's last *successful* run. Tracking the child's
-// last successful run (not last_run_at) lets failed children retry against the
-// same parent run instead of being blocked until the parent runs again.
+// Whether a schedule's `depends_on_import_type` parent has *completed*
+// successfully since this schedule's last successful run. A parent is
+// "running" from the moment its batch starts until the batch settles
+// (server/lib/importCompletion.ts), so a child never starts on a parent that
+// has merely been kicked off. Tracking the child's last successful run (not
+// last_run_at) lets failed children retry against the same parent run.
 export function dependencyBlocked(
   schedule: Schedule,
   allSchedules: Schedule[],
@@ -111,14 +128,19 @@ export function dependencyBlocked(
   if (!parent) {
     return { blocked: true, reason: `Dependency import_type=${schedule.depends_on_import_type} not configured` };
   }
-  if (!parent.last_run_at) {
+  // Rows from before completion tracking only have last_run_at.
+  const parentCompletedAt = parent.last_successful_run_at ?? parent.last_run_at;
+  if (!parentCompletedAt) {
     return { blocked: true, reason: `Waiting for parent ${parent.label} to run at least once` };
+  }
+  if (parent.last_run_status === "running") {
+    return { blocked: true, reason: `Parent ${parent.label} is still running` };
   }
   if (parent.last_run_status && parent.last_run_status !== "success") {
     return { blocked: true, reason: `Parent ${parent.label} last run was ${parent.last_run_status}` };
   }
   const childLastSuccess = schedule.last_successful_run_at ? new Date(schedule.last_successful_run_at) : null;
-  if (childLastSuccess && childLastSuccess > new Date(parent.last_run_at)) {
+  if (childLastSuccess && childLastSuccess > new Date(parentCompletedAt)) {
     return { blocked: true, reason: `Already ran successfully since parent's last completion` };
   }
   return { blocked: false };
@@ -191,6 +213,23 @@ export function nextRetryDueAt(lastAttemptIso: string | Date | null | undefined,
   return new Date(last.getTime() + hours * 60 * 60 * 1000);
 }
 
+/**
+ * A processing/validating batch with no progress for this long is stalled. Two hours: the chunked
+ * CMS importer saves progress every few pages, so an hour of silence on a healthy import is
+ * possible only while a very large page is being written. The stall sweep (maintenance.ts) and
+ * the active-import guard in handleTriggerImport both use it, so a healthy import is never failed
+ * at one hour by one and left alone until two by the other.
+ */
+export const STALLED_AFTER_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Import types the retry and resume workers leave alone: their importers chain
+ * themselves and are recovered on startup, and a worker resuming them in place
+ * would restart them from row 0. The browser mirrors this set (src/components/
+ * imports/retryStatus.js) and the legacy Deno helpers do too: keep them in sync.
+ */
+export const SELF_RESUMING_IMPORT_TYPES: ReadonlySet<string> = new Set(["nppes_registry", "nppes_flat_file", "nppes_registry_file"]);
+
 export type RetryDecision =
   | { eligible: true; reason: "retryable_failure"; attemptCount: number }
   | { eligible: false; reason: string };
@@ -202,6 +241,9 @@ export function shouldRetryBatch(batch: Record<string, unknown>, now: Date = new
   if (batch.import_type === "nppes_registry") {
     // The NPPES crawler has its own retry path (watchdog + batch_resume).
     return { eligible: false, reason: "nppes_handled_elsewhere" };
+  }
+  if (SELF_RESUMING_IMPORT_TYPES.has(String(batch.import_type ?? ""))) {
+    return { eligible: false, reason: "self_resuming_import_type" };
   }
   const params = (batch.retry_params as Record<string, unknown> | undefined) ?? {};
   if (params.auto_retry_disabled === true) {

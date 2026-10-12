@@ -12,7 +12,8 @@
 
 import { db } from "../db";
 import { importBatches, auditEvents } from "../db/schema";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { SELF_RESUMING_IMPORT_TYPES, STALLED_AFTER_MS } from "./scheduling";
 import {
   MAX_AUTO_RESUMES,
   MAX_AUTO_RETRY_ATTEMPTS,
@@ -24,7 +25,17 @@ import {
 const MAX_ERROR_MSG_LENGTH = 200;
 const PAUSED_BATCH_LIMIT = 50;
 const FAILED_BATCH_LIMIT = 50;
-const STALLED_AFTER_MS = 60 * 60 * 1000; // 1 hour matches base44 cancelStalledImports.
+// A processing/validating batch with no progress for STALLED_AFTER_MS (defined with
+// the retry policy in scheduling.ts, which triggerImport's active-import guard uses
+// too) is cancelled so operators (and autoRetryFailedImports) can react.
+export { STALLED_AFTER_MS };
+
+// Import types the generic auto-retry/resume workers must NOT drive via
+// triggerImport: the NPPES crawler resumes itself (batch_resume/watchdog), and
+// flat-file imports resume from a byte offset that triggerImport's flat-file
+// path doesn't honor (it would restart from 0). They self-chain and are
+// recovered on startup instead.
+export { SELF_RESUMING_IMPORT_TYPES };
 
 // Synthetic admin used when an internal worker calls handleTriggerImport. Real
 // human admin credentials are still enforced at the HTTP boundary
@@ -69,7 +80,10 @@ export async function runAutoResumePausedImports(): Promise<WorkerResult> {
     const { handleTriggerImport } = await import("../functions/triggerImport");
 
     for (const batch of paused) {
-      if (batch.import_type === "nppes_registry") continue;
+      if (SELF_RESUMING_IMPORT_TYPES.has(batch.import_type || "")) {
+        skipped.push({ id: batch.id, reason: "self_resuming_import_type" });
+        continue;
+      }
 
       const params = (batch.retry_params as Record<string, unknown> | null) ?? {};
       const autoResumeCount = typeof params.auto_resume_count === "number" ? params.auto_resume_count : 0;
@@ -86,11 +100,22 @@ export async function runAutoResumePausedImports(): Promise<WorkerResult> {
 
       try {
         // Stamp the counter BEFORE invoking so the cap holds even if the
-        // resume immediately re-pauses or fails.
-        await db.update(importBatches).set({
+        // resume immediately re-pauses or fails. The stamp is also the claim: it
+        // only applies while the batch is still paused with the count we read, so
+        // of two overlapping runs (a cron tick and an admin's button) one wins and
+        // the other leaves the batch alone instead of resuming it a second time.
+        const claimed = await db.update(importBatches).set({
           retry_params: { ...params, auto_resume_count: autoResumeCount + 1 },
           updated_date: new Date(),
-        }).where(eq(importBatches.id, batch.id));
+        }).where(and(
+          eq(importBatches.id, batch.id),
+          eq(importBatches.status, "paused"),
+          sql`COALESCE((retry_params->>'auto_resume_count')::int, 0) = ${autoResumeCount}`,
+        )).returning({ id: importBatches.id });
+        if (claimed.length === 0) {
+          skipped.push({ id: batch.id, reason: "claimed_by_another_run" });
+          continue;
+        }
 
         await handleTriggerImport({
           import_type: batch.import_type,
@@ -149,6 +174,10 @@ export async function runAutoRetryFailedImports(): Promise<WorkerResult> {
     const { handleTriggerImport } = await import("../functions/triggerImport");
 
     for (const batch of failed) {
+      if (SELF_RESUMING_IMPORT_TYPES.has(batch.import_type || "")) {
+        skipped.push({ id: batch.id, reason: "self_resuming_import_type" });
+        continue;
+      }
       const decision = shouldRetryBatch(batch as unknown as Record<string, unknown>, now);
       if (!decision.eligible) {
         skipped.push({ id: batch.id, reason: decision.reason });
@@ -157,9 +186,12 @@ export async function runAutoRetryFailedImports(): Promise<WorkerResult> {
 
       const nextAttempt = decision.attemptCount + 1;
       const params = (batch.retry_params as Record<string, unknown> | null) ?? {};
+      const storedCount = typeof params.auto_retry_count === "number" ? params.auto_retry_count : 0;
 
       try {
-        await db.update(importBatches).set({
+        // The stamp is also the claim, as in the resume worker: it only applies while the batch is still
+        // failed with the retry count we read, so overlapping runs can't both resume the same batch.
+        const claimed = await db.update(importBatches).set({
           retry_params: {
             ...params,
             auto_retry_count: nextAttempt,
@@ -167,19 +199,29 @@ export async function runAutoRetryFailedImports(): Promise<WorkerResult> {
             last_auto_retry_reason: extractErrorMessage(batch as unknown as Record<string, unknown>).substring(0, 200),
           },
           updated_date: now,
-        }).where(eq(importBatches.id, batch.id));
+        }).where(and(
+          eq(importBatches.id, batch.id),
+          eq(importBatches.status, "failed"),
+          sql`COALESCE((retry_params->>'auto_retry_count')::int, 0) = ${storedCount}`,
+        )).returning({ id: importBatches.id });
+        if (claimed.length === 0) {
+          skipped.push({ id: batch.id, reason: "claimed_by_another_run" });
+          continue;
+        }
 
+        // Resume the failed batch in place (batch_id) rather than opening a
+        // second batch: the failed row keeps its history and the per-type
+        // active-import guard sees one batch, not two.
         await handleTriggerImport({
           import_type: batch.import_type,
           file_url: (params.file_url as string | undefined) ?? undefined,
           year: params.year,
           dry_run: !!batch.dry_run,
-          row_offset: params.row_offset ?? undefined,
-          row_limit: params.row_limit ?? undefined,
           resume_offset: params.resume_offset ?? undefined,
           retry_of: batch.id,
           retry_count: nextAttempt,
           retry_tags: ["auto_retry_failed"],
+          batch_id: batch.id,
         }, SYSTEM_ADMIN_USER);
 
         retried.push({ id: batch.id, type: batch.import_type, attempt: nextAttempt });
@@ -212,36 +254,44 @@ export async function runAutoRetryFailedImports(): Promise<WorkerResult> {
 }
 
 // ─── Worker: cancel stalled imports ──────────────────────────────────────────
-// Long-running 'processing' batches that haven't been updated in
+// 'processing' / 'validating' batches that haven't been updated in
 // STALLED_AFTER_MS are flagged failed so operators (and autoRetryFailedImports)
-// can react. Idempotent — re-marking an already-failed batch is a no-op
-// because we only target status='processing'.
+// can react. NPPES crawler batches are left to the crawler watchdog, which
+// re-queues and restarts them itself. Idempotent — re-marking an already-failed
+// batch is a no-op because we only target the two live statuses.
 
 export async function runCancelStalledImports(): Promise<WorkerResult> {
   const started = Date.now();
   try {
     const cutoff = new Date(Date.now() - STALLED_AFTER_MS);
-    const stalled = await db.select({ id: importBatches.id, import_type: importBatches.import_type })
+    const stalled = await db.select({ id: importBatches.id, import_type: importBatches.import_type, status: importBatches.status, file_name: importBatches.file_name })
       .from(importBatches)
-      .where(sql`status = 'processing' AND updated_date < ${cutoff}`)
+      .where(sql`status IN ('processing', 'validating') AND updated_date < ${cutoff}`)
       .limit(200);
 
-    let cancelled = 0;
+    const mins = Math.round(STALLED_AFTER_MS / 60000);
+    const cancelledBatches: Array<{ id: number; type: string | null }> = [];
+    let skippedCrawler = 0;
     for (const batch of stalled) {
+      if (batch.import_type === "nppes_registry" && (batch.file_name || "").startsWith("crawler_")) {
+        skippedCrawler++;
+        continue;
+      }
       await db.update(importBatches).set({
         status: "failed",
-        cancel_reason: `Auto-cancelled: stalled (no updates for ${Math.round(STALLED_AFTER_MS / 60000)}m)`,
+        cancel_reason: `Auto-cancelled: stalled >${mins}m in "${batch.status}"`,
         cancelled_at: new Date(),
+        error_samples: [{ message: `Stalled in "${batch.status}" with no progress for over ${mins} minutes`, phase: "stall_sweep" }],
         updated_date: new Date(),
       }).where(eq(importBatches.id, batch.id));
-      cancelled++;
+      cancelledBatches.push({ id: batch.id, type: batch.import_type });
     }
 
     return {
       worker: "cancelStalledImports",
       ok: true,
       durationMs: Date.now() - started,
-      details: { scanned: stalled.length, cancelled, threshold_ms: STALLED_AFTER_MS },
+      details: { scanned: stalled.length, cancelled: cancelledBatches.length, cancelled_batches: cancelledBatches, skipped_crawler: skippedCrawler, threshold_ms: STALLED_AFTER_MS },
     };
   } catch (e) {
     return {
@@ -324,7 +374,7 @@ export async function runCleanupAllImports(): Promise<WorkerResult> {
 export async function writeMaintenanceHeartbeat(
   workers: WorkerResult[],
   invokedBy: InvokedBy,
-  opts: { userEmail?: string; skippedReason?: string | null; budgetMs?: number } = {},
+  opts: { userEmail?: string; skippedReason?: string | null; budgetMs?: number; schedules?: Record<string, unknown> } = {},
 ): Promise<void> {
   try {
     await db.insert(auditEvents).values({
@@ -343,6 +393,9 @@ export async function writeMaintenanceHeartbeat(
         failed: workers.filter(w => !w.ok).length,
         skipped_reason: opts.skippedReason ?? null,
         budget_ms: opts.budgetMs,
+        // What the schedule loop did on this tick (cron only): how many
+        // schedules were checked, started, and skipped.
+        ...(opts.schedules ? { schedules: opts.schedules } : {}),
       },
     });
   } catch (e) {
@@ -356,9 +409,8 @@ export async function writeMaintenanceHeartbeat(
 // Runs every non-destructive worker in parallel with a time budget for the
 // *heartbeat/reporting*. Note: the current implementation does not cancel
 // in-flight workers when the budget elapses.
-// Mirrors the base44 runScheduledImports fanout but without the schedule-loop
-// preamble — that part will be wired in a separate PR when the cron driver is
-// fully ported to Express.
+// This is the one fan-out: the cron driver (handleRunScheduledImports) calls it
+// after its schedule loop, and the admin UI calls it directly.
 
 // ─── Worker: email scheduled reports that are due ─────────────────────────────
 
@@ -389,7 +441,51 @@ export async function runRefreshRollupsWorker(opts: { jobs?: string[]; force?: b
   }
 }
 
+// ─── Worker: settle scheduled imports whose batch has finished ────────────────
+// A schedule is "running" from the moment its batch starts until the batch
+// completes or fails. The importer settles it on completion; this sweep covers
+// completions that happened during a restart and runs that outlived their lease.
+
+export async function runSettleScheduledImports(): Promise<WorkerResult> {
+  const started = Date.now();
+  try {
+    const { settleRunningSchedules } = await import("./importCompletion");
+    const result = await settleRunningSchedules(new Date());
+    return { worker: "settleScheduledImports", ok: true, durationMs: Date.now() - started, details: result };
+  } catch (e) {
+    return { worker: "settleScheduledImports", ok: false, durationMs: Date.now() - started, error: truncErr(e) };
+  }
+}
+
+// ─── Worker: check the CMS catalogs for newer dataset releases ────────────────
+// At most daily (the registry throttles itself). data.json is ~18 MB, so the
+// check can outlive the fan-out's reporting budget: it keeps running in the
+// background and the next heartbeat shows its result in dataset_versions.
+
+const CATALOG_REPORT_WAIT_MS = 40_000;
+
+export async function runCheckCmsCatalog(): Promise<WorkerResult> {
+  const started = Date.now();
+  try {
+    const [{ refreshCatalog }, { IMPORT_TYPE_URLS }] = await Promise.all([import("./datasetRegistry"), import("../functions/triggerImport")]);
+    const refresh = refreshCatalog({ urls: IMPORT_TYPE_URLS });
+    const result = await Promise.race([
+      refresh.then((r) => ({ done: true as const, r })),
+      new Promise<{ done: false }>((resolve) => setTimeout(() => resolve({ done: false }), CATALOG_REPORT_WAIT_MS).unref?.()),
+    ]);
+    if (!result.done) {
+      refresh.catch((e) => console.warn("[checkCmsCatalog] failed:", (e as { message?: string })?.message));
+      return { worker: "checkCmsCatalog", ok: true, durationMs: Date.now() - started, details: { still_running: true } };
+    }
+    return { worker: "checkCmsCatalog", ok: result.r.errors.length === 0, durationMs: Date.now() - started, details: result.r };
+  } catch (e) {
+    return { worker: "checkCmsCatalog", ok: false, durationMs: Date.now() - started, error: truncErr(e) };
+  }
+}
+
 export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResult>; destructive?: boolean }> = [
+  { name: "settleScheduledImports", run: runSettleScheduledImports },
+  { name: "checkCmsCatalog", run: runCheckCmsCatalog },
   { name: "autoResumePausedImports", run: runAutoResumePausedImports },
   { name: "autoRetryFailedImports", run: runAutoRetryFailedImports },
   { name: "manageCrawlerRetries", run: runManageCrawlerRetries },
@@ -400,7 +496,7 @@ export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResu
 
 export async function runMaintenanceFanout(
   invokedBy: InvokedBy,
-  opts: { userEmail?: string; budgetMs?: number } = {},
+  opts: { userEmail?: string; budgetMs?: number; schedules?: Record<string, unknown> } = {},
 ): Promise<{ workers: WorkerResult[] }> {
   const budgetMs = opts.budgetMs ?? 45_000;
   const started = Date.now();
@@ -433,6 +529,6 @@ export async function runMaintenanceFanout(
   }
 
   const workers = Array.from(placeholders.values());
-  await writeMaintenanceHeartbeat(workers, invokedBy, { userEmail: opts.userEmail, budgetMs });
+  await writeMaintenanceHeartbeat(workers, invokedBy, { userEmail: opts.userEmail, budgetMs, schedules: opts.schedules });
   return { workers };
 }

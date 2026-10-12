@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import PageTabs from '@/components/layout/PageTabs';
 import PageHeader from '@/components/shared/PageHeader';
+import DataFreshnessPanel from '@/components/analytics/DataFreshnessPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -210,6 +211,8 @@ export default function CMSDataSources() {
           <span className="text-cyan-400">{Object.values(batchStatusMap).filter(b => b.status === 'processing').length} active</span>
         </div>
       </PageHeader>
+
+      <DataFreshnessPanel onlyLoaded />
 
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[250px] max-w-md">

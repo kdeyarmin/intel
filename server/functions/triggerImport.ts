@@ -1,17 +1,27 @@
 import { db } from "../db";
-import { importBatches, cmsReferrals, providerServiceUtilization, medicareFacilities, medicareFacilitiesRaw } from "../db/schema";
+import { importBatches, cmsReferrals, cmsOrderReferring, providerServiceUtilization, medicareFacilities, medicareFacilitiesRaw } from "../db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
-import { CMS_NATURAL_KEYS, partition, distinctValues } from "./cmsUpsert";
+import { CMS_NATURAL_KEYS, partition, partitionRefresh, distinctValues } from "./cmsUpsert";
+import { settleBatchCompletion } from "../lib/importCompletion";
+import { STALLED_AFTER_MS } from "../lib/scheduling";
+import { markImportFinished, markImportStarted, resolveImportVersion } from "../lib/datasetRegistry";
+import { sourceForUrl } from "../lib/cmsCatalog";
+import { csvSourceRecords, isLocalUpload, sourceKindFor } from "../lib/importSources";
+import { pageRecords } from "../lib/csv";
 import { safeFetchStream, SafeFetchError } from "../lib/safeFetch";
 
 const LOOKUP_PRIMARY_BATCH_SIZE = 100;
 
-const IMPORT_TYPE_ALIASES: Record<string, string> = {
+export const IMPORT_TYPE_ALIASES: Record<string, string> = {
   cms_utilization: "provider_service_utilization",
 };
 
-const IMPORT_TYPE_URLS: Record<string, string> = {
+// Pinned endpoints. data.cms.gov gives each yearly release its own dataset id,
+// so these go stale: handleTriggerImport prefers the newest version the
+// registry resolved (server/lib/datasetRegistry.ts) and uses these as the
+// fallback and as the key the catalog check starts from.
+export const IMPORT_TYPE_URLS: Record<string, string> = {
   provider_service_utilization: "https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data",
   cms_order_referring: "https://data.cms.gov/data-api/v1/dataset/c99b5865-1119-4436-bb80-c5af2773ea1f/data",
   home_health_enrollments: "https://data.cms.gov/data-api/v1/dataset/15f64ab4-3172-4a27-b589-ebd67a6d28aa/data",
@@ -129,6 +139,31 @@ const ALLOWED_URL_DOMAINS = [
   "download.cms.gov",
   "npiregistry.cms.hhs.gov",
 ];
+
+// Import types whose rows may come from a file: an admin upload
+// (/api/storage/<name>, see server/lib/importSources.ts) or any https CSV
+// link (fetched through the SSRF guard). Everything else must come from a
+// CMS endpoint. These datasets aren't on the CMS APIs at all.
+export const UPLOAD_CAPABLE_TYPES: ReadonlySet<string> = new Set(["physician_shared_patient_patterns", "licensed_facilities"]);
+
+/** Pure: why a file_url can't be used for an import type, or null when it can. */
+export function fileUrlProblem(importType: string, fileUrl: string | null | undefined, year: unknown): string | null {
+  if (!fileUrl) return null;
+  const uploadable = UPLOAD_CAPABLE_TYPES.has(importType);
+  if (isLocalUpload(fileUrl)) {
+    if (!uploadable) return `Uploaded files are only accepted for ${[...UPLOAD_CAPABLE_TYPES].join(", ")}; other datasets are imported from CMS directly.`;
+  } else if (!isAllowedUrl(fileUrl) && !(uploadable && /^https:\/\//i.test(fileUrl))) {
+    return "file_url must be an https:// link on a CMS government domain (data.cms.gov, download.cms.gov)";
+  }
+  // Any CSV that is read as rows needs the year it describes, whatever the dataset: without it
+  // the rows would be stamped with a guessed year and replace the real one's. (The NPPES files
+  // are zips with their own importers and take their date from the file name.)
+  const readAsCsv = isLocalUpload(fileUrl) || sourceKindFor(fileUrl) === "remote_csv";
+  if (readAsCsv && !/^nppes_/.test(importType) && !(Number.isInteger(Number(year)) && Number(year) >= 2000)) {
+    return "year is required for file imports: the data year the file describes (it is shown with the data)";
+  }
+  return null;
+}
 
 // The import itself downloads through safeFetchStream (the SSRF guard), which
 // also only takes https.
@@ -268,7 +303,8 @@ export function getCMSDatasetCatalog() {
     datasets: CMS_DATASET_CATALOG.map(ds => ({
       ...ds,
       url: IMPORT_TYPE_URLS[ds.id] || null,
-      available: !!(IMPORT_TYPE_URLS[ds.id]),
+      // Upload-capable datasets have no CMS endpoint; they are available as files.
+      available: !!(IMPORT_TYPE_URLS[ds.id] || UPLOAD_CAPABLE_TYPES.has(ds.id)),
       unavailable: !!(ds as any).unavailable,
     })),
     total: CMS_DATASET_CATALOG.length,
@@ -315,22 +351,47 @@ async function insertBatchAtomically(
   });
 }
 
+/**
+ * retry_params is shared with other writers: the auto-retry and auto-resume
+ * workers keep their attempt counters in it. Progress writes therefore merge
+ * into it (a JSONB `||`) instead of replacing it, or every progress write would
+ * wipe MAX_AUTO_RETRY_ATTEMPTS' count and the retry cap would never apply.
+ * Keys whose value is undefined are dropped by JSON.stringify and so left as is.
+ */
+export function mergeRetryParams(patch: Record<string, unknown>) {
+  return sql`COALESCE(${importBatches.retry_params}, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb`;
+}
+
+/**
+ * An import that stops before it finishes (the source kept failing, or it was
+ * cancelled) tells the dataset registry and the schedule that started it, so
+ * neither waits for a sweep: a dataset left "importing" would hide newer
+ * releases, and a schedule left "running" would sit out its whole lease. A
+ * paused batch is neither: it is resumed, and keeps its place.
+ */
+export async function endedWithoutFinishing(importType: string, batchId: number, status: string, note?: string): Promise<void> {
+  if (status === "paused") return;
+  await markImportFinished(importType, { batchId, ok: false, note: (note || (status === "cancelled" ? "cancelled" : "stopped")).slice(0, 200) }).catch(() => {});
+  await settleBatchCompletion(batchId);
+}
+
 export async function handleTriggerImport(payload: any, user: any) {
   if (!user || user.role !== "admin") {
     throw { status: 403, message: "Forbidden: Admin access required" };
   }
 
-  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter } = payload;
+  const { import_type: raw_import_type, file_url, dry_run = false, year, retry_of, retry_count, retry_tags, category, resume_offset, batch_id, npi_filter, state_filter, headers } = payload;
 
   if (!raw_import_type) {
     throw { status: 400, message: "Missing required field: import_type" };
   }
 
-  if (file_url && !isAllowedUrl(file_url)) {
-    throw { status: 400, message: "file_url must be an https:// link on a CMS government domain (data.cms.gov, download.cms.gov)" };
-  }
-
   const import_type = IMPORT_TYPE_ALIASES[raw_import_type] || raw_import_type;
+
+  const urlProblem = fileUrlProblem(import_type, file_url, year);
+  if (urlProblem) {
+    throw { status: 400, message: urlProblem };
+  }
 
   const activeImports = await db.select().from(importBatches)
     .where(and(eq(importBatches.import_type, import_type), inArray(importBatches.status, ["validating", "processing"])));
@@ -341,7 +402,9 @@ export async function handleTriggerImport(payload: any, user: any) {
   if (realActive.length > 0) {
     const existing = realActive[0];
     const stuckMs = Date.now() - new Date(existing.updated_date || existing.created_date!).getTime();
-    if (stuckMs > 60 * 60 * 1000) {
+    // The same threshold as the stall sweep: a healthy import can be quiet for an hour while a very large page is
+    // written, so asking for another import of the same type must not fail it before the sweep would.
+    if (stuckMs > STALLED_AFTER_MS) {
       await db.update(importBatches).set({
         status: "failed",
         cancel_reason: `Auto-cancelled: stuck in "${existing.status}" for ${Math.round(stuckMs / 60000)} minutes`,
@@ -403,12 +466,15 @@ export async function handleTriggerImport(payload: any, user: any) {
     };
   }
 
-  const resolvedUrl = file_url || IMPORT_TYPE_URLS[import_type];
+  // The registry knows the newest release of the dataset and the year it
+  // covers; the pinned URL and the "two years ago" guess are only fallbacks.
+  const version = file_url ? null : await resolveImportVersion(import_type).catch(() => null);
+  const resolvedUrl = file_url || version?.dataUrl || IMPORT_TYPE_URLS[import_type];
   if (!resolvedUrl) {
     throw { status: 400, message: "No URL available for this import type. Please provide a file_url." };
   }
 
-  const resolvedYear = year || new Date().getFullYear() - 2;
+  const resolvedYear = year || (version?.dataYear ? Number(version.dataYear) : 0) || new Date().getFullYear() - 2;
   const resolvedOffset = resume_offset || 0;
 
   let activeBatchId: number;
@@ -418,15 +484,22 @@ export async function handleTriggerImport(payload: any, user: any) {
   // Imports / autoRetryFailedImports) carry only basic params, so without this
   // the remainder/retry would import the FULL dataset unfiltered. Inherit from
   // the batch being resumed, else from the original batch being retried.
+  // The same goes for what the rest of the file is read with: the column names
+  // of a headerless CSV, and the release date the rows are stamped with.
   let effNpiFilter = npi_filter;
   let effStateFilter = state_filter;
+  let effHeaders: string[] | undefined = Array.isArray(headers) && headers.length ? headers.map(String) : undefined;
+  let inheritedAsOf: string | null = null;
   const inheritFiltersFrom = batch_id ?? retry_of;
-  if (inheritFiltersFrom != null && (npi_filter === undefined || state_filter === undefined)) {
+  if (inheritFiltersFrom != null) {
     const [src] = await db.select().from(importBatches).where(eq(importBatches.id, Number(inheritFiltersFrom))).limit(1);
     const prevParams = ((src?.retry_params as any) || {});
     effNpiFilter = npi_filter ?? prevParams.npi_filter;
     effStateFilter = state_filter ?? prevParams.state_filter;
+    if (!effHeaders && Array.isArray(prevParams.headers) && prevParams.headers.length) effHeaders = prevParams.headers.map(String);
+    inheritedAsOf = typeof prevParams.as_of === "string" ? prevParams.as_of : null;
   }
+  const effAsOf = inheritedAsOf ?? version?.temporalEnd ?? null;
 
   if (batch_id) {
     await db.update(importBatches).set({
@@ -434,23 +507,25 @@ export async function handleTriggerImport(payload: any, user: any) {
       cancel_reason: null,
       cancelled_at: null,
       error_samples: null,
-      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter },
+      retry_params: mergeRetryParams({ year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count: (retry_count || 0) + 1, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter, headers: effHeaders, as_of: effAsOf }),
       updated_date: new Date(),
     }).where(eq(importBatches.id, batch_id));
     activeBatchId = batch_id;
   } else {
     const { batch, conflict } = await insertBatchAtomically(import_type, {
       import_type,
-      file_name: `cms_${import_type}_${resolvedYear}`,
+      file_name: isLocalUpload(resolvedUrl) ? resolvedUrl.split("/").pop() : `cms_${import_type}_${resolvedYear}`,
       status: "processing",
       dry_run: !!dry_run,
       total_rows: 0,
       imported_rows: 0,
-      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter },
+      retry_params: { year: resolvedYear, resume_offset: resolvedOffset, retry_of, retry_count, retry_tags, category, file_url: resolvedUrl, npi_filter: effNpiFilter, state_filter: effStateFilter, headers: effHeaders, as_of: effAsOf },
     });
     if (conflict) throw conflict;
     activeBatchId = batch.id;
   }
+
+  await markImportStarted(import_type, activeBatchId, sourceForUrl(resolvedUrl)).catch((e) => console.warn("[triggerImport] registry:", e?.message));
 
   setTimeout(() => {
     handleAutoImportCMSData({
@@ -462,6 +537,9 @@ export async function handleTriggerImport(payload: any, user: any) {
       batch_id: activeBatchId,
       npi_filter: effNpiFilter,
       state_filter: effStateFilter,
+      as_of: effAsOf,
+      // Column names for a headerless CSV upload (e.g. the FOIA shared-patient files).
+      headers: effHeaders,
     }).catch((e) => console.error(`[triggerImport] CMS import error:`, e.message));
   }, 100);
 
@@ -479,16 +557,31 @@ export async function handleTriggerImport(payload: any, user: any) {
   };
 }
 
-function mapCMSOrderReferringRow(row: any, year: number, batchId: number) {
+// CMS Order & Referring: one row per NPI with Y/N flags for the services the
+// provider may order or refer. Lands in cms_order_referring (replaced per
+// release), never in cms_referrals.
+const yesNo = (v: unknown): boolean | null => {
+  if (v == null || v === "") return null;
+  const s = String(v).trim().toUpperCase();
+  if (s === "Y" || s === "YES" || s === "TRUE" || s === "1") return true;
+  if (s === "N" || s === "NO" || s === "FALSE" || s === "0") return false;
+  return null;
+};
+
+export function mapCMSOrderReferringRow(row: any, batchId: number, asOf: string | null) {
+  const npi = String(row.NPI || row.npi || "").trim();
   return {
-    npi: row.NPI || row.npi || null,
-    referred_to_npi: null,
-    referred_to_name: [row.LAST_NAME || row.last_name, row.FIRST_NAME || row.first_name].filter(Boolean).join(", ") || null,
-    total_referrals: null,
-    total_beneficiaries: null,
-    data_year: String(year),
-    raw_data: row,
-    import_batch_id: String(batchId),
+    npi: /^\d{10}$/.test(npi) ? npi : null,
+    last_name: row.LAST_NAME || row.last_name || null,
+    first_name: row.FIRST_NAME || row.first_name || null,
+    partb: yesNo(row.PARTB ?? row.partb),
+    dme: yesNo(row.DME ?? row.dme),
+    hha: yesNo(row.HHA ?? row.hha),
+    pmd: yesNo(row.PMD ?? row.pmd),
+    hospice: yesNo(row.HOSPICE ?? row.hospice),
+    as_of: asOf,
+    import_batch_id: batchId,
+    updated_date: new Date(),
   };
 }
 
@@ -887,12 +980,25 @@ function deriveStatisticalName(row: any, importType: string): string | null {
   return null;
 }
 
-function mapMedicareFacilityRow(row: any, importType: string, batchId: number) {
+// The year a dataset row describes: the row's own year column when the
+// dataset carries one, else the year the import resolved for the dataset.
+const ROW_YEAR_COLUMNS = ["YEAR", "Year", "year", "data_year", "DATA_YEAR", "Rpt_Year", "RPT_YEAR", "FISCAL_YEAR", "fiscal_year", "Fiscal_Year", "PERFORMANCE_YEAR", "PY"];
+export function rowDataYear(row: any, fallbackYear?: number | string | null): string | null {
+  for (const col of ROW_YEAR_COLUMNS) {
+    const v = row?.[col];
+    const m = v == null ? null : /^\s*(\d{4})/.exec(String(v));
+    if (m) return m[1];
+  }
+  return fallbackYear != null && String(fallbackYear).trim() ? String(fallbackYear).trim().slice(0, 10) : null;
+}
+
+function mapMedicareFacilityRow(row: any, importType: string, batchId: number, year?: number | string | null) {
   const statId = deriveStatisticalId(row, importType);
   const statName = deriveStatisticalName(row, importType);
 
   const mapped: any = {
     facility_type: importType,
+    data_year: rowDataYear(row, year),
     provider_id:
       row.cms_certification_number_ccn ||
       row["CMS Certification Number"] || row.CMS_Certification_Number ||
@@ -1015,21 +1121,26 @@ async function fetchExistingByPrimary(
   return out;
 }
 
-// De-duplicate a chunk of medicare_facilities rows against what's already stored.
-// Rows are identified by provider_id when present, otherwise by facility_name,
-// always scoped to the current facility_type (import_type).
-async function dedupeFacilities(importType: string, chunk: any[]): Promise<any[]> {
+// Sort a chunk of medicare_facilities rows against what's already stored into
+// new rows and rows to refresh in place. Rows are identified by provider_id when
+// present, otherwise by facility_name, always scoped to the current
+// facility_type (import_type); the table keeps one row per identity, and a
+// later release replaces it (see partitionRefresh).
+async function dedupeFacilities(importType: string, chunk: any[]): Promise<{ toCreate: any[]; toRefresh: Array<{ id: number; row: any }> }> {
   const withPid = chunk.filter((r) => r.provider_id);
   const noPid = chunk.filter((r) => !r.provider_id && r.facility_name);
 
   const toCreate: any[] = [];
+  const toRefresh: Array<{ id: number; row: any }> = [];
 
   if (withPid.length > 0) {
     const pids = distinctValues(withPid, "provider_id");
     const existing = await fetchExistingByPrimary(medicareFacilities, "provider_id", pids, [
       { col: "facility_type", value: importType },
     ]);
-    toCreate.push(...partition(withPid, existing, ["provider_id"]).toCreate);
+    const part = partitionRefresh(withPid, existing as any, ["provider_id"]);
+    toCreate.push(...part.toCreate);
+    toRefresh.push(...part.toRefresh);
   }
 
   if (noPid.length > 0) {
@@ -1037,10 +1148,46 @@ async function dedupeFacilities(importType: string, chunk: any[]): Promise<any[]
     const existing = await fetchExistingByPrimary(medicareFacilities, "facility_name", names, [
       { col: "facility_type", value: importType },
     ]);
-    toCreate.push(...partition(noPid, existing, ["facility_name"]).toCreate);
+    const part = partitionRefresh(noPid, existing as any, ["facility_name"]);
+    toCreate.push(...part.toCreate);
+    toRefresh.push(...part.toRefresh);
   }
 
-  return toCreate;
+  return { toCreate, toRefresh };
+}
+
+/**
+ * Overwrite stored facility rows with the same identity from a later release:
+ * one UPDATE per chunk, and the raw_data side table follows in the same
+ * transaction. Identity fields keep their old value when the new release leaves
+ * them blank; the vintage, batch and raw record always move to the new release.
+ */
+export async function refreshFacilityRows(
+  tx: { execute: (q: any) => Promise<any>; insert: (table: any) => any },
+  rows: Array<{ id: number; row: Record<string, any> }>,
+): Promise<void> {
+  if (rows.length === 0) return;
+  const tuples = rows.map(({ id, row }) => sql`(${id}::int, ${row.facility_name ?? null}::text, ${row.address ?? null}::text, ${row.city ?? null}::text, ${row.state ?? null}::text, ${row.zip ?? null}::text, ${row.data_year ?? null}::text, ${row.import_batch_id ?? null}::text, ${JSON.stringify(row.raw_data ?? null)}::jsonb)`);
+  await tx.execute(sql`
+    UPDATE medicare_facilities AS m SET
+      facility_name = COALESCE(v.facility_name, m.facility_name),
+      address = COALESCE(v.address, m.address),
+      city = COALESCE(v.city, m.city),
+      state = COALESCE(v.state, m.state),
+      zip = COALESCE(v.zip, m.zip),
+      data_year = v.data_year,
+      import_batch_id = v.import_batch_id,
+      raw_data = v.raw_data,
+      updated_date = NOW()
+    FROM (VALUES ${sql.join(tuples, sql`, `)}) AS v(id, facility_name, address, city, state, zip, data_year, import_batch_id, raw_data)
+    WHERE m.id = v.id`);
+  const rawRows = rows.filter(({ row }) => row.raw_data != null).map(({ id, row }) => ({ facility_id: id, raw_data: row.raw_data }));
+  if (rawRows.length > 0) {
+    await tx.insert(medicareFacilitiesRaw).values(rawRows).onConflictDoUpdate({
+      target: medicareFacilitiesRaw.facility_id,
+      set: { raw_data: sql`excluded.raw_data`, updated_at: sql`NOW()` },
+    });
+  }
 }
 
 // Dual-write helper for medicare_facilities → medicare_facilities_raw split.
@@ -1069,7 +1216,7 @@ export async function dualWriteFacilityRows(
 /**
  * Inserts mapped CMS rows into the appropriate destination table, applying per-import-type mapping, chunked deduplication, and conflict-tolerant insertion.
  *
- * @param importType - Import type that determines mapping and destination routing. Examples: `"cms_order_referring"` → inserts/upserts into `providers`; `"provider_service_utilization"` → `providerServiceUtilization`; `"physician_shared_patient_patterns"` → `cmsReferrals`; other import types are treated as facility-like and inserted into `medicareFacilities`.
+ * @param importType - Import type that determines mapping and destination routing. Examples: `"cms_order_referring"` → upserts into `cmsOrderReferring` (one row per NPI); `"provider_service_utilization"` → `providerServiceUtilization`; `"physician_shared_patient_patterns"` → `cmsReferrals`; other import types are treated as facility-like and inserted into `medicareFacilities`.
  * @param rows - Raw CMS dataset rows to be mapped and inserted.
  * @param year - Data year used when mapping rows and when scoping natural-key deduplication.
  * @param batchId - Import batch identifier to attach to mapped rows.
@@ -1078,7 +1225,7 @@ export async function dualWriteFacilityRows(
  *   - `skipped`: number of rows skipped due to deduplication or per-row insert failures,
  *   - `filtered`: number of input rows removed before mapping (e.g., invalid or missing required keys).
  */
-async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number): Promise<{ inserted: number; skipped: number; filtered: number }> {
+async function insertCMSRows(importType: string, rows: any[], year: number, batchId: number, opts: { asOf?: string | null } = {}): Promise<{ inserted: number; skipped: number; filtered: number }> {
   if (rows.length === 0) return { inserted: 0, skipped: 0, filtered: 0 };
 
   const CHUNK_SIZE = 500;
@@ -1089,9 +1236,15 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
   let table: any;
 
   if (importType === "cms_order_referring") {
-    mapped = rows.map(r => mapCMSOrderReferringRow(r, year, batchId));
-    mapped = mapped.filter(r => r.npi);
-    table = cmsReferrals;
+    // One row per NPI, last one wins within a page (ON CONFLICT can't touch
+    // the same row twice in one statement).
+    const byNpi = new Map<string, any>();
+    for (const r of rows) {
+      const m = mapCMSOrderReferringRow(r, batchId, opts.asOf ?? new Date().toISOString().slice(0, 10));
+      if (m.npi) byNpi.set(m.npi, m);
+    }
+    mapped = [...byNpi.values()];
+    table = cmsOrderReferring;
   } else if (importType === "provider_service_utilization") {
     mapped = rows.map(r => mapCMSUtilizationRow(r, year, batchId));
     mapped = mapped.filter(r => r.npi);
@@ -1102,7 +1255,7 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
     mapped = mapped.filter(r => r.npi && r.referred_to_npi);
     table = cmsReferrals;
   } else {
-    mapped = rows.map(r => mapMedicareFacilityRow(r, importType, batchId));
+    mapped = rows.map(r => mapMedicareFacilityRow(r, importType, batchId, year));
     mapped = mapped.filter(r => r.provider_id || r.facility_name);
     table = medicareFacilities;
   }
@@ -1119,8 +1272,21 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
     // import/resume) or repeat within this chunk, so re-imports don't multiply data.
     if (table === medicareFacilities) {
       const before = chunk.length;
-      chunk = await dedupeFacilities(importType, chunk);
-      skipped += before - chunk.length;
+      const plan = await dedupeFacilities(importType, chunk);
+      chunk = plan.toCreate;
+      skipped += before - plan.toCreate.length - plan.toRefresh.length;
+      if (plan.toRefresh.length > 0) {
+        // Rows written count as imported, whether new or refreshed.
+        const refreshed = await safeImportQuery(
+          async () => {
+            await db.transaction(async (tx) => { await refreshFacilityRows(tx, plan.toRefresh); });
+            return plan.toRefresh.length;
+          },
+          -1, `refresh ${importType}`,
+        );
+        if (refreshed >= 0) inserted += refreshed;
+        else skipped += plan.toRefresh.length;
+      }
     } else if (keyConfig) {
       const before = chunk.length;
       const primaryValues = distinctValues(chunk, keyConfig.primaryCol);
@@ -1143,6 +1309,17 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
     // + raw mirror in a single transaction keeps the two tables consistent
     // even if the second statement errors.
     const isFacility = table === medicareFacilities;
+    // Order & Referring is a complete snapshot per release: replace by NPI.
+    const upsertByNpi = table === cmsOrderReferring;
+    const ORDER_REFERRING_SET = {
+      last_name: sql`excluded.last_name`, first_name: sql`excluded.first_name`,
+      partb: sql`excluded.partb`, dme: sql`excluded.dme`, hha: sql`excluded.hha`, pmd: sql`excluded.pmd`, hospice: sql`excluded.hospice`,
+      as_of: sql`excluded.as_of`, import_batch_id: sql`excluded.import_batch_id`, updated_date: sql`excluded.updated_date`,
+    };
+    const insertRows = async (values: any[]) => {
+      if (upsertByNpi) await db.insert(cmsOrderReferring).values(values).onConflictDoUpdate({ target: cmsOrderReferring.npi, set: ORDER_REFERRING_SET });
+      else await db.insert(table).values(values);
+    };
 
     const result = await safeImportQuery(
       async () => {
@@ -1151,7 +1328,7 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
             await dualWriteFacilityRows(tx, chunk);
           });
         } else {
-          await db.insert(table).values(chunk);
+          await insertRows(chunk);
         }
         return chunk.length;
       },
@@ -1168,7 +1345,7 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
                 await dualWriteFacilityRows(tx, [row]);
               });
             } else {
-              await db.insert(table).values(row);
+              await insertRows([row]);
             }
             return true;
           },
@@ -1183,11 +1360,105 @@ async function insertCMSRows(importType: string, rows: any[], year: number, batc
   return { inserted, skipped, filtered: filteredCount };
 }
 
+// A CSV file (an upload, or an https link) through the same page/insert/
+// progress/completion path as the CMS APIs. resume_offset counts data rows.
+async function importFromCsv(params: any, rowFilter: ((row: any) => boolean) | null) {
+  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, headers, as_of = null } = params;
+  const PAGE_SIZE = 1000;
+  const PAUSE_CHECK_INTERVAL = 5;
+  const PROGRESS_UPDATE_INTERVAL = 5;
+  let totalFetched = Number(resume_offset) || 0;
+  let totalInserted = Number(total_inserted) || 0;
+  let totalSkipped = Number(total_skipped) || 0;
+  const errors: any[] = [];
+  let pages = 0;
+
+  const saveProgress = (extra: Record<string, unknown> = {}) => safeImportQuery(
+    () => db.update(importBatches).set({
+      ...extra,
+      imported_rows: totalInserted,
+      skipped_rows: totalSkipped,
+      total_rows: totalFetched,
+      retry_params: mergeRetryParams({ ...params, resume_offset: totalFetched, total_inserted: totalInserted, total_skipped: totalSkipped }),
+      updated_date: new Date(),
+    }).where(eq(importBatches.id, batch_id)),
+    undefined, `progress ${import_type}`,
+  );
+
+  // Whether the user paused or cancelled the batch since it was last looked at (it then stops, keeping its place).
+  const stoppedByUser = async (): Promise<boolean> => {
+    const [current] = await safeImportQuery(
+      () => db.select().from(importBatches).where(eq(importBatches.id, batch_id)).limit(1),
+      [] as any[], `pause check ${import_type}`,
+    );
+    if (current && (current.status === "paused" || current.status === "cancelled")) {
+      console.log(`[CsvImport] Import ${import_type} ${current.status} by user at row ${totalFetched}`);
+      await saveProgress();
+      await endedWithoutFinishing(import_type, batch_id, current.status);
+      return true;
+    }
+    return false;
+  };
+
+  try {
+    const records = csvSourceRecords(file_url, { headers: Array.isArray(headers) && headers.length ? headers : null });
+    for await (const page of pageRecords(records, PAGE_SIZE, Number(resume_offset) || 0)) {
+      pages++;
+      if (pages % PAUSE_CHECK_INTERVAL === 0 && await stoppedByUser()) return;
+      let rows = page.rows;
+      if (rowFilter) {
+        const before = rows.length;
+        rows = rows.filter(rowFilter);
+        totalSkipped += before - rows.length;
+      }
+      if (!dry_run && rows.length > 0) {
+        try {
+          const result = await insertCMSRows(import_type, rows, year, batch_id, { asOf: as_of });
+          totalInserted += result.inserted;
+          totalSkipped += result.skipped + result.filtered;
+        } catch (e: any) {
+          console.error(`[CsvImport] Insert error at row ${page.offset}: ${e.message}`);
+          errors.push({ offset: page.offset, message: `Insert error: ${e.message}` });
+          totalSkipped += rows.length;
+        }
+      }
+      totalFetched = page.nextOffset;
+      if (pages % PROGRESS_UPDATE_INTERVAL === 0) await saveProgress();
+    }
+
+    // A cancel that came in since the last check must not be overwritten by "completed".
+    if (await stoppedByUser()) return;
+    await safeImportQuery(
+      () => db.update(importBatches).set({
+        status: "completed",
+        completed_at: new Date(),
+        imported_rows: totalInserted,
+        skipped_rows: totalSkipped,
+        total_rows: totalFetched,
+        error_samples: errors.length > 0 ? errors.slice(-5) : null,
+        updated_date: new Date(),
+      }).where(eq(importBatches.id, batch_id)),
+      undefined, `complete ${import_type}`,
+    );
+    console.log(`[CsvImport] Completed ${import_type}: rows=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
+    await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: totalFetched, dataYear: year, note: dry_run ? "dry run" : `file ${String(file_url).split("/").pop()}` }).catch(() => {});
+  } catch (e: any) {
+    console.error(`[CsvImport] Fatal error:`, e.message);
+    await saveProgress({ status: "failed", error_samples: [{ message: e.message, phase: "csv_import" }] });
+    await markImportFinished(import_type, { batchId: batch_id, ok: false, note: String(e.message || e).slice(0, 200) }).catch(() => {});
+  }
+  await settleBatchCompletion(batch_id);
+}
+
 export async function handleAutoImportCMSData(params: any) {
-  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, npi_filter, state_filter } = params;
+  const { import_type, file_url, year, dry_run, resume_offset = 0, batch_id, total_inserted = 0, total_skipped = 0, npi_filter, state_filter, as_of = null } = params;
   // Optional row-level filters from the import dialog. Built once; null when no
   // filter is configured so the common path stays allocation-free.
   const rowFilter = buildImportRowFilter(npi_filter, state_filter);
+  const sourceKind = sourceKindFor(file_url);
+  if (sourceKind === "local_csv" || sourceKind === "remote_csv") {
+    return importFromCsv(params, rowFilter);
+  }
   const PAGE_SIZE = 1000;
   const PAUSE_CHECK_INTERVAL = 5;
   const PROGRESS_UPDATE_INTERVAL = 5;
@@ -1222,11 +1493,12 @@ export async function handleAutoImportCMSData(params: any) {
               imported_rows: totalInserted,
               skipped_rows: totalSkipped,
               total_rows: totalFetched,
-              retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
+              retry_params: mergeRetryParams({ ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped }),
               updated_date: new Date(),
             }).where(eq(importBatches.id, batch_id)),
             undefined, `save progress on ${currentBatch.status}`
           );
+          await endedWithoutFinishing(import_type, batch_id, currentBatch.status);
           return;
         }
       }
@@ -1263,11 +1535,12 @@ export async function handleAutoImportCMSData(params: any) {
               skipped_rows: totalSkipped,
               total_rows: totalFetched,
               error_samples: errors.slice(-5),
-              retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
+              retry_params: mergeRetryParams({ ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped }),
               updated_date: new Date(),
             }).where(eq(importBatches.id, batch_id)),
             undefined, `fail on fetch error ${import_type}`
           );
+          await endedWithoutFinishing(import_type, batch_id, "failed", errMsg);
           return;
         }
         const baseBackoff = isAbort ? 5000 : 3000;
@@ -1296,11 +1569,12 @@ export async function handleAutoImportCMSData(params: any) {
               skipped_rows: totalSkipped,
               total_rows: totalFetched,
               error_samples: errors.slice(-5),
-              retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
+              retry_params: mergeRetryParams({ ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped }),
               updated_date: new Date(),
             }).where(eq(importBatches.id, batch_id)),
             undefined, `fail on HTTP error ${import_type}`
           );
+          await endedWithoutFinishing(import_type, batch_id, "failed", errMsg);
           return;
         }
         const backoffMs = Math.min(2000 * Math.pow(2, consecutiveErrors - 1), 30000);
@@ -1329,7 +1603,7 @@ export async function handleAutoImportCMSData(params: any) {
 
       if (!dry_run && pageRows.length > 0) {
         try {
-          const result = await insertCMSRows(import_type, pageRows, year, batch_id);
+          const result = await insertCMSRows(import_type, pageRows, year, batch_id, { asOf: as_of });
           totalInserted += result.inserted;
           totalSkipped += result.skipped + result.filtered;
         } catch (e: any) {
@@ -1349,7 +1623,7 @@ export async function handleAutoImportCMSData(params: any) {
             imported_rows: totalInserted,
             skipped_rows: totalSkipped,
             total_rows: totalFetched,
-            retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
+            retry_params: mergeRetryParams({ ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped }),
             updated_date: new Date(),
           }).where(eq(importBatches.id, batch_id)),
           undefined, `update progress ${import_type}`
@@ -1372,11 +1646,13 @@ export async function handleAutoImportCMSData(params: any) {
           skipped_rows: totalSkipped,
           total_rows: totalFetched,
           error_samples: [{ message: `Import stopped after ${MAX_PAGES} pages at offset ${offset}. Resume to continue.`, phase: "safety_limit" }],
-          retry_params: { ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped },
+          retry_params: mergeRetryParams({ ...params, resume_offset: offset, total_inserted: totalInserted, total_skipped: totalSkipped }),
           updated_date: new Date(),
         }).where(eq(importBatches.id, batch_id)),
         undefined, `safety limit ${import_type}`
       );
+      await markImportFinished(import_type, { batchId: batch_id, ok: false, note: `stopped after ${MAX_PAGES} pages; resume to continue` }).catch(() => {});
+      await settleBatchCompletion(batch_id);
       return;
     }
 
@@ -1393,16 +1669,26 @@ export async function handleAutoImportCMSData(params: any) {
       undefined, `complete ${import_type}`
     );
     console.log(`[AutoImportCMS] Completed ${import_type}: fetched=${totalFetched}, inserted=${totalInserted}, skipped=${totalSkipped}`);
+    await markImportFinished(import_type, { batchId: batch_id, ok: !dry_run, rowCount: totalFetched, dataYear: year, note: dry_run ? "dry run" : null }).catch(() => {});
+    if (import_type === "cms_order_referring" && !dry_run) {
+      // The eligibility rows that used to land in cms_referrals come out now
+      // that the typed table holds this release; long on a big table, so it
+      // runs on after the batch is marked complete.
+      import("../lib/orderReferringCleanup").then(({ purgeOrderReferringRows }) => purgeOrderReferringRows()).catch((err) => console.warn("[AutoImportCMS] order/referring cleanup:", err?.message));
+    }
+    await settleBatchCompletion(batch_id);
   } catch (e: any) {
     console.error(`[AutoImportCMS] Fatal error:`, e.message);
     await safeImportQuery(
       () => db.update(importBatches).set({
         status: "failed",
         error_samples: [{ message: e.message, phase: "cms_import" }],
-        retry_params: { ...params, resume_offset: resume_offset },
+        retry_params: mergeRetryParams({ ...params, resume_offset: resume_offset }),
         updated_date: new Date(),
       }).where(eq(importBatches.id, batch_id)),
       undefined, `fail ${import_type}`
     );
+    await markImportFinished(import_type, { batchId: batch_id, ok: false, note: String(e.message || e).slice(0, 200) }).catch(() => {});
+    await settleBatchCompletion(batch_id);
   }
 }

@@ -42,6 +42,9 @@ export const BOOT_INDEXES: BootIndex[] = [
   idx("CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_tax_natural ON provider_taxonomies (npi, COALESCE(taxonomy_code,''))"),
   // Inbound referral lookups (who refers to these providers) for network analysis.
   idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cms_referrals_referred_to ON cms_referrals (referred_to_npi) WHERE referred_to_npi IS NOT NULL"),
+  // Rows with no target are legacy Order & Referring eligibility rows; the
+  // cleanup (server/lib/orderReferringCleanup.ts) finds and removes them by id.
+  idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_cms_referrals_null_target ON cms_referrals (id) WHERE referred_to_npi IS NULL"),
   // Bulk email verification picks providers that have an email; only a small
   // share of the ~6M providers do, so a partial index avoids a full scan.
   idx("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_providers_with_email ON providers (email_analyzed_at NULLS FIRST, id) WHERE email IS NOT NULL AND email <> ''"),

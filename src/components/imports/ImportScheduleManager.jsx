@@ -22,7 +22,10 @@ const MAINTENANCE_TASKS = [
   { key: 'cancelStalledImports', label: 'Cancel Stalled', desc: 'Fail batches with no progress for over an hour.', icon: AlertTriangle, accent: 'text-rose-400 border-rose-500/30 hover:bg-rose-900/20' },
 ];
 
-const FREQUENCIES = ['daily', 'weekly', 'monthly', 'on_completion'];
+const FREQUENCIES = ['daily', 'weekly', 'monthly', 'on_completion', 'on_release'];
+// Frequencies with no time of day: on_completion waits for its parent, on_release
+// waits for the daily CMS catalog check to find a newer release.
+const UNTIMED = new Set(['on_completion', 'on_release']);
 
 const STATUS_STYLES = {
   success: 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30',
@@ -257,7 +260,7 @@ export default function ImportScheduleManager() {
                       </td>
                       <td className="py-2 px-3 text-slate-300">
                         {s.schedule_frequency || '—'}
-                        {s.schedule_frequency && s.schedule_frequency !== 'on_completion' && s.schedule_time ? ` @ ${s.schedule_time}` : ''}
+                        {s.schedule_frequency && !UNTIMED.has(s.schedule_frequency) && s.schedule_time ? ` @ ${s.schedule_time}` : ''}
                       </td>
                       <td className="py-2 px-3 text-slate-400 whitespace-nowrap">{fmt(s.next_run_at)}</td>
                       <td className="py-2 px-3 whitespace-nowrap">
@@ -269,7 +272,10 @@ export default function ImportScheduleManager() {
                         {(s.consecutive_failures || 0) > 0 && (
                           <span className="ml-1 text-[10px] text-rose-400">×{s.consecutive_failures}</span>
                         )}
-                        <div className="text-[10px] text-slate-400">{fmt(s.last_run_at)}</div>
+                        <div className="text-[10px] text-slate-400">
+                          {s.last_run_status === 'running' ? `since ${fmt(s.last_run_at)}` : fmt(s.last_run_at)}
+                          {s.last_run_status === 'running' && s.last_batch_id ? ` · batch #${s.last_batch_id}` : ''}
+                        </div>
                       </td>
                       <td className="py-2 px-3">
                         <Switch checked={s.is_active !== false} onCheckedChange={() => toggleActive(s)} aria-label={`Active: ${s.label || s.name || s.import_type}`} />
@@ -330,7 +336,7 @@ export default function ImportScheduleManager() {
                   value={form.schedule_time}
                   onChange={(e) => setForm({ ...form, schedule_time: e.target.value })}
                   placeholder="02:00"
-                  disabled={form.schedule_frequency === 'on_completion'}
+                  disabled={UNTIMED.has(form.schedule_frequency)}
                 />
               </div>
             </div>

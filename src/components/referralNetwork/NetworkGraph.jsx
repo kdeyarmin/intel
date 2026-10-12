@@ -102,7 +102,7 @@ export default function NetworkGraph({ nodes = [], edges = [], onNodeClick }) {
                   )}
                   {isHovered && (
                     <text x={n.x} y={n.y + r + 22} textAnchor="middle" fontSize="8" fill="#94a3b8">
-                      {(Number(n.totalVolume) || 0).toLocaleString()} shared patients
+                      {(Number(n.totalVolume) || 0).toLocaleString()} shared-patient encounters
                     </text>
                   )}
                 </g>

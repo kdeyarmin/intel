@@ -1,9 +1,10 @@
+import { eligibilityLabels } from '@/lib/referralSummary';
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Lightbulb, TrendingUp } from 'lucide-react';
 
-export default function WhyThisProvider({ score, utilization, referrals, taxonomy }) {
+export default function WhyThisProvider({ score, utilization, referrals, orderReferring = null, taxonomy }) {
   const reasons = [];
 
   // Score-based
@@ -21,15 +22,17 @@ export default function WhyThisProvider({ score, utilization, referrals, taxonom
     reasons.push(`Moderate patient volume (${patientVolume.toLocaleString()} beneficiaries) indicates established practice`);
   }
 
-  // Referral-based
-  const totalReferrals = referrals?.total_referrals || 0;
-  const hhReferrals = referrals?.home_health_referrals || 0;
-  const hospiceReferrals = referrals?.hospice_referrals || 0;
-
-  if (hhReferrals >= 20 || hospiceReferrals >= 10) {
-    reasons.push(`Active referrer to home health (${hhReferrals}) and hospice (${hospiceReferrals}) services`);
-  } else if (totalReferrals >= 50) {
-    reasons.push(`High overall referral activity (${totalReferrals} total referrals) shows engaged care coordination`);
+  // Shared-patient and eligibility based. `referrals` is the latest year's
+  // shared-patient snapshot (patterns, not confirmed referrals).
+  const sharedPatients = referrals?.total_referrals || 0;
+  const partners = referrals?.partners || 0;
+  const eligible = eligibilityLabels(orderReferring);
+  const postAcuteEligible = eligible.filter((l) => l === 'Home Health' || l === 'Hospice');
+  if (postAcuteEligible.length) {
+    reasons.push(`Eligible to order and refer Medicare ${postAcuteEligible.join(' and ').toLowerCase()}`);
+  }
+  if (sharedPatients >= 50) {
+    reasons.push(`Shares Medicare patients widely (${sharedPatients.toLocaleString()} shared-patient encounters${partners ? ` across ${partners} partner providers` : ''}, data year ${referrals.year})`);
   }
 
   // Specialty-based

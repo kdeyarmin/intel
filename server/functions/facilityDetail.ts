@@ -1,5 +1,5 @@
 import { db, pool } from "../db";
-import { medicareFacilities, medicareFacilitiesRaw, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals, leadScores } from "../db/schema";
+import { medicareFacilities, medicareFacilitiesRaw, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals, leadScores, cmsOrderReferring } from "../db/schema";
 import { eq, sql, and, ilike, inArray, desc, asc } from "drizzle-orm";
 
 const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
@@ -211,6 +211,11 @@ export async function handleGetProviderCMSData(params: any) {
   // explicit projection + LEFT JOIN keeps consumers like ProviderCMSDataCard
   // and MIPSPerformanceCard working whether the row's raw_data still lives on
   // the column or has been migrated to the side table.
+  const [orderReferring = null] = await db.select({
+    partb: cmsOrderReferring.partb, dme: cmsOrderReferring.dme, hha: cmsOrderReferring.hha,
+    pmd: cmsOrderReferring.pmd, hospice: cmsOrderReferring.hospice, as_of: cmsOrderReferring.as_of,
+  }).from(cmsOrderReferring).where(eq(cmsOrderReferring.npi, String(npi))).limit(1).catch(() => [] as any[]);
+
   const allRows = await db.select({
     id: medicareFacilities.id,
     facility_type: medicareFacilities.facility_type,
@@ -304,6 +309,8 @@ export async function handleGetProviderCMSData(params: any) {
       by_type: networkData,
     },
     linked_facilities: Object.values(linkedFacilities),
+    // Medicare services the provider may order or refer (CMS Order & Referring).
+    order_referring: orderReferring,
     total_records: allRows.length,
   };
 }

@@ -2,140 +2,98 @@ import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { GitBranch, TrendingUp, TrendingDown, Check } from 'lucide-react';
+import { ELIGIBILITY_FLAGS, referralTotalsByYear } from '@/lib/referralSummary';
 
-// cms_referrals can hold either real provider-to-provider referral counts
-// (total_referrals / referred_to_npi populated) or, as produced by this
-// codebase's importer, CMS "Order & Referring" eligibility rows (Y/N service
-// flags in raw_data, null counts). Adapt to whichever is present.
-const FLAGS = [
-  { key: 'HHA', label: 'Home Health' },
-  { key: 'HOSPICE', label: 'Hospice' },
-  { key: 'DME', label: 'DME' },
-  { key: 'PARTB', label: 'Part B' },
-  { key: 'PMD', label: 'Power Mobility' },
-];
-
-const isYes = (v) => {
-  const s = String(v ?? '').trim().toUpperCase();
-  return s === 'Y' || s === 'YES' || s === 'TRUE' || s === '1';
-};
-
-const yearOf = (r) => r.data_year || r.year;
-
-export default function ReferralSummaryCard({ referrals = [] }) {
-  const data = useMemo(() => {
-    if (!referrals.length) return null;
-
-    // Real referral-volume path
-    const totalsByYear = {};
-    const benesByYear = {};
-    referrals.forEach(r => {
-      const y = yearOf(r);
-      if (!y) return;
-      totalsByYear[y] = (totalsByYear[y] || 0) + (Number(r.total_referrals) || 0);
-      benesByYear[y] = (benesByYear[y] || 0) + (Number(r.total_beneficiaries) || 0);
-    });
-    const years = Object.keys(totalsByYear).sort((a, b) => (Number(a) || 0) - (Number(b) || 0));
-    const latestYear = years[years.length - 1];
-    const latestTotal = latestYear ? totalsByYear[latestYear] : 0;
-    const hasVolume = Object.values(totalsByYear).some(v => v > 0);
-
-    if (hasVolume) {
-      const prevYear = years.length > 1 ? years[years.length - 2] : null;
-      const prevTotal = prevYear ? totalsByYear[prevYear] : 0;
-      const yoy = prevYear && prevTotal > 0 ? ((latestTotal - prevTotal) / prevTotal * 100).toFixed(1) : null;
-      const partners = new Set(
-        referrals.filter(r => yearOf(r) === latestYear).map(r => r.referred_to_npi).filter(Boolean)
-      ).size;
-      return { mode: 'volume', year: latestYear, total: latestTotal, yoy, partners, benes: benesByYear[latestYear] || 0 };
-    }
-
-    // Eligibility path (Order & Referring designations)
-    const latest = [...referrals].sort((a, b) => (Number(yearOf(b)) || 0) - (Number(yearOf(a)) || 0))[0];
-    const rd = latest?.raw_data || {};
-    if (FLAGS.some(f => rd[f.key] != null)) {
-      return {
-        mode: 'eligibility',
-        year: yearOf(latest),
-        flags: FLAGS.map(f => ({ ...f, eligible: isYes(rd[f.key]) })),
-      };
-    }
-    return null;
+/**
+ * Shared-patient volume by year (cms_referrals: CMS shared-patient pairs) and,
+ * when known, the Medicare services the provider may order or refer
+ * (cms_order_referring). Shows nothing when neither exists.
+ */
+export default function ReferralSummaryCard({ referrals = [], orderReferring = null }) {
+  const volume = useMemo(() => {
+    const years = referralTotalsByYear(referrals);
+    if (!years.length || !years.some((y) => y.total_referrals > 0)) return null;
+    const latest = years[years.length - 1];
+    const prev = years.length > 1 ? years[years.length - 2] : null;
+    const yoy = prev && prev.total_referrals > 0 ? (((latest.total_referrals - prev.total_referrals) / prev.total_referrals) * 100).toFixed(1) : null;
+    return { year: latest.year, total: latest.total_referrals, yoy, partners: latest.partners, benes: latest.total_beneficiaries };
   }, [referrals]);
 
-  if (!data) return null;
+  const flags = orderReferring ? ELIGIBILITY_FLAGS.map((f) => ({ ...f, eligible: orderReferring[f.key] === true })) : null;
 
-  if (data.mode === 'volume') {
-    return (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <GitBranch className="w-4 h-4 text-violet-500" />
-            Referral Summary
-            {data.year && <Badge variant="outline" className="text-[10px] ml-auto">{data.year}</Badge>}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-end gap-6">
-            <div>
-              <p className="text-3xl font-bold text-white">{data.total.toLocaleString()}</p>
-              <p className="text-xs text-slate-400">total referrals</p>
-              {data.yoy && (
-                <div className="flex items-center gap-1 mt-1">
-                  {parseFloat(data.yoy) >= 0
-                    ? <TrendingUp className="w-3 h-3 text-green-500" />
-                    : <TrendingDown className="w-3 h-3 text-red-500" />}
-                  <span className={`text-xs font-medium ${parseFloat(data.yoy) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {data.yoy > 0 ? '+' : ''}{data.yoy}% YoY
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <div>
-                <p className="text-lg font-bold text-slate-200">{data.partners.toLocaleString()}</p>
-                <p className="text-[10px] text-slate-400">referral partners</p>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-slate-200">{data.benes.toLocaleString()}</p>
-                <p className="text-[10px] text-slate-400">beneficiaries</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  if (!volume && !flags) return null;
 
-  // eligibility mode
-  const eligibleCount = data.flags.filter(f => f.eligible).length;
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <GitBranch className="w-4 h-4 text-violet-500" />
-          Ordering &amp; Referring Eligibility
-          {data.year && <Badge variant="outline" className="text-[10px] ml-auto">{data.year}</Badge>}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-xs text-slate-400 mb-3">
-          Medicare services this provider is approved to order or refer ({eligibleCount} of {data.flags.length})
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {data.flags.map(f => (
-            <Badge
-              key={f.key}
-              className={f.eligible
-                ? 'bg-emerald-900/20 text-emerald-400 border border-emerald-500/30 gap-1'
-                : 'bg-slate-800/50 text-slate-400 border border-slate-700/50'}
-            >
-              {f.eligible && <Check className="w-3 h-3" />}
-              {f.label}
-            </Badge>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      {volume && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <GitBranch className="w-4 h-4 text-violet-500" aria-hidden="true" />
+              Shared Patients
+              <Badge variant="outline" className="text-[10px] ml-auto">data year {volume.year}</Badge>
+            </CardTitle>
+            <p className="text-[11px] text-slate-400">CMS shared-patient patterns: patterns, not confirmed referrals.</p>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end gap-6">
+              <div>
+                <p className="text-3xl font-bold text-white">{volume.total.toLocaleString()}</p>
+                <p className="text-xs text-slate-400">shared-patient encounters</p>
+                {volume.yoy && (
+                  <div className="flex items-center gap-1 mt-1">
+                    {parseFloat(volume.yoy) >= 0
+                      ? <TrendingUp className="w-3 h-3 text-green-500" aria-hidden="true" />
+                      : <TrendingDown className="w-3 h-3 text-red-500" aria-hidden="true" />}
+                    <span className={`text-xs font-medium ${parseFloat(volume.yoy) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {volume.yoy > 0 ? '+' : ''}{volume.yoy}% vs prior year
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-lg font-bold text-slate-200">{volume.partners.toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400">partner providers</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-slate-200">{volume.benes.toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400">beneficiaries, summed across partners</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {flags && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <GitBranch className="w-4 h-4 text-violet-500" aria-hidden="true" />
+              Ordering &amp; Referring Eligibility
+              {orderReferring.as_of && <Badge variant="outline" className="text-[10px] ml-auto">as of {String(orderReferring.as_of).slice(0, 10)}</Badge>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-slate-400 mb-3">
+              Medicare services this provider is approved to order or refer ({flags.filter((f) => f.eligible).length} of {flags.length}), from the CMS Order &amp; Referring file
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {flags.map((f) => (
+                <Badge
+                  key={f.key}
+                  className={f.eligible
+                    ? 'bg-emerald-900/20 text-emerald-400 border border-emerald-500/30 gap-1'
+                    : 'bg-slate-800/50 text-slate-400 border border-slate-700/50'}
+                >
+                  {f.eligible && <Check className="w-3 h-3" aria-hidden="true" />}
+                  {f.label}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

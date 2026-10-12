@@ -153,13 +153,61 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   it). `ADMIN_EMAIL` + `ADMIN_PASSWORD` seed the first admin.
 - **Maintenance is cron-driven.** Point the scheduler at the Express endpoint
   `POST /api/maintenance/runScheduledImports` (header `x-maintenance-token`;
-  `server/routes/maintenance.ts`). Each tick it fans out the workers in
-  `FANOUT_WORKERS` (`server/lib/maintenance.ts`: `autoResumePausedImports`,
+  `server/routes/maintenance.ts`; `scripts/maintenance-tick.sh` is the curl).
+  Each tick `handleRunScheduledImports` (`server/functions/scheduledImports.ts`)
+  starts the due import schedules and then runs the one fan-out,
+  `runMaintenanceFanout` → `FANOUT_WORKERS` (`server/lib/maintenance.ts`:
+  `settleScheduledImports`, `checkCmsCatalog`, `autoResumePausedImports`,
   `autoRetryFailedImports`, `manageCrawlerRetries`, `cancelStalledImports`,
-  `runDueScheduledReports`, `refreshRollups`) and writes a
+  `runDueScheduledReports`, `refreshRollups`), which writes the
   `maintenance_fanout` `AuditEvent` heartbeat that `MaintenanceHealthPanel`
-  surfaces. If the cron isn't wired, those workers don't run (and rollups never
-  refresh). The legacy Deno `base44/functions/runScheduledImports` only knows
-  the first four; don't use it as the cron entrypoint.
+  surfaces. There is no second copy of the workers: the admin buttons call the
+  same functions. Hosts without a cron can set
+  `MAINTENANCE_INPROCESS_INTERVAL_MS` (`server/lib/maintenanceTicker.ts`).
+  If neither is wired, the workers don't run (and rollups never refresh). The
+  legacy Deno `base44/functions/runScheduledImports` is not the entrypoint.
+- **A schedule is "running" until its batch finishes.** `runOneSchedule`
+  records `last_batch_id`; `server/lib/importCompletion.ts` settles the
+  schedule (success/failure, backoff, `last_successful_run_at`) from the
+  batch's terminal state, called by the importer and by the
+  `settleScheduledImports` sweep. `dependencyBlocked` waits for the parent's
+  completion, not its start. The 6 h run lease only gives up on a run that has
+  gone quiet (`PROGRESS_GRACE_MS`), the due loop skips a schedule whose batch is
+  still validating/processing, and a failed `on_release` schedule retries on the
+  normal backoff instead of waiting for the next release.
+- **Dataset versions are tracked.** `dataset_versions` (registry in
+  `server/lib/datasetRegistry.ts`) records, per import type, the newest
+  version the CMS catalogs list (`server/lib/cmsCatalog.ts` parses
+  `data.json` and the Care Compare catalog; each yearly release is its own
+  dataset id, so the pinned URLs in `IMPORT_TYPE_URLS` are only fallbacks) and
+  what was imported (`markImportStarted`/`markImportFinished`). The daily
+  `checkCmsCatalog` worker flags newer releases and wakes schedules whose
+  frequency is `on_release`. `getDataFreshness` (public) feeds
+  `DataSourcesFooter`, `DataFreshnessPanel` and the Help topic. Facility rows
+  get `data_year` from the row's own year column, else the resolved version
+  (`importDataYear`: the release period's year, never the year of the first
+  import). A new release refreshes the stored facility rows in place
+  (`partitionRefresh`/`refreshFacilityRows`) rather than skipping them, and
+  every way an import can end, including a fetch failure, pause or cancel,
+  closes its registry row (`endedWithoutFinishing`).
+- **Import progress is merged, never replaced.** `import_batches.retry_params`
+  is shared by the importers, auto-retry and auto-resume, so write it with
+  `mergeRetryParams` (`triggerImport.ts`) or the attempt counters are lost and
+  the retry cap never applies. A resume inherits the batch's `headers` and
+  `as_of`. After a restart `planRecovery` (`server/lib/importRecovery.ts`)
+  decides, from the batch's own `retry_params`, whether to resume it (with its
+  original year and filters) or fail it; NPPES file batches resume through
+  their own importer, never the CMS CSV one.
+- **Files as import sources.** Uploads (`/api/storage/<name>`, under
+  `uploads/`) and https CSV links are accepted only for `UPLOAD_CAPABLE_TYPES`
+  (`server/functions/triggerImport.ts`: datasets CMS doesn't serve through its
+  APIs) and must state their data year; `server/lib/importSources.ts` and
+  `server/lib/csv.ts` stream them through the same insert path. Everything
+  else is imported from the CMS endpoints.
+- **Order & Referring lives in `cms_order_referring`** (one row per NPI,
+  boolean flags, upserted per release), never in `cms_referrals`, which holds
+  only provider-pair shared-patient rows. Pages summarise those through
+  `src/lib/referralSummary.js`; there are no `home_health_referrals`-style
+  columns.
 - **Component tests need jsdom.** Add `// @vitest-environment jsdom` at the top
   of the test file; the default environment is `node`.

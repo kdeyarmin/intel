@@ -11,6 +11,7 @@
     "dev:full": "concurrently --kill-others \"tsx watch server/index.ts\" \"vite\"",
     "dev:api": "tsx watch server/index.ts",
     "dev:frontend": "vite",
+    "start": "NODE_ENV=production node --import tsx server/index.ts",
     "build": "vite build",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
@@ -22,6 +23,7 @@
     "db:migrate": "tsx scripts/db/migrate.ts",
     "db:status": "tsx scripts/db/migration-status.ts",
     "db:backfill-facilities-raw": "tsx scripts/db/backfill-facilities-raw.ts",
+    "db:backfill-facility-years": "tsx scripts/db/backfill-facility-years.ts",
     "db:seed-demo": "tsx scripts/dev/seed-demo.ts",
     "geo:load": "tsx scripts/census/load-census-geo.ts"
   },

@@ -66,6 +66,27 @@ describe("computeNextRun", () => {
   });
 });
 
+describe("computeNextRun on_release", () => {
+  it("parks an on_release schedule a year out; only the catalog check makes it due", () => {
+    const now = new Date("2026-10-11T12:00:00.000Z");
+    const next = computeNextRun({ schedule_frequency: "on_release", schedule_time: "02:00" }, now, 0, () => 0.5);
+    expect(next.getTime() - now.getTime()).toBe(365 * 24 * 60 * 60_000);
+  });
+
+  it("retries a failed on_release run on the usual backoff instead of waiting a year", () => {
+    const now = new Date("2026-10-11T12:00:00.000Z");
+    const hours = (n: number) => n * 60 * 60_000;
+    // random() = 0.5 means no jitter.
+    expect(computeNextRun({ schedule_frequency: "on_release" }, now, 1, () => 0.5).getTime() - now.getTime()).toBe(hours(1));
+    expect(computeNextRun({ schedule_frequency: "on_release" }, now, 3, () => 0.5).getTime() - now.getTime()).toBe(hours(4));
+    expect(computeNextRun({ schedule_frequency: "on_release" }, now, 12, () => 0.5).getTime() - now.getTime()).toBe(hours(24));
+    // Never in the immediate past, even with the most negative jitter.
+    expect(computeNextRun({ schedule_frequency: "on_release" }, now, 1, () => 0).getTime() - now.getTime()).toBeGreaterThanOrEqual(5 * 60_000);
+    // A success parks it again.
+    expect(computeNextRun({ schedule_frequency: "on_release" }, now, 0, () => 0.5).getTime() - now.getTime()).toBe(365 * 24 * 60 * 60_000);
+  });
+});
+
 describe("dependencyBlocked", () => {
   const parent = { import_type: "parentType", label: "Parent", last_run_at: "2026-05-27T10:00:00.000Z", last_run_status: "success" };
 
@@ -89,6 +110,23 @@ describe("dependencyBlocked", () => {
 
   it("allows when parent succeeded and child hasn't run since", () => {
     expect(dependencyBlocked({ import_type: "c", depends_on_import_type: "parentType" }, [parent]).blocked).toBe(false);
+  });
+
+  it("blocks while the parent is still running (started but not completed)", () => {
+    const p = { ...parent, last_run_status: "running", last_successful_run_at: "2026-05-26T10:00:00.000Z" };
+    const r = dependencyBlocked({ import_type: "c", depends_on_import_type: "parentType" }, [p]);
+    expect(r.blocked).toBe(true);
+    expect(r.reason).toMatch(/still running/);
+  });
+
+  it("measures the parent's completion, not its start", () => {
+    // Parent started at 10:00 and completed at 12:00; the child succeeded at 11:00,
+    // i.e. before the parent's completion, so it is due again.
+    const p = { ...parent, last_run_at: "2026-05-27T10:00:00.000Z", last_successful_run_at: "2026-05-27T12:00:00.000Z" };
+    const child = { import_type: "c", depends_on_import_type: "parentType", last_successful_run_at: "2026-05-27T11:00:00.000Z" };
+    expect(dependencyBlocked(child, [p]).blocked).toBe(false);
+    const childAfter = { ...child, last_successful_run_at: "2026-05-27T12:30:00.000Z" };
+    expect(dependencyBlocked(childAfter, [p]).blocked).toBe(true);
   });
 
   it("blocks when the child already ran successfully since the parent's last run", () => {
@@ -155,6 +193,10 @@ describe("shouldRetryBatch", () => {
 
   it("skips the NPPES crawler (handled elsewhere)", () => {
     expect(shouldRetryBatch({ ...eligibleBatch, import_type: "nppes_registry" }, now).eligible).toBe(false);
+    // The file importers chain themselves and are recovered on startup, so the worker leaves them alone too.
+    for (const import_type of ["nppes_flat_file", "nppes_registry_file"]) {
+      expect(shouldRetryBatch({ ...eligibleBatch, import_type }, now), import_type).toEqual({ eligible: false, reason: "self_resuming_import_type" });
+    }
   });
 
   it("skips non-retryable errors", () => {

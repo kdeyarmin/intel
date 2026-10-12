@@ -1,3 +1,4 @@
+import { latestReferralSnapshot } from '@/lib/referralSummary';
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Users, DollarSign, Activity, GitBranch, MapPin, Stethoscope } from 'lucide-react';
@@ -20,7 +21,7 @@ function KPI({ title, value, icon: Icon, color, bgColor }) {
 
 export default function ProviderKPIRow({ utilizations = [], referrals = [], locations = [], _taxonomies = [], score }) {
   const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
-  const latestRef = [...referrals].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+  const latestRef = latestReferralSnapshot(referrals);
 
   const fmt = (v) => {
     if (!v) return '—';
@@ -34,7 +35,7 @@ export default function ProviderKPIRow({ utilizations = [], referrals = [], loca
       <KPI title="Beneficiaries" value={fmt(latestUtil?.total_medicare_beneficiaries)} icon={Users} color="text-blue-400" bgColor="bg-blue-900/20" />
       <KPI title="Services" value={fmt(latestUtil?.total_services)} icon={Activity} color="text-teal-400" bgColor="bg-teal-900/20" />
       <KPI title="Medicare Pay" value={latestUtil?.total_medicare_payment ? `$${fmt(latestUtil.total_medicare_payment)}` : '—'} icon={DollarSign} color="text-emerald-400" bgColor="bg-emerald-900/20" />
-      <KPI title="Total Referrals" value={fmt(latestRef?.total_referrals)} icon={GitBranch} color="text-violet-400" bgColor="bg-violet-900/20" />
+      <KPI title="Shared Encounters" value={fmt(latestRef?.total_referrals)} icon={GitBranch} color="text-violet-400" bgColor="bg-violet-900/20" />
       <KPI title="Locations" value={locations.length} icon={MapPin} color="text-sky-400" bgColor="bg-sky-900/20" />
       <KPI title="Fit Score" value={score?.score ? `${score.score}/100` : '—'} icon={Stethoscope} color="text-amber-400" bgColor="bg-amber-900/20" />
     </div>

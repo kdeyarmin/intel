@@ -21,7 +21,7 @@ export type CmsKeyConfig = {
 // medicare_facilities is handled separately (it has two identity shapes:
 // provider_id-based and facility_name-based) — see partitionFacilities.
 export const CMS_NATURAL_KEYS: Record<string, CmsKeyConfig> = {
-  // cms_order_referring is routed to the providers table (upsert on npi), not cms_referrals.
+  // cms_order_referring is upserted into cms_order_referring by NPI (see insertCMSRows), not cms_referrals.
   provider_service_utilization: {
     primaryCol: "npi",
     // The CMS "by Provider and Service" dataset has one row per
@@ -77,6 +77,65 @@ export function partition<T extends Record<string, unknown>>(
     toCreate.push(r);
   }
   return { toCreate, skipped };
+}
+
+export type RefreshResult<T> = { toCreate: T[]; toRefresh: Array<{ id: number; row: T }>; skipped: number };
+
+/**
+ * Like partition, for datasets that keep one row per natural key and are
+ * re-released: a row that already exists is refreshed in place when the
+ * incoming row is not from the same batch (a resume re-reading its own pages)
+ * and not from an older data year. Without this a new release found every
+ * provider already stored, skipped every row, and the table stayed at the first
+ * release forever while the registry reported the new one as imported.
+ * The first row for a key wins within a batch, as before.
+ */
+export function partitionRefresh<T extends Record<string, unknown>>(
+  rows: T[],
+  existing: Array<Record<string, unknown> & { id: number }>,
+  keyCols: string[],
+): RefreshResult<T> {
+  const existingByKey = new Map<string, Record<string, unknown> & { id: number }>();
+  for (const e of existing) {
+    const key = makeKey(e, keyCols);
+    if (!existingByKey.has(key)) existingByKey.set(key, e);
+  }
+  const seen = new Set<string>();
+  const toCreate: T[] = [];
+  const toRefresh: Array<{ id: number; row: T }> = [];
+  let skipped = 0;
+  for (const r of rows) {
+    const key = makeKey(r, keyCols);
+    if (seen.has(key)) {
+      skipped++;
+      continue;
+    }
+    seen.add(key);
+    const e = existingByKey.get(key);
+    if (!e) {
+      toCreate.push(r);
+    } else if (isRefreshOf(e, r)) {
+      toRefresh.push({ id: e.id, row: r });
+    } else {
+      skipped++;
+    }
+  }
+  return { toCreate, toRefresh, skipped };
+}
+
+/** Whether `incoming` should overwrite `stored`: another batch's row, and not an older vintage. */
+export function isRefreshOf(stored: Record<string, unknown>, incoming: Record<string, unknown>): boolean {
+  if (stored.import_batch_id != null && String(stored.import_batch_id) === String(incoming.import_batch_id)) return false;
+  const storedYear = yearOf(stored.data_year);
+  const incomingYear = yearOf(incoming.data_year);
+  if (storedYear != null && incomingYear != null && incomingYear < storedYear) return false;
+  return true;
+}
+
+// A data year as a number, or null when it is missing or not a year (Number(null) is 0).
+function yearOf(v: unknown): number | null {
+  const n = parseInt(String(v ?? "").trim(), 10);
+  return Number.isFinite(n) ? n : null;
 }
 
 // Distinct, non-empty values for a column across a set of rows.

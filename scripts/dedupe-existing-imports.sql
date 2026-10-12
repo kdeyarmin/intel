@@ -31,11 +31,15 @@ WHERE a.id > b.id
   AND a.provider_id IS NULL AND b.provider_id IS NULL
   AND a.facility_name IS NOT DISTINCT FROM b.facility_name;
 
--- cms_referrals: identity is (npi, data_year).
+-- cms_referrals: one directed shared-patient edge per
+-- (npi, referred_to_npi, data_year) — the key the boot index
+-- uq_cms_referrals_npi_referred_year enforces. (The old (npi, data_year) key
+-- would have deleted every edge but one per provider and year.)
 DELETE FROM cms_referrals a
 USING cms_referrals b
 WHERE a.id > b.id
   AND a.npi IS NOT DISTINCT FROM b.npi
+  AND COALESCE(a.referred_to_npi, '') = COALESCE(b.referred_to_npi, '')
   AND a.data_year IS NOT DISTINCT FROM b.data_year;
 
 -- provider_service_utilization: identity is the HCPCS service line
@@ -79,8 +83,8 @@ WHERE a.id > b.id
 --   ON medicare_facilities (facility_type, provider_id) WHERE provider_id IS NOT NULL;
 -- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_medfac_type_name
 --   ON medicare_facilities (facility_type, md5(lower(facility_name))) WHERE provider_id IS NULL AND facility_name IS NOT NULL;
--- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_cms_referrals_npi_year
---   ON cms_referrals (npi, data_year);
+-- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_cms_referrals_npi_referred_year
+--   ON cms_referrals (npi, COALESCE(referred_to_npi, ''), data_year);
 -- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_psu_natural
 --   ON provider_service_utilization (npi, COALESCE(hcpcs_code,''), COALESCE(place_of_service,''), data_year);
 -- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_prov_loc_natural

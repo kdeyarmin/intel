@@ -31,11 +31,9 @@ export default function AIRelatedProviders({ provider, location, taxonomies, ref
         return `${p.entity_type === 'Individual' ? `${p.first_name} ${p.last_name}` : p.organization_name} (NPI:${p.npi}, ${tax?.taxonomy_description || 'Unknown'})`;
       });
 
+    // `referrals` is the latest year's shared-patient snapshot (patterns, not confirmed referrals).
     const refTypes = [];
-    if (referrals?.home_health_referrals > 0) refTypes.push(`Home Health: ${referrals.home_health_referrals}`);
-    if (referrals?.hospice_referrals > 0) refTypes.push(`Hospice: ${referrals.hospice_referrals}`);
-    if (referrals?.snf_referrals > 0) refTypes.push(`SNF: ${referrals.snf_referrals}`);
-    if (referrals?.dme_referrals > 0) refTypes.push(`DME: ${referrals.dme_referrals}`);
+    if (referrals?.total_referrals > 0) refTypes.push(`${referrals.total_referrals.toLocaleString()} shared-patient encounters with ${referrals.partners || 0} partner providers (data year ${referrals.year || 'unknown'})`);
 
     try {
       const res = await base44.integrations.Core.InvokeLLM({

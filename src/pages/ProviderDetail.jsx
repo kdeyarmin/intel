@@ -1,3 +1,4 @@
+import { latestReferralSnapshot } from '@/lib/referralSummary';
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -83,7 +84,8 @@ export default function ProviderDetail() {
   const { data: utilizations = [], isLoading: loadingUtil } = useQuery({
     queryKey: ['providerUtilAll', npi],
     queryFn: async () => {
-      const rows = await base44.entities.ProviderServiceUtilization.filter({ npi });
+      // The entity API returns 100 rows unless asked for more; a provider with many HCPCS codes or partners has more.
+      const rows = await base44.entities.ProviderServiceUtilization.filter({ npi }, '-data_year', 5000);
       return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0, total_submitted_charges: (r.average_submitted_chrg_amt || 0) * (r.total_services || 1) }));
     },
     enabled: !!npi,
@@ -91,7 +93,7 @@ export default function ProviderDetail() {
 
   const { data: referrals = [], isLoading: loadingRef } = useQuery({
     queryKey: ['providerRefAll', npi],
-    queryFn: () => base44.entities.CMSReferral.filter({ npi }),
+    queryFn: () => base44.entities.CMSReferral.filter({ npi }, '-total_referrals', 5000),
     enabled: !!npi,
   });
 
@@ -157,7 +159,9 @@ export default function ProviderDetail() {
   const score = scores?.[0];
   const primaryLocation = pickPrimaryLocation(locations);
   const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
-  const latestRef = [...referrals].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+  // The latest data year's shared-patient totals (patterns, not confirmed referrals).
+  const latestRef = latestReferralSnapshot(referrals);
+  const orderReferring = cmsData?.order_referring || null;
 
   if (providerError) {
     return (
@@ -246,6 +250,7 @@ export default function ProviderDetail() {
                 taxonomies={taxonomies}
                 utilization={latestUtil}
                 referral={latestRef}
+                orderReferring={orderReferring}
                 locations={locations}
                 score={score}
               />
@@ -253,6 +258,7 @@ export default function ProviderDetail() {
                 score={score}
                 utilization={latestUtil}
                 referrals={latestRef}
+                orderReferring={orderReferring}
                 taxonomy={taxonomies}
               />
               {score && (
@@ -269,6 +275,7 @@ export default function ProviderDetail() {
                 taxonomy={taxonomies}
                 utilization={latestUtil}
                 referrals={latestRef}
+                orderReferring={orderReferring}
                 score={score}
                 locations={locations}
               />
@@ -304,7 +311,7 @@ export default function ProviderDetail() {
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UtilizationSummaryCard utilizations={utilizations} />
-            <ReferralSummaryCard referrals={referrals} />
+            <ReferralSummaryCard referrals={referrals} orderReferring={orderReferring} />
           </div>
           <UtilizationInsights utilization={latestUtil} />
           <UtilizationTrendChart utilizations={utilizations} />

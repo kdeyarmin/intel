@@ -113,13 +113,23 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         const providerCount = Math.max(0, Number((((provEst as any).rows || provEst) || [])[0]?.est) || 0);
         const [alertCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityAlerts);
         const [scanCount] = await db.select({ count: sql<number>`count(*)` }).from(dataQualityScans);
+        // Completeness and accuracy come from the latest completed quality
+        // scan (a sampled scan; see runDataQualityScan), not from a constant.
+        const [latestScan] = await db.select({ results_summary: dataQualityScans.results_summary, completed_at: dataQualityScans.completed_at })
+          .from(dataQualityScans)
+          .where(sql`status = 'completed'`)
+          .orderBy(sql`completed_at DESC NULLS LAST`)
+          .limit(1);
+        const { qualityScoresFrom } = await import("../lib/dataQualityScores");
+        const scores = qualityScoresFrom(latestScan?.results_summary);
 
         return res.json({
           total_providers: providerCount,
           total_alerts: alertCount.count,
           total_scans: scanCount.count,
-          data_completeness: 0,
-          data_accuracy: 0,
+          data_completeness: scores.completeness,
+          data_accuracy: scores.accuracy,
+          scored_at: latestScan?.completed_at ?? null,
         });
       }
 
@@ -546,6 +556,11 @@ Be concise and helpful. Use markdown formatting for readability.`;
       case "getRollupStatus": {
         const { handleGetRollupStatus } = await import("../functions/rollups");
         return res.json(await handleGetRollupStatus());
+      }
+
+      case "getDataFreshness": {
+        const { handleGetDataFreshness } = await import("../functions/dataFreshness");
+        return res.json(await handleGetDataFreshness({ includeNotes: req.user?.role === "admin" }));
       }
 
       case "refreshRollups": {

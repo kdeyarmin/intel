@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "940232a9176936d69a2082fbc9916ba0f7858e72",
+    "ref": "1d51b0dbc82cfc88f22b182f0955c5ab2b31e0fa",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -27,9 +27,9 @@
   },
   "summary": {
     "section_count": 9,
-    "topic_count": 29,
-    "text_character_count": 10153,
-    "canonical_sha256": "b251b4a33493ab3143ba6bc15105b265ebd52b002bd1d30964288e2881fe95b0"
+    "topic_count": 30,
+    "text_character_count": 11080,
+    "canonical_sha256": "18a137e06330c781e6d1f878fa9e17411e95c2d357174d124f4e3434edde10ec"
   },
   "sections": [
     {
@@ -45,6 +45,11 @@
           "heading": "Your account",
           "text": "New accounts need an administrator's approval: after signing up you'll see a waiting screen until an admin approves you. Admins can also invite people by link.\n\nThere are two roles:\n• **User** — the directory, facilities, analytics, territory, AI Assistant, reports and lead lists.\n• **Admin** — everything, plus data imports, the NPPES crawler, campaigns, provider intelligence, scoring rules and user management.\n\nForgot your password? Use **Forgot password** on the sign-in page (when email is set up) or ask an admin for a reset link. **Account** at the bottom of the sidebar changes your password or signs you out on every device.",
           "sha256": "e7bbc9f8de53d48728937777512fb72c5ba933bb040dc84e8149ec5ddb62cf2e"
+        },
+        {
+          "heading": "What data is this and how fresh is it?",
+          "text": "Everything in CareMetric comes from public sources: the **NPPES** provider registry, Medicare public use files from **data.cms.gov** and **Care Compare**, and U.S. Census geography. No patient-level data is used; CMS suppresses counts under 11 before publishing, and figures here are CareMetric analytics derived from those files, not CMS publications.\n\nEach dataset carries a **data year** (the period it describes) and an import date. The line at the bottom of data pages summarises what is loaded and when it was last refreshed; admins see the full table on **Data Center › Dataset catalog**. CMS publishes most files once a year (for example the Hospital Service Area file each summer and post-acute utilization in late summer), Care Compare files quarterly, and the NPPES registry weekly. A daily check of the CMS catalogs flags datasets with a newer release, and schedules set to **on release** import them automatically.",
+          "sha256": "7f29b02753cf2b426836811f0ba385e52eed4ce63a5dc648fd0fcb0f320585c6"
         },
         {
           "heading": "Finding your way",
