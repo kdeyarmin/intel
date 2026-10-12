@@ -606,7 +606,8 @@ export async function handleIntelJobStatus() {
 
 export async function handleGetIntelCandidateCount() {
   const totalRows = await db.execute(sql`SELECT reltuples::bigint AS count FROM pg_class WHERE relname = 'providers'`);
-  const totalProviders = Number((totalRows as any)?.[0]?.count || (totalRows as any)?.rows?.[0]?.count || 0);
+  // reltuples is -1 for a table that was never ANALYZEd (PG14+): clamp it, so the page never shows -1 providers.
+  const totalProviders = Math.max(0, Number((totalRows as any)?.[0]?.count || (totalRows as any)?.rows?.[0]?.count || 0));
 
   const enrichedRows = await db.execute(sql`
     SELECT COUNT(DISTINCT npi)::int AS count FROM enrichment_records WHERE field_name = 'enrichment_details'
@@ -636,7 +637,7 @@ export async function handleGetIntelCandidateCount() {
     success: true,
     totalProviders,
     enrichedCount,
-    unenrichedCount: totalProviders - enrichedCount,
+    unenrichedCount: Math.max(0, totalProviders - enrichedCount),
     emailSearchedCount,
     emailFoundCount,
     needsWorkCount,

@@ -215,8 +215,10 @@ async function main() {
 
     // A lead list of Pittsburgh cardiologists and family doctors.
     const listNpis = people.filter((p) => p.city.city === "Pittsburgh").slice(0, 15).map((p) => p.npi);
+    // Customer-owned rows belong to an organization: without one the list is invisible to every account. The
+    // first organization is the platform's own, which the demo admin is in.
     const { rows: [list] } = await client.query(
-      "INSERT INTO lead_lists (name, description, member_count, created_by) VALUES ($1, $2, $3, $4) RETURNING id",
+      "INSERT INTO lead_lists (name, description, member_count, created_by, org_id) VALUES ($1, $2, $3, $4, 1) RETURNING id",
       ["Demo: Pittsburgh providers", "Synthetic demo data", listNpis.length, TAG],
     );
     await insertRows(client, "lead_list_members", ["list_id", "npi"], listNpis.map((n) => [list.id, n]));
