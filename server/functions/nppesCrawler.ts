@@ -480,6 +480,28 @@ async function processQueueWorker(dryRun: boolean) {
       }
 
       if (prefetchedTasks.length === 0) {
+        // Mid-loop stuck-item recovery: items that got stuck in 'processing'
+        // *during* this cycle (e.g. a crashed sibling worker) would otherwise
+        // sit until the next worker's start-of-cycle sweep. Base44 re-checks
+        // here and re-queues anything stuck > 10 min before closing batches.
+        const stuckNow = await safeCrawlerQuery(
+          () => db.select().from(nppesQueueItems)
+            .where(eq(nppesQueueItems.status, "processing"))
+            .orderBy(asc(nppesQueueItems.updated_date)).limit(50),
+          [] as any[], "mid-loop stuck check"
+        );
+        const nowMs = Date.now();
+        let recoveredNow = 0;
+        for (const stuckItem of stuckNow) {
+          if (nowMs - new Date(stuckItem.updated_date!).getTime() > 600000) {
+            await db.update(nppesQueueItems)
+              .set({ status: "pending", retry_count: (stuckItem.retry_count || 0) + 1, updated_date: new Date() })
+              .where(eq(nppesQueueItems.id, stuckItem.id)).catch(() => {});
+            recoveredNow++;
+          }
+        }
+        if (recoveredNow > 0) continue;
+
         const processingBatchList = await db.select().from(importBatches)
           .where(and(eq(importBatches.import_type, "nppes_registry"), eq(importBatches.status, "processing")));
         let batchesClosed = 0;
@@ -508,7 +530,7 @@ async function processQueueWorker(dryRun: boolean) {
             if (failedItems.length > 0) {
               updates.error_samples = failedItems.slice(0, 5).map((i) => ({
                 phase: "crawler", detail: i.error_message || "Unknown error",
-                item_id: i.id, zip_prefix: i.zip_prefix,
+                item_id: i.id, zip_prefix: i.zip_prefix, timestamp: new Date().toISOString(),
               }));
             }
             await db.update(importBatches).set(updates).where(eq(importBatches.id, b.id));
@@ -595,8 +617,13 @@ async function processQueueWorker(dryRun: boolean) {
         let skip = apiBatchSize;
         let needSplit = false;
         if (lastPageSize === apiBatchSize) {
+          let paginationTimedOut = false;
           while (lastPageSize === apiBatchSize && skip <= configMaxSkip) {
-            if (Date.now() - execStartTime >= MAX_EXEC_MS - 3000) break;
+            if (Date.now() - execStartTime >= MAX_EXEC_MS - 3000) {
+              console.warn(`[Crawler Worker] Pagination timeout for ${task.state}/${task.zip_prefix} at skip=${skip}. Saving ${allResults.length} partial results.`);
+              paginationTimedOut = true;
+              break;
+            }
             params.set("skip", String(skip));
             const page = await fetchNPPESPage(params, stats, requestTimeoutMs);
             stats.api_calls++;
@@ -605,7 +632,17 @@ async function processQueueWorker(dryRun: boolean) {
             lastPageSize = page.results.length;
             skip += apiBatchSize;
           }
-          if (lastPageSize === apiBatchSize && skip > configMaxSkip && task.zip_prefix!.length < 5) {
+          if (lastPageSize === apiBatchSize && skip > configMaxSkip) {
+            if (task.zip_prefix!.length < 5) {
+              needSplit = true;
+            } else {
+              // Prefix is already 5+ digits; results beyond maxSkip are truncated.
+              console.warn(`[Crawler Worker] Prefix ${task.state}/${task.zip_prefix} has more results than maxSkip (${configMaxSkip}) and cannot split further. ${allResults.length} results fetched, remainder truncated.`);
+            }
+          }
+          // If pagination timed out but more data remains, split the prefix so
+          // the remainder is picked up later instead of being silently dropped.
+          if (paginationTimedOut && !needSplit && task.zip_prefix!.length < 5) {
             needSplit = true;
           }
         }
@@ -669,6 +706,21 @@ async function processQueueWorker(dryRun: boolean) {
         }
         if (consecutiveErrors >= 5) {
           console.warn(`[Crawler Worker] Hit ${consecutiveErrors} consecutive errors, backing off 30s. Last: ${e.message}`);
+          // Base44 raises a DataQualityAlert on a sustained error streak so
+          // operators are notified. The port kept its own backoff policy
+          // (threshold 5, sleep-and-continue) but dropped the alert; restore it.
+          try {
+            await db.insert(dataQualityAlerts).values({
+              alert_type: "new_issue_detected",
+              severity: "high",
+              title: "Sustained Crawler Error Rate",
+              description: `Worker hit ${consecutiveErrors} consecutive errors on state ${task.state}. Last error: ${e.message}`,
+              status: "new",
+              action_required: true,
+            });
+          } catch (alertErr: any) {
+            console.warn(`[Crawler Worker] Failed to create sustained-error alert: ${alertErr.message}`);
+          }
           await sleep(30000);
           consecutiveErrors = 0;
         } else {
