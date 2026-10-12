@@ -3,3 +3,10 @@ healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
+
+# Self-healing maintenance (due import schedules, auto-resume/retry, stall
+# sweep) runs in-process on this cadence when no external cron is wired.
+# The code default is unset (opt-in); Railway deploys get it by default.
+# Minimum 60000 (the ticker clamps lower values up).
+[env]
+MAINTENANCE_INPROCESS_INTERVAL_MS = "60000"
