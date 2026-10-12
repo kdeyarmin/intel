@@ -259,6 +259,7 @@ async function applyEvent(
       `UPDATE organizations SET status = $2, subscription_status = $3, stripe_subscription_id = COALESCE($4, stripe_subscription_id),
               current_period_end = COALESCE($5, current_period_end), trial_ends_at = COALESCE($6, trial_ends_at),
               plan_code = COALESCE($7, plan_code), seat_limit = COALESCE($8::int, seat_limit), territory = COALESCE($9::jsonb, territory),
+              billing_status_since = CASE WHEN status IS DISTINCT FROM $2 THEN COALESCE($10::timestamp, now()) ELSE billing_status_since END,
               ${SET_AT(10)}, updated_date = now()
         WHERE id = $1 ${FRESH(10)} RETURNING id`,
       [org.id, status, sub.status ?? null, sub.id ?? null, periodEnd(sub), toDate(sub.trial_end), plan?.code ?? null, plan?.seat_limit ?? null,
@@ -285,6 +286,7 @@ async function applyEvent(
       const { rows } = await db.query(
         `UPDATE organizations SET stripe_customer_id = COALESCE($2, stripe_customer_id), stripe_subscription_id = COALESCE($3, stripe_subscription_id),
                 plan_code = COALESCE($4, plan_code), status = 'active', subscription_status = 'active',
+                billing_status_since = CASE WHEN status IS DISTINCT FROM 'active' THEN COALESCE($8::timestamp, now()) ELSE billing_status_since END,
                 seat_limit = COALESCE($5::int, seat_limit), territory = COALESCE($6::jsonb, territory),
                 terms_version = COALESCE(terms_version, $7), ${SET_AT(8)}, updated_date = now()
           WHERE id = $1 ${FRESH(8)} RETURNING id`,
@@ -316,7 +318,7 @@ async function applyEvent(
       const tied = await liveWhenTied(org, obj, obj.id ?? null);
       if (tied.live) return applySubscription(org, tied.sub);
       const { rows } = await db.query(
-        `UPDATE organizations SET status = 'canceled', subscription_status = 'canceled', ${SET_AT(2)}, updated_date = now() WHERE id = $1 ${FRESH(2)} RETURNING id`,
+        `UPDATE organizations SET status = 'canceled', subscription_status = 'canceled', billing_status_since = CASE WHEN status IS DISTINCT FROM 'canceled' THEN COALESCE($2::timestamp, now()) ELSE billing_status_since END, ${SET_AT(2)}, updated_date = now() WHERE id = $1 ${FRESH(2)} RETURNING id`,
         [org.id, eventAt],
       );
       if (!rows[0]) return { handled: false, ignored: "stale" };
@@ -329,7 +331,7 @@ async function applyEvent(
       const tied = await liveWhenTied(org, null, invoiceSubscriptionId(obj));
       if (tied.live) return applySubscription(org, tied.sub);
       const { rows } = await db.query(
-        `UPDATE organizations SET status = 'past_due', subscription_status = 'past_due', ${SET_AT(2)}, updated_date = now() WHERE id = $1 AND status <> 'canceled' ${FRESH(2)} RETURNING id`,
+        `UPDATE organizations SET status = 'past_due', subscription_status = 'past_due', billing_status_since = CASE WHEN status IS DISTINCT FROM 'past_due' THEN COALESCE($2::timestamp, now()) ELSE billing_status_since END, ${SET_AT(2)}, updated_date = now() WHERE id = $1 AND status <> 'canceled' ${FRESH(2)} RETURNING id`,
         [org.id, eventAt],
       );
       if (!rows[0]) return { handled: false, ignored: "stale" };
@@ -344,7 +346,7 @@ async function applyEvent(
       // Money received is service owed: a payment also reactivates an
       // organization that was canceled (a late final invoice, a win-back).
       const { rows } = await db.query(
-        `UPDATE organizations SET status = 'active', subscription_status = 'active', ${SET_AT(2)}, updated_date = now() WHERE id = $1 AND status IN ('past_due', 'trial', 'canceled') ${FRESH(2)} RETURNING id`,
+        `UPDATE organizations SET status = 'active', subscription_status = 'active', billing_status_since = CASE WHEN status IS DISTINCT FROM 'active' THEN COALESCE($2::timestamp, now()) ELSE billing_status_since END, ${SET_AT(2)}, updated_date = now() WHERE id = $1 AND status IN ('past_due', 'trial', 'canceled') ${FRESH(2)} RETURNING id`,
         [org.id, eventAt],
       );
       if (!rows[0]) return { handled: false, ignored: "stale" };

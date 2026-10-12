@@ -16,6 +16,7 @@ export interface EntitledUser {
   role?: string | null;
   territory?: Territory | null;
   orgStatus?: string | null;
+  orgBillingStatusSince?: Date | string | null;
   planCode?: string | null;
 }
 
@@ -38,8 +39,8 @@ export class SubscriptionError extends Error {
   }
 }
 
-/** Statuses under which an organization may read the market data. Canceled keeps that read-only access; spending is a separate, narrower check (BILLABLE_ORG_STATUSES). */
-export const USABLE_ORG_STATUSES = new Set(["trial", "active", "past_due", "canceled"]);
+/** Statuses under which an organization may use the market data. */
+export const USABLE_ORG_STATUSES = new Set(["trial", "active", "past_due"]);
 
 /**
  * Statuses under which an organization may incur costs (AI calls, paid email,
@@ -56,6 +57,46 @@ const BILLABLE_ORG_STATUSES: ReadonlySet<string> = new Set(["trial", "active"]);
 export function assertBillableOrg(org: { status?: string } | undefined): void {
   if (org && BILLABLE_ORG_STATUSES.has(org.status ?? "")) return;
   throw new SubscriptionError("Your organization's subscription isn't active. An owner can reactivate it on the Billing page.");
+}
+
+/**
+ * The dunning ladder, as one access tier per organization:
+ * - "full": trial or active — everything the plan allows.
+ * - "readonly": past_due for less than PAST_DUE_READONLY_MS — reads keep
+ *   working; spend is already blocked separately (assertBillableOrg).
+ * - "billing_only": past_due past the grace window, or canceled (or any
+ *   other unusable status) — the user can still sign in and reach the
+ *   Billing page, but entity reads and function calls are closed until the
+ *   organization pays. No emails here: Stripe sends its own dunning notices.
+ *
+ * An account with no organization (no status) has nothing to dun: "full".
+ * A past_due organization whose clock start is unknown keeps read-only
+ * access — the ladder only escalates on a proven age.
+ */
+export type OrgAccessTier = "full" | "readonly" | "billing_only";
+
+/** How long a past_due organization keeps read-only access before billing-only. */
+export const PAST_DUE_READONLY_MS = 14 * 24 * 60 * 60 * 1000;
+
+export function orgAccessTier(
+  org: { status?: string | null; billingStatusSince?: Date | string | null } | null | undefined,
+  now: Date = new Date(),
+): OrgAccessTier {
+  const status = org?.status ?? null;
+  if (status == null) return "full";
+  if (status === "trial" || status === "active") return "full";
+  if (status === "past_due") {
+    const since = org?.billingStatusSince ? new Date(org.billingStatusSince) : null;
+    if (since && !Number.isNaN(since.getTime()) && now.getTime() - since.getTime() >= PAST_DUE_READONLY_MS) return "billing_only";
+    return "readonly";
+  }
+  return "billing_only";
+}
+
+/** Throws a 402 SubscriptionError when the organization is down to billing-only access. */
+export function assertOrgAccess(org: { status?: string | null; billingStatusSince?: Date | string | null } | null | undefined, now: Date = new Date()): void {
+  if (orgAccessTier(org, now) !== "billing_only") return;
+  throw new SubscriptionError("Your organization's subscription has lapsed. An owner can update payment on the Billing page to restore access.");
 }
 
 export function territoryOf(user: EntitledUser | null | undefined): Territory {
@@ -119,7 +160,7 @@ export function entitledCounties(user: EntitledUser | null | undefined, state: s
 
 /** Throws a 403 TerritoryError when the place is outside the user's plan, and a 402 when the organization can't use the app. */
 export function assertTerritory(user: EntitledUser | null | undefined, place: { state?: string | null; county_fips?: string | null; county_name?: string | null }) {
-  if (user && !isPlatformAdmin(user) && user.orgStatus && !USABLE_ORG_STATUSES.has(user.orgStatus)) {
+  if (user && !isPlatformAdmin(user) && user.orgStatus && orgAccessTier({ status: user.orgStatus, billingStatusSince: user.orgBillingStatusSince }) === "billing_only") {
     throw new SubscriptionError("Your organization's subscription isn't active. An owner can reactivate it on the Billing page.");
   }
   if (needsTerritoryChoice(user)) {
