@@ -23,7 +23,7 @@ export interface TurnStream extends AsyncIterable<StreamEvent> {
 
 export type StreamFactory = (params: StreamParams, signal: AbortSignal) => TurnStream;
 
-export type TurnStatus = "complete" | "interrupted" | "refused" | "error";
+export type TurnStatus = "complete" | "interrupted" | "refused" | "retryable" | "error";
 
 export interface TurnUsage {
   input_tokens: number;
@@ -31,6 +31,8 @@ export interface TurnUsage {
   cache_creation_input_tokens: number;
   cache_read_input_tokens: number;
   requests: number;
+  /** How many times the request was re-issued after a mid-stream failure; each attempt was billed. */
+  retries: number;
 }
 
 export interface TurnResult {
@@ -102,7 +104,13 @@ export function apiErrorMessage(e: unknown): string {
 }
 
 function zeroUsage(): TurnUsage {
-  return { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, requests: 0 };
+  return { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, requests: 0, retries: 0 };
+}
+
+/** Mid-stream failures worth retrying later: rate limits, dropped connections, 5xx. Auth, permission and bad-request failures are not. */
+function isRetryableApiError(e: unknown): boolean {
+  if (e instanceof Anthropic.APIConnectionError || e instanceof Anthropic.RateLimitError) return true;
+  return e instanceof Anthropic.APIError && Number(e.status) >= 500;
 }
 
 const MAX_JSON_RETRIES = 2;
@@ -183,11 +191,18 @@ export async function runAssistantTurn(input: RunTurnInput): Promise<TurnResult>
       }
       if (e instanceof Anthropic.APIError) {
         console.error("[assistant] API error:", e.status, e.message);
+        if (isRetryableApiError(e)) {
+          // Keep what streamed so the question can be retried instead of
+          // re-asked from scratch; the turn is never replayed to the model.
+          if (partialText) await input.persist("assistant", [{ type: "text", text: partialText }]);
+          return done("retryable", "The answer stopped partway — the AI service hit a limit or a hiccup. You can retry this question.");
+        }
         return done("error", apiErrorMessage(e));
       }
       // Tool input streamed as unparseable JSON: the block never completed, so re-issue the request.
       if (jsonRetries++ < MAX_JSON_RETRIES) {
         console.warn("[assistant] re-issuing after unparseable tool input:", (e as Error)?.message?.slice(0, 200));
+        usage.retries += 1;
         input.emit("retry", {});
         continue;
       }
@@ -197,7 +212,9 @@ export async function runAssistantTurn(input: RunTurnInput): Promise<TurnResult>
 
     rounds += 1;
     // The final message's usage is authoritative; fall back to what streamed.
-    await charge(message.usage ?? seen);
+    // Usage logging must never fail a delivered turn: the answer is already
+    // persisted above, so a logging failure is logged and the turn completes.
+    await Promise.resolve(charge(message.usage ?? seen)).catch((err) => console.warn("[assistant] couldn't record usage:", err?.message || err));
 
     // Verbatim, including thinking and fallback blocks: the next request replays it as is.
     await input.persist("assistant", message.content as unknown[]);

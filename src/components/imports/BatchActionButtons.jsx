@@ -12,26 +12,90 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
   const [cancelReason, setCancelReason] = useState('');
   const [skipReason, setSkipReason] = useState('');
   const [isActing, setIsActing] = useState(false);
+  const [pendingLabel, setPendingLabel] = useState(null);
 
   const MAX_RETRIES = 5;
   const isActive = batch.status === 'processing' || batch.status === 'validating';
   const isPaused = batch.status === 'paused';
+  // A batch stuck in 'pausing' (slow worker) still offers Resume (change of
+  // mind — the server resumes it) and Cancel (escalate).
+  const isPausing = batch.status === 'pausing';
   const retryLimitReached = (batch.retry_count || 0) >= MAX_RETRIES;
-  const canRetry = (batch.status === 'failed' || batch.status === 'cancelled') && !retryLimitReached;
+  const canRetry = (batch.status === 'failed' || batch.status === 'cancelled' || batch.status === 'completed_with_errors') && !retryLimitReached;
   const canSkip = batch.status === 'failed';
+
+  // The row on screen can be stale: re-read the batch before acting so a
+  // just-finished batch can't be flipped back to paused/cancelled (the
+  // server also guards these transitions; this keeps the UI honest).
+  const fetchFreshBatch = async () => {
+    try {
+      return await base44.entities.ImportBatch.get(batch.id);
+    } catch {
+      return null;
+    }
+  };
+
+  // Workers acknowledge 'pausing'/'cancelling' at their next checkpoint, which
+  // can take a while. Poll until the batch settles or the timeout elapses.
+  const waitForStatus = async (targets, { timeoutMs = 120000, intervalMs = 3000 } = {}) => {
+    const deadline = Date.now() + timeoutMs;
+    let fresh = null;
+    for (;;) {
+      fresh = await fetchFreshBatch();
+      if (fresh && targets.includes(fresh.status)) return fresh;
+      if (Date.now() >= deadline) return fresh;
+      await new Promise(r => setTimeout(r, intervalMs));
+    }
+  };
+
+  // The NPPES crawler and flat-file workers check the batch row per task /
+  // per chunk (and the crawler prefetch skips paused batches), so a direct
+  // flip stops new work immediately. CMS imports only check every 5 pages:
+  // those go through an honest 'pausing'/'cancelling' intermediate state.
+  const isImmediateStopBatch =
+    (batch.import_type === 'nppes_registry' && batch.file_name?.startsWith('crawler_')) ||
+    batch.import_type === 'nppes_flat_file' || batch.import_type === 'nppes_registry_file';
 
   const handlePause = async () => {
     setIsActing(true);
+    setPendingLabel('Pausing…');
     try {
-      await base44.entities.ImportBatch.update(batch.id, {
-        status: 'paused',
+      const fresh = await fetchFreshBatch();
+      if (!fresh || (fresh.status !== 'processing' && fresh.status !== 'validating')) {
+        toast.error(`Can't pause: the batch is ${fresh ? `'${fresh.status}'` : 'no longer available'}.`);
+        onAction?.();
+        return;
+      }
+      // paused_by='user' keeps the auto-wake workers away from this batch.
+      // expected_status makes the flip atomic: a 409 means the batch changed
+      // since our fresh read.
+      const pauseUpdate = {
+        status: isImmediateStopBatch ? 'paused' : 'pausing',
         paused_at: new Date().toISOString(),
-      });
+        paused_by: 'user',
+        expected_status: fresh.status,
+      };
+      await base44.entities.ImportBatch.update(batch.id, pauseUpdate);
+      if (!isImmediateStopBatch) {
+        // Honest intermediate: the worker stops at its next checkpoint and
+        // writes 'paused' itself. If it finished first, any terminal state
+        // is a good outcome — only warn when still stuck in 'pausing'.
+        const settled = await waitForStatus(['paused', 'completed', 'completed_with_errors', 'failed', 'cancelled']);
+        if (settled && settled.status === 'pausing') {
+          toast.warning('Still pausing — the worker will stop at its next checkpoint.');
+        }
+      }
       onAction?.();
     } catch (err) {
-      toast.error(`Pause failed: ${err.message}`);
+      if (err?.status === 409) {
+        toast.warning('The batch changed while pausing — refreshing.');
+        onAction?.();
+      } else {
+        toast.error(`Pause failed: ${err.message}`);
+      }
     } finally {
       setIsActing(false);
+      setPendingLabel(null);
     }
   };
 
@@ -39,22 +103,36 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
 
   const handleResume = async () => {
     setIsActing(true);
+    setPendingLabel('Resuming…');
     try {
-      await base44.entities.ImportBatch.update(batch.id, {
-        status: 'processing',
-        paused_at: null,
-      });
-
       if (isFlatFile) {
-        const rp = batch.retry_params || {};
-        await base44.functions.invoke('importNPPESFlatFile', {
-          batch_id: batch.id,
-          file_url: rp.file_url || batch.file_url || batch.file_name,
-          byte_offset: rp.byte_offset || 0,
-          headers: rp.headers || null,
-          total_rows: rp.total_rows || batch.imported_rows || 0,
+        // The flat-file worker is synchronous and never flips the batch
+        // itself, so flip optimistically — but restore the previous status if
+        // the invoke fails, instead of stranding the batch in 'processing'.
+        const prevStatus = batch.status;
+        await base44.entities.ImportBatch.update(batch.id, {
+          status: 'processing',
+          paused_at: null,
+          paused_by: null,
+          expected_status: prevStatus,
         });
+        try {
+          const rp = batch.retry_params || {};
+          await base44.functions.invoke('importNPPESFlatFile', {
+            batch_id: batch.id,
+            file_url: rp.file_url || batch.file_url || batch.file_name,
+            byte_offset: rp.byte_offset || 0,
+            headers: rp.headers || null,
+            total_rows: rp.total_rows || batch.imported_rows || 0,
+          });
+        } catch (invokeErr) {
+          await base44.entities.ImportBatch.update(batch.id, { status: prevStatus }).catch(() => {});
+          throw invokeErr;
+        }
       } else {
+        // triggerImport flips the batch to 'processing' itself on a successful
+        // invoke (the crawler's batch_resume does the same). Flipping here
+        // first would strand the batch in 'processing' when the invoke fails.
         const offset = batch.retry_params?.resume_offset || batch.imported_rows || 0;
         await base44.functions.invoke('triggerImport', {
           import_type: batch.import_type,
@@ -64,30 +142,53 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
           year: batch.data_year,
         });
       }
-      
+
       onAction?.();
     } catch (error) {
       toast.error(`Resume failed: ${error.message}`);
     } finally {
       setIsActing(false);
+      setPendingLabel(null);
     }
   };
 
   const handleCancel = async () => {
     setIsActing(true);
+    setPendingLabel('Cancelling…');
     try {
+      const fresh = await fetchFreshBatch();
+      if (!fresh || !['processing', 'validating', 'paused', 'pausing'].includes(fresh.status)) {
+        toast.error(`Can't cancel: the batch is ${fresh ? `'${fresh.status}'` : 'no longer available'}.`);
+        onAction?.();
+        return;
+      }
+      // 'cancelling' is honest for CMS imports: the worker stops at its next
+      // checkpoint and writes 'cancelled' itself.
       await base44.entities.ImportBatch.update(batch.id, {
-        status: 'cancelled',
+        status: isImmediateStopBatch ? 'cancelled' : 'cancelling',
         cancelled_at: new Date().toISOString(),
         cancel_reason: cancelReason || 'Manually cancelled by user',
+        expected_status: fresh.status,
       });
+      if (!isImmediateStopBatch) {
+        const settled = await waitForStatus(['cancelled', 'completed', 'failed']);
+        if (settled && settled.status === 'cancelling') {
+          toast.warning('Still cancelling — the worker will stop at its next checkpoint.');
+        }
+      }
       setCancelDialogOpen(false);
       setCancelReason('');
       onAction?.();
     } catch (err) {
-      toast.error(`Cancel failed: ${err.message}`);
+      if (err?.status === 409) {
+        toast.warning('The batch changed while cancelling — refreshing.');
+        onAction?.();
+      } else {
+        toast.error(`Cancel failed: ${err.message}`);
+      }
     } finally {
       setIsActing(false);
+      setPendingLabel(null);
     }
   };
 
@@ -115,7 +216,12 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
   };
 
   if (isActing) {
-    return <Loader2 className="w-4 h-4 animate-spin text-slate-400" />;
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-slate-400">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        {pendingLabel || 'Working…'}
+      </span>
+    );
   }
 
   return (
@@ -131,7 +237,7 @@ export default function BatchActionButtons({ batch, onAction, onRetryClick }) {
         </>
       )}
 
-      {isPaused && (
+      {(isPaused || isPausing) && (
         <>
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1 bg-transparent text-blue-400 border-blue-500/30 hover:bg-blue-900/10" onClick={handleResume}>
             <RefreshCw className="w-3 h-3" /> Resume

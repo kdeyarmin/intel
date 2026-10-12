@@ -63,7 +63,7 @@ export interface NewAction {
 export interface AssistantStore {
   /** Newest first; `before` continues after the last row of the previous page. */
   listConversations(userId: number, limit: number, before?: { updatedAt: string; id: number } | null): Promise<ConversationRow[]>;
-  createConversation(userId: number, title?: string | null): Promise<ConversationRow>;
+  createConversation(userId: number, title?: string | null, orgId?: number | null): Promise<ConversationRow>;
   getConversation(id: number, userId: number): Promise<ConversationRow | null>;
   renameConversation(id: number, userId: number, title: string): Promise<ConversationRow | null>;
   deleteConversation(id: number, userId: number): Promise<boolean>;
@@ -74,6 +74,14 @@ export interface AssistantStore {
    * they spend, never overlap. Null when busy.
    */
   startTurn(conversationId: number, model: string, staleMs: number): Promise<TurnRow | null>;
+  /**
+   * Marks this conversation's "running" turns older than `staleMs` as
+   * interrupted (the process serving them is gone). Read paths call this so a
+   * dead turn can't report running:true forever.
+   */
+  interruptStaleTurns(conversationId: number, staleMs: number): Promise<number>;
+  /** Marks one running turn interrupted (the user's "mark as stopped"). False when it wasn't running. */
+  interruptTurn(conversationId: number, turnId: number): Promise<boolean>;
   countTurns(conversationId: number): Promise<number>;
   appendMessage(conversationId: number, turnId: number, role: string, content: unknown[]): Promise<void>;
   finishTurn(turnId: number, status: string, error: string | null, usage: unknown): Promise<void>;
@@ -86,7 +94,7 @@ export interface AssistantStore {
   confirmAction(actionId: string, userId: number, apply: (client: any, action: ActionRow) => Promise<unknown>): Promise<DecisionResult>;
   cancelAction(actionId: string, userId: number): Promise<DecisionResult>;
   usageToday(userId: number): Promise<number>;
-  addUsage(userId: number, units: number): Promise<void>;
+  addUsage(userId: number, units: number, orgId?: number | null): Promise<void>;
 }
 
 export function createPgAssistantStore(pool: any): AssistantStore {
@@ -102,8 +110,8 @@ export function createPgAssistantStore(pool: any): AssistantStore {
             WHERE user_id = $1 AND (updated_at, id) < ($3::timestamptz, $4) ORDER BY updated_at DESC, id DESC LIMIT $2`, [userId, limit, before.updatedAt, before.id])
       : q("SELECT id, user_id, title, created_at, updated_at FROM assistant_conversations WHERE user_id = $1 ORDER BY updated_at DESC, id DESC LIMIT $2", [userId, limit]),
 
-    async createConversation(userId, title) {
-      return (await q("INSERT INTO assistant_conversations (user_id, title) VALUES ($1, $2) RETURNING *", [userId, title || null]))[0];
+    async createConversation(userId, title, orgId) {
+      return (await q("INSERT INTO assistant_conversations (user_id, org_id, title) VALUES ($1, $2, $3) RETURNING *", [userId, orgId ?? null, title || null]))[0];
     },
 
     async getConversation(id, userId) {
@@ -165,16 +173,46 @@ export function createPgAssistantStore(pool: any): AssistantStore {
       }
     },
 
+    async interruptStaleTurns(conversationId, staleMs) {
+      const rows = await q(
+        `UPDATE assistant_turns SET status = 'interrupted', finished_at = now(),
+           error = 'The server stopped before this answer finished.'
+         WHERE conversation_id = $1 AND status = 'running'
+           AND created_at < now() - ($2 || ' milliseconds')::interval
+         RETURNING id`,
+        [conversationId, String(staleMs)],
+      );
+      return rows.length;
+    },
+
+    async interruptTurn(conversationId, turnId) {
+      const rows = await q(
+        `UPDATE assistant_turns SET status = 'interrupted', finished_at = now(),
+           error = 'Marked as stopped.'
+         WHERE id = $2 AND conversation_id = $1 AND status = 'running' RETURNING id`,
+        [conversationId, turnId],
+      );
+      return rows.length > 0;
+    },
+
     async countTurns(conversationId) {
       return Number((await q("SELECT count(*)::int AS n FROM assistant_turns WHERE conversation_id = $1", [conversationId]))[0]?.n || 0);
     },
 
     async appendMessage(conversationId, turnId, role, content) {
-      await q(
+      const insert = () => q(
         `INSERT INTO assistant_messages (conversation_id, turn_id, seq, role, content)
          SELECT $1, $2, COALESCE(MAX(seq), 0) + 1, $3, $4::jsonb FROM assistant_messages WHERE conversation_id = $1`,
         [conversationId, turnId, role, JSON.stringify(content)],
       );
+      try {
+        await insert();
+      } catch (e: any) {
+        // Two appends raced on MAX(seq)+1 and hit the (conversation_id, seq)
+        // unique index: retry once with a recomputed seq.
+        if (e?.code === "23505") await insert();
+        else throw e;
+      }
     },
 
     async finishTurn(turnId, status, error, usage) {
@@ -244,11 +282,12 @@ export function createPgAssistantStore(pool: any): AssistantStore {
       return Number((await q("SELECT units FROM assistant_usage WHERE user_id = $1 AND day = (now() AT TIME ZONE 'UTC')::date", [userId]))[0]?.units || 0);
     },
 
-    async addUsage(userId, units) {
+    async addUsage(userId, units, orgId) {
       await q(
-        `INSERT INTO assistant_usage (user_id, day, units, requests) VALUES ($1, (now() AT TIME ZONE 'UTC')::date, $2, 1)
-         ON CONFLICT (user_id, day) DO UPDATE SET units = assistant_usage.units + EXCLUDED.units, requests = assistant_usage.requests + 1`,
-        [userId, Math.max(0, Math.round(units))],
+        `INSERT INTO assistant_usage (user_id, org_id, day, units, requests) VALUES ($1, $2, (now() AT TIME ZONE 'UTC')::date, $3, 1)
+         ON CONFLICT (user_id, day) DO UPDATE SET units = assistant_usage.units + EXCLUDED.units, requests = assistant_usage.requests + 1,
+           org_id = COALESCE(assistant_usage.org_id, EXCLUDED.org_id)`,
+        [userId, orgId ?? null, Math.max(0, Math.round(units))],
       );
     },
   };
