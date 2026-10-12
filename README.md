@@ -152,7 +152,8 @@ imported within a week, a schedule failing three times running, a rollup
 older than two days, failing workers) and emails platform admins (plus
 `OPERATIONS_ALERT_EMAILS`) a digest at most once a day while anything is
 open; the Health tab's "Needs attention" list shows the same items, and also
-an overdue heartbeat.
+an overdue heartbeat. If the monitor can't read the database the worker fails
+and the list says it couldn't load, rather than reporting nothing open.
 
 Provider records come from the NPPES dissemination files (import types
 `nppes_weekly_incremental` and `nppes_monthly_full`). A weekly schedule keeps

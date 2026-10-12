@@ -162,17 +162,37 @@ export function evaluateOperationsAlerts(snapshot: OperationsSnapshot, now: Date
   return alerts.sort((a, b) => order[a.severity] - order[b.severity] || a.subject.localeCompare(b.subject));
 }
 
+/** Held while the day's digest is checked, sent and recorded, so two overlapping fan-outs can't both send it. */
+export const DIGEST_LOCK = "operations_alert_digest";
+
+/** PostgreSQL's "undefined_table": the code can ship before the migration that creates a table. */
+const UNDEFINED_TABLE = "42P01";
+
+/**
+ * A source that doesn't exist yet reads as empty. Any other failure (a statement timeout, a dropped connection,
+ * a permission error) is the monitor's own and must reach the caller: swallowed, it would read as "no datasets,
+ * no schedules, nothing open" at exactly the moment the database is struggling.
+ */
+async function rowsOrNone(query: Promise<{ rows: any[] }>): Promise<{ rows: any[] }> {
+  try {
+    return await query;
+  } catch (e) {
+    if ((e as { code?: string } | null)?.code === UNDEFINED_TABLE) return { rows: [] };
+    throw e;
+  }
+}
+
 /** Reads everything the evaluation needs from the database. */
 export async function loadOperationsSnapshot(pool: { query(sql: string, params?: unknown[]): Promise<{ rows: any[] }> }): Promise<OperationsSnapshot> {
   const [datasets, schedules, heartbeat, rollups] = await Promise.all([
-    pool.query(
+    rowsOrNone(pool.query(
       `SELECT d.import_type, d.source_title, d.status, d.catalog_modified, d.imported_modified, d.imported_at, d.updated_date,
               b.status AS batch_status, b.updated_date AS batch_updated
          FROM dataset_versions d LEFT JOIN import_batches b ON b.id = d.imported_batch_id`,
-    ).catch(() => ({ rows: [] })),
-    pool.query("SELECT id, label, import_type, is_active, last_run_status, last_run_at, consecutive_failures, last_run_summary FROM import_schedule_configs").catch(() => ({ rows: [] })),
-    pool.query("SELECT created_date, details FROM audit_events WHERE event_type = 'maintenance_fanout' ORDER BY created_date DESC LIMIT 1").catch(() => ({ rows: [] })),
-    pool.query("SELECT job, status, last_success_at, error FROM rollup_runs").catch(() => ({ rows: [] })),
+    )),
+    rowsOrNone(pool.query("SELECT id, label, import_type, is_active, last_run_status, last_run_at, consecutive_failures, last_run_summary FROM import_schedule_configs")),
+    rowsOrNone(pool.query("SELECT created_date, details FROM audit_events WHERE event_type = 'maintenance_fanout' ORDER BY created_date DESC LIMIT 1")),
+    rowsOrNone(pool.query("SELECT job, status, last_success_at, error FROM rollup_runs")),
   ]);
   const hb = heartbeat.rows[0];
   const workers = Array.isArray(hb?.details?.workers) ? hb.details.workers : [];

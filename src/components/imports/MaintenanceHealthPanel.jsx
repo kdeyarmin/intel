@@ -70,33 +70,39 @@ const SEVERITY = {
  * What an operator must look at (getOperationsAlerts, platform admins only):
  * datasets behind a newer release, failing schedules, a stale heartbeat and
  * stale rollups. The same list is emailed once a day while anything is open.
+ * When the list can't be read it says so: a missing section would look the same
+ * as a pipeline with nothing wrong.
  */
 function NeedsAttention({ enabled }) {
   const [data, setData] = useState(null);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState(null);
   useEffect(() => {
     if (!enabled) return undefined;
     let cancelled = false;
     const load = async () => {
       try {
         const { data: result } = await base44.functions.invoke('getOperationsAlerts', {});
-        if (!cancelled) { setData(result); setFailed(false); }
-      } catch {
-        if (!cancelled) setFailed(true);
+        if (!cancelled) { setData(result); setFailure(null); }
+      } catch (e) {
+        if (!cancelled) setFailure(e?.message || 'unknown error');
       }
     };
     load();
     const id = setInterval(load, 5 * POLL_INTERVAL_MS);
     return () => { cancelled = true; clearInterval(id); };
   }, [enabled]);
-  if (!enabled || failed || !data) return null;
-  const alerts = data.alerts || [];
+  if (!enabled || (!failure && !data)) return null;
+  const alerts = data?.alerts || [];
   return (
     <div className="border-t border-slate-700/40 pt-2 space-y-1.5" data-testid="operations-alerts">
       <p className="text-[11px] uppercase tracking-wide text-slate-400 font-medium">
-        Needs attention {alerts.length > 0 ? `(${alerts.length})` : ''}
+        Needs attention {!failure && alerts.length > 0 ? `(${alerts.length})` : ''}
       </p>
-      {alerts.length === 0 ? (
+      {failure ? (
+        <p className="text-[11px] text-red-400" role="alert">
+          Couldn't load the operations alerts ({failure}), so nothing is checking the pipeline from here. It will try again in a few minutes.
+        </p>
+      ) : alerts.length === 0 ? (
         <p className="text-[11px] text-emerald-400">Nothing open: datasets are current, schedules and rollups are running.</p>
       ) : (
         <ul className="text-[11px] space-y-1">
@@ -109,7 +115,7 @@ function NeedsAttention({ enabled }) {
           ))}
         </ul>
       )}
-      <p className="text-[10px] text-slate-400">Platform admins get this list by email at most once a day while something is open.</p>
+      {failure ? null : <p className="text-[10px] text-slate-400">Platform admins get this list by email at most once a day while something is open.</p>}
     </div>
   );
 }

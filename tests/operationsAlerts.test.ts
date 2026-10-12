@@ -134,11 +134,12 @@ describe("evaluateOperationsAlerts", () => {
 });
 
 describe("loadOperationsSnapshot", () => {
-  it("reads the four sources and tolerates a missing table", async () => {
+  it("reads the four sources and tolerates a table that doesn't exist yet", async () => {
     const pool = {
       async query(sql: string) {
         if (sql.includes("FROM dataset_versions")) return { rows: [{ import_type: "a", source_title: "A", status: "current", catalog_modified: null, imported_modified: null, imported_at: null }] };
-        if (sql.includes("FROM import_schedule_configs")) throw new Error("relation does not exist");
+        // SQLSTATE 42P01: the code can ship before the migration that creates the table.
+        if (sql.includes("FROM import_schedule_configs")) throw Object.assign(new Error('relation "import_schedule_configs" does not exist'), { code: "42P01" });
         if (sql.includes("maintenance_fanout")) return { rows: [{ created_date: now, details: { workers: [{ worker: "ok", ok: true }, { worker: "bad", ok: false }] } }] };
         if (sql.includes("FROM rollup_runs")) return { rows: [] };
         throw new Error(`unexpected ${sql}`);
@@ -149,6 +150,33 @@ describe("loadOperationsSnapshot", () => {
     expect(snap.schedules).toEqual([]);
     expect(snap.heartbeat).toEqual({ at: now, failed: ["bad"] });
     expect(snap.rollups).toEqual([]);
+  });
+});
+
+describe("loadOperationsSnapshot when a source can't be read", () => {
+  // A monitor that answers "nothing open" because a query timed out is worse than one that says it is blind:
+  // every failure but a missing table has to reach the caller.
+  const sources: Array<[string, string]> = [
+    ["datasets", "FROM dataset_versions"],
+    ["schedules", "FROM import_schedule_configs"],
+    ["the heartbeat", "maintenance_fanout"],
+    ["rollups", "FROM rollup_runs"],
+  ];
+  for (const [name, needle] of sources) {
+    it(`fails, rather than reporting none, when ${name} time out`, async () => {
+      const pool = {
+        async query(sql: string) {
+          if (sql.includes(needle)) throw Object.assign(new Error("canceling statement due to statement timeout"), { code: "57014" });
+          return { rows: [] };
+        },
+      };
+      await expect(loadOperationsSnapshot(pool)).rejects.toThrow(/statement timeout/);
+    });
+  }
+
+  it("fails on a plain error with no database code, too (a dropped connection is not a missing table)", async () => {
+    const pool = { async query() { throw new Error("Connection terminated unexpectedly"); } };
+    await expect(loadOperationsSnapshot(pool)).rejects.toThrow(/Connection terminated/);
   });
 });
 
@@ -170,7 +198,9 @@ describe("loadOperationsSnapshot and the import behind each dataset", () => {
 });
 
 describe("maintenance fan-out", () => {
-  it("runs the operations alerts worker, last, after the weekly scoring refresh it judges", () => {
+  // The fan-out starts every worker at once, so the list's order is the order they are reported in the heartbeat,
+  // not an order of execution: the alerts worker judges what earlier ticks left (its thresholds are hours and days).
+  it("lists the operations alerts worker after the workers whose results it reports on", () => {
     const names = FANOUT_WORKERS.map((w) => w.name);
     expect(names).toContain("operationsAlerts");
     expect(names).toContain("refreshLeadScores");
