@@ -235,6 +235,11 @@ describe('shouldRetryBatch', () => {
     const result = shouldRetryBatch(failedBatch({ import_type: 'nppes_registry' }), now);
     expect(result.eligible).toBe(false);
     expect(result.reason).toBe('nppes_handled_elsewhere');
+    for (const import_type of ['nppes_flat_file', 'nppes_registry_file']) {
+      const file = shouldRetryBatch(failedBatch({ import_type }), now);
+      expect(file.eligible, import_type).toBe(false);
+      expect(file.reason, import_type).toBe('self_resuming_import_type');
+    }
   });
 
   it('respects the auto_retry_disabled override on retry_params', () => {

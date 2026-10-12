@@ -11,7 +11,7 @@ import { Readable } from "stream";
 import yauzl from "yauzl";
 import { db, pool } from "../db";
 import { importBatches } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 import { safeFetchStream } from "../lib/safeFetch";
 import { csvRecords, pageRecords } from "../lib/csv";
 import { nppesRowToRecords, writeNppesRecords, missingNppesIndexes, type NppesRecords } from "../lib/nppesWrite";
@@ -85,6 +85,18 @@ export function openNpiDataStream(zipPath: string): Promise<{ stream: Readable; 
   });
 }
 
+/**
+ * Marks the batch completed unless the user paused or cancelled it: the pause check runs every few pages, so a
+ * stop that came in during the last ones would otherwise be overwritten by "completed" (and the registry marked
+ * current, the schedule settled as a success). Returns whether it completed.
+ */
+export async function completeUnlessStopped(batchId: number, values: Record<string, unknown>): Promise<boolean> {
+  const done = await db.update(importBatches).set({ ...values, status: "completed" })
+    .where(and(eq(importBatches.id, batchId), notInArray(importBatches.status, ["paused", "cancelled"])))
+    .returning({ id: importBatches.id });
+  return done.length > 0;
+}
+
 export async function handleImportNPPESFile(payload: { batch_id: number; file_url: string; import_type: string; resume_offset?: number; dry_run?: boolean }) {
   const { batch_id, file_url, import_type, resume_offset = 0, dry_run = false } = payload;
   const file = classifyNppesLink(file_url);
@@ -110,6 +122,15 @@ export async function handleImportNPPESFile(payload: { batch_id: number; file_ur
     updated_date: new Date(),
   }).where(eq(importBatches.id, batch_id)).catch((e) => console.warn("[importNPPESFile] progress:", e?.message));
 
+  // A pause or cancel the user made since the last check: the import stops where it is.
+  const stoppedByUser = async (): Promise<boolean> => {
+    const [current] = await db.select({ status: importBatches.status }).from(importBatches).where(eq(importBatches.id, batch_id)).limit(1).catch(() => [] as any[]);
+    if (!current || (current.status !== "paused" && current.status !== "cancelled")) return false;
+    await saveProgress();
+    await endedWithoutFinishing(import_type, batch_id, current.status);
+    return true;
+  };
+
   try {
     // Before the (large) download: the location and taxonomy upserts conflict
     // on unique indexes the server builds in the background after start-up.
@@ -131,14 +152,7 @@ export async function handleImportNPPESFile(payload: { batch_id: number; file_ur
     const records = csvRecords(opened.stream, { normalizeHeaders: false });
     for await (const page of pageRecords(records, PAGE_SIZE, Number(resume_offset) || 0)) {
       pages++;
-      if (pages % PAUSE_CHECK_INTERVAL === 0) {
-        const [current] = await db.select({ status: importBatches.status }).from(importBatches).where(eq(importBatches.id, batch_id)).limit(1).catch(() => [] as any[]);
-        if (current && (current.status === "paused" || current.status === "cancelled")) {
-          await saveProgress();
-          await endedWithoutFinishing(import_type, batch_id, current.status);
-          return;
-        }
-      }
+      if (pages % PAUSE_CHECK_INTERVAL === 0 && await stoppedByUser()) return;
       const batchRecords: NppesRecords[] = [];
       for (const row of page.rows) {
         const rec = nppesRowToRecords(row);
@@ -165,8 +179,9 @@ export async function handleImportNPPESFile(payload: { batch_id: number; file_ur
       rowsRead = page.nextOffset;
       if (pages % PROGRESS_UPDATE_INTERVAL === 0) await saveProgress();
     }
-    await db.update(importBatches).set({
-      status: "completed",
+    // A stop that came in since the last check must not be overwritten by "completed".
+    if (await stoppedByUser()) return;
+    const completed = await completeUnlessStopped(batch_id, {
       completed_at: new Date(),
       imported_rows: providersWritten,
       skipped_rows: invalid + excluded,
@@ -174,7 +189,9 @@ export async function handleImportNPPESFile(payload: { batch_id: number; file_ur
       error_samples: null,
       retry_params: mergeRetryParams({ file_url, import_type, resume_offset: rowsRead, locations, locations_removed: locationsRemoved, taxonomies, invalid_npis: invalid, excluded_credentials: excluded, stale_rows: stale, unmatched_deactivations: unmatched, unknown_taxonomy_codes: [...taxonomy.unknown].slice(0, 50) }),
       updated_date: new Date(),
-    }).where(eq(importBatches.id, batch_id));
+    });
+    // Stopped between that check and the update: record where it got to, as the check does.
+    if (!completed) { await stoppedByUser(); return; }
     console.log(`[importNPPESFile] Completed ${import_type}: rows=${rowsRead}, providers=${providersWritten}, locations=${locations} (+${locationsRemoved} removed), taxonomies=${taxonomies}, invalid=${invalid}, excluded=${excluded}, stale=${stale}, unmatched deactivations=${unmatched}`);
     if (taxonomy.unknown.size > 0) {
       console.warn(`[importNPPESFile] ${taxonomy.unknown.size} taxonomy code(s) not in the NUCC ${taxonomy.version ?? "?"} code set, e.g. ${[...taxonomy.unknown].slice(0, 10).join(", ")}; rebuild server/data/nucc from the current NUCC release`);

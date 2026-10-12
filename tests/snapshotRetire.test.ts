@@ -42,6 +42,18 @@ describe("which routes are snapshots", () => {
     expect(retiresSnapshot("facility_affiliation", { npi_filter: "1234567893" })).toBe(false);
     expect(retiresSnapshot("hospital_service_area", {})).toBe(false);
   });
+
+  it("a page that failed to write leaves its rows with the previous batch's id, so nothing is retired after one", () => {
+    expect(retiresSnapshot("facility_affiliation", { errors: 0 })).toBe(true);
+    expect(retiresSnapshot("facility_affiliation", { errors: 1 })).toBe(false);
+    expect(retiresSnapshot("cms_order_referring", { errors: 2 })).toBe(false);
+  });
+
+  it("Order & Referring is a complete list per release, so it is a snapshot too (an NPI the release drops is no longer eligible)", () => {
+    expect(retiresSnapshot("cms_order_referring", {})).toBe(true);
+    expect(retiresSnapshot("cms_order_referring", { dry_run: true })).toBe(false);
+    expect(retiresSnapshot("cms_order_referring", { npi_filter: "1234567893" })).toBe(false);
+  });
 });
 
 describe("decideRetire", () => {
@@ -64,11 +76,33 @@ describe("retireStaleSnapshotRows", () => {
     expect(count.params).toEqual([77, "hospice"]);
     const chunked = deletes.filter((c) => c.sql.startsWith("DELETE"));
     expect(chunked).toHaveLength(2);
-    expect(chunked[0].sql).toMatch(/import_batch_id IS DISTINCT FROM \$1 AND setting = \$2 LIMIT 3/);
+    expect(chunked[0].sql).toMatch(/\(import_batch_id IS NULL OR import_batch_id < \$1\) AND setting = \$2 LIMIT 3/);
     expect(chunked[0].params).toEqual([77, "hospice"]);
     // The count is recorded on the batch.
     expect(db.calls.at(-1)!.sql).toMatch(/UPDATE import_batches SET retry_params/);
     expect(db.calls.at(-1)!.params).toEqual([77, JSON.stringify({ retired_rows: 5 })]);
+  });
+
+  it("only ever removes rows from an older batch: an import that started since has newer ids and keeps its rows", async () => {
+    const db = fakeDb({ kept: 50, stale: 5 }, [5]);
+    await retireStaleSnapshotRows("facility_affiliation", 77, { db, log: quiet });
+    const count = db.calls[0].sql;
+    // Rows at or after this batch count as kept; only older (or untracked) rows are stale.
+    expect(count).toMatch(/count\(\*\) FILTER \(WHERE import_batch_id >= \$1\)::int AS kept/);
+    expect(count).toMatch(/count\(\*\) FILTER \(WHERE \(import_batch_id IS NULL OR import_batch_id < \$1\)\)::int AS stale/);
+    const del = db.calls.find((c) => c.sql.startsWith("DELETE"))!.sql;
+    expect(del).not.toMatch(/IS DISTINCT FROM/);
+    // The outer statement repeats the predicate, so a row an import upserts after the subquery picked it is re-checked and kept.
+    expect(del).toMatch(/^DELETE FROM cms_facility_affiliation WHERE \(import_batch_id IS NULL OR import_batch_id < \$1\) AND id IN \(\s*SELECT id FROM cms_facility_affiliation WHERE \(import_batch_id IS NULL OR import_batch_id < \$1\)/);
+  });
+
+  it("deletes Order & Referring rows by NPI, the table's key (it has no id column)", async () => {
+    const db = fakeDb({ kept: 90, stale: 4 }, [4]);
+    const r = await retireStaleSnapshotRows("cms_order_referring", 12, { db, log: quiet });
+    expect(r).toEqual({ retired: 4, kept: 90, stale: 4 });
+    const del = db.calls.find((c) => c.sql.startsWith("DELETE"))!.sql;
+    expect(del).toMatch(/^DELETE FROM cms_order_referring WHERE \(import_batch_id IS NULL OR import_batch_id < \$1\) AND npi IN \(\s*SELECT npi FROM cms_order_referring/);
+    expect(del).not.toMatch(/\bid IN\b/);
   });
 
   it("does not touch a table whose import wrote nothing, or less than the rows it would remove", async () => {

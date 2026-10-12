@@ -212,7 +212,9 @@ export function scoreProvider(input: ScoringInput, rules: ScoringRule[]): ScoreR
   // 6. Practice type (locations in the scored states).
   const locCount = input.locations.length;
   values.practice_type = locCount <= 1 ? 100 : locCount <= 3 ? 80 : locCount <= 5 ? 60 : 30;
-  if (locCount >= 1 && locCount <= 3) reasons.push(`${locCount === 1 ? "Solo" : "Small group"} practice`);
+  // The signal is how many practice locations the provider has in the scored states, not the size of a group:
+  // NPPES has no practice-size field, and one location can be a solo office or a clinic of fifty. Say what is measured.
+  if (locCount >= 1 && locCount <= 3) reasons.push(`${locCount} practice location${locCount === 1 ? "" : "s"} in the scored territory`);
   if (input.affiliations > 0) reasons.push(`Affiliated with ${input.affiliations} facilit${input.affiliations === 1 ? "y" : "ies"}`);
 
   // 7. Behavioral health potential.

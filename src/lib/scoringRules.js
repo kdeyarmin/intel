@@ -22,6 +22,13 @@ export const CONDITION_FIELDS = {
   ],
 };
 
+/** A rule's list-valued condition as an array, whether it was stored as one or as comma-separated text. */
+export function conditionList(rule, key) {
+  const value = rule?.conditions?.[key];
+  if (Array.isArray(value)) return value.map(String);
+  return String(value ?? '').split(/[\s,;]+/).filter(Boolean);
+}
+
 /** "pa, OH ,42003" → ["PA", "OH", "42003"]. */
 export function parseList(text) {
   return String(text ?? '').split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean).map((s) => s.toUpperCase());

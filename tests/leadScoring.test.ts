@@ -115,7 +115,7 @@ describe("scoreProvider", () => {
       "Eligible to order home health, hospice, DME",
       "620 Medicare beneficiaries (2024)",
       expect.stringMatching(/^High service intensity \(12\.9/),
-      "Solo practice",
+      "1 practice location in the scored territory",
       "Affiliated with 2 facilities",
     ]));
     expect(r.referral_likelihood).toBe(100);
@@ -163,7 +163,7 @@ describe("scoreProvider", () => {
     const rules = normalizeRules([{ rule_type: "practice_type", weight: 100 }]);
     const n = (k: number) => scoreProvider(base({ locations: Array.from({ length: k }, () => ({ state: "PA", county_fips: null, city: null })) }), rules);
     expect([1, 3, 5, 6].map((k) => n(k).score)).toEqual([100, 80, 60, 30]);
-    expect(n(2).reasons).toContain("Small group practice");
+    expect(n(2).reasons).toContain("2 practice locations in the scored territory");
   });
 
   it("reports completeness and reachability separately from the score", () => {

@@ -40,6 +40,28 @@ describe("csv", () => {
     ]);
   });
 
+  it("keeps a quoted field with line breaks in one row, across chunks and CRLF", async () => {
+    const text = 'name,address,city\r\nSunny Hill,"12 Main St\r\nSuite 4",Erie\r\n"Lakeview, Inc","1 ""A"" Rd\n\nRear",Butler\r\nPlain,5 Elm,Ohio\r\n';
+    for (const split of [text.length, 7, 1]) {
+      const parts = text.match(new RegExp(`[\\s\\S]{1,${split}}`, "g")) ?? [];
+      const rows = await collect(csvRecords(chunks(...parts)));
+      expect(rows.map((r: any) => [r.name, r.address, r.city]), `split ${split}`).toEqual([
+        ["Sunny Hill", "12 Main St\nSuite 4", "Erie"],
+        ["Lakeview, Inc", '1 "A" Rd\n\nRear', "Butler"],
+        ["Plain", "5 Elm", "Ohio"],
+      ]);
+    }
+  });
+
+  it("doesn't let a stray quote swallow a whole file, and keeps a final unterminated record", async () => {
+    const rows = await collect(csvRecords(chunks('a,b\n1,"open\n' + "x,y\n".repeat(300_000))));
+    // One huge row at most, then the file goes on: not a single row for the rest of the file.
+    expect(rows.length).toBeGreaterThan(1);
+    const tail = await collect(csvRecords(chunks('a,b\n1,"never closed')));
+    expect(tail).toHaveLength(1);
+    expect(tail[0].a).toBe("1");
+  });
+
   it("takes caller-supplied headers for a headerless file", async () => {
     const rows = await collect(csvRecords(chunks("11,22,5,3\n33,44,7,2"), { headers: ["npi_from", "npi_to", "pair_count", "bene_count"] }));
     expect(rows).toEqual([

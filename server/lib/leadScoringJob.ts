@@ -1,10 +1,12 @@
 // Computes lead_scores for every individual provider with a practice
 // location in the configured states (server/lib/leadScoring.ts has the
 // rules). Runs in the background like a rollup: provider_locations is read
-// in primary-key chunks under a statement timeout, candidates are then
-// looked up in batches of NPIs, and each batch's scores replace the old rows
-// in one short transaction. One run at a time per database (advisory lock);
-// progress and the last result live in rollup_runs under job 'lead_scores'.
+// in primary-key chunks under a statement timeout and the NPIs found are
+// staged in a session temp table, so the territory's size never reaches
+// Node's heap; candidates are then read back and looked up in batches of
+// NPIs, and each batch's scores replace the old rows in one short
+// transaction. One run at a time per database (advisory lock); progress and
+// the last result live in rollup_runs under job 'lead_scores'.
 import { planChunks } from "./rollups/core";
 import { getGeoIndex, zipToCounty, type GeoIndex } from "./geo";
 import { specialtyGroupFor } from "./specialtyGroups";
@@ -49,28 +51,56 @@ async function runRow(client: any, status: string, fields: Record<string, unknow
   ).catch(() => {});
 }
 
-/** Practice locations in the scored states, by NPI, from a primary-key walk of provider_locations. */
-async function collectCandidates(client: any, states: string[], onProgress: (p: Record<string, unknown>) => Promise<void>): Promise<Map<string, Loc[]>> {
+const CANDIDATES = "lead_scoring_candidates";
+
+// A practice location (anything but a mailing address) in the scored states.
+const inTerritory = (statesParam: string) => `state = ANY(${statesParam}) AND (location_type IS NULL OR location_type <> 'Mailing')`;
+
+/**
+ * Stages the NPIs with a practice location in the scored states in a session
+ * temp table (on disk, like the rollups' staging), from a primary-key walk of
+ * provider_locations. Each chunk is one INSERT … SELECT, so none of the
+ * territory passes through Node: a multi-state territory is millions of
+ * providers and this job runs inside the API process, where holding them and
+ * their locations in a Map would end in an out-of-memory crash of the server.
+ * Returns how many distinct NPIs were staged.
+ */
+async function stageCandidates(client: any, states: string[], onProgress: (p: Record<string, unknown>) => Promise<void>): Promise<number> {
+  await client.query(`CREATE TEMP TABLE IF NOT EXISTS ${CANDIDATES} (npi varchar(20) PRIMARY KEY)`);
+  await client.query(`TRUNCATE ${CANDIDATES}`);
   await client.query(`SET statement_timeout = '${CHUNK_TIMEOUT}'`);
   const { rows: [bounds] } = await client.query("SELECT min(id) AS lo, max(id) AS hi FROM provider_locations");
   const chunks = planChunks(bounds?.lo == null ? null : Number(bounds.lo), bounds?.hi == null ? null : Number(bounds.hi), CHUNK_ROWS);
-  const byNpi = new Map<string, Loc[]>();
+  let staged = 0;
   for (let i = 0; i < chunks.length; i += 1) {
     const { lo, hi } = chunks[i];
-    const { rows } = await client.query(
-      `SELECT npi, state, left(zip, 5) AS zip5, city FROM provider_locations
-        WHERE id >= $1 AND id < $2 AND state = ANY($3) AND npi IS NOT NULL
-          AND (location_type IS NULL OR location_type <> 'Mailing')`,
+    const res = await client.query(
+      `INSERT INTO ${CANDIDATES} (npi)
+       SELECT DISTINCT npi FROM provider_locations
+        WHERE id >= $1 AND id < $2 AND npi IS NOT NULL AND ${inTerritory("$3")}
+       ON CONFLICT DO NOTHING`,
       [lo, hi, states],
     );
-    for (const r of rows) {
-      const list = byNpi.get(r.npi) || [];
-      list.push({ state: String(r.state).toUpperCase(), zip5: r.zip5 || null, city: r.city || null });
-      byNpi.set(r.npi, list);
-    }
-    if (i % 20 === 19) await onProgress({ phase: "locations", chunk: i + 1, chunks: chunks.length, candidates: byNpi.size });
+    staged += Number(res?.rowCount ?? 0);
+    if (i % 20 === 19) await onProgress({ phase: "locations", chunk: i + 1, chunks: chunks.length, candidates: staged });
   }
   await client.query("RESET statement_timeout");
+  return staged;
+}
+
+/** One batch's practice locations in the scored states, in the order they were loaded. */
+async function practiceLocations(client: any, npis: string[], states: string[]): Promise<Map<string, Loc[]>> {
+  const { rows } = await client.query(
+    `SELECT npi, state, left(zip, 5) AS zip5, city FROM provider_locations
+      WHERE npi = ANY($1) AND ${inTerritory("$2")} ORDER BY id`,
+    [npis, states],
+  );
+  const byNpi = new Map<string, Loc[]>();
+  for (const r of rows) {
+    const list = byNpi.get(r.npi) || [];
+    list.push({ state: String(r.state).toUpperCase(), zip5: r.zip5 || null, city: r.city || null });
+    byNpi.set(r.npi, list);
+  }
   return byNpi;
 }
 
@@ -207,20 +237,28 @@ export async function runLeadScoring(
     const runStart = now();
 
     const geo = await getGeoIndex(pool).catch(() => null);
-    const locs = await collectCandidates(client, territory.states, (p) =>
+    const candidates = await stageCandidates(client, territory.states, (p) =>
       client.query("UPDATE rollup_runs SET progress = $2 WHERE job = $1", [LEAD_SCORING_JOB, JSON.stringify({ ...p, territory })]).catch(() => {}));
-    const npis = [...locs.keys()];
     const version = `${totalWeight(rules)}%:${rules.map((r) => `${r.rule_type}=${r.weight}`).join(",")}`;
     let scored = 0;
-    for (let i = 0; i < npis.length; i += BATCH) {
-      const batch = npis.slice(i, i + BATCH);
+    let done = 0;
+    let after = "";
+    // The staged NPIs in key order, one batch at a time: memory stays at one batch however big the territory.
+    for (let n = 0; ; n += 1) {
+      const { rows } = await client.query(`SELECT npi FROM ${CANDIDATES} WHERE npi > $1 ORDER BY npi LIMIT ${BATCH}`, [after]);
+      if (rows.length === 0) break;
+      const batch: string[] = rows.map((r: any) => r.npi);
+      after = batch[batch.length - 1];
+      const locs = await practiceLocations(client, batch, territory.states);
       const scores = await scoreBatch(client, batch, locs, rules, geo && geo.counties.size > 0 ? geo : null);
       await writeScores(client, scores, now(), version);
       scored += scores.length;
-      if ((i / BATCH) % 20 === 19) {
+      done += batch.length;
+      if (n % 20 === 19) {
         await client.query("UPDATE rollup_runs SET progress = $2 WHERE job = $1",
-          [LEAD_SCORING_JOB, JSON.stringify({ phase: "scoring", done: Math.min(i + BATCH, npis.length), candidates: npis.length, scored, territory })]).catch(() => {});
+          [LEAD_SCORING_JOB, JSON.stringify({ phase: "scoring", done, candidates, scored, territory })]).catch(() => {});
       }
+      if (batch.length < BATCH) break;
     }
     // Reached only when every batch was written (a failed batch ends the run in the catch below).
     const removed = await removeStaleScores(client, runStart);
@@ -228,17 +266,17 @@ export async function runLeadScoring(
     await client.query(
       `UPDATE rollup_runs SET status = 'success', finished_at = now(), last_success_at = now(), rows_scanned = $2,
          rows_skipped = $3, result_rows = $4, duration_ms = $5, progress = $6, error = NULL WHERE job = $1`,
-      [LEAD_SCORING_JOB, npis.length, npis.length - scored, scored, duration, JSON.stringify({ territory })],
+      [LEAD_SCORING_JOB, candidates, candidates - scored, scored, duration, JSON.stringify({ territory })],
     ).catch(() => {});
     await recordAudit({
       event_type: "scoring_run",
       user_email: opts.userEmail ?? "system@maintenance",
       action: "Recalculate Scores",
       entity_type: "LeadScore",
-      details: { scored, removed, candidates: npis.length, states: territory.states, counties: territory.counties.length, total_weight: totalWeight(rules), duration_ms: duration },
+      details: { scored, removed, candidates, states: territory.states, counties: territory.counties.length, total_weight: totalWeight(rules), duration_ms: duration },
     });
-    log.log(`[leadScoring] Scored ${scored.toLocaleString("en-US")} of ${npis.length.toLocaleString("en-US")} providers in ${territory.states.join(", ")} in ${Math.round(duration / 1000)}s${removed ? `; removed ${removed.toLocaleString("en-US")} older scores` : ""}`);
-    return { status: "success", territory, candidates: npis.length, scored, removed, duration_ms: duration };
+    log.log(`[leadScoring] Scored ${scored.toLocaleString("en-US")} of ${candidates.toLocaleString("en-US")} providers in ${territory.states.join(", ")} in ${Math.round(duration / 1000)}s${removed ? `; removed ${removed.toLocaleString("en-US")} older scores` : ""}`);
+    return { status: "success", territory, candidates, scored, removed, duration_ms: duration };
   } catch (e: any) {
     await client.query("ROLLBACK").catch(() => {});
     await client.query("RESET statement_timeout").catch(() => {});
@@ -248,7 +286,11 @@ export async function runLeadScoring(
     log.warn("[leadScoring] failed:", error);
     return { status: "failed", ...base, duration_ms: Date.now() - started, error };
   } finally {
-    if (locked) await client.query("SELECT pg_advisory_unlock(hashtext($1))", [LOCK_KEY]).catch(() => {});
+    if (locked) {
+      // The staged NPIs live as long as the connection, which goes back to the pool.
+      await client.query(`DROP TABLE IF EXISTS ${CANDIDATES}`).catch(() => {});
+      await client.query("SELECT pg_advisory_unlock(hashtext($1))", [LOCK_KEY]).catch(() => {});
+    }
     client.release();
   }
 }
