@@ -620,12 +620,33 @@ export async function runOperationsAlerts(): Promise<WorkerResult> {
   }
 }
 
+// ─── Worker: supervise the NPPES crawler ─────────────────────────────────────
+// Thin adapter over server/functions/superviseNPPESCrawler so the dead-pool
+// detector also runs on the maintenance fan-out (and shows in the admin UI),
+// in addition to its own 1–2 minute ticker.
+export async function runSuperviseNppesCrawlerWorker(): Promise<WorkerResult> {
+  const started = Date.now();
+  try {
+    const { runSuperviseNppesCrawler } = await import("../functions/superviseNPPESCrawler");
+    const r = await runSuperviseNppesCrawler();
+    return {
+      worker: "superviseNppesCrawler",
+      ok: true,
+      durationMs: Date.now() - started,
+      details: { checked: r.checked, respawned: r.respawned, decisions: r.details },
+    };
+  } catch (e) {
+    return { worker: "superviseNppesCrawler", ok: false, durationMs: Date.now() - started, error: truncErr(e) };
+  }
+}
+
 export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResult>; destructive?: boolean }> = [
   { name: "settleScheduledImports", run: runSettleScheduledImports },
   { name: "checkCmsCatalog", run: runCheckCmsCatalog },
   { name: "autoResumePausedImports", run: runAutoResumePausedImports },
   { name: "autoRetryFailedImports", run: runAutoRetryFailedImports },
   { name: "manageCrawlerRetries", run: runManageCrawlerRetries },
+  { name: "superviseNppesCrawler", run: runSuperviseNppesCrawlerWorker },
   { name: "cancelStalledImports", run: runCancelStalledImports },
   { name: "runDueScheduledReports", run: runDueScheduledReportsWorker },
   { name: "refreshRollups", run: runRefreshRollupsWorker },

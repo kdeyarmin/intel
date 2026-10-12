@@ -343,6 +343,14 @@ app.listen(PORT, "0.0.0.0", async () => {
       const { startMaintenanceTicker } = await import("./lib/maintenanceTicker");
       startMaintenanceTicker(dbPool);
     }
+
+    // Optional in-process NPPES crawler supervisor tick
+    // (NPPES_SUPERVISOR_INTERVAL_MS); no-op unless set. Same model as the
+    // maintenance ticker: default-off, advisory-locked.
+    {
+      const { startNppesSupervisorTicker } = await import("./functions/superviseNPPESCrawler");
+      startNppesSupervisorTicker(dbPool);
+    }
   } catch (e: any) {
     console.error(`[CareMetric API] Startup recovery error:`, e.message);
   }
