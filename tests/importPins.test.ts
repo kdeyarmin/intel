@@ -25,6 +25,7 @@ const PINNED: Record<string, { id: string; title: string }> = {
   medicare_physician_by_provider: { id: "8889d81e-2ee7-448f-8713-f071038289b5", title: "Medicare Physician & Other Practitioners - by Provider" },
   facility_affiliation: { id: "27ea-46a8", title: "Facility Affiliation Data" },
   medicare_dme_by_referring: { id: "f8603e5b-9c47-4c52-9b47-a4ef92dfada4", title: "Medicare Durable Medical Equipment, Devices & Supplies - by Referring Provider" },
+  physician_certifications: { id: "92396110-2aed-4d63-a6a2-5d6207d46a29", title: "Medicare Physician & Other Practitioners - by Provider and Service" },
   ltc_facility_characteristics: { id: "129a6503-c0f1-4132-b186-4c0232c2d894", title: "Long-Term Care Facility Characteristics" },
   cms_order_referring: { id: "c99b5865-1119-4436-bb80-c5af2773ea1f", title: "Order and Referring" },
 };

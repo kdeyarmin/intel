@@ -22,6 +22,13 @@ const SETTINGS = [
 ];
 const GROUP_OPTIONS = [...SPECIALTY_GROUPS].sort((a, b) => a.label.localeCompare(b.label));
 
+// Patients certified for home health. null: the Home Health Certifications file has not been imported (unknown, not
+// zero); 0: CMS does not list the clinician, which it does only above 10 patients.
+function certified(n) {
+  if (n == null) return '—';
+  return n > 0 ? fmtCount(n) : '≤10';
+}
+
 /** Clinicians in a county (or state) most likely to generate post-acute referrals, with the index's components. */
 export default function ReferralSourcesTable({ state, countyFips, countyName }) {
   const ids = useId();
@@ -49,7 +56,7 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
           <Stethoscope className="w-4 h-4 text-cyan-400" aria-hidden="true" /> Likely referral sources in {countyName || state}
         </CardTitle>
         <p className="text-[11px] text-slate-400">
-          Clinicians ranked by a referral index built from Medicare volume (Physician &amp; Other Practitioners by Provider{data?.data_year ? ` ${data.data_year}` : ''}), patient risk and Order &amp; Referring eligibility. {data?.index_note}
+          Clinicians ranked by a referral index built from {data?.certifications_loaded ? 'the patients they certified for home health (Physician & Other Practitioners by Provider and Service), ' : ''}Medicare volume (Physician &amp; Other Practitioners by Provider{data?.data_year ? ` ${data.data_year}` : ''}), patient risk and Order &amp; Referring eligibility. {data?.index_note}
         </p>
         <div className="flex flex-wrap items-end gap-3 pt-2">
           <div className="space-y-1">
@@ -96,6 +103,7 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
                     <th scope="col" className="py-1.5 pr-2">Clinician</th>
                     <th scope="col" className="py-1.5 pr-2 text-right">Index</th>
                     <th scope="col" className="py-1.5 pr-2 text-right">Medicare patients</th>
+                    <th scope="col" className="py-1.5 pr-2 text-right">Home health certified</th>
                     <th scope="col" className="py-1.5 pr-2 text-right">Risk</th>
                     <th scope="col" className="py-1.5 pr-2 text-right">Alzheimer's</th>
                     <th scope="col" className="py-1.5 pr-2 text-right">Heart failure</th>
@@ -114,6 +122,7 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
                       </td>
                       <td className="py-1.5 pr-2 text-right text-slate-100 font-medium">{r.referral_index ?? '—'}</td>
                       <td className="py-1.5 pr-2 text-right text-slate-200">{fmtCount(r.benes)}</td>
+                      <td className="py-1.5 pr-2 text-right text-slate-200">{certified(r.hh_cert_benes)}</td>
                       <td className="py-1.5 pr-2 text-right text-slate-300">{fmtRate(r.avg_risk_score, 2)}</td>
                       <td className="py-1.5 pr-2 text-right text-slate-300">{fmtShare(r.chronic?.alzheimer)}</td>
                       <td className="py-1.5 pr-2 text-right text-slate-300">{fmtShare(r.chronic?.chf)}</td>
@@ -134,6 +143,11 @@ export default function ReferralSourcesTable({ state, countyFips, countyName }) 
                 </tbody>
               </table>
               {listNote ? <p className="text-[11px] text-slate-400 mt-1">{listNote}</p> : null}
+              {data?.certifications_loaded === false ? (
+                <p className="text-[11px] text-slate-400 mt-1">A dash under Home health certified means the Home Health Certifications file has not been imported yet, so who certifies patients for home health is unknown; the index then rests on Medicare volume, risk and eligibility alone.</p>
+              ) : data?.certifications_loaded ? (
+                <p className="text-[11px] text-slate-400 mt-1">Home health certified adds up the Medicare patients a clinician certified for home health in {data.certifications_year || 'the latest data year'}, as CMS counts them for each care setting (a patient certified in two settings counts in both). CMS lists a setting only above 10 patients, so “≤10” means no setting is listed: 10 or fewer in each, or none.</p>
+              ) : null}
               {rows.some((r) => r.affiliations == null) ? (
                 <p className="text-[11px] text-slate-400 mt-1">A dash under Hospitals means the Facility Affiliation file has not been imported yet, so affiliations are unknown (not zero).</p>
               ) : null}

@@ -99,6 +99,7 @@ const DATA_DESTINATION_MAP = {
   medical_equipment_suppliers: { page: 'Facilities', params: { type: 'dme' }, label: 'DME Suppliers' },
   medicare_dme_by_supplier: { page: 'Facilities', params: { type: 'dme' }, label: 'DME Suppliers' },
   medicare_dme_by_referring: { page: 'CountyIntelligence', params: { tab: 'referrals' }, label: 'County referral sources' },
+  physician_certifications: { page: 'CountyIntelligence', params: { tab: 'referrals' }, label: 'County referral sources' },
 
   fqhc_enrollments: { page: 'Facilities', params: { type: 'community_health' }, label: 'Community Health' },
   fqhc_all_owners: { page: 'Facilities', params: { type: 'community_health' }, label: 'Community Health' },

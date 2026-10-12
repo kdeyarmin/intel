@@ -727,6 +727,34 @@ describe("migration 0021_billing_event_guard", () => {
   });
 });
 
+describe("migration 0022_physician_certifications", () => {
+  const sql = readMigration("0022_physician_certifications.sql");
+
+  it("creates the certifications table and adds the three rollup columns, idempotently, and the schema declares them", () => {
+    const statements = sql.replace(/^--.*$/gm, "").split(";").map((x) => x.trim()).filter(Boolean);
+    expect(statements.map((x) => x.split("\n")[0])).toEqual([
+      'CREATE TABLE IF NOT EXISTS "cms_physician_certifications" (',
+      'CREATE UNIQUE INDEX IF NOT EXISTS "uq_cms_phys_cert" ON "cms_physician_certifications" ("npi", "hcpcs_code", "place_of_service", "data_year")',
+      'ALTER TABLE "rollup_referral_sources" ADD COLUMN IF NOT EXISTS "hh_cert_benes" integer',
+      'ALTER TABLE "rollup_referral_sources" ADD COLUMN IF NOT EXISTS "hospice_oversight_benes" integer',
+      'ALTER TABLE "rollup_referral_sources" ADD COLUMN IF NOT EXISTS "hh_cert_year" varchar(10)',
+    ]);
+    const schema = readSchema();
+    const table = schema.slice(schema.indexOf('pgTable("cms_physician_certifications"'));
+    expect(table.slice(0, table.indexOf("});"))).toContain('uniqueIndex("uq_cms_phys_cert").on(table.npi, table.hcpcs_code, table.place_of_service, table.data_year)');
+    const rollup = schema.slice(schema.indexOf('pgTable("rollup_referral_sources"'));
+    expect(rollup.slice(0, rollup.indexOf("}, (table)"))).toMatch(/rank_in_county: integer\("rank_in_county"\),\s+hh_cert_benes: integer\("hh_cert_benes"\),\s+hospice_oversight_benes: integer\("hospice_oversight_benes"\),\s+hh_cert_year: varchar\("hh_cert_year", \{ length: 10 \}\),\s+$/);
+  });
+
+  it("is registered in the drizzle journal after 0021, later than it", () => {
+    const journal = JSON.parse(fs.readFileSync(path.join(ROOT, "drizzle", "meta", "_journal.json"), "utf8"));
+    const tags = journal.entries.map((e: { tag: string }) => e.tag);
+    expect(tags.indexOf("0022_physician_certifications")).toBe(tags.indexOf("0021_billing_event_guard") + 1);
+    const at = (tag: string) => journal.entries.find((e: { tag: string }) => e.tag === tag).when;
+    expect(at("0022_physician_certifications")).toBeGreaterThan(at("0021_billing_event_guard"));
+  });
+});
+
 describe("migration 0012_assistant", () => {
   const sql = readMigration("0012_assistant.sql");
   const schema = readSchema();

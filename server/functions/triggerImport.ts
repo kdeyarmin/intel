@@ -10,7 +10,7 @@ import { markImportFinished, markImportStarted, resolveImportVersion } from "../
 import { sourceForUrl } from "../lib/cmsCatalog";
 import { csvSourceRecords, isLocalUpload, sourceKindFor } from "../lib/importSources";
 import { pageRecords } from "../lib/csv";
-import { TYPED_ROUTES, mapTypedRows } from "./cmsTypedTables";
+import { CERTIFICATION_HCPCS, TYPED_ROUTES, mapTypedRows } from "./cmsTypedTables";
 import { NPPES_FILE_TYPES } from "./importNPPESFile";
 import { resolveNppesFile, classifyNppesLink } from "../lib/nppesFiles";
 import { recordSourceFile } from "../lib/datasetRegistry";
@@ -28,12 +28,34 @@ export const IMPORT_TYPE_ALIASES: Record<string, string> = {
   cms_utilization: "provider_service_utilization",
 };
 
+// The by-provider-and-service file has ~10M rows; the referral view needs only the home health certification and
+// care plan oversight codes (~27K rows), which CMS filters server-side, so those imports read a few pages.
+const CERTIFICATION_QUERY = [
+  ["filter[p][condition][path]", "HCPCS_Cd"],
+  ["filter[p][condition][operator]", "IN"],
+  ...CERTIFICATION_HCPCS.map((code) => ["filter[p][condition][value][]", code]),
+].map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
+
+/** Query parameters an import type adds to whatever data URL it resolves (the registry's newest release or the pin). */
+const IMPORT_TYPE_QUERY: Record<string, string> = {
+  physician_certifications: CERTIFICATION_QUERY,
+};
+
+/** The URL with its import type's own query added, once. */
+export function withImportQuery(importType: string, url: string | null | undefined): string | null {
+  const query = Object.hasOwn(IMPORT_TYPE_QUERY, importType) ? IMPORT_TYPE_QUERY[importType] : null;
+  if (!url || !query || url.includes(query)) return url ?? null;
+  return `${url}${url.includes("?") ? "&" : "?"}${query}`;
+}
+
 // Pinned endpoints. data.cms.gov gives each yearly release its own dataset id,
 // so these go stale: handleTriggerImport prefers the newest version the
 // registry resolved (server/lib/datasetRegistry.ts) and uses these as the
 // fallback and as the key the catalog check starts from.
 export const IMPORT_TYPE_URLS: Record<string, string> = {
   provider_service_utilization: "https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data",
+  // The same dataset, read for the certification codes only (see CERTIFICATION_QUERY).
+  physician_certifications: `https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data?${CERTIFICATION_QUERY}`,
   cms_order_referring: "https://data.cms.gov/data-api/v1/dataset/c99b5865-1119-4436-bb80-c5af2773ea1f/data",
   home_health_enrollments: "https://data.cms.gov/data-api/v1/dataset/15f64ab4-3172-4a27-b589-ebd67a6d28aa/data",
   hospice_enrollments: "https://data.cms.gov/data-api/v1/dataset/25704213-e833-4b8b-9dbc-58dd17149209/data",
@@ -197,6 +219,7 @@ const CMS_DATASET_CATALOG = [
   { id: "licensed_facilities", title: "State-Licensed Homes (personal care, assisted living)", description: "Personal care homes, assisted living residences and similar state-licensed homes that CMS files never list. Import a state licensing export as a CSV upload (or an https link): columns are matched by name (name, address, city, state, zip, license number, license type, capacity, status, licensee); set state_filter and license_type for files that don't carry them, and year for the export's date. Each home gets its county from its ZIP (the Census geography must be loaded first) and shows on the Facilities page (Licensed Homes) and County Intel's Competitors tab; the county profile counts the personal care, assisted living, memory care and domiciliary care homes and beds (nursing homes are counted from the CMS files).", category: "Nursing Homes & SNF", records: "varies by state", priority: "high", available: true },
   { id: "physician_shared_patient_patterns", title: "Physician Shared Patient Patterns", description: "Real provider-to-provider relationships: directed pairs of providers who treated the same Medicare beneficiaries within a 30/60/90/180-day window, with shared-patient and encounter counts. Populates referred_to_npi + total_referrals so the Network/County/Dashboard referral features show real relationships. Not on the data.cms.gov data-api — import by supplying a CMS FOIA file_url (the rows must reach the importer as named-field JSON; a headerless FOIA CSV must have a header row / be converted first).", category: "Physicians & Clinicians", records: "~35M", priority: "high" },
   { id: "provider_service_utilization", title: "Physician & Other Practitioners - by Provider and Service", description: "Utilization and payment data for Medicare Part B services by individual provider and HCPCS code.", category: "Physicians & Clinicians", records: "~10M", priority: "high" },
+  { id: "physician_certifications", title: "Home Health Certifications by Physician", description: "Who certifies Medicare patients for home health: the clinicians billing home health certification (G0180) and recertification (G0179) and home health (G0181) or hospice (G0182) care plan oversight, with their patients and services. Read from the by-provider-and-service file with a server-side filter on those codes (~27K rows nationally, a few minutes). CMS lists a clinician only above 10 patients for a code in a care setting. Ranks the county's referral sources.", category: "Physicians & Clinicians", records: "~27K", priority: "high" },
   { id: "medicare_physician_by_provider", title: "Physician & Other Practitioners - by Provider", description: "Aggregate utilization and payment data for Medicare Part B services summarized at the provider level.", category: "Physicians & Clinicians", records: "~1.2M", priority: "high" },
   { id: "medicare_dme_by_supplier", title: "DME Suppliers - by Supplier", description: "Medicare Durable Medical Equipment, Devices & Supplies payment and utilization data by supplier.", category: "Physicians & Clinicians", records: "~70K", priority: "medium" },
   { id: "medicare_dme_by_referring", title: "DME - by Referring Provider", description: "DME utilization data grouped by the referring physician or provider.", category: "Physicians & Clinicians", records: "~400K", priority: "medium" },
@@ -553,7 +576,7 @@ async function startImport(payload: any) {
   // The registry knows the newest release of the dataset and the year it
   // covers; the pinned URL and the "two years ago" guess are only fallbacks.
   const version = file_url ? null : await resolveImportVersion(import_type).catch(() => null);
-  const resolvedUrl = file_url || version?.dataUrl || IMPORT_TYPE_URLS[import_type];
+  const resolvedUrl = file_url || withImportQuery(import_type, version?.dataUrl) || IMPORT_TYPE_URLS[import_type];
   if (!resolvedUrl) {
     throw { status: 400, message: "No URL available for this import type. Please provide a file_url." };
   }

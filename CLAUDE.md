@@ -310,7 +310,21 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   boolean flags, upserted per release), never in `cms_referrals`, which holds
   only provider-pair shared-patient rows. Pages summarise those through
   `src/lib/referralSummary.js`; there are no `home_health_referrals`-style
-  columns.
+  columns. Order & Referring says who is *enrolled* to order, which 99% of
+  physicians are, so it cannot rank referral sources. Who actually certifies
+  home health comes from `physician_certifications` (`cms_physician_certifications`):
+  the by-provider-and-service file read through a server-side HCPCS filter
+  (`withImportQuery` adds it to whatever release URL the registry resolves; G0180
+  and G0179 certification, G0181 and G0182 care plan oversight; ~27K rows). The
+  `referral_sources` rollup leaves `hh_cert_benes` NULL until that file is
+  imported and ranks by it once it is (`server/lib/referralIndex.ts` words the
+  weights; a test keeps the text and the SQL together). It reads only rows that
+  a completed import batch wrote, so a running or failed import never publishes
+  part of the file, and it carries the file's own year (`hh_cert_year`), which
+  can differ from the physician file's `data_year`. CMS counts patients per
+  clinician, code and care setting and lists a row only above 10, so the figure
+  adds up the settings (a patient in two counts twice) and 0 means "not listed
+  in any setting", never "none".
 - **NPPES refresh is file-based.** `nppes_weekly_incremental` / `nppes_monthly_full`
   (`server/functions/importNPPESFile.ts`) download the CMS zip, stream the
   `npidata_pfile_*.csv` entry and upsert through `server/lib/nppesWrite.ts`,
