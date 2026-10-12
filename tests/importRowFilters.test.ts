@@ -140,6 +140,16 @@ describe("buildImportRowFilter on feeds that have no state column", () => {
     expect(buildImportRowFilter(null, "Pennsylvania")!({ MEDICARE_PROV_NUM: "390050" })).toBe(true);
   });
 
+  it("keeps a hospital whose CCN was issued under one of the state's later codes", () => {
+    // Pennsylvania has 39 and 73, then A7 and D3; Florida has 10, 68, 69, A2 and C1.
+    const pa = buildImportRowFilter(null, "PA")!;
+    for (const ccn of ["390164", "730001", "A70001", "D30001"]) expect(pa({ MEDICARE_PROV_NUM: ccn }), ccn).toBe(true);
+    for (const ccn of ["100001", "690001", "A20001", "C10001"]) expect(pa({ MEDICARE_PROV_NUM: ccn }), ccn).toBe(false);
+    const fl = buildImportRowFilter(null, "FL")!;
+    for (const ccn of ["100001", "680001", "690001", "A20001", "C10001"]) expect(fl({ MEDICARE_PROV_NUM: ccn }), ccn).toBe(true);
+    expect(fl({ MEDICARE_PROV_NUM: "D30001" })).toBe(false);
+  });
+
   it("keeps a Medicare Geographic Variation county or state row of the state, and drops the national row", () => {
     const f = buildImportRowFilter(null, "PA")!;
     expect(f({ BENE_GEO_LVL: "County", BENE_GEO_DESC: "PA-Allegheny", BENE_GEO_CD: "42003" })).toBe(true);
