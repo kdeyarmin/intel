@@ -154,20 +154,46 @@ export default function Providers() {
   // A state filter is applied by the server while searching, so it covers the
   // whole table rather than just the matches that were returned.
   const searchState = debouncedSearch.length >= 2 && filters.stateFilter !== 'all' ? filters.stateFilter : null;
+  // A state filter with no search term also applies server-side now: providers
+  // are resolved through their locations first, so matches are no longer
+  // silently dropped outside the newest 100.
+  const stateOnlyFilter = debouncedSearch.length < 2 && filters.stateFilter !== 'all' ? filters.stateFilter : null;
+  // The backend honors entity_type (normalizeEntityFilter), so the type filter
+  // applies server-side across the whole table instead of client-side over the
+  // capped result set.
+  const entityTypeForSearch = debouncedSearch.length >= 2 && filters.entityTypeFilter !== 'all' ? filters.entityTypeFilter : null;
   const { data: providerResult, isLoading, isError, error: providersError, refetch: refetchProviders, isPlaceholderData } = useQuery({
-    queryKey: ['providersPage', debouncedSearch, searchState],
+    queryKey: ['providersPage', debouncedSearch, searchState, stateOnlyFilter, entityTypeForSearch],
     queryFn: async () => {
       if (debouncedSearch.length >= 2) {
         const res = await base44.functions.invoke('searchProviders', {
           q: debouncedSearch, limit: SEARCH_LIMIT, ...(searchState ? { state: searchState } : {}),
+          ...(entityTypeForSearch ? { entity_type: entityTypeForSearch } : {}),
         });
-        return { providers: res.data?.providers || [], truncated: !!res.data?.truncated, degraded: !!res.data?.degraded };
+        return { providers: res.data?.providers || [], truncated: !!res.data?.truncated, degraded: !!res.data?.degraded, stateServer: searchState };
       }
-      return { providers: await base44.entities.Provider.list('-created_date', 100), truncated: false, degraded: false };
+      if (stateOnlyFilter) {
+        const locRows = await base44.entities.ProviderLocation.filter({ state: stateOnlyFilter }, '-created_date', 2000);
+        const npis = [...new Set(locRows.map(l => l.npi).filter(Boolean))];
+        const pageNpis = npis.slice(0, 500);
+        const provs = pageNpis.length
+          ? await base44.entities.Provider.filter({ npi: { $in: pageNpis } }, '-created_date', 500)
+          : [];
+        return {
+          providers: provs,
+          truncated: npis.length > pageNpis.length || locRows.length >= 2000,
+          degraded: false,
+          stateServer: stateOnlyFilter,
+        };
+      }
+      return { providers: await base44.entities.Provider.list('-created_date', 100), truncated: false, degraded: false, stateServer: null };
     },
     placeholderData: keepPreviousData,
   });
   const providers = useMemo(() => providerResult?.providers ?? [], [providerResult]);
+  // The state the server already applied (search path or state-only path): the
+  // client must not re-apply it, which would drop valid matches.
+  const stateServer = providerResult?.stateServer || null;
 
   // Stable key of the currently displayed NPIs so the scoped score fetch
   // refetches when the provider list changes.
@@ -290,12 +316,13 @@ export default function Providers() {
     return [...c].sort().map(cr => ({ value: cr, label: cr }));
   }, [providers]);
 
-  // While searching, the server applies the state across the whole table, so
-  // offer every state, not just those among the (capped) loaded locations.
+  // While searching (or filtering by state alone), the server applies the state
+  // across the whole table, so offer every state, not just those among the
+  // (capped) loaded locations.
   const stateOptions = useMemo(() => {
-    const states = debouncedSearch.length >= 2 ? US_STATES : [...new Set(locations.map(l => l.state).filter(Boolean))].sort();
+    const states = (debouncedSearch.length >= 2 || stateOnlyFilter) ? US_STATES : [...new Set(locations.map(l => l.state).filter(Boolean))].sort();
     return states.map(st => ({ value: st, label: st }));
-  }, [locations, debouncedSearch]);
+  }, [locations, debouncedSearch, stateOnlyFilter]);
 
   const specialtyOptions = useMemo(() => {
     const s = new Set(taxonomies.map(t => t.taxonomy_description).filter(Boolean));
@@ -438,7 +465,7 @@ export default function Providers() {
         if (filters.emailFilter === 'medium' && p.email_confidence !== 'medium') return false;
         if (filters.emailFilter === 'not_searched' && p.email_searched_at) return false;
       }
-      if (filters.stateFilter !== 'all' && !searchState) {
+      if (filters.stateFilter !== 'all' && !stateServer) {
         const locs = locationByNpi[p.npi] || [];
         if (!locs.some(l => l.state === filters.stateFilter)) return false;
       }
@@ -454,7 +481,7 @@ export default function Providers() {
 
     // Apply text match filters
     return applyTextFilters(dateFiltered, textFilters);
-  }, [providers, searchTerm, debouncedSearch, searchState, filters, locationByNpi, taxonomyByNpi, textFilters, dateRange]);
+  }, [providers, searchTerm, debouncedSearch, stateServer, filters, locationByNpi, taxonomyByNpi, textFilters, dateRange]);
 
   // Sorting
   const sortedProviders = useMemo(() => {
@@ -553,6 +580,8 @@ export default function Providers() {
             ? 'Searching…'
             : debouncedSearch.length >= 2
             ? `${providers.length.toLocaleString()}${providerResult?.truncated ? '+' : ''} match${providers.length === 1 ? '' : 'es'} for "${debouncedSearch}"${searchState ? ` in ${searchState}` : ''}${providerResult?.degraded ? ' (search indexes are still being built, so this may be slow or incomplete)' : ''}`
+            : stateOnlyFilter
+            ? `${providers.length.toLocaleString()}${providerResult?.truncated ? '+' : ''} provider${providers.length === 1 ? '' : 's'} with a location in ${stateOnlyFilter}${providerResult?.truncated ? ' (list capped — add a name or NPI search to narrow it)' : ''}`
             : `Showing the ${providers.length.toLocaleString()} most recently added providers — search by name or NPI to find anyone else`
         }
         icon={Users}
