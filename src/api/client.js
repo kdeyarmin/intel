@@ -315,6 +315,7 @@ export const base44 = {
     },
     confirmAction: (id) => request(`/assistant/actions/${id}/confirm`, { method: "POST" }),
     cancelAction: (id) => request(`/assistant/actions/${id}/cancel`, { method: "POST" }),
+    stopTurn: (conversationId, turnId) => request(`/assistant/conversations/${conversationId}/turns/${turnId}/stop`, { method: "POST" }),
     /**
      * Sends a question and calls onEvent(name, data) for each streamed event
      * until the answer ends. Abort with `signal` to stop the answer.
