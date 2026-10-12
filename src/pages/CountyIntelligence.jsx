@@ -42,6 +42,8 @@ const FACILITY_LABELS = {
 
 // The tab is in the URL too, so a market view can be linked to directly.
 const URL_DEFAULTS = { state: '', county: '', tab: 'overview' };
+// The tabs that read the county market payload (the referral tab asks for its own list).
+const MARKET_TABS = ['market', 'hospitals', 'competitors'];
 const TABS = [
   { value: 'overview', label: 'Overview', icon: LayoutDashboard },
   { value: 'market', label: 'Market', icon: BarChart3 },
@@ -85,11 +87,12 @@ export default function CountyIntelligence() {
     retry: 1,
   });
 
-  // The market views come from the daily rollups (server/functions/market.ts).
+  // The market views come from the daily rollups (server/functions/market.ts). The referral tab makes its own
+  // request, so it doesn't pay for the county payload it never shows.
   const { data: market, isLoading: loadingMarket, isError: marketError, error: marketErr } = useQuery({
     queryKey: ['countyMarket', url.state, url.county],
     queryFn: () => invokeOrThrow('getCountyMarket', { state: url.state, county_fips: url.county }),
-    enabled: !!url.state && !!url.county && url.tab !== 'overview',
+    enabled: !!url.state && !!url.county && MARKET_TABS.includes(url.tab),
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });

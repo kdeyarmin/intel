@@ -59,6 +59,12 @@ describe('getAutoRetryState', () => {
     expect(getAutoRetryState({ status: 'failed', import_type: 'nppes_registry' }, now)).toBeNull();
   });
 
+  it('returns null for every import type that resumes itself, as the worker skips them', () => {
+    for (const import_type of ['nppes_flat_file', 'nppes_registry_file']) {
+      expect(getAutoRetryState({ status: 'failed', import_type, error_samples: [{ message: 'HTTP 503' }] }, now), import_type).toBeNull();
+    }
+  });
+
   it('returns null for missing batch', () => {
     expect(getAutoRetryState(null, now)).toBeNull();
     expect(getAutoRetryState(undefined, now)).toBeNull();

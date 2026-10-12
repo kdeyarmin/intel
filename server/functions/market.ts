@@ -208,20 +208,20 @@ export async function handleGetCountyMarket(payload: any) {
   const fips = county.fips;
   return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
     const [profile, sources, competitors, trends, coverage] = await Promise.all([
-      client.query("SELECT * FROM rollup_county_market_profile WHERE county_fips = $1", [fips]).catch(() => ({ rows: [] })),
+      client.query("SELECT * FROM rollup_county_market_profile WHERE county_fips = $1", [fips]),
       client.query(
         `SELECT s.ccn, s.data_year, s.cases, s.days, s.share_of_county, s.rank, count(*) OVER ()::int AS total
            FROM rollup_county_hospital_sources s
            JOIN (SELECT max(data_year) AS y FROM rollup_county_hospital_sources WHERE county_fips = $1) l ON l.y = s.data_year
-          WHERE s.county_fips = $1 ORDER BY s.rank LIMIT $2`, [fips, TOP]).catch(() => ({ rows: [] })),
+          WHERE s.county_fips = $1 ORDER BY s.rank LIMIT $2`, [fips, TOP]),
       client.query(
         `SELECT p.* FROM rollup_pac_market_share p
            JOIN (SELECT setting, max(data_year) AS y FROM rollup_pac_market_share WHERE geo_level = 'county' AND geo_code = $1 GROUP BY setting) l
              ON l.setting = p.setting AND l.y = p.data_year
-          WHERE p.geo_level = 'county' AND p.geo_code = $1 AND p.rank <= $2 ORDER BY p.setting, p.rank`, [fips, TOP]).catch(() => ({ rows: [] })),
+          WHERE p.geo_level = 'county' AND p.geo_code = $1 AND p.rank <= $2 ORDER BY p.setting, p.rank`, [fips, TOP]),
       client.query(
         `SELECT setting, data_year, sum(benes)::bigint AS benes, sum(stays)::bigint AS stays, count(*)::int AS providers
-           FROM rollup_pac_market_share WHERE geo_level = 'county' AND geo_code = $1 GROUP BY 1, 2 ORDER BY 1, 2`, [fips]).catch(() => ({ rows: [] })),
+           FROM rollup_pac_market_share WHERE geo_level = 'county' AND geo_code = $1 GROUP BY 1, 2 ORDER BY 1, 2`, [fips]),
       // The TOP best-covering agencies of each setting (one limit across both settings would let a county with many
       // home health agencies push every hospice out of the list).
       client.query(
@@ -229,13 +229,13 @@ export async function handleGetCountyMarket(payload: any) {
            SELECT setting, ccn, zips_served, county_zips, share_of_county_zips,
                   row_number() OVER (PARTITION BY setting ORDER BY share_of_county_zips DESC, ccn) AS rn
              FROM rollup_agency_coverage WHERE county_fips = $1) c
-          WHERE rn <= $2 ORDER BY setting, rn`, [fips, TOP]).catch(() => ({ rows: [] })),
+          WHERE rn <= $2 ORDER BY setting, rn`, [fips, TOP]),
     ]);
     const licensed = await licensedHomes(client, fips);
     const snfCensus = await nursingHomeCensus(client, competitors.rows.filter((r: any) => r.setting === "snf").map((r: any) => r.ccn));
     const sourceCcns = sources.rows.map((r: any) => r.ccn);
     const mix = sourceCcns.length
-      ? await client.query("SELECT DISTINCT ON (ccn) * FROM rollup_hospital_discharge_mix WHERE ccn = ANY($1) ORDER BY ccn, data_year DESC", [sourceCcns]).catch(() => ({ rows: [] }))
+      ? await client.query("SELECT DISTINCT ON (ccn) * FROM rollup_hospital_discharge_mix WHERE ccn = ANY($1) ORDER BY ccn, data_year DESC", [sourceCcns])
       : { rows: [] };
     const mixBy = new Map<string, any>(mix.rows.map((r: any) => [r.ccn, r]));
     const names = await facilityNames(client, [...sourceCcns, ...competitors.rows.map((r: any) => r.ccn), ...coverage.rows.map((r: any) => r.ccn)]);
@@ -287,7 +287,7 @@ export async function handleGetHospitalCatchment(payload: any) {
   if (!ccn) throw new HttpError(400, "A CMS certification number (ccn) is required.");
   const index = await getGeoIndex(pool);
   return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
-    const years = (await client.query("SELECT DISTINCT data_year FROM rollup_hospital_catchment WHERE ccn = $1 ORDER BY data_year DESC", [ccn]).catch(() => ({ rows: [] }))).rows.map((r: any) => String(r.data_year));
+    const years = (await client.query("SELECT DISTINCT data_year FROM rollup_hospital_catchment WHERE ccn = $1 ORDER BY data_year DESC", [ccn])).rows.map((r: any) => String(r.data_year));
     const wanted = payload?.data_year ? String(payload.data_year) : years[0];
     const year = years.includes(wanted) ? wanted : years[0] ?? null;
     // The ZIP list is the busiest CATCHMENT_ZIPS areas; the totals and the county split
@@ -302,7 +302,7 @@ export async function handleGetHospitalCatchment(payload: any) {
         `SELECT county_fips, sum(cases)::bigint AS cases, sum(days)::bigint AS days, count(*)::int AS zips FROM rollup_hospital_catchment
           WHERE ccn = $1 AND data_year = $2 AND county_fips IS NOT NULL
           GROUP BY county_fips ORDER BY sum(cases) DESC NULLS LAST, county_fips LIMIT ${CATCHMENT_COUNTIES}`, [ccn, year]) : { rows: [] },
-      client.query("SELECT * FROM rollup_hospital_discharge_mix WHERE ccn = $1 ORDER BY data_year DESC LIMIT 1", [ccn]).catch(() => ({ rows: [] })),
+      client.query("SELECT * FROM rollup_hospital_discharge_mix WHERE ccn = $1 ORDER BY data_year DESC LIMIT 1", [ccn]),
       facilityNames(client, [ccn]),
     ]);
     const total = num(totals.rows[0]?.cases) ?? 0;
@@ -344,7 +344,7 @@ export async function handleGetFacilityMarket(payload: any) {
   const index = await getGeoIndex(pool);
   return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
     const own = (await client.query(
-      "SELECT * FROM rollup_pac_market_share WHERE ccn = $1 AND setting = $2 ORDER BY data_year DESC, geo_level", [ccn, setting]).catch(() => ({ rows: [] }))).rows;
+      "SELECT * FROM rollup_pac_market_share WHERE ccn = $1 AND setting = $2 ORDER BY data_year DESC, geo_level", [ccn, setting])).rows;
     if (!own.length) return { ccn, setting, found: false, label: SETTING_LABELS[setting], rollups: await marketRollupFreshness() };
     const latestYear = own[0].data_year;
     const countyRow = own.find((r: any) => r.geo_level === "county" && r.data_year === latestYear);
@@ -358,7 +358,7 @@ export async function handleGetFacilityMarket(payload: any) {
         `SELECT data_year, sum(benes)::bigint AS benes, count(*)::int AS providers FROM rollup_pac_market_share
           WHERE setting = $1 AND geo_level = 'county' AND geo_code = $2 GROUP BY 1 ORDER BY 1`, [setting, countyFips]) : { rows: [] },
       setting === "hha" || setting === "hospice"
-        ? client.query("SELECT county_fips, zips_served, county_zips, share_of_county_zips FROM rollup_agency_coverage WHERE setting = $1 AND ccn = $2 ORDER BY share_of_county_zips DESC LIMIT 50", [setting, ccn]).catch(() => ({ rows: [] }))
+        ? client.query("SELECT county_fips, zips_served, county_zips, share_of_county_zips FROM rollup_agency_coverage WHERE setting = $1 AND ccn = $2 ORDER BY share_of_county_zips DESC LIMIT 50", [setting, ccn])
         : { rows: [] },
     ]);
     const names = await facilityNames(client, market.rows.map((r: any) => r.ccn));
@@ -400,7 +400,7 @@ export async function handleGetCountyMarketLayer(payload: any) {
       const cols = Object.values(LAYER_METRICS).map((m) => m.column);
       const { rows } = await client.query(
         `SELECT county_fips, county_name, ${cols.join(", ")}, as_of FROM rollup_county_market_profile WHERE state = $1 ORDER BY county_name`, [state],
-      ).catch(() => ({ rows: [] as any[] }));
+      );
       const vintages: Record<string, unknown> = {};
       for (const k of VINTAGE_KEYS) vintages[k] = rows.find((r: any) => r.as_of?.[k])?.as_of?.[k] ?? null;
       return {
@@ -417,7 +417,7 @@ export async function handleGetCountyMarketLayer(payload: any) {
   return guard(() => withTimeoutClient(pool, TIMEOUT, async (client) => {
     const { rows } = await client.query(
       `SELECT county_fips, county_name, ${def.column} AS value, as_of FROM rollup_county_market_profile WHERE state = $1 ORDER BY county_name`, [state],
-    ).catch(() => ({ rows: [] as any[] }));
+    );
     const vintage = rows.find((r: any) => r.as_of?.[def.vintage])?.as_of?.[def.vintage] ?? null;
     return {
       state, metric, label: def.label, format: def.format, vintage,
@@ -448,12 +448,19 @@ export async function handleGetReferralSources(payload: any) {
     const { rows: fetched } = await client.query(
       `SELECT * FROM rollup_referral_sources WHERE ${where.join(" AND ")} ORDER BY referral_index DESC, benes DESC NULLS LAST, npi LIMIT $2`,
       [county ? county.fips : state, fetch + 1],
-    ).catch(() => ({ rows: [] as any[] }));
+    );
     const rows = fetched.slice(0, fetch);
     const beyondWindow = fetched.length > fetch;
-    const matched = group ? rows.filter((r: any) => specialtyGroupFor(null, r.specialty).key === group) : rows;
+    // A specialty search loads the whole window's NUCC codes first: the group is decided by the clinician's primary
+    // taxonomy code (code-first), the same call that labels each row below, so the filter and the label can't disagree
+    // (the rollup only holds CMS's provider-type text, which "Internal Medicine" shares between cardiologists and others).
+    const names = await providerNames(client, (group ? rows : rows.slice(0, limit)).map((r: any) => r.npi));
+    const groupOf = (r: any) => {
+      const n = names.get(r.npi);
+      return specialtyGroupFor(n?.code ?? null, n?.specialty ?? r.specialty);
+    };
+    const matched = group ? rows.filter((r: any) => groupOf(r).key === group) : rows;
     const page = matched.slice(0, limit);
-    const names = await providerNames(client, page.map((r: any) => r.npi));
     return {
       state,
       county: county ? { fips: county.fips, name: county.name, state: county.state } : null,
@@ -465,7 +472,7 @@ export async function handleGetReferralSources(payload: any) {
       searched: rows.length,
       rows: page.map((r: any) => {
         const n = names.get(r.npi);
-        const g = specialtyGroupFor(n?.code ?? null, n?.specialty ?? r.specialty);
+        const g = groupOf(r);
         return {
           npi: r.npi, name: n?.name ?? r.npi, specialty: r.specialty ?? n?.specialty ?? null, specialty_group: g.key, specialty_group_label: g.key === "other" ? "Other" : g.label,
           county_fips: r.county_fips, county_name: countyName(index, r.county_fips), state: r.state, zip5: r.zip5,
@@ -493,13 +500,13 @@ export async function handleGetServiceAreaOverlap(payload: any) {
       `SELECT a.ccn, a.zips_served, a.county_zips, a.share_of_county_zips,
               (SELECT count(*)::int FROM rollup_agency_coverage b WHERE b.setting = a.setting AND b.ccn = a.ccn) AS counties_served
          FROM rollup_agency_coverage a WHERE a.setting = $1 AND a.county_fips = $2
-        ORDER BY a.share_of_county_zips DESC, a.ccn LIMIT 100`, [setting, county.fips]).catch(() => ({ rows: [] as any[] }));
+        ORDER BY a.share_of_county_zips DESC, a.ccn LIMIT 100`, [setting, county.fips]);
     const ccns = rows.map((r: any) => r.ccn);
     const [names, share] = await Promise.all([
       facilityNames(client, ccns),
       ccns.length ? client.query(
         `SELECT DISTINCT ON (ccn) ccn, data_year, benes, share_benes, rank FROM rollup_pac_market_share
-          WHERE setting = $1 AND geo_level = 'county' AND geo_code = $2 AND ccn = ANY($3) ORDER BY ccn, data_year DESC`, [setting, county.fips, ccns]).catch(() => ({ rows: [] })) : { rows: [] },
+          WHERE setting = $1 AND geo_level = 'county' AND geo_code = $2 AND ccn = ANY($3) ORDER BY ccn, data_year DESC`, [setting, county.fips, ccns]) : { rows: [] },
     ]);
     const shareBy = new Map<string, any>(share.rows.map((r: any) => [r.ccn, r]));
     return {

@@ -77,24 +77,45 @@ export async function* csvRecords(source: AsyncIterable<Uint8Array | string>, op
     return row;
   };
 
+  // A quoted field may contain line breaks (a street address over two lines), so a record goes on over the
+  // next line while a quote is still open: an odd number of quote characters, since escaped quotes come in
+  // pairs. Bounded, so one stray quote in a damaged file can't swallow the rest of it into a single row.
+  let record = "";
+  let quoteOpen = false;
+  const hasOddQuotes = (text: string) => {
+    let quotes = 0;
+    for (let i = text.indexOf('"'); i >= 0; i = text.indexOf('"', i + 1)) quotes += 1;
+    return quotes % 2 === 1;
+  };
+
   for await (const chunk of source) {
     buffer += typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
     let nl: number;
     while ((nl = buffer.indexOf("\n")) >= 0) {
-      const line = buffer.slice(0, nl).replace(/\r$/, "");
+      const piece = buffer.slice(0, nl).replace(/\r$/, "");
       buffer = buffer.slice(nl + 1);
+      // Parity is carried from line to line, so each line is scanned once however long a record runs.
+      if (hasOddQuotes(piece)) quoteOpen = !quoteOpen;
+      record = record ? `${record}\n${piece}` : piece;
+      if (quoteOpen && record.length < MAX_RECORD_CHARS) continue;
+      const line = record;
+      record = "";
+      quoteOpen = false;
       if (!line.trim()) continue;
       const row = emit(line);
       if (row) yield row;
     }
   }
   buffer += decoder.decode();
-  const last = buffer.replace(/\r$/, "");
+  const last = (record ? `${record}\n${buffer}` : buffer).replace(/\r$/, "");
   if (last.trim()) {
     const row = emit(last);
     if (row) yield row;
   }
 }
+
+/** A record longer than this is taken as it stands: it is a damaged file, not an address. */
+const MAX_RECORD_CHARS = 1_000_000;
 
 /** Groups records into pages of `size`, skipping the first `skip` data rows (resume). */
 export async function* pageRecords<T>(records: AsyncIterable<T>, size: number, skip = 0): AsyncGenerator<{ rows: T[]; offset: number; nextOffset: number }> {

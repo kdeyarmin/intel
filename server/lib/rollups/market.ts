@@ -150,6 +150,8 @@ export const MARKET_JOBS: MarketJob[] = [
       "cc_chf_pct", "cc_copd_pct", "cc_alzheimer_pct", "cc_ckd_pct", "cc_diabetes_pct",
       "hha_eligible", "hospice_eligible", "dme_eligible", "dme_benes", "hospital_ccns", "affiliations", "referral_index", "rank_in_county",
     ],
+    // rank_in_county is set only for clinicians whose ZIP resolves to a county: a NULL partition would rank the
+    // ones that don't against each other, and the provider page would show a bogus "Nth in the county".
     sql: `
       WITH phys AS (
         SELECT DISTINCT ON (npi) npi, data_year, state, zip5, provider_type, benes, services, avg_risk_score, dual_count, chronic_conditions
@@ -187,7 +189,7 @@ export const MARKET_JOBS: MarketJob[] = [
       SELECT npi, data_year, county_fips, state, zip5, provider_type, benes, services, avg_risk_score, dual_pct,
              cc_chf_pct, cc_copd_pct, cc_alzheimer_pct, cc_ckd_pct, cc_diabetes_pct,
              hha_eligible, hospice_eligible, dme_eligible, dme_benes, hospital_ccns, affiliations, referral_index,
-             (rank() OVER (PARTITION BY county_fips ORDER BY referral_index DESC, benes DESC, npi))::int
+             (CASE WHEN county_fips IS NOT NULL THEN rank() OVER (PARTITION BY county_fips ORDER BY referral_index DESC, benes DESC, npi) END)::int
         FROM scored`,
   },
   {

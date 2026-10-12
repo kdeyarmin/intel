@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { importBatches, importScheduleConfigs } from "../db/schema";
-import { eq, and, lt, or, isNull, inArray } from "drizzle-orm";
+import { eq, and, lt, or, isNull, inArray, sql } from "drizzle-orm";
 import { handleTriggerImport } from "./triggerImport";
 import { handleNppesCrawler } from "./nppesCrawler";
 import {
@@ -35,6 +35,17 @@ function toScheduleShape(s: any): Schedule {
     import_type: s.import_type,
     depends_on_import_type: s.depends_on_import_type,
   };
+}
+
+/** Whether any state of an NPPES crawl is still queued, running or paused. */
+async function crawlInProgress(): Promise<boolean> {
+  const live = await db.select({ id: importBatches.id }).from(importBatches)
+    .where(and(
+      eq(importBatches.import_type, "nppes_registry"),
+      sql`left(file_name, 8) = 'crawler_'`,
+      inArray(importBatches.status, ["validating", "processing", "paused"]),
+    ));
+  return live.length > 0;
 }
 
 async function runOneSchedule(schedule: any): Promise<{ runStatus: string; runSummary: string; batchId?: number }> {
@@ -117,6 +128,13 @@ export async function handleRunScheduledImports(_payload?: any, _user?: any) {
     if (nextRun && nextRun > now) continue;
     if (s.last_run_status === "running" && s.last_batch_id != null && liveBatchIds.has(s.last_batch_id)) {
       skipped.push({ id: s.id, label: shapes[i].label, reason: `previous run (batch #${s.last_batch_id}) is still in progress` });
+      continue;
+    }
+    // A crawl is one batch per state, queued in a single call and finishing days later, so the schedule can't wait
+    // on one batch like the other imports do. Without this, the next cadence queued a second crawl on top of the
+    // first one's states.
+    if (s.import_type === "nppes_registry" && (await crawlInProgress())) {
+      skipped.push({ id: s.id, label: shapes[i].label, reason: "a crawl is still in progress" });
       continue;
     }
     const dep = dependencyBlocked(shapes[i], shapes);

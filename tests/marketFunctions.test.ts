@@ -5,12 +5,19 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const h = vi.hoisted(() => ({ queries: [] as Array<{ sql: string; params?: any[] }>, answers: [] as Array<[RegExp, any]> }));
+const h = vi.hoisted(() => ({
+  queries: [] as Array<{ sql: string; params?: any[] }>,
+  answers: [] as Array<[RegExp, any]>,
+  /** Statements that fail with this error instead of answering. */
+  failures: [] as Array<[RegExp, Error]>,
+}));
 
 vi.mock("../server/db", () => {
   const client = {
     async query(sql: string, params?: any[]) {
       h.queries.push({ sql, params });
+      const failure = h.failures.find(([re]) => re.test(sql));
+      if (failure) throw failure[1];
       const hit = h.answers.find(([re]) => re.test(sql));
       const rows = hit ? (typeof hit[1] === "function" ? hit[1](params) : hit[1]) : [];
       return { rows };
@@ -53,6 +60,7 @@ const sql = () => h.queries.map((q) => q.sql);
 
 beforeEach(() => {
   h.queries.length = 0;
+  h.failures.length = 0;
   h.answers = [
     [/FROM rollup_runs/, [{ job: "county_market_profile", status: "success", last_success_at: "2026-10-10T03:00:00Z" }, { job: "cms_service_types", status: "success" }]],
     [/DISTINCT ON \(ccn\) ccn, provider_name, city, state FROM cms_pac_utilization/, (p: any[]) => p[0].filter((c: string) => /^39[5-8]/.test(c)).map((ccn: string) => ({ ccn, provider_name: `PAC ${ccn}`, city: "Pittsburgh", state: "PA" }))],
@@ -287,6 +295,36 @@ describe("getReferralSources", () => {
     expect(r.rows.map((x: any) => x.npi)).toEqual(["1000000001"]);
   });
 
+  it("decides the specialty group by the clinician's NUCC code, so the filter and the label agree", async () => {
+    // CMS's provider type says "Internal Medicine" for a cardiologist and "Cardiology" for an internist here;
+    // the primary taxonomy code is what the group (and the row's label) comes from.
+    const rows = [
+      { ...SOURCES[0], npi: "1000000001", specialty: "Internal Medicine" },
+      { ...SOURCES[1], npi: "1000000002", specialty: "Cardiology" },
+    ];
+    h.answers.push(
+      [/FROM rollup_referral_sources WHERE county_fips = \$1 ORDER BY referral_index DESC/, rows],
+      [/FROM providers WHERE npi = ANY/, [{ npi: "1000000001", first_name: "Ada", last_name: "Lovelace", credential: "MD" }, { npi: "1000000002", first_name: "Bo", last_name: "Hart", credential: null }]],
+      [/FROM provider_taxonomies WHERE npi = ANY/, [
+        { npi: "1000000001", taxonomy_code: "207RC0000X", taxonomy_description: "Internal Medicine, Cardiovascular Disease" },
+        { npi: "1000000002", taxonomy_code: "207R00000X", taxonomy_description: "Internal Medicine" },
+      ]],
+    );
+    const cardiology: any = await handleGetReferralSources({ state: "PA", county_fips: "42003", specialty_group: "cardiology", limit: 5 });
+    expect(cardiology.rows.map((x: any) => [x.npi, x.specialty_group])).toEqual([["1000000001", "cardiology"]]);
+    const internal: any = await handleGetReferralSources({ state: "PA", county_fips: "42003", specialty_group: "internal_medicine", limit: 5 });
+    expect(internal.rows.map((x: any) => [x.npi, x.specialty_group])).toEqual([["1000000002", "internal_medicine"]]);
+    // The names and codes are read for the whole searched window, in one lookup per table.
+    const lookups = h.queries.filter((q) => /FROM providers WHERE npi = ANY/.test(q.sql));
+    expect(lookups.map((q) => q.params![0])).toEqual([["1000000001", "1000000002"], ["1000000001", "1000000002"]]);
+  });
+
+  it("reads names only for the page it returns when no specialty is asked for", async () => {
+    h.answers.push([/FROM rollup_referral_sources WHERE county_fips = \$1 ORDER BY referral_index DESC/, Array.from({ length: 30 }, (_, i) => ({ ...SOURCES[0], npi: String(1000000100 + i) }))]);
+    await handleGetReferralSources({ state: "PA", county_fips: "42003", limit: 10 });
+    expect(h.queries.find((q) => /FROM providers WHERE npi = ANY/.test(q.sql))!.params![0]).toHaveLength(10);
+  });
+
   describe("says when there are more clinicians than it returned", () => {
     // The rollup holds `total` ranked clinicians in the county; the query honours its LIMIT.
     const ranked = (total: number, only?: string) => Array.from({ length: total }, (_, i) => ({
@@ -343,5 +381,53 @@ describe("getServiceAreaOverlap", () => {
     expect(r).toMatchObject({ setting: "hha", label: "Home health", county_zips: 50 });
     expect(r.rows[0]).toMatchObject({ ccn: "397001", name: "PAC 397001", zips_served: 40, share_of_county_zips: 0.8, counties_served: 6, benes: 2500, market_share: 0.2, market_rank: 1, facility_group: "home_health" });
     await expect(handleGetServiceAreaOverlap({ state: "PA", county_fips: "42003", setting: "snf" })).rejects.toMatchObject({ status: 400 });
+  });
+});
+
+describe("a rollup that can't be read is an error, not an empty market", () => {
+  // The page says "not loaded yet" for empty data, so an outage, a missing migration or a timeout must not look like it.
+  const outage = Object.assign(new Error("connection terminated unexpectedly"), { code: "08006" });
+  const calls: Array<[string, () => Promise<unknown>, RegExp]> = [
+    ["the county profile", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM rollup_county_market_profile WHERE county_fips/],
+    ["a county's hospital sources", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM rollup_county_hospital_sources s/],
+    ["a county's competitors", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /SELECT p\.\* FROM rollup_pac_market_share p/],
+    ["a county's trends", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /sum\(benes\)::bigint AS benes, sum\(stays\)::bigint AS stays/],
+    ["a county's agency coverage", () => handleGetCountyMarket({ state: "PA", county_fips: "42003" }), /FROM rollup_agency_coverage\s+WHERE county_fips/],
+    ["a hospital's catchment years", () => handleGetHospitalCatchment({ ccn: "390001" }), /SELECT DISTINCT data_year FROM rollup_hospital_catchment/],
+    ["a hospital's discharge mix", () => handleGetHospitalCatchment({ ccn: "390001" }), /FROM rollup_hospital_discharge_mix WHERE ccn = \$1/],
+    ["a facility's market position", () => handleGetFacilityMarket({ ccn: "395001", setting: "snf" }), /FROM rollup_pac_market_share WHERE ccn = \$1 AND setting = \$2/],
+    ["one county metric", () => handleGetCountyMarketLayer({ state: "PA", metric: "benes" }), /FROM rollup_county_market_profile WHERE state = \$1/],
+    ["the county table", () => handleGetCountyMarketLayer({ state: "PA", all: true }), /FROM rollup_county_market_profile WHERE state = \$1/],
+    ["referral sources", () => handleGetReferralSources({ state: "PA", county_fips: "42003" }), /FROM rollup_referral_sources/],
+    ["a county's service-area overlap", () => handleGetServiceAreaOverlap({ state: "PA", county_fips: "42003", setting: "hha" }), /FROM rollup_agency_coverage a/],
+  ];
+
+  it.each(calls)("%s rejects instead of answering with nothing", async (_name, call, failing) => {
+    h.failures.push([failing, outage]);
+    await expect(call()).rejects.toThrow("connection terminated unexpectedly");
+  });
+
+  it("says the data took too long when the database cancelled the statement", async () => {
+    h.failures.push([/FROM rollup_county_market_profile WHERE county_fips/, Object.assign(new Error("canceling statement due to statement timeout"), { code: "57014" })]);
+    await expect(handleGetCountyMarket({ state: "PA", county_fips: "42003" })).rejects.toMatchObject({ status: 503 });
+  });
+
+  it("still answers when only the optional names can't be read", async () => {
+    h.answers.push(
+      [/FROM rollup_county_hospital_sources s/, [{ ccn: "390001", data_year: "2025", cases: 12000, days: 60000, share_of_county: 0.31, rank: 1, total: 1 }]],
+      [/FROM rollup_referral_sources WHERE county_fips = \$1 ORDER BY referral_index DESC/, [{ npi: "1000000001", data_year: "2024", county_fips: "42003", state: "PA", specialty: "Internal Medicine", referral_index: 96, rank_in_county: 1 }]],
+      [/FROM providers WHERE npi = ANY/, [{ npi: "1000000001", first_name: "Ada", last_name: "Lovelace", credential: "MD" }]],
+    );
+    h.failures.push(
+      [/FROM cms_pac_utilization/, outage],
+      [/ccn, facility_name, state FROM rollup_hospital_discharge_mix/, outage],
+      [/FROM medicare_facilities/, outage],
+      [/FROM provider_taxonomies/, outage],
+      [/FROM lead_scores/, outage],
+    );
+    const county: any = await handleGetCountyMarket({ state: "PA", county_fips: "42003" });
+    expect(county.hospital_sources.rows[0]).toMatchObject({ ccn: "390001", name: null, share: 0.31 });
+    const referrals: any = await handleGetReferralSources({ state: "PA", county_fips: "42003" });
+    expect(referrals.rows[0]).toMatchObject({ npi: "1000000001", name: "Ada Lovelace, MD", lead_score: null });
   });
 });

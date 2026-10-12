@@ -51,6 +51,25 @@ function renderPage() {
   );
 }
 
+describe('Scoring Rules with conditions stored as text', () => {
+  it('shows and edits a rule whose list was saved as comma-separated text instead of crashing', async () => {
+    const saved = state.rules;
+    state.rules = [
+      { id: 5, name: 'Geographic Priority', rule_type: 'geographic_priority', weight: 10, description: 'Target states', enabled: true, conditions: { states: 'PA, oh', counties: null } },
+    ];
+    base44.entities.ScoringRule.update = vi.fn(async (id, data) => ({ id, ...data }));
+    try {
+      renderPage();
+      expect(await screen.findByText(/PA, oh/)).toBeInTheDocument();
+      expect(screen.getByText('none')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+      expect(screen.getByDisplayValue('PA, oh')).toBeInTheDocument();
+    } finally {
+      state.rules = saved;
+    }
+  });
+});
+
 describe('Scoring Rules', () => {
   it('edits and saves the weight alone, with no threshold field', async () => {
     base44.entities.ScoringRule.update = vi.fn(async (id, data) => ({ id, ...data }));
