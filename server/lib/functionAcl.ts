@@ -88,6 +88,9 @@ export const PLATFORM_FUNCTIONS: ReadonlySet<string> = new Set<string>([
   "enrichBulkServerSide", "proactiveScanServerSide", "enrichmentJobStart", "enrichmentJobStop", "intelJobStart", "intelJobStop",
   "startDMEEmailSearch", "stopDMEEmailSearch", "bulkVerifyEmails", "emailSearchBot",
   "enrichProviderWithAI", "enrichProviderDEAData", "enrichProviderMedicareData", "enrichProviderThirdParty",
+  // Base44->Express ports (2026-10-12): probes, import hooks and AI helpers.
+  "checkCMSDataApiUrls", "testCMSOffset", "findEmail", "aiProjectAnalysis",
+  "autoFixImports", "onImportBatchCompleted", "onImportBatchFailed", "onRuleCreated", "autoCategorizeProvider",
 ]);
 
 /** The dispatcher's gate: public functions for any signed-in user, everything else admin-only. */

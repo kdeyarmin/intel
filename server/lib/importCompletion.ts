@@ -10,6 +10,8 @@ import { db } from "../db";
 import { importBatches, importScheduleConfigs } from "../db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { computeNextRun, extractErrorMessage, type Schedule } from "./scheduling";
+import { onImportBatchCompleted } from "../functions/onImportBatchCompleted";
+import { onImportBatchFailed } from "../functions/onImportBatchFailed";
 
 /** How long a started run may stay "running" before the sweep gives up on it. */
 export const RUN_LEASE_MS = 6 * 60 * 60 * 1000;
@@ -112,6 +114,9 @@ export async function settleSchedule(schedule: ScheduleState & { last_run_status
   await db.update(importScheduleConfigs)
     .set(settlementUpdate(schedule, decision as Extract<Settlement, { action: "success" | "failed" }>, batch, now))
     .where(eq(importScheduleConfigs.id, schedule.id));
+  if (decision.action === "failed") {
+    await onImportBatchFailed(batch as any); // hook never throws
+  }
   return decision;
 }
 
@@ -122,7 +127,11 @@ export async function settleBatchCompletion(batchId: number, now = new Date()): 
     if (!batch?.schedule_id) return null;
     const [schedule] = await db.select().from(importScheduleConfigs).where(eq(importScheduleConfigs.id, batch.schedule_id)).limit(1);
     if (!schedule || schedule.last_batch_id !== batch.id) return null;
-    return await settleSchedule(schedule as unknown as ScheduleState, batch, now);
+    const settlement = await settleSchedule(schedule as unknown as ScheduleState, batch, now);
+    if (settlement?.action === "success") {
+      await onImportBatchCompleted(batch); // never throws
+    }
+    return settlement;
   } catch (e: any) {
     console.warn(`[importCompletion] couldn't settle batch ${batchId}:`, e?.message || e);
     return null;
