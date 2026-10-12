@@ -142,6 +142,20 @@ describe("runTool", () => {
     expect(out.referral_potential.note).not.toMatch(/Facility Affiliation/);
   });
 
+  it("get_provider_profile gives the home health certifications behind the index, unknown (null) until that file is imported", async () => {
+    const profile = (potential: Record<string, unknown>) => ctx({
+      getProviderReport: vi.fn(async () => ({ provider: { npi: "1000000001", displayName: "Ada", entityType: "Individual" } })),
+      getProviderCMSData: vi.fn(async () => ({ referral_potential: { referral_index: 96, rank_in_county: 1, county_name: "Allegheny County", benes: 620, hospital_ccns: [], affiliations: 0, data_year: "2024", ...potential } })),
+    });
+    const loaded = JSON.parse((await runTool("get_provider_profile", { npi: "1000000001" }, profile({ hh_cert_benes: 43, hospice_oversight_benes: 0 }))).content);
+    expect(loaded.referral_potential).toMatchObject({ home_health_certified_patients: 43, hospice_oversight_patients: 0 });
+    expect(loaded.referral_potential.note).toMatch(/up to 50 points for patients certified for home health/);
+    expect(loaded.referral_potential.note).not.toMatch(/Home Health Certifications file has not been imported/);
+    const before = JSON.parse((await runTool("get_provider_profile", { npi: "1000000001" }, profile({ hh_cert_benes: null, hospice_oversight_benes: null }))).content);
+    expect(before.referral_potential.home_health_certified_patients).toBeNull();
+    expect(before.referral_potential.note).toMatch(/Home Health Certifications file has not been imported/);
+  });
+
   it("get_provider_profile says hospital affiliations are unknown, not 0, until the Facility Affiliation file is imported", async () => {
     const c = ctx({
       getProviderReport: vi.fn(async () => ({ provider: { npi: "1000000001", displayName: "Ada", entityType: "Individual" } })),

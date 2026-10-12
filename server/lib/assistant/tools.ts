@@ -5,6 +5,7 @@
 import { z } from "zod";
 import type Anthropic from "@anthropic-ai/sdk";
 import { SPECIALTY_GROUPS } from "../specialtyGroups";
+import { referralIndexNote } from "../referralIndex";
 import { ASSISTANT_CONFIG } from "./config";
 import type { SessionPrincipal } from "../../middleware/auth";
 
@@ -186,8 +187,11 @@ const TOOL_SPECS = [
             medicare_beneficiaries: num(potential.benes), avg_risk_score: num(potential.avg_risk_score),
             // null = unknown: the rollup was built before the Facility Affiliation file was imported.
             hospital_affiliations: potential.affiliations == null ? null : Array.isArray(potential.hospital_ccns) ? potential.hospital_ccns.length : 0,
+            // null = unknown: the Home Health Certifications file has not been imported. 0 = not listed: CMS lists a clinician only above 10 patients.
+            home_health_certified_patients: num(potential.hh_cert_benes), hospice_oversight_patients: num(potential.hospice_oversight_benes),
             year: potential.data_year ?? null,
-            note: "Index: 50 points for Medicare beneficiaries served (full at 500), 25 for patient risk (full at 2.5), 25 for home health and hospice ordering eligibility. Not confirmed referrals."
+            note: `${referralIndexNote(potential.hh_cert_benes != null)} Not confirmed referrals.`
+              + (potential.hh_cert_benes == null ? " home_health_certified_patients is null because the Home Health Certifications file has not been imported yet; it does not mean none." : "")
               + (potential.affiliations == null ? " hospital_affiliations is null because the Facility Affiliation file has not been imported yet; it does not mean none." : ""),
           }
           : null,

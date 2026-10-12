@@ -155,6 +155,7 @@ const IMPORT_CATEGORIES = [
       { id: 'medical_equipment_suppliers', name: 'DME Suppliers', description: 'DMEPOS supplier directory', requiredColumns: [], downloadUrl: 'https://data.cms.gov/provider-data/' },
       { id: 'medicare_dme_by_supplier', name: 'DME by Supplier', description: 'Utilization by DME supplier', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'medicare_dme_by_referring', name: 'DME by Referring Provider', description: 'DME referred by providers', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
+      { id: 'physician_certifications', name: 'Home Health Certifications', description: 'Clinicians who certify Medicare patients for home health', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'medicare_irf_utilization', name: 'IRF Post-Acute Utilization', description: 'Post-acute care IRF data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
       { id: 'medicare_ltch_utilization', name: 'LTCH Post-Acute Utilization', description: 'Post-acute care LTCH data', requiredColumns: [], downloadUrl: 'https://data.cms.gov/' },
     ]

@@ -18,6 +18,7 @@ import {
   cmsMonthlyEnrollment,
   cmsPacUtilization,
   cmsPhysicianByProvider,
+  cmsPhysicianCertifications,
   cmsZipServiceArea,
 } from "../db/schema";
 
@@ -369,6 +370,29 @@ export function mapDmeByReferring(row: any, ctx: MapContext) {
   };
 }
 
+/**
+ * The HCPCS codes of a clinician certifying a patient for home health (G0180), recertifying (G0179), and
+ * overseeing a home health (G0181) or hospice (G0182) plan of care: the by-provider-and-service rows kept for the
+ * referral view. The importer asks CMS for these codes only; anything else in a file is dropped here.
+ */
+export const CERTIFICATION_HCPCS: readonly string[] = ["G0180", "G0179", "G0181", "G0182"];
+
+export function mapPhysicianCertification(row: any, ctx: MapContext) {
+  const npi = str(row.Rndrng_NPI ?? row.npi, 10);
+  const code = str(row.HCPCS_Cd ?? row.hcpcs_cd, 10)?.toUpperCase() ?? null;
+  const place = str(row.Place_Of_Srvc ?? row.place_of_srvc, 1)?.toUpperCase() ?? null;
+  const data_year = yearOf(ctx);
+  if (!npi || !/^\d{10}$/.test(npi) || !code || !CERTIFICATION_HCPCS.includes(code) || !place || !data_year) return null;
+  return {
+    npi, hcpcs_code: code, place_of_service: place, data_year,
+    provider_type: str(row.Rndrng_Prvdr_Type, 120),
+    state: str(row.Rndrng_Prvdr_State_Abrvtn, 2),
+    benes: int(row.Tot_Benes),
+    services: num(row.Tot_Srvcs),
+    raw_data: row, import_batch_id: ctx.batchId,
+  };
+}
+
 export function mapLtcFacilityCharacteristics(row: any, ctx: MapContext) {
   const ccn = str(row["Provider Number"] ?? row.PROVNUM ?? row.provnum, 10);
   const period_end = ctx.asOf ?? (yearOf(ctx) ? `${yearOf(ctx)}-12-31` : null);
@@ -489,6 +513,7 @@ export const TYPED_ROUTES: Record<string, TypedRoute> = {
   medicare_physician_by_provider: { table: cmsPhysicianByProvider, key: ["npi", "data_year"], map: mapPhysicianByProvider },
   facility_affiliation: { table: cmsFacilityAffiliation, key: ["npi", "facility_type", "facility_ccn"], map: mapFacilityAffiliation, snapshot: { table: "cms_facility_affiliation" } },
   medicare_dme_by_referring: { table: cmsDmeByReferring, key: ["npi", "data_year"], map: mapDmeByReferring },
+  physician_certifications: { table: cmsPhysicianCertifications, key: ["npi", "hcpcs_code", "place_of_service", "data_year"], map: mapPhysicianCertification },
   ltc_facility_characteristics: { table: cmsLtcFacilityCharacteristics, key: ["ccn", "period_end"], map: mapLtcFacilityCharacteristics },
   licensed_facilities: {
     table: licensedFacilities, key: ["state", "license_type", "facility_key"], map: mapLicensedFacility, needsGeo: true, stateFromParams: true,

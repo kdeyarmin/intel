@@ -267,6 +267,8 @@ export const rollupReferralSources = pgTable("rollup_referral_sources", {
   affiliations: integer("affiliations"),
   referral_index: integer("referral_index"),
   rank_in_county: integer("rank_in_county"),
+  hh_cert_benes: integer("hh_cert_benes"),
+  hospice_oversight_benes: integer("hospice_oversight_benes"),
 }, (table) => [
   index("idx_rollup_ref_src_county").on(table.county_fips, table.referral_index),
   index("idx_rollup_ref_src_state").on(table.state, table.referral_index),
@@ -1766,6 +1768,28 @@ export const cmsDmeByReferring = pgTable("cms_dme_by_referring", {
   updated_date: timestamp("updated_date").defaultNow(),
 }, (table) => [
   uniqueIndex("uq_cms_dmeref").on(table.npi, table.data_year),
+]);
+
+/**
+ * Home health certifications and care plan oversight billed by a clinician (Medicare Physician & Other
+ * Practitioners by Provider and Service, HCPCS G0180, G0179, G0181, G0182), one row per code and place of service.
+ * CMS publishes only clinicians with more than 10 patients for a code.
+ */
+export const cmsPhysicianCertifications = pgTable("cms_physician_certifications", {
+  id: serial("id").primaryKey(),
+  npi: varchar("npi", { length: 10 }).notNull(),
+  hcpcs_code: varchar("hcpcs_code", { length: 10 }).notNull(),
+  place_of_service: varchar("place_of_service", { length: 1 }).notNull(),
+  data_year: varchar("data_year", { length: 10 }).notNull(),
+  provider_type: varchar("provider_type", { length: 120 }),
+  state: varchar("state", { length: 2 }),
+  benes: integer("benes"),
+  services: doublePrecision("services"),
+  raw_data: jsonb("raw_data"),
+  import_batch_id: integer("import_batch_id"),
+  updated_date: timestamp("updated_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_cms_phys_cert").on(table.npi, table.hcpcs_code, table.place_of_service, table.data_year),
 ]);
 
 /** Long-Term Care Facility Characteristics (CMS-671): quarterly nursing-home census and payer mix. */

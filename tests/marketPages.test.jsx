@@ -179,6 +179,37 @@ describe('referral sources list', () => {
     expect(screen.getByText(/A dash under Hospitals means the Facility Affiliation file has not been imported yet/)).toBeInTheDocument();
   });
 
+  // The cell of the "Home health certified" column in a clinician's row.
+  const certifiedCell = (name) => {
+    const col = screen.getAllByRole('columnheader').findIndex((h) => h.textContent === 'Home health certified');
+    return within(screen.getByRole('link', { name }).closest('tr')).getAllByRole('cell')[col];
+  };
+
+  it('shows the patients each clinician certified for home health, and "≤10" for one CMS does not list, with the note', async () => {
+    invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(fn === 'getReferralSources'
+      ? { ...SOURCES, certifications_loaded: true, rows: SOURCES.rows.map((r, i) => ({ ...r, hh_cert_benes: i === 0 ? 1234 : 0, hospice_oversight_benes: 0 })) }
+      : countyAnswers(fn, payload)));
+    renderAt('/CountyIntelligence?state=PA&county=42003&tab=referrals', CountyIntelligence, '/CountyIntelligence');
+    await screen.findByRole('link', { name: 'Ada Lovelace, MD' });
+    expect(certifiedCell('Ada Lovelace, MD')).toHaveTextContent(/^1,234$/);
+    expect(certifiedCell('Bo Hart')).toHaveTextContent(/^≤10$/);
+    expect(screen.getByText(/CMS lists a clinician only above 10 patients, so “≤10” means not listed/)).toBeInTheDocument();
+    expect(screen.queryByText(/has not been imported yet, so who certifies/)).toBeNull();
+    expect(screen.getByText(/ranked by a referral index built from the patients they certified for home health/)).toBeInTheDocument();
+  });
+
+  it('shows a dash, and says why, while the Home Health Certifications file has not been imported (never 0)', async () => {
+    invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(fn === 'getReferralSources'
+      ? { ...SOURCES, certifications_loaded: false, rows: SOURCES.rows.map((r) => ({ ...r, hh_cert_benes: null, hospice_oversight_benes: null })) }
+      : countyAnswers(fn, payload)));
+    renderAt('/CountyIntelligence?state=PA&county=42003&tab=referrals', CountyIntelligence, '/CountyIntelligence');
+    await screen.findByRole('link', { name: 'Ada Lovelace, MD' });
+    expect(certifiedCell('Ada Lovelace, MD')).toHaveTextContent(/^—$/);
+    expect(certifiedCell('Bo Hart')).toHaveTextContent(/^—$/);
+    expect(screen.getByText(/A dash under Home health certified means the Home Health Certifications file has not been imported yet/)).toBeInTheDocument();
+    expect(screen.queryByText(/ranked by a referral index built from the patients they certified/)).toBeNull();
+  });
+
   it('says when the ranked list goes on past the rows shown', async () => {
     invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(fn === 'getReferralSources' ? { ...SOURCES, truncated: true, searched: 25 } : countyAnswers(fn, payload)));
     renderAt('/CountyIntelligence?state=PA&county=42003&tab=referrals', CountyIntelligence, '/CountyIntelligence');
@@ -509,6 +540,18 @@ describe('cards', () => {
     // Three affiliations on file, two of them hospitals.
     rerender(<ReferralPotentialCard potential={{ ...base, hospital_ccns: ['390001', '390002'], affiliations: 3 }} />);
     expect(hospitals()).toHaveTextContent(/^2$/);
+  });
+
+  it('shows the patients a clinician certified for home health: a count, "10 or fewer" when CMS does not list them, "Not loaded" before the file', () => {
+    const base = { data_year: '2024', referral_index: 96, rank_in_county: 1, county_name: 'Allegheny County', benes: 620, hospital_ccns: [], affiliations: 0 };
+    const certified = () => screen.getByText('Certified for home health').nextElementSibling;
+    const { rerender } = render(<ReferralPotentialCard potential={base} />);
+    expect(certified()).toHaveTextContent('Not loaded');
+    rerender(<ReferralPotentialCard potential={{ ...base, hh_cert_benes: 43 }} />);
+    expect(certified()).toHaveTextContent(/^43 patients$/);
+    expect(screen.getByText(/^Patients certified for home health, Medicare volume/)).toBeInTheDocument();
+    rerender(<ReferralPotentialCard potential={{ ...base, hh_cert_benes: 0 }} />);
+    expect(certified()).toHaveTextContent(/^10 or fewer$/);
   });
 
   it('carries the market disclaimer and says when the referral rollup last computed', () => {

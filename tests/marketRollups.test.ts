@@ -86,6 +86,19 @@ describe("market rollup jobs", () => {
     expect(sql).toMatch(/CASE WHEN \(SELECT loaded FROM aff_loaded\) THEN COALESCE\(a\.affiliations, 0\) END AS affiliations/);
   });
 
+  it("rank on the patients a clinician certified for home health once that file is imported, and on volume alone before", () => {
+    const sql = jobByName("referral_sources")!.sql;
+    // The certification columns are unknown (NULL), never 0, until the file is loaded; a clinician CMS does not list reads 0 after.
+    expect(sql).toMatch(/cert_loaded AS \(SELECT EXISTS \(SELECT 1 FROM cms_physician_certifications\) AS loaded\)/);
+    expect(sql).toMatch(/CASE WHEN \(SELECT loaded FROM cert_loaded\) THEN COALESCE\(ce\.hh_cert_benes, 0\) END AS hh_cert_benes/);
+    expect(sql).toMatch(/CASE WHEN \(SELECT loaded FROM cert_loaded\) THEN COALESCE\(ce\.hospice_oversight_benes, 0\) END AS hospice_oversight_benes/);
+    // Only the latest data year counts, and only the two codes behind the columns (G0180 certification, G0182 hospice oversight).
+    expect(sql).toMatch(/JOIN \(SELECT max\(data_year\) AS y FROM cms_physician_certifications\) l ON l\.y = c\.data_year/);
+    expect(sql).toContain("FILTER (WHERE c.hcpcs_code = 'G0180')");
+    expect(sql).toContain("FILTER (WHERE c.hcpcs_code = 'G0182')");
+    expect(jobByName("referral_sources")!.resultColumns).toEqual(expect.arrayContaining(["hh_cert_benes", "hospice_oversight_benes"]));
+  });
+
   it("count the county's post-acute providers at each setting's own latest year", () => {
     const sql = jobByName("county_market_profile")!.sql;
     expect(sql).toMatch(/latest_pac AS \(SELECT setting, max\(data_year\) AS year FROM rollup_pac_market_share WHERE geo_level = 'county' GROUP BY setting\)/);

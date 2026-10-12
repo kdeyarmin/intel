@@ -24,7 +24,7 @@ export default function ReferralPotentialCard({ potential, rollups = null }) {
           Referral Potential
           <Badge variant="outline" className="text-[10px] ml-auto">data year {p.data_year}</Badge>
         </CardTitle>
-        <p className="text-[11px] text-slate-400">Medicare volume, patient risk and ordering eligibility from CMS files; the index ranks clinicians in the county (not confirmed referrals).</p>
+        <p className="text-[11px] text-slate-400">{p.hh_cert_benes != null ? 'Patients certified for home health, ' : ''}Medicare volume, patient risk and ordering eligibility from CMS files; the index ranks clinicians in the county (not confirmed referrals).</p>
       </CardHeader>
       <CardContent>
         <div className="flex items-end gap-6">
@@ -35,6 +35,9 @@ export default function ReferralPotentialCard({ potential, rollups = null }) {
           </div>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
             <dt className="text-slate-400">Medicare patients</dt><dd className="text-slate-200">{fmtCount(p.benes)}</dd>
+            <dt className="text-slate-400">Certified for home health</dt>
+            {/* null until the Home Health Certifications file is imported; 0 is "not listed" (CMS lists a clinician only above 10 patients). */}
+            <dd className="text-slate-200">{p.hh_cert_benes == null ? 'Not loaded' : p.hh_cert_benes > 0 ? `${fmtCount(p.hh_cert_benes)} patients` : '10 or fewer'}</dd>
             <dt className="text-slate-400">Services</dt><dd className="text-slate-200">{fmtCount(p.services)}</dd>
             <dt className="text-slate-400">Average risk score</dt><dd className="text-slate-200">{fmtRate(p.avg_risk_score, 2)}</dd>
             <dt className="text-slate-400">Dual-eligible</dt><dd className="text-slate-200">{fmtShare(p.dual_pct)}</dd>

@@ -14,6 +14,7 @@ import { isStatementTimeout, withTimeoutClient } from "../lib/pgClient";
 import { countiesForState, getGeoIndex, resolveCounty, type GeoIndex } from "../lib/geo";
 import { normalizeStateFilter } from "../lib/providerSearch";
 import { specialtyGroupFor } from "../lib/specialtyGroups";
+import { referralIndexNote } from "../lib/referralIndex";
 import { providerName } from "../lib/territory";
 import { rollupStatus } from "../lib/rollups/runner";
 import { MARKET_JOBS } from "../lib/rollups/market";
@@ -487,6 +488,8 @@ export async function handleGetReferralSources(payload: any, user?: EntitledUser
     );
     const rows = fetched.slice(0, fetch);
     const beyondWindow = fetched.length > fetch;
+    // The rollup leaves the certification columns NULL until the file is imported, and ranks by them once it is.
+    const certificationsLoaded = fetched.some((r: any) => r.hh_cert_benes != null);
     // A specialty search loads the whole window's NUCC codes first: the group is decided by the clinician's primary
     // taxonomy code (code-first), the same call that labels each row below, so the filter and the label can't disagree
     // (the rollup only holds CMS's provider-type text, which "Internal Medicine" shares between cardiologists and others).
@@ -516,10 +519,13 @@ export async function handleGetReferralSources(payload: any, user?: EntitledUser
           chronic: { chf: num(r.cc_chf_pct), copd: num(r.cc_copd_pct), alzheimer: num(r.cc_alzheimer_pct), ckd: num(r.cc_ckd_pct), diabetes: num(r.cc_diabetes_pct) },
           eligible: { hha: !!r.hha_eligible, hospice: !!r.hospice_eligible, dme: !!r.dme_eligible },
           dme_benes: num(r.dme_benes), hospital_ccns: Array.isArray(r.hospital_ccns) ? r.hospital_ccns : [], affiliations: num(r.affiliations),
+          // null = the Home Health Certifications file has not been imported; 0 = not listed (CMS lists a clinician only above 10 patients).
+          hh_cert_benes: num(r.hh_cert_benes), hospice_oversight_benes: num(r.hospice_oversight_benes),
           referral_index: num(r.referral_index), rank_in_county: num(r.rank_in_county), lead_score: n?.score ?? null, data_year: r.data_year,
         };
       }),
-      index_note: "Referral index (0–100): 50 points for Medicare beneficiaries served (full at 500), 25 for average patient risk score (full at 2.5), 25 for eligibility to order home health and hospice.",
+      certifications_loaded: certificationsLoaded,
+      index_note: referralIndexNote(certificationsLoaded),
       rollups: await marketRollupFreshness(),
     };
   }));

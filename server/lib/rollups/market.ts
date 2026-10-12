@@ -149,6 +149,7 @@ export const MARKET_JOBS: MarketJob[] = [
       "npi", "data_year", "county_fips", "state", "zip5", "specialty", "benes", "services", "avg_risk_score", "dual_pct",
       "cc_chf_pct", "cc_copd_pct", "cc_alzheimer_pct", "cc_ckd_pct", "cc_diabetes_pct",
       "hha_eligible", "hospice_eligible", "dme_eligible", "dme_benes", "hospital_ccns", "affiliations", "referral_index", "rank_in_county",
+      "hh_cert_benes", "hospice_oversight_benes",
     ],
     // rank_in_county is set only for clinicians whose ZIP resolves to a county: a NULL partition would rank the
     // ones that don't against each other, and the provider page would show a bogus "Nth in the county".
@@ -168,6 +169,21 @@ export const MARKET_JOBS: MarketJob[] = [
       /* affiliations stays NULL (unknown) until the Facility Affiliation file has been imported: "no hospital listed"
          is a statement about the file, and without it every clinician would read 0. */
       aff_loaded AS (SELECT EXISTS (SELECT 1 FROM cms_facility_affiliation) AS loaded),
+      /* Patients a clinician certified for home health (G0180) and patients whose hospice plan of care they oversaw
+         (G0182) in the latest data year. CMS lists a clinician only above 10 patients for a code, so one that is not
+         listed has between none and 10. Like affiliations, both stay NULL (unknown) until the Home Health
+         Certifications file has been imported. The index then rests on certifications: being listed is worth 15 points
+         and 40 patients the full 50, where it used to rest on Order & Referring eligibility, which nearly every
+         physician has (99% in the 2026 file) and so says nothing about who refers; without any certification a clinician
+         can reach 50 of 100 on volume, risk and eligibility. */
+      cert AS (
+        SELECT c.npi,
+               COALESCE(sum(c.benes) FILTER (WHERE c.hcpcs_code = 'G0180'), 0)::int AS hh_cert_benes,
+               COALESCE(sum(c.benes) FILTER (WHERE c.hcpcs_code = 'G0182'), 0)::int AS hospice_oversight_benes
+          FROM cms_physician_certifications c
+          JOIN (SELECT max(data_year) AS y FROM cms_physician_certifications) l ON l.y = c.data_year
+         GROUP BY c.npi),
+      cert_loaded AS (SELECT EXISTS (SELECT 1 FROM cms_physician_certifications) AS loaded),
       scored AS (
         SELECT p.npi, p.data_year, z.primary_county_fips AS county_fips, p.state, p.zip5, p.provider_type, p.benes, p.services,
                p.avg_risk_score,
@@ -179,17 +195,26 @@ export const MARKET_JOBS: MarketJob[] = [
                ${cc(["Bene_CC_PH_Diabetes_V2_Pct", "Bene_CC_Diab_Pct"])} AS cc_diabetes_pct,
                COALESCE(o.hha, false) AS hha_eligible, COALESCE(o.hospice, false) AS hospice_eligible, COALESCE(o.dme, false) AS dme_eligible,
                d.dme_benes, a.hospital_ccns, CASE WHEN (SELECT loaded FROM aff_loaded) THEN COALESCE(a.affiliations, 0) END AS affiliations,
-               round(50 * least(p.benes / 500.0, 1) + 25 * least(COALESCE(p.avg_risk_score, 0) / 2.5, 1)
-                     + 25 * ((COALESCE(o.hha, false)::int + COALESCE(o.hospice, false)::int) / 2.0))::int AS referral_index
+               CASE WHEN (SELECT loaded FROM cert_loaded) THEN COALESCE(ce.hh_cert_benes, 0) END AS hh_cert_benes,
+               CASE WHEN (SELECT loaded FROM cert_loaded) THEN COALESCE(ce.hospice_oversight_benes, 0) END AS hospice_oversight_benes,
+               CASE WHEN (SELECT loaded FROM cert_loaded)
+                    THEN round(CASE WHEN COALESCE(ce.hh_cert_benes, 0) > 0 THEN 15 + 35 * least(ce.hh_cert_benes / 40.0, 1) ELSE 0 END
+                               + 20 * least(p.benes / 500.0, 1) + 15 * least(COALESCE(p.avg_risk_score, 0) / 2.5, 1)
+                               + 15 * ((COALESCE(o.hha, false)::int + COALESCE(o.hospice, false)::int) / 2.0))::int
+                    ELSE round(50 * least(p.benes / 500.0, 1) + 25 * least(COALESCE(p.avg_risk_score, 0) / 2.5, 1)
+                               + 25 * ((COALESCE(o.hha, false)::int + COALESCE(o.hospice, false)::int) / 2.0))::int
+               END AS referral_index
           FROM phys p
           LEFT JOIN geo_zctas z ON z.zcta = p.zip5
           LEFT JOIN cms_order_referring o ON o.npi = p.npi
           LEFT JOIN dme d ON d.npi = p.npi
-          LEFT JOIN aff a ON a.npi = p.npi)
+          LEFT JOIN aff a ON a.npi = p.npi
+          LEFT JOIN cert ce ON ce.npi = p.npi)
       SELECT npi, data_year, county_fips, state, zip5, provider_type, benes, services, avg_risk_score, dual_pct,
              cc_chf_pct, cc_copd_pct, cc_alzheimer_pct, cc_ckd_pct, cc_diabetes_pct,
              hha_eligible, hospice_eligible, dme_eligible, dme_benes, hospital_ccns, affiliations, referral_index,
-             (CASE WHEN county_fips IS NOT NULL THEN rank() OVER (PARTITION BY county_fips ORDER BY referral_index DESC, benes DESC, npi) END)::int
+             (CASE WHEN county_fips IS NOT NULL THEN rank() OVER (PARTITION BY county_fips ORDER BY referral_index DESC, benes DESC, npi) END)::int,
+             hh_cert_benes, hospice_oversight_benes
         FROM scored`,
   },
   {

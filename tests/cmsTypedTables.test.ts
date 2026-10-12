@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
-import { TYPED_ROUTES, isoDate, mapTypedRows, num, yn } from "../server/functions/cmsTypedTables";
+import { CERTIFICATION_HCPCS, TYPED_ROUTES, isoDate, mapPhysicianCertification, mapTypedRows, num, yn } from "../server/functions/cmsTypedTables";
 
 const dir = path.join(import.meta.dirname, "fixtures", "cms", "rows");
 const rows = (type: string) => JSON.parse(fs.readFileSync(path.join(dir, `${type}.json`), "utf8")) as any[];
@@ -149,5 +149,34 @@ describe("Zip service areas, affiliations, physicians, DME, LTC-671", () => {
     ], { year: 2025, batchId: 1 });
     expect(dropped).toBe(1);
     expect(out).toEqual([expect.objectContaining({ total_cases: 12 })]);
+  });
+});
+
+describe("Home health certifications", () => {
+  // Real rows of the four codes (G0180, G0179, G0181, G0182), captured from the live API on 2026-10-12 with the names and street
+  // addresses left out. The same clinician bills a code at the office (O) and at a facility (F) as separate rows.
+  const ctx2 = { year: 2024, batchId: 9 };
+
+  it("keeps one row per clinician, code and place of service, with the patients and services", () => {
+    const { rows: out, dropped } = mapTypedRows(TYPED_ROUTES.physician_certifications, rows("physician_certifications"), ctx2);
+    expect(dropped).toBe(0);
+    expect(out).toHaveLength(7);
+    expect(out[0]).toMatchObject({ npi: "1174967715", hcpcs_code: "G0180", place_of_service: "O", data_year: "2024", provider_type: "Orthopedic Surgery", state: "PA", benes: 152, services: 154, import_batch_id: 9 });
+    expect(out[1]).toMatchObject({ npi: "1063892255", hcpcs_code: "G0180", place_of_service: "F", benes: 128 });
+    expect(new Set(out.map((r) => `${r.npi}|${r.hcpcs_code}|${r.place_of_service}`)).size).toBe(7);
+    expect(new Set(out.map((r) => r.hcpcs_code))).toEqual(new Set(CERTIFICATION_HCPCS));
+  });
+
+  it("is keyed so a re-import of the year updates the rows and a new year adds its own", () => {
+    expect(TYPED_ROUTES.physician_certifications.key).toEqual(["npi", "hcpcs_code", "place_of_service", "data_year"]);
+  });
+
+  it("drops what is not a certification: another code, a bad NPI, no place of service, no year", () => {
+    const good = rows("physician_certifications")[0];
+    expect(mapPhysicianCertification({ ...good, HCPCS_Cd: "99213" }, ctx2)).toBeNull();
+    expect(mapPhysicianCertification({ ...good, Rndrng_NPI: "12345" }, ctx2)).toBeNull();
+    expect(mapPhysicianCertification({ ...good, Place_Of_Srvc: "" }, ctx2)).toBeNull();
+    expect(mapPhysicianCertification(good, { year: null, batchId: 9 })).toBeNull();
+    expect(mapPhysicianCertification({ ...good, HCPCS_Cd: "g0180" }, ctx2)).toMatchObject({ hcpcs_code: "G0180" });
   });
 });
