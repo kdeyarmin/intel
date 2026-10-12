@@ -126,7 +126,9 @@ export default function ScoringRules() {
     );
   }
 
-  const totalWeight = rules.filter(r => r.enabled !== false).reduce((sum, r) => sum + (Number(r.weight) || 0), 0);
+  // The total the server actually scores with: rules the backend drops
+  // (not explicitly enabled, or a non-positive weight) add nothing.
+  const totalWeight = rules.filter(r => r.enabled === true && Number(r.weight) > 0).reduce((sum, r) => sum + (Number(r.weight) || 0), 0);
   const running = !!job.running || recalcMutation.isPending;
 
   return (
@@ -221,6 +223,9 @@ export default function ScoringRules() {
               {rules.map(rule => {
                 const editing = editingRule?.id === rule.id;
                 const fields = CONDITION_FIELDS[rule.rule_type] || [];
+                // Matches the server (normalizeRules): only an explicitly
+                // enabled rule with a positive weight scores.
+                const isActive = rule.enabled === true && Number(rule.weight) > 0;
                 return (
                 <TableRow key={rule.id}>
                   <TableCell className="font-medium capitalize text-slate-200">
@@ -275,8 +280,8 @@ export default function ScoringRules() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={rule.enabled ? 'default' : 'secondary'}>
-                      {rule.enabled ? 'Active' : 'Disabled'}
+                    <Badge variant={isActive ? 'default' : 'secondary'}>
+                      {isActive ? 'Active' : 'Disabled'}
                     </Badge>
                   </TableCell>
                   <TableCell>
