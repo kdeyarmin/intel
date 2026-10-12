@@ -436,7 +436,16 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     sendDroppedFields(res, entityName, split.dropped);
     if (!(await stampOrg(entityName, data, req, res))) return;
 
-    const [row] = (await db.insert(table).values(data).returning()) as any[];
+    let row: any;
+    if (entityName === "LeadListMember") {
+      row = await db.transaction(async (tx) => {
+        const [inserted] = (await tx.insert(table).values(data).returning()) as any[];
+        await recountLeadList(tx, Number(data.list_id));
+        return inserted;
+      });
+    } else {
+      [row] = (await db.insert(table).values(data).returning()) as any[];
+    }
     res.status(201).json(decorateRow(entityName, row));
   } catch (e: any) {
     if (e instanceof InvalidFieldValueError) return res.status(400).json({ message: e.message });
@@ -473,7 +482,17 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
     const knownParents = new Map<number, boolean>();
     for (const data of cleaned) if (!(await stampOrg(entityName, data, req, res, knownParents))) return;
 
-    const rows = (await db.insert(table).values(cleaned).returning()) as any[];
+    let rows: any[];
+    if (entityName === "LeadListMember") {
+      rows = await db.transaction(async (tx) => {
+        const inserted = (await tx.insert(table).values(cleaned).returning()) as any[];
+        const listIds = [...new Set(inserted.map((r) => Number(r.list_id)).filter((id) => Number.isInteger(id)))];
+        for (const listId of listIds) await recountLeadList(tx, listId);
+        return inserted;
+      });
+    } else {
+      rows = (await db.insert(table).values(cleaned).returning()) as any[];
+    }
     res.status(201).json(rows.map((r: any) => decorateRow(entityName, r)));
   } catch (e: any) {
     if (e instanceof InvalidFieldValueError) return res.status(400).json({ message: e.message });
@@ -559,6 +578,7 @@ router.delete("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Resp
       for (const child of children) {
         await tx.delete(child.table).where(eq(child.table[child.column], idNum));
       }
+      if (req.params.entity === "LeadListMember") await recountLeadList(tx, Number(deleted.list_id));
       return deleted;
     });
     if (!row) return res.status(404).json({ message: "Not found" });
@@ -567,6 +587,17 @@ router.delete("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Resp
     return safeError(res, e, `DELETE /${req.params.entity}/${req.params.id}`);
   }
 });
+
+/**
+ * Recompute a lead list's member_count in the same transaction as the membership change.
+ */
+async function recountLeadList(tx: typeof db, listId: number) {
+  if (!Number.isInteger(listId)) return;
+  await tx.update(leadLists).set({
+    member_count: sql`(SELECT count(*)::int FROM lead_list_members WHERE list_id = ${listId})`,
+    updated_date: new Date(),
+  }).where(eq(leadLists.id, listId));
+}
 
 /**
  * Whether a row's parent (the lead list of a member, the campaign of a step) is in the caller's organization.

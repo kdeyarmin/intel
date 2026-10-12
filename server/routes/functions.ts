@@ -223,6 +223,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleEnrichProviderWithAI(req.body));
       }
       case "emailSearchBot": {
+        requireBillableOrg();
         const { handleEmailSearchBot } = await import("../functions/emailSearchBot");
         return res.json(await handleEmailSearchBot(req.body));
       }
@@ -296,6 +297,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
       }
       case "enrichmentJobStart":
       case "intelJobStart": {
+        requireBillableOrg();
         const { handleIntelJobStart } = await import("../functions/providerIntelligenceBot");
         return res.json(await handleIntelJobStart(req.body, { id: req.user!.id, orgId: req.user!.orgId ?? null }));
       }
@@ -623,6 +625,7 @@ Be concise and helpful. Use markdown formatting for readability.`;
         return res.json(await handleDMEEmailSearchStatus());
       }
       case "startDMEEmailSearch": {
+        requireBillableOrg();
         const { handleStartDMEEmailSearch } = await import("../functions/dmeReport");
         return res.json(await handleStartDMEEmailSearch(req.body));
       }

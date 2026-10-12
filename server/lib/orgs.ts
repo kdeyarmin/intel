@@ -139,6 +139,15 @@ export interface OrgRepo {
   seatUsage(orgId: number): Promise<{ used: number; limit: number }>;
 }
 
+/** Thrown when a role change or removal would leave an organization with no owner. */
+export class LastOwnerError extends Error {
+  status = 409;
+  constructor(message = "This is the last owner of the organization. Make someone else an owner first.") {
+    super(message);
+    this.name = "LastOwnerError";
+  }
+}
+
 const MEMBERSHIP_SQL = `SELECT m.org_id, m.user_id, m.org_role, o.name AS org_name
                           FROM organization_members m JOIN organizations o ON o.id = m.org_id`;
 
@@ -176,12 +185,66 @@ export function pgOrgRepo(db: any = pool): OrgRepo {
       );
     },
     async setMemberRole(orgId, userId, orgRole) {
-      const { rowCount } = await db.query("UPDATE organization_members SET org_role = $3 WHERE org_id = $1 AND user_id = $2", [orgId, userId, orgRole]);
-      return rowCount > 0;
+      const client = await db.connect();
+      try {
+        await client.query("BEGIN");
+        const locked = await client.query(
+          "SELECT user_id, org_role FROM organization_members WHERE org_id = $1 FOR UPDATE",
+          [orgId],
+        );
+        const target = locked.rows.find((r: any) => Number(r.user_id) === userId);
+        if (!target) {
+          await client.query("ROLLBACK");
+          return false;
+        }
+        const owners = locked.rows.filter((r: any) => r.org_role === "owner");
+        if (target.org_role === "owner" && orgRole !== "owner" && owners.length <= 1) {
+          await client.query("ROLLBACK");
+          throw new LastOwnerError();
+        }
+        const { rowCount } = await client.query(
+          "UPDATE organization_members SET org_role = $3 WHERE org_id = $1 AND user_id = $2",
+          [orgId, userId, orgRole],
+        );
+        await client.query("COMMIT");
+        return rowCount > 0;
+      } catch (e) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw e;
+      } finally {
+        client.release();
+      }
     },
     async removeMember(orgId, userId) {
-      const { rowCount } = await db.query("DELETE FROM organization_members WHERE org_id = $1 AND user_id = $2", [orgId, userId]);
-      return rowCount > 0;
+      const client = await db.connect();
+      try {
+        await client.query("BEGIN");
+        const locked = await client.query(
+          "SELECT user_id, org_role FROM organization_members WHERE org_id = $1 FOR UPDATE",
+          [orgId],
+        );
+        const target = locked.rows.find((r: any) => Number(r.user_id) === userId);
+        if (!target) {
+          await client.query("ROLLBACK");
+          return false;
+        }
+        const owners = locked.rows.filter((r: any) => r.org_role === "owner");
+        if (target.org_role === "owner" && owners.length <= 1) {
+          await client.query("ROLLBACK");
+          throw new LastOwnerError();
+        }
+        const { rowCount } = await client.query(
+          "DELETE FROM organization_members WHERE org_id = $1 AND user_id = $2",
+          [orgId, userId],
+        );
+        await client.query("COMMIT");
+        return rowCount > 0;
+      } catch (e) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw e;
+      } finally {
+        client.release();
+      }
     },
     seatUsage: (orgId) => seatUsage(orgId, db),
   };
