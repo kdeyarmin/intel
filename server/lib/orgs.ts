@@ -134,6 +134,8 @@ export interface OrgRepo {
   membershipOf(userId: number): Promise<Membership | null>;
   addMember(orgId: number, userId: number, orgRole: "owner" | "member"): Promise<void>;
   setMemberRole(orgId: number, userId: number, orgRole: "owner" | "member"): Promise<boolean>;
+  /** Removes a user from an organization. True when a membership was removed. */
+  removeMember(orgId: number, userId: number): Promise<boolean>;
   seatUsage(orgId: number): Promise<{ used: number; limit: number }>;
 }
 
@@ -175,6 +177,10 @@ export function pgOrgRepo(db: any = pool): OrgRepo {
     },
     async setMemberRole(orgId, userId, orgRole) {
       const { rowCount } = await db.query("UPDATE organization_members SET org_role = $3 WHERE org_id = $1 AND user_id = $2", [orgId, userId, orgRole]);
+      return rowCount > 0;
+    },
+    async removeMember(orgId, userId) {
+      const { rowCount } = await db.query("DELETE FROM organization_members WHERE org_id = $1 AND user_id = $2", [orgId, userId]);
       return rowCount > 0;
     },
     seatUsage: (orgId) => seatUsage(orgId, db),

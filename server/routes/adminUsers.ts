@@ -12,6 +12,7 @@ import {
   newToken,
   normalizeEmail,
   normalizeRole,
+  orgOwnerActionProblem,
   tokenLink,
   type AdminAction,
   type TokenPurpose,
@@ -41,6 +42,7 @@ const ACCOUNT_ACTIONS = [
   "rename",
   "disable",
   "enable",
+  "remove_from_org",
   "invite",
   "invite_accepted",
   "reset_link",
@@ -254,6 +256,10 @@ export function createAdminUsersRouter(deps: AccountDeps) {
       const membership = await deps.orgs.membershipOf(updated!.id);
       if (!membership) throw new HttpError(409, "This account isn't in an organization");
       if (membership.org_role !== orgRole) {
+        // The organization keeps its last owner, like the platform keeps its last active admin.
+        const ownerIds = (await deps.orgs.memberships(membership.org_id)).filter((m) => m.org_role === "owner").map((m) => m.user_id);
+        const problem = orgOwnerActionProblem({ actorId: req.user!.id, targetUserId: updated!.id, orgId: membership.org_id, action: "role", newOrgRole: orgRole!, ownerIds });
+        if (problem) throw new HttpError(409, problem);
         await deps.orgs.setMemberRole(membership.org_id, updated!.id, orgRole!);
         await audit(req, "role_change", updated!, { from: membership.org_role, to: orgRole, org_id: membership.org_id });
       }
@@ -302,6 +308,21 @@ export function createAdminUsersRouter(deps: AccountDeps) {
     deps.onUserChanged(target.id);
     await audit(req, "enable", target, { status });
     res.json({ user: adminUserView(updated!) });
+  }));
+
+  // Removes the account from its organization (the account itself stays).
+  router.post("/:id/remove-from-org", handle(async (req, res) => {
+    const target = await load(req, repo);
+    const membership = await deps.orgs.membershipOf(target.id);
+    if (!membership) throw new HttpError(409, "This account isn't in an organization");
+    // The organization keeps its last owner, like the platform keeps its last active admin.
+    const ownerIds = (await deps.orgs.memberships(membership.org_id)).filter((m) => m.org_role === "owner").map((m) => m.user_id);
+    const problem = orgOwnerActionProblem({ actorId: req.user!.id, targetUserId: target.id, orgId: membership.org_id, action: "remove", ownerIds });
+    if (problem) throw new HttpError(409, problem);
+    await deps.orgs.removeMember(membership.org_id, target.id);
+    deps.onUserChanged(target.id);
+    await audit(req, "remove_from_org", target, { org_id: membership.org_id, org_role: membership.org_role });
+    res.json({ success: true });
   }));
 
   // A one-time link the admin passes on (shown once, never stored in clear).
