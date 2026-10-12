@@ -4,7 +4,7 @@ import { isPlatformAdmin } from "../lib/roles";
 import { rateLimit } from "../middleware/rateLimit";
 import { CLAUDE_MODELS } from "../lib/aiModels";
 import { isFunctionAllowedFor } from "../lib/functionAcl";
-import { assertBillableOrg } from "../lib/entitlements";
+import { assertBillableOrg, orgAccessTier, SubscriptionError } from "../lib/entitlements";
 import { publicErrorMessage } from "../lib/publicError";
 import { consumeQuota } from "../lib/orgQuota";
 
@@ -30,6 +30,20 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
   };
 
   try {
+    // The dunning ladder's last rung (orgAccessTier): an organization that is
+    // canceled, or past_due for 14+ days, is billing-only — it can sign in and
+    // use the Billing page, but function calls are closed until it pays.
+    // getGeoCounties stays open: the Billing page's territory picker calls it,
+    // and it serves public census reference data only.
+    if (
+      functionName !== "getGeoCounties"
+      && !isPlatformAdmin(req.user)
+      && req.user?.orgStatus
+      && orgAccessTier({ status: req.user.orgStatus, billingStatusSince: req.user.orgBillingStatusSince }) === "billing_only"
+    ) {
+      throw new SubscriptionError("Your organization's subscription has lapsed. An owner can update payment on the Billing page to restore access.");
+    }
+
     // Export-sized data fetches are metered server-side (A5.2): when the
     // caller asks for the export payload (for_export: true), one export is
     // consumed from the organization's daily quota before the handler runs.
@@ -209,7 +223,6 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         return res.json(await handleEnrichProviderWithAI(req.body));
       }
       case "emailSearchBot": {
-        requireBillableOrg();
         const { handleEmailSearchBot } = await import("../functions/emailSearchBot");
         return res.json(await handleEmailSearchBot(req.body));
       }
@@ -283,7 +296,6 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
       }
       case "enrichmentJobStart":
       case "intelJobStart": {
-        requireBillableOrg();
         const { handleIntelJobStart } = await import("../functions/providerIntelligenceBot");
         return res.json(await handleIntelJobStart(req.body, { id: req.user!.id, orgId: req.user!.orgId ?? null }));
       }
@@ -611,7 +623,6 @@ Be concise and helpful. Use markdown formatting for readability.`;
         return res.json(await handleDMEEmailSearchStatus());
       }
       case "startDMEEmailSearch": {
-        requireBillableOrg();
         const { handleStartDMEEmailSearch } = await import("../functions/dmeReport");
         return res.json(await handleStartDMEEmailSearch(req.body));
       }

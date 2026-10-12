@@ -7,6 +7,8 @@ import { clientIp } from "../middleware/rateLimit";
 import type { AuditWriter } from "../lib/audit";
 import type { CreatedLeadList } from "../lib/leadLists";
 import { ASSISTANT_CONFIG } from "../lib/assistant/config";
+import { assertBillableOrg, SubscriptionError } from "../lib/entitlements";
+import { isPlatformAdmin } from "../lib/roles";
 import { runAssistantTurn, usageUnits, type StreamFactory, type TurnResult } from "../lib/assistant/loop";
 import { checkQuota } from "../lib/assistant/quota";
 import { decisionNote, renderTranscript, replayHistory, titleFrom, uiAction } from "../lib/assistant/render";
@@ -39,16 +41,11 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
   const router = Router();
   const { store } = deps;
   const now = deps.now ?? Date.now;
-  // Turns this process is answering, so Stop can abort the live request
-  // instead of only flipping the database row.
-  const liveTurns = new Map<string, AbortController>();
   router.use(authMiddleware);
-
-  const orgIdOf = (req: AuthRequest) => req.user!.orgId ?? null;
 
   async function ownConversation(req: AuthRequest, res: Response) {
     const id = parseId(String(req.params.id));
-    const conv = id == null ? null : await store.getConversation(id, req.user!.id, orgIdOf(req));
+    const conv = id == null ? null : await store.getConversation(id, req.user!.id);
     if (!conv) res.status(404).json({ message: "Conversation not found" });
     return conv;
   }
@@ -70,7 +67,7 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
     const m = raw.match(/^(.+)~(\d{1,9})$/);
     const before = m && !Number.isNaN(Date.parse(m[1])) ? { updatedAt: m[1], id: Number(m[2]) } : null;
     if (raw && !before) return res.status(400).json({ message: "Invalid cursor." });
-    const rows = await store.listConversations(req.user!.id, orgIdOf(req), CONVERSATION_PAGE + 1, before);
+    const rows = await store.listConversations(req.user!.id, CONVERSATION_PAGE + 1, before);
     const page = rows.slice(0, CONVERSATION_PAGE);
     const last = page[page.length - 1];
     const lastAt = last ? new Date(last.updated_at as any).toISOString() : null;
@@ -101,14 +98,14 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
     const title = typeof req.body?.title === "string" ? req.body.title.trim() : "";
     if (!title || title.length > 200) return res.status(400).json({ message: "Give the conversation a name of up to 200 characters." });
     const id = parseId(String(req.params.id));
-    const conv = id == null ? null : await store.renameConversation(id, req.user!.id, orgIdOf(req), title);
+    const conv = id == null ? null : await store.renameConversation(id, req.user!.id, title);
     if (!conv) return res.status(404).json({ message: "Conversation not found" });
     res.json({ conversation: conv });
   });
 
   router.delete("/conversations/:id", async (req: AuthRequest, res: Response) => {
     const id = parseId(String(req.params.id));
-    if (id == null || !(await store.deleteConversation(id, req.user!.id, orgIdOf(req)))) return res.status(404).json({ message: "Conversation not found" });
+    if (id == null || !(await store.deleteConversation(id, req.user!.id))) return res.status(404).json({ message: "Conversation not found" });
     res.status(204).end();
   });
 
@@ -126,6 +123,18 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
       return res.status(409).json({ code: "conversation_full", message: `This conversation has reached ${ASSISTANT_CONFIG.maxTurnsPerConversation} questions. Start a new conversation to continue.` });
     }
     const user = req.user!;
+    // The assistant spends AI tokens, so it follows the same billing gate as
+    // other cost-incurring calls: a past_due or canceled organization cannot
+    // run it until it pays. The per-user daily budget (checkQuota below)
+    // remains the control for organizations in good standing.
+    if (!isPlatformAdmin(user) && user.orgStatus) {
+      try {
+        assertBillableOrg({ status: user.orgStatus });
+      } catch (e) {
+        if (e instanceof SubscriptionError) return res.status(e.status).json({ code: e.code, message: e.message });
+        throw e;
+      }
+    }
     const quota = await checkQuota(store, user.id, new Date(now()));
     if (!quota.ok) {
       res.setHeader("Retry-After", String(quota.retryAfterSec));
@@ -135,8 +144,6 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
     if (!turn) return res.status(409).json({ code: "turn_running", message: "The assistant is still answering one of your questions. Wait for it to finish, then ask again." });
 
     const controller = new AbortController();
-    const turnKey = `${conv.id}:${turn.id}`;
-    liveTurns.set(turnKey, controller);
     const sse = openSse(res, ASSISTANT_CONFIG.heartbeatMs);
     let finished = false;
     let timedOut = false;
@@ -176,7 +183,6 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
       result = { status: "error", error: "The assistant ran into a problem. Try again.", usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, requests: 0, retries: 0 }, rounds: 0 };
     } finally {
       finished = true;
-      liveTurns.delete(turnKey);
       clearTimeout(hardStop);
     }
     if (timedOut && result.status === "interrupted") {
@@ -193,25 +199,17 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
     sse.close();
   });
 
-  // Stop aborts a turn this process is running. A turn running somewhere else
-  // can only be marked stopped once it is old enough that its process is gone;
-  // finishTurn will not overwrite that interrupted status.
+  // The UI's "mark as stopped" for a saved "running" turn whose process is
+  // gone (see AssistantTurn). Only the owner's running turns can be marked.
   router.post("/conversations/:id/turns/:turnId/stop", async (req: AuthRequest, res: Response) => {
     const conv = await ownConversation(req, res);
     if (!conv) return;
     const turnId = parseId(String(req.params.turnId));
     if (turnId == null) return res.status(404).json({ message: "Turn not found." });
-    const live = liveTurns.get(`${conv.id}:${turnId}`);
-    if (live) {
-      live.abort();
-      return res.json({ ok: true });
+    if (!(await store.interruptTurn(conv.id, turnId))) {
+      return res.status(404).json({ message: "That turn isn't running anymore." });
     }
-    const outcome = await store.interruptTurn(conv.id, turnId, ASSISTANT_CONFIG.staleTurnMs);
-    if (outcome === "stopped") return res.json({ ok: true });
-    if (outcome === "still_active") {
-      return res.status(409).json({ message: "That answer is still running. Wait for it to finish, or stop it from the tab that asked." });
-    }
-    return res.status(404).json({ message: "That turn isn't running anymore." });
+    res.json({ ok: true });
   });
 
   function sendDecision(res: Response, result: DecisionResult) {
@@ -228,7 +226,7 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
     try {
       if (user.orgId == null) return res.status(403).json({ message: "Your account isn't part of an organization yet, so it has no place to keep a lead list." });
       const orgId = user.orgId;
-      const result = await store.confirmAction(actionId, user.id, user.orgId ?? null, async (client, action) => {
+      const result = await store.confirmAction(actionId, user.id, async (client, action) => {
         const p = action.payload || {};
         const created = await deps.createLeadList(client, {
           orgId,
@@ -262,7 +260,7 @@ export function createAssistantRouter(deps: AssistantRouterDeps) {
   router.post("/actions/:id/cancel", async (req: AuthRequest, res: Response) => {
     const actionId = String(req.params.id);
     if (!/^[0-9a-f-]{36}$/i.test(actionId)) return res.status(404).json({ message: "That proposal wasn't found." });
-    sendDecision(res, await store.cancelAction(actionId, req.user!.id, req.user!.orgId ?? null));
+    sendDecision(res, await store.cancelAction(actionId, req.user!.id));
   });
 
   return router;
