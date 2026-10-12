@@ -3,7 +3,7 @@ import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, LayoutDashboard, Stethoscope, Network, Mail, ShieldCheck, MapPin as MapPinIcon, MessageSquare } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, Stethoscope, Network, Mail, ShieldCheck, MapPin as MapPinIcon, MessageSquare, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -51,6 +51,8 @@ import OrgAffiliatedProvidersCard from '../components/providers/OrgAffiliatedPro
 import ComprehensiveReport from '../components/reports/ComprehensiveReport';
 import ProviderHeader from '../components/providers/ProviderHeader';
 import QueryErrorState from '../components/shared/QueryErrorState';
+import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
+import { latestUtilizationTotals } from '../components/providers/utilizationTotals';
 import { pickPrimaryLocation } from '@/lib/locations';
 
 export default function ProviderDetail() {
@@ -65,64 +67,66 @@ export default function ProviderDetail() {
     enabled: !!npi,
   });
 
-  const { data: scores = [], isLoading: loadingScore } = useQuery({
+  const { data: scores = [], isLoading: loadingScore, isError: scoreError, refetch: refetchScore } = useQuery({
     queryKey: ['providerScore', npi],
     queryFn: () => base44.entities.LeadScore.filter({ npi }),
     enabled: !!npi,
   });
 
-  const { data: locations = [], isLoading: loadingLocations } = useQuery({
+  const { data: locations = [], isLoading: loadingLocations, isError: locationsError, refetch: refetchLocations } = useQuery({
     queryKey: ['providerLocations', npi],
     queryFn: () => base44.entities.ProviderLocation.filter({ npi }),
     enabled: !!npi,
   });
 
-  const { data: taxonomies = [], isLoading: loadingTaxonomies } = useQuery({
+  const { data: taxonomies = [], isLoading: loadingTaxonomies, isError: taxonomiesError, refetch: refetchTaxonomies } = useQuery({
     queryKey: ['providerTaxonomies', npi],
     queryFn: () => base44.entities.ProviderTaxonomy.filter({ npi }),
     enabled: !!npi,
   });
 
-  const { data: utilizations = [], isLoading: loadingUtil } = useQuery({
+  const { data: utilizations = [], isLoading: loadingUtil, isError: utilError, refetch: refetchUtil } = useQuery({
     queryKey: ['providerUtilAll', npi],
     queryFn: async () => {
       // The entity API returns 100 rows unless asked for more; a provider with many HCPCS codes or partners has more.
       const rows = await base44.entities.ProviderServiceUtilization.filter({ npi }, '-data_year', 5000);
-      return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0, total_submitted_charges: (r.average_submitted_chrg_amt || 0) * (r.total_services || 1) }));
+      // Submitted charges are only real when services are known: a missing
+      // total_services must stay null, never silently become "× 1".
+      return rows.map(r => ({ ...r, year: r.data_year, total_medicare_payment: r.total_medicare_payment_amt || 0, total_medicare_beneficiaries: r.total_unique_benes || 0, total_submitted_charges: r.total_services ? (r.average_submitted_chrg_amt || 0) * r.total_services : null }));
     },
     enabled: !!npi,
   });
 
-  const { data: referrals = [], isLoading: loadingRef } = useQuery({
+  const { data: referrals = [], isLoading: loadingRef, isError: refError, refetch: refetchRef } = useQuery({
     queryKey: ['providerRefAll', npi],
     queryFn: () => base44.entities.CMSReferral.filter({ npi }, '-total_referrals', 5000),
     enabled: !!npi,
   });
 
   // Data for AI Related Providers
-  const { data: allProviders = [] } = useQuery({
+  const { data: allProviders = [], isError: aiDataError } = useQuery({
     queryKey: ['allProvsForAI'],
     queryFn: () => base44.entities.Provider.list('-created_date', 500),
     staleTime: 120000,
   });
-  const { data: allLocations = [] } = useQuery({
+  const { data: allLocations = [], isError: aiLocsError } = useQuery({
     queryKey: ['allLocsForAI'],
     queryFn: () => base44.entities.ProviderLocation.list('-created_date', 500),
     staleTime: 120000,
   });
-  const { data: allTaxonomies = [] } = useQuery({
+  const { data: allTaxonomies = [], isError: aiTaxError } = useQuery({
     queryKey: ['allTaxForAI'],
     queryFn: () => base44.entities.ProviderTaxonomy.list('-created_date', 500),
     staleTime: 120000,
   });
 
-  const { data: outreachMessages = [] } = useQuery({
+  const { data: outreachMessages = [], isError: messagesError, refetch: refetchMessages } = useQuery({
     queryKey: ['providerMessages', npi],
     queryFn: () => base44.entities.OutreachMessage.filter({ npi }),
     enabled: !!npi,
   });
 
-  const { data: cmsData } = useQuery({
+  const { data: cmsData, isError: cmsError, refetch: refetchCms } = useQuery({
     queryKey: ['providerCMSData', npi],
     queryFn: async () => {
       const result = await base44.functions.invoke('getProviderCMSData', { npi });
@@ -160,10 +164,26 @@ export default function ProviderDetail() {
   const provider = providers?.[0];
   const score = scores?.[0];
   const primaryLocation = pickPrimaryLocation(locations);
-  const latestUtil = [...utilizations].sort((a, b) => (b.year || 0) - (a.year || 0))[0];
+  // Utilization rows are per-HCPCS slices: every "latest" consumer gets the
+  // summed provider totals for the latest data year, not one arbitrary row.
+  const latestUtil = latestUtilizationTotals(utilizations);
   // The latest data year's shared-patient totals (patterns, not confirmed referrals).
   const latestRef = latestReferralSnapshot(referrals);
   const orderReferring = cmsData?.order_referring || null;
+
+  // Secondary queries fail independently of the profile: name each failed
+  // section instead of silently dropping it.
+  const secondaryFailures = [
+    { label: 'utilization', failed: utilError, retry: refetchUtil },
+    { label: 'shared-patient data', failed: refError, retry: refetchRef },
+    { label: 'fit score', failed: scoreError, retry: refetchScore },
+    { label: 'locations', failed: locationsError, retry: refetchLocations },
+    { label: 'specialties', failed: taxonomiesError, retry: refetchTaxonomies },
+    { label: 'CMS records', failed: cmsError, retry: refetchCms },
+    { label: 'campaign history', failed: messagesError, retry: refetchMessages },
+    { label: 'AI-powered suggestions', failed: aiDataError || aiLocsError || aiTaxError, retry: () => { queryClient.invalidateQueries({ queryKey: ['allProvsForAI'] }); queryClient.invalidateQueries({ queryKey: ['allLocsForAI'] }); queryClient.invalidateQueries({ queryKey: ['allTaxForAI'] }); } },
+  ].filter((f) => f.failed);
+  const retrySecondary = () => secondaryFailures.forEach((f) => f.retry());
 
   if (providerError) {
     return (
@@ -195,7 +215,31 @@ export default function ProviderDetail() {
             All Providers
           </Link>
         </Button>
+        <Button asChild variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-cyan-400">
+          <Link to={createPageUrl(`ReferralNetworkIntelligence?npi=${npi}`)}>
+            <Network className="w-3.5 h-3.5 mr-1.5" /> View in referral network
+          </Link>
+        </Button>
+        <Button asChild variant="outline" size="sm" className="text-xs h-7 bg-transparent border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-cyan-400">
+          <Link to={createPageUrl('ProviderIntelligence')}>
+            Provider intelligence
+          </Link>
+        </Button>
       </div>
+
+      {secondaryFailures.length > 0 && (
+        <div role="alert" className="mb-4 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-900/20 px-4 py-3">
+          <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm text-amber-200">
+              Couldn't load {secondaryFailures.map((f) => f.label).join(', ')} — the affected sections are hidden.
+            </p>
+            <Button variant="ghost" size="sm" onClick={retrySecondary} className="mt-1 h-6 px-0 text-xs text-amber-300 hover:text-amber-200 hover:bg-transparent">
+              <RefreshCw className="w-3 h-3 mr-1" /> Try again
+            </Button>
+          </div>
+        </div>
+      )}
 
       <ProviderHeader
         provider={provider}
@@ -473,6 +517,8 @@ export default function ProviderDetail() {
            </div>
         </TabsContent>
       </Tabs>
+
+      <DataSourcesFooter />
     </div>
   );
 }
