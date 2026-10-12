@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-Guidance for working in this repository. For the exhaustive feature-by-feature
-architecture, security model, and DB performance notes, see `replit.md` — this
-file is the practical quick reference.
+Guidance for working in this repository: the practical quick reference for
+commands, conventions, and gotchas, plus the feature-by-feature architecture,
+security model, and DB performance notes.
 
 ## What this is
 
@@ -223,7 +223,7 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   `medicare_facilities` (~46M). Avoid `DISTINCT`/`GROUP BY`/full scans on these.
   Use raw `pool.connect()` with `SET statement_timeout`, `pg_class` estimates for
   counts, `LIMIT`-based sampling, and IN-clauses with pre-fetched NPI lists
-  instead of JOINs/subqueries. See the DB performance notes in `replit.md`.
+  instead of JOINs/subqueries.
   Search goes through `server/lib/providerSearch.ts` / `locationSearch.ts`;
   their expression indexes live in `server/lib/searchIndexes.ts`, and a query
   only uses one when it repeats the expression exactly (`lower(last_name)`,

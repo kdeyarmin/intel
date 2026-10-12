@@ -1,5 +1,5 @@
-// Applies drizzle migrations safely. Used by `npm run db:migrate`, the Replit
-// post-merge hook, and (when DB_MIGRATE_ON_BOOT=true) server start-up.
+// Applies drizzle migrations safely. Used by `npm run db:migrate` and
+// (when DB_MIGRATE_ON_BOOT=true) server start-up.
 //
 // - An advisory lock stops two instances migrating at once.
 // - A database built with `drizzle-kit push` (schema but no history) is

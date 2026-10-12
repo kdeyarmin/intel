@@ -11,9 +11,8 @@ import {
 
 const router = Router();
 
-// Maintenance tasks for an external scheduler (e.g. a Replit Scheduled
-// Deployment or system cron) to drive import automation that the autoscale
-// runtime can't do reliably with an in-process timer. Point the scheduler at:
+// Maintenance tasks for an external scheduler (e.g. a Railway cron job)
+// to drive import automation. Point the scheduler at:
 //   POST /api/maintenance/runScheduledImports
 // with header `x-maintenance-token: $MAINTENANCE_TOKEN` on a cadence (e.g.
 // every 10 minutes). runScheduledImports also fans out to the other workers,
