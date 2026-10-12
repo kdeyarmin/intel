@@ -393,6 +393,7 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     if (split.overflow) data[JSONB_OVERFLOW[entityName]] = split.overflow;
     sendDroppedFields(res, entityName, split.dropped);
     if (!(await stampOrg(entityName, data, req, res))) return;
+    stampCrmCreate(entityName, data, req);
 
     const [row] = (await db.insert(table).values(data).returning()) as any[];
     res.status(201).json(decorateRow(entityName, row));
@@ -428,7 +429,10 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
     });
     sendDroppedFields(res, entityName, [...dropped]);
     const knownParents = new Map<number, boolean>();
-    for (const data of cleaned) if (!(await stampOrg(entityName, data, req, res, knownParents))) return;
+    for (const data of cleaned) {
+      if (!(await stampOrg(entityName, data, req, res, knownParents))) return;
+      stampCrmCreate(entityName, data, req);
+    }
 
     const rows = (await db.insert(table).values(cleaned).returning()) as any[];
     res.status(201).json(rows.map((r: any) => decorateRow(entityName, r)));
@@ -465,6 +469,9 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     // The organization a row belongs to never changes through this route, and a lead list member or
     // campaign step can only be moved to a parent in the caller's own organization.
     if (ORG_SCOPED_ENTITIES.has(String(entityName))) delete data.org_id;
+    // Who did the work and whose book an account sits on: attribution is
+    // admin-only, claims are self-only for marketers. See guardCrmUpdate.
+    guardCrmUpdate(entityName, data, req);
     const via = PARENT_SCOPED[String(entityName)];
     if (via && data[via.key] !== undefined) {
       const orgId = orgIdOf(req);
@@ -521,6 +528,64 @@ async function parentInOrg(entityName: string, data: Record<string, any>, orgId:
     known.set(parentId, !!parent);
   }
   return known.get(parentId)!;
+}
+
+/**
+ * CRM attribution helpers (Team Marketing).
+ *
+ * Attribution and claims are separate ideas, stored separately:
+ * - ATTRIBUTION (crm_activities.user_id, crm_referrals.user_id): who logged
+ *   the visit/call or referral. Reports attribute by this column and NEVER
+ *   by who claimed the account, so reports run the same whether or not an
+ *   account is claimed.
+ * - CLAIM (crm_accounts.claimed_by_user_id): whose book of business the
+ *   account sits on. Claims only define book membership; they never move
+ *   credit for work already logged.
+ */
+const CRM_ACTOR_ENTITIES = new Set(["CrmActivity", "CrmReferral"]);
+
+/**
+ * Create-time: credit the caller for the CRM work they log. A client can't
+ * take credit for someone else's work by leaving the field out; owners and
+ * admins may set it explicitly (e.g. logging on a marketer's behalf).
+ */
+function stampCrmCreate(entityName: string, data: Record<string, any>, req: AuthRequest): void {
+  if (CRM_ACTOR_ENTITIES.has(entityName) && (data.user_id === undefined || data.user_id === null)) {
+    data.user_id = req.user?.id ?? null;
+  }
+  normalizeClaim(entityName, data, req);
+}
+
+/**
+ * Update-time rules. Attribution (who did the work) may only be changed by
+ * an org admin or platform admin; anyone else's value is dropped. Claims
+ * are self-only for marketers (see normalizeClaim).
+ */
+function guardCrmUpdate(entityName: string, data: Record<string, any>, req: AuthRequest): void {
+  if (CRM_ACTOR_ENTITIES.has(entityName) && !isOrgAdmin(req.user)) {
+    delete data.user_id;
+  }
+  normalizeClaim(entityName, data, req);
+}
+
+/**
+ * A marketer may claim an account into their own book, or release it (null);
+ * they may not put it in someone else's book — that field is dropped.
+ * An org admin or platform admin may assign any user. claimed_at always
+ * follows claimed_by_user_id, so clients never set it directly.
+ */
+function normalizeClaim(entityName: string, data: Record<string, any>, req: AuthRequest): void {
+  if (entityName !== "CrmAccount" || !("claimed_by_user_id" in data)) return;
+  if (!isOrgAdmin(req.user)) {
+    const me = req.user?.id ?? null;
+    const want = data.claimed_by_user_id == null ? null : Number(data.claimed_by_user_id);
+    if (want !== null && want !== me) {
+      delete data.claimed_by_user_id;
+      return;
+    }
+    data.claimed_by_user_id = want;
+  }
+  data.claimed_at = data.claimed_by_user_id == null ? null : new Date();
 }
 
 /**

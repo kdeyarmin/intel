@@ -45,6 +45,7 @@ export const NAV_SECTIONS = [
       { name: 'Lead Lists', icon: ListCheck, page: 'LeadLists', roles: ['admin', 'user'] },
       { name: 'Intelligence', icon: Brain, page: 'ProviderIntelligence', roles: ['admin'] },
       { name: 'Campaigns', icon: Megaphone, page: 'ProviderOutreach', roles: ['admin', 'owner'] },
+      { name: 'Team Marketing', icon: Users, page: 'TeamMarketing', roles: ['admin', 'owner'] },
     ]
   },
   {
