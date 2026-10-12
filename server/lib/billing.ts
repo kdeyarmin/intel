@@ -341,8 +341,10 @@ async function applyEvent(
       if (staleSubscription(org, invoiceSubscriptionId(obj))) return { handled: false, ignored: "other_subscription" };
       const tied = await liveWhenTied(org, null, invoiceSubscriptionId(obj));
       if (tied.live) return applySubscription(org, tied.sub);
+      // Money received is service owed: a payment also reactivates an
+      // organization that was canceled (a late final invoice, a win-back).
       const { rows } = await db.query(
-        `UPDATE organizations SET status = 'active', subscription_status = 'active', ${SET_AT(2)}, updated_date = now() WHERE id = $1 AND status IN ('past_due', 'trial') ${FRESH(2)} RETURNING id`,
+        `UPDATE organizations SET status = 'active', subscription_status = 'active', ${SET_AT(2)}, updated_date = now() WHERE id = $1 AND status IN ('past_due', 'trial', 'canceled') ${FRESH(2)} RETURNING id`,
         [org.id, eventAt],
       );
       if (!rows[0]) return { handled: false, ignored: "stale" };

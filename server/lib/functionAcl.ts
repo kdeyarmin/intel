@@ -91,10 +91,6 @@ export const PLATFORM_FUNCTIONS: ReadonlySet<string> = new Set<string>([
 ]);
 
 /** The dispatcher's gate: public functions for any signed-in user, everything else admin-only. */
-export function isFunctionAuthorized(functionName: string, role: string | undefined): boolean {
-  return PUBLIC_FUNCTIONS.has(functionName) || role === "admin";
-}
-
 export interface FunctionCaller {
   role?: string;
   orgRole?: string | null;

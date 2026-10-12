@@ -41,6 +41,23 @@ export class SubscriptionError extends Error {
 /** Statuses under which an organization may use the market data. */
 export const USABLE_ORG_STATUSES = new Set(["trial", "active", "past_due"]);
 
+/**
+ * Statuses under which an organization may incur costs (AI calls, paid email,
+ * exports). Narrower than USABLE_ORG_STATUSES: a past_due organization keeps
+ * read-only access, but it may not send paid email or burn AI tokens until it
+ * pays; a canceled one may not either.
+ */
+const BILLABLE_ORG_STATUSES: ReadonlySet<string> = new Set(["trial", "active"]);
+
+/**
+ * Throws a 402 SubscriptionError unless the organization's status permits
+ * cost-incurring actions. Other area workers import this exact name.
+ */
+export function assertBillableOrg(org: { status?: string } | undefined): void {
+  if (org && BILLABLE_ORG_STATUSES.has(org.status ?? "")) return;
+  throw new SubscriptionError("Your organization's subscription isn't active. An owner can reactivate it on the Billing page.");
+}
+
 export function territoryOf(user: EntitledUser | null | undefined): Territory {
   return normalizeTerritory(user?.territory);
 }
