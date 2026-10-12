@@ -12,6 +12,7 @@ const h = vi.hoisted(() => ({
   schedules: [] as any[],
   updates: [] as any[],
   triggered: [] as any[],
+  crawled: [] as any[],
 }));
 
 vi.mock("../server/db", () => {
@@ -41,7 +42,7 @@ vi.mock("../server/functions/triggerImport", () => ({
 }));
 
 vi.mock("../server/functions/nppesCrawler", () => ({
-  handleNppesCrawler: async () => ({ success: true }),
+  handleNppesCrawler: async (payload: any) => { h.crawled.push(payload); return { success: true, states_queued: 3 }; },
 }));
 
 vi.mock("../server/lib/maintenance", () => ({
@@ -59,6 +60,7 @@ beforeEach(() => {
   h.schedules.length = 0;
   h.updates.length = 0;
   h.triggered.length = 0;
+  h.crawled.length = 0;
 });
 
 describe("handleRunScheduledImports fan-out", () => {
@@ -136,5 +138,29 @@ describe("handleRunScheduledImports fan-out", () => {
     expect(mod.handleAutoRetryFailedImports).toBeUndefined();
     expect(mod.handleAutoResumePausedImports).toBeUndefined();
     expect(mod.handleCancelStalledImports).toBeUndefined();
+  });
+});
+
+describe("the NPPES crawl schedule", () => {
+  const crawlSchedule = () => ({
+    id: 3, import_type: "nppes_registry", label: "NPPES crawl", is_active: true, enabled: true, schedule_frequency: "daily", schedule_time: "02:00",
+    next_run_at: new Date(Date.now() - 60_000), consecutive_failures: 0, nppes_config: { crawl_all_states: true },
+  });
+
+  it("queues a crawl when none of the last one's states is still moving", async () => {
+    h.schedules.push(crawlSchedule());
+    await handleRunScheduledImports();
+    expect(h.crawled).toHaveLength(1);
+    expect(h.crawled[0]).toMatchObject({ action: "batch_start" });
+  });
+
+  it("doesn't queue a second crawl on top of one that is still in progress", async () => {
+    h.schedules.push(crawlSchedule());
+    // A crawl is one batch per state and outlives the call that queued it; one is still processing.
+    h.batches.push({ id: 90 });
+    const r: any = await handleRunScheduledImports();
+    expect(h.crawled).toHaveLength(0);
+    expect(h.fanoutCalls[0].opts.schedules).toMatchObject({ checked: 1, processed: 0, skipped: 1 });
+    expect(r.skipped).toEqual([expect.objectContaining({ id: 3, reason: "a crawl is still in progress" })]);
   });
 });

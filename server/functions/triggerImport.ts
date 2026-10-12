@@ -5,6 +5,7 @@ import { handleImportNPPESFlatFile } from "./importNPPESFlatFile";
 import { CMS_NATURAL_KEYS, partition, partitionRefresh, distinctValues } from "./cmsUpsert";
 import { settleBatchCompletion } from "../lib/importCompletion";
 import { mergeRetryParams, endedWithoutFinishing } from "../lib/importProgress";
+import { STALLED_AFTER_MS } from "../lib/scheduling";
 import { markImportFinished, markImportStarted, resolveImportVersion } from "../lib/datasetRegistry";
 import { sourceForUrl } from "../lib/cmsCatalog";
 import { csvSourceRecords, isLocalUpload, sourceKindFor } from "../lib/importSources";
@@ -407,7 +408,9 @@ export async function handleTriggerImport(payload: any, user: any) {
   if (realActive.length > 0) {
     const existing = realActive[0];
     const stuckMs = Date.now() - new Date(existing.updated_date || existing.created_date!).getTime();
-    if (stuckMs > 60 * 60 * 1000) {
+    // The same threshold as the stall sweep: a healthy import can be quiet for an hour while a very large page is
+    // written, so asking for another import of the same type must not fail it before the sweep would.
+    if (stuckMs > STALLED_AFTER_MS) {
       await db.update(importBatches).set({
         status: "failed",
         cancel_reason: `Auto-cancelled: stuck in "${existing.status}" for ${Math.round(stuckMs / 60000)} minutes`,

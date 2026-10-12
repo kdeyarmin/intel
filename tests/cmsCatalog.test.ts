@@ -147,6 +147,14 @@ describe("registry status", () => {
 describe("importDataYear", () => {
   const base = { temporalStart: null, temporalEnd: null, loadedYear: null, catalogModified: null, importedModified: null };
 
+  it("labels a snapshot with no coverage period by the year it was published, not the importer's guess", () => {
+    // Care Compare gives a publication date only: a 2026 release is 2026, never "two years ago".
+    expect(importDataYear({ ...base, catalogModified: "2026-07-15", releaseYear: "2026" })).toBe("2026");
+    expect(importDataYear({ ...base, loadedYear: "2025", catalogModified: "2026-07-15", importedModified: "2025-10-01", releaseYear: "2026" })).toBe("2026");
+    // A coverage period, where the catalog has one, still decides.
+    expect(importDataYear({ ...base, temporalStart: "2025-01-01", temporalEnd: "2025-12-31", releaseYear: "2026" })).toBe("2025");
+  });
+
   it("labels a release with its own period, never with the year already loaded", () => {
     // CY2025 is out; CY2024 is what is loaded.
     expect(importDataYear({ ...base, temporalStart: "2025-01-01", temporalEnd: "2025-12-31", loadedYear: "2024", catalogModified: "2026-07-06", importedModified: "2025-07-01" })).toBe("2025");

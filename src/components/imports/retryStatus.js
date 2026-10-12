@@ -69,8 +69,8 @@ export function nextRetryDueAt(lastAttemptIso, attemptCount) {
 
 // Decide what to show on the BatchDetailPanel auto-retry banner.
 //
-// Returns `null` for batches the worker won't touch (NPPES is handled by
-// manageCrawlerRetries; non-failed batches don't need retry visibility; and
+// Returns `null` for batches the worker won't touch (NPPES imports resume
+// themselves or are handled by manageCrawlerRetries; non-failed batches don't need retry visibility; and
 // failures whose error isn't classified retryable) so the caller can hide the
 // banner entirely.
 //
@@ -81,9 +81,13 @@ export function nextRetryDueAt(lastAttemptIso, attemptCount) {
 //   - 'pending'       — waiting for the backoff window to elapse
 //   - 'eligible'      — past the window, will retry on the next worker tick
 //   - 'never_tried'   — no auto-retry has been attempted yet
+const SELF_RESUMING_IMPORT_TYPES = new Set(['nppes_registry', 'nppes_flat_file', 'nppes_registry_file']);
+
 export function getAutoRetryState(batch, now = new Date()) {
   if (!batch || batch.status !== 'failed') return null;
-  if (batch.import_type === 'nppes_registry') return null;
+  // Import types whose importers resume themselves are never retried by the worker
+  // (mirrors SELF_RESUMING_IMPORT_TYPES in server/lib/scheduling.ts).
+  if (SELF_RESUMING_IMPORT_TYPES.has(batch.import_type)) return null;
 
   const params = batch.retry_params || {};
   // Match the worker's getRetryAttemptCount: the greater of retry_params.
