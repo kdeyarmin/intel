@@ -688,6 +688,9 @@ export const importBatches = pgTable("import_batches", {
   cancel_reason: text("cancel_reason"),
   cancelled_at: timestamp("cancelled_at"),
   paused_at: timestamp("paused_at"),
+  // Who paused the batch: 'user' (explicit UI pause — never auto-wake) or
+  // 'system' (auto-pause/recovery — may be auto-woken). Null = unknown (older rows).
+  paused_by: varchar("paused_by", { length: 10 }),
   completed_at: timestamp("completed_at"),
   retry_params: jsonb("retry_params"),
   // The AI quality analysis the Imports panel shows (server/functions/analyzeImportedDataset.ts).
