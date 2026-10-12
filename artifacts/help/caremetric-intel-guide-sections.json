@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "301444d30d0f858f95dd1599742c5328abbbb420",
+    "ref": "4ea1ebd3c8f7d1d1d6c401338a15c80f886aa0e8",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 36,
-    "text_character_count": 18209,
-    "canonical_sha256": "39fe10310202c45b44e2894c882a37d3072d82c77d4b58709c4d31c650ac183c"
+    "text_character_count": 18859,
+    "canonical_sha256": "71b0afd2a1b665437fd388967bc546eb2fb48064c644a88160476b225536a1a6"
   },
   "sections": [
     {
@@ -126,8 +126,8 @@
         },
         {
           "heading": "Hospital sources and competitors",
-          "text": "**Hospital sources** lists the hospitals whose Medicare inpatients live in the county (CMS Hospital Service Area: the patient's ZIP of residence by hospital), with each hospital's share of the county's cases and, where CMS publishes it, its post-discharge spend to skilled nursing, home health and hospice (Medicare Hospital Spending by Claim). That mix is a proxy for where a hospital's patients go next, not a count of transfers. A hospital's own page shows the counties and ZIP areas its patients come from.\n\n**Competitors** ranks the post-acute providers located in the county by the Medicare beneficiaries they served (Post-Acute Care Utilization by Provider) for skilled nursing, home health, hospice, inpatient rehab and long-term care hospitals, with payments, dual-eligible share and risk scores, year-over-year trend, and the home health agencies and hospices whose Care Compare service areas cover the county's ZIP codes. A facility's own page shows its rank and share in its county and state.\n\n**Referral sources** ranks the county's clinicians by a referral index (Medicare volume, patient risk score and Order & Referring eligibility) with the chronic-condition mix of their patients and their hospital affiliations; filter by eligibility or specialty group and add the top clinicians to a lead list in one step.",
-          "sha256": "74ab4097919637ac399365715288188150c48d9373042e47fe2b16a6f7f97e7a"
+          "text": "**Hospital sources** lists the hospitals whose Medicare inpatients live in the county (CMS Hospital Service Area: the patient's ZIP of residence by hospital), with each hospital's share of the county's cases and, where CMS publishes it, its post-discharge spend to skilled nursing, home health and hospice (Medicare Hospital Spending by Claim). That mix is a proxy for where a hospital's patients go next, not a count of transfers. A hospital's own page shows the counties and ZIP areas its patients come from.\n\n**Competitors** ranks the post-acute providers located in the county by the Medicare beneficiaries they served (Post-Acute Care Utilization by Provider) for skilled nursing, home health, hospice, inpatient rehab and long-term care hospitals, with payments, dual-eligible share and risk scores, year-over-year trend, and the home health agencies and hospices whose Care Compare service areas cover the county's ZIP codes. A facility's own page shows its rank and share in its county and state.\n\n**Referral sources** ranks the county's clinicians by a referral index with the chronic-condition mix of their patients and their hospital affiliations; filter by eligibility or specialty group and add the top clinicians to a lead list in one step. Once an admin has imported **Home Health Certifications** (Data Center; a small file read from CMS's Physician & Other Practitioners by Provider and Service), the index rests mainly on the Medicare patients a clinician certified for home health that year (HCPCS G0180), so the clinicians who actually start home health episodes rank first. CMS lists a clinician only above 10 patients, so a clinician shown as ≤10 is not listed (10 or fewer, or none). Without that file the index counts Medicare volume, patient risk score and Order & Referring eligibility (which almost every physician has), a weaker guide to who refers. Certifications show who certifies home health; they are not confirmed referrals to any one agency.",
+          "sha256": "964a780f804fbe1250b12420c5ce935cea885c385770112cecbdee75e62c8832"
         },
         {
           "heading": "What market share means here",
