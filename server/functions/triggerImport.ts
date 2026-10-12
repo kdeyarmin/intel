@@ -189,7 +189,7 @@ const ALLOWED_URL_DOMAINS = [
 // (/api/storage/<name>, see server/lib/importSources.ts) or any https CSV
 // link (fetched through the SSRF guard). Everything else must come from a
 // CMS endpoint. These datasets aren't on the CMS APIs at all.
-export const UPLOAD_CAPABLE_TYPES: ReadonlySet<string> = new Set(["physician_shared_patient_patterns", "licensed_facilities"]);
+export const UPLOAD_CAPABLE_TYPES: ReadonlySet<string> = new Set(["physician_shared_patient_patterns", "licensed_facilities", "provider_ownership"]);
 
 /** Pure: why a file_url can't be used for an import type, or null when it can. */
 export function fileUrlProblem(importType: string, fileUrl: string | null | undefined, year: unknown): string | null {

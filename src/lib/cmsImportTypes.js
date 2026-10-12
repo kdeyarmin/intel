@@ -280,6 +280,8 @@ export function buildImportTypeLabels(overrides = {}) {
 export const FILE_IMPORT_FIELDS = {
   licensed_facilities: { year: true, state: true, licenseType: true },
   physician_shared_patient_patterns: { year: true },
+  // The CMS URL is gone. A file the admin already has can still be imported, and it needs the year it describes.
+  provider_ownership: { year: true },
 };
 
 /** The license types a licensing export is normalized to (server/functions/cmsTypedTables.ts: normalizeLicenseType). */

@@ -256,7 +256,7 @@ export const MARKET_JOBS: MarketJob[] = [
              hha_eligible, hospice_eligible, dme_eligible, dme_benes, hospital_ccns, affiliations, referral_index,
              (CASE WHEN county_fips IS NOT NULL THEN rank() OVER (PARTITION BY county_fips ORDER BY referral_index DESC, benes DESC, npi) END)::int,
              hh_cert_benes, hospice_oversight_benes, hh_cert_year, hospice_index,
-             (CASE WHEN county_fips IS NOT NULL THEN rank() OVER (PARTITION BY county_fips ORDER BY hospice_index DESC, benes DESC, npi) END)::int
+             (CASE WHEN county_fips IS NOT NULL AND hospice_eligible THEN rank() OVER (PARTITION BY county_fips, hospice_eligible ORDER BY hospice_index DESC, benes DESC, npi) END)::int
         FROM indexed`,
   },
   {
@@ -279,7 +279,7 @@ export const MARKET_JOBS: MarketJob[] = [
          the file) and otherwise compute (current - previous) / previous from the prior reference period. Periods are
          ISO dates, so they sort lexicographically. */
       sat_hist AS (
-        SELECT s.geo_code, s.service, s.reference_period, s.providers, s.users, s.providers_change_pct, s.users_change_pct,
+        SELECT s.geo_code, s.service, s.reference_period, s.providers, s.users, s.users_pct, s.providers_change_pct, s.users_change_pct,
                lag(s.providers) OVER (PARTITION BY s.geo_code, s.service ORDER BY s.reference_period) AS prev_providers,
                lag(s.users) OVER (PARTITION BY s.geo_code, s.service ORDER BY s.reference_period) AS prev_users
           FROM cms_market_saturation s
