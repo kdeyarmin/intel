@@ -264,7 +264,7 @@ export async function saveEmailToProvider(provider: any, result: any) {
       validation_status: e.validation_status,
     }));
 
-  const promote = shouldPromoteToPrimary({
+  const promote = await shouldPromoteToPrimary({
     email: result.best_email,
     confidence: result.confidence,
     validation_status: result.validation_status,

@@ -83,6 +83,65 @@ export function getFacilityTypeGroup(facilityType: string): string | null {
   return null;
 }
 
+/**
+ * The year embedded in a CMS data_year for ordering ("2023", "2023-24" -> 2023).
+ * Plain arithmetic on the varchar breaks on non-numeric values (NaN sorts
+ * nowhere), so parse the leading 4-digit year and treat the rest as unknown.
+ */
+export function parseDataYear(value: unknown): number | null {
+  if (value == null) return null;
+  const m = String(value).match(/\d{4}/);
+  return m ? Number(m[0]) : null;
+}
+
+/**
+ * Linked-facility rows keyed by the provider's NPI (no CCN in the source row)
+ * can't be opened by FacilityDetail, which is keyed by CCN: match each one to
+ * its real CCN-keyed rows (same facility group, state and name) so the card
+ * links to actual facility records. Entries that can't be matched keep the
+ * NPI key and `resolved_ccn: false`; the card renders those as non-clickable.
+ */
+async function resolveLinkedFacilityCcn(f: any) {
+  const group = getFacilityTypeGroup(f.facility_type || "");
+  const groupTypes = group ? FACILITY_TYPE_GROUPS[group] : null;
+  if (!groupTypes || !f.facility_name || !f.state) return { ...f, resolved_ccn: false };
+  const needle = String(f.facility_name).replace(/[%_\\]/g, (c) => `\\${c}`);
+  const rows = await db.select({
+    provider_id: medicareFacilities.provider_id,
+    facility_name: medicareFacilities.facility_name,
+    city: medicareFacilities.city,
+    state: medicareFacilities.state,
+    quality_rating: medicareFacilities.quality_rating,
+    data_year: medicareFacilities.data_year,
+  })
+    .from(medicareFacilities)
+    .where(and(
+      inArray(medicareFacilities.facility_type, groupTypes),
+      eq(medicareFacilities.state, String(f.state).toUpperCase()),
+      ilike(medicareFacilities.facility_name, `%${needle}%`),
+    ))
+    .limit(25)
+    .catch(() => [] as any[]);
+  const isCcn = (id: any) => !!id && !/^\d{10}$/.test(String(id));
+  const norm = (s: any) => String(s || "").toLowerCase().trim();
+  const name = norm(f.facility_name);
+  const pick =
+    rows.find((r: any) => isCcn(r.provider_id) && norm(r.facility_name) === name && norm(r.city) === norm(f.city)) ||
+    rows.find((r: any) => isCcn(r.provider_id) && norm(r.facility_name) === name) ||
+    rows.find((r: any) => isCcn(r.provider_id));
+  if (!pick?.provider_id) return { ...f, resolved_ccn: false };
+  return {
+    provider_id: pick.provider_id,
+    facility_name: pick.facility_name || f.facility_name,
+    facility_type: f.facility_type,
+    city: pick.city || f.city,
+    state: pick.state || f.state,
+    quality_rating: pick.quality_rating ?? f.quality_rating,
+    data_year: pick.data_year || f.data_year,
+    resolved_ccn: true,
+  };
+}
+
 /** Rows for one facility, limited to its group's facility types when a group is given. */
 export function facilityRowsWhere(providerId: string, groupTypes: string[] | null | undefined) {
   // inArray, not sql`= ANY(${groupTypes})`: drizzle expands an interpolated
@@ -96,7 +155,12 @@ export async function handleGetFacilityDetail(params: any) {
   const { provider_id, facility_group } = params;
   if (!provider_id) return { error: "provider_id is required" };
 
-  const groupTypes = facility_group ? FACILITY_TYPE_GROUPS[facility_group] : null;
+  // An unknown ?group= must not run the query unfiltered while the page brands
+  // itself as a hospital: validate first. Unknown groups behave like no group
+  // (all rows), and the response reports the group the data actually resolved
+  // to so the page can say so honestly.
+  const validGroup = facility_group && FACILITY_TYPE_GROUPS[facility_group] ? facility_group : null;
+  const groupTypes = validGroup ? FACILITY_TYPE_GROUPS[validGroup] : null;
 
   // raw_data is moving to the medicare_facilities_raw side table (phase 1):
   // pull every facility column explicitly and overlay raw_data via a LEFT JOIN
@@ -145,9 +209,39 @@ export async function handleGetFacilityDetail(params: any) {
 
   const latestQuality = facilityRows
     .filter(r => r.quality_rating != null)
-    .sort((a, b) => (b.data_year || 0) - (a.data_year || 0))[0];
+    // data_year is a varchar: parse the numeric year instead of subtracting
+    // strings, so values like "2023-24" don't poison the sort with NaN.
+    .sort((a, b) => (parseDataYear(b.data_year) ?? -1) - (parseDataYear(a.data_year) ?? -1))[0];
 
-  const financials = facilityRows.reduce((acc, r) => {
+  // Each dollar counted once: the same totals repeat across a facility's files
+  // (the audited cost report, the one-row-per-facility CMS utilization files
+  // and the spending files), so summing every row double- or triple-counts.
+  // Prefer the audited cost report; when the group has none, fall back to the
+  // CMS utilization files; when it has neither, to any row carrying the value.
+  // Within the chosen rows use the latest data year only, so multiple years of
+  // the same file don't stack either.
+  const COST_REPORT_HINT = "cost_report";
+  const UTILIZATION_FILE_TYPES = [
+    "medicare_inpatient_by_provider", "medicare_outpatient_by_provider", "medicare_ma_inpatient",
+    "medicare_hha_utilization", "medicare_hha_stats",
+    "medicare_hospice_utilization",
+    "medicare_snf_utilization", "medicare_snf_stats",
+    "medicare_irf_utilization", "medicare_ltch_utilization",
+    "medicare_dme_by_supplier",
+  ];
+  const costReportRows = facilityRows.filter(r => (r.facility_type || "").includes(COST_REPORT_HINT));
+  const utilizationFileRows = facilityRows.filter(r => UTILIZATION_FILE_TYPES.includes(r.facility_type || ""));
+  const financialCandidates = costReportRows.length
+    ? costReportRows
+    : utilizationFileRows.length
+      ? utilizationFileRows
+      : facilityRows;
+  const candidateYears = financialCandidates.map(r => parseDataYear(r.data_year)).filter((y): y is number => y != null);
+  const latestFinancialYear = candidateYears.length ? Math.max(...candidateYears) : null;
+  const financialSource = latestFinancialYear == null
+    ? financialCandidates
+    : financialCandidates.filter(r => parseDataYear(r.data_year) === latestFinancialYear);
+  const financials = financialSource.reduce((acc, r) => {
     if (r.total_payments) acc.totalPayments += Number(r.total_payments) || 0;
     if (r.total_charges) acc.totalCharges += Number(r.total_charges) || 0;
     if (r.total_discharges) acc.totalDischarges += Number(r.total_discharges) || 0;
@@ -192,7 +286,7 @@ export async function handleGetFacilityDetail(params: any) {
     state: first.state || "",
     zip: first.zip || "",
     quality_rating: latestQuality?.quality_rating || null,
-    facility_group: facility_group || getFacilityTypeGroup(first.facility_type || "") || "unknown",
+    facility_group: validGroup || getFacilityTypeGroup(first.facility_type || "") || "unknown",
     facility_types: facilityTypes,
     data_years: dataYears,
     record_count: facilityRows.length,
@@ -278,7 +372,7 @@ export async function handleGetProviderCMSData(params: any) {
   const clinicianData: Record<string, any[]> = {};
   const providerUtilData: Record<string, any[]> = {};
   const networkData: Record<string, any[]> = {};
-  const linkedFacilities: Record<string, any> = {};
+  const linkedCandidates: Record<string, any> = {};
 
   for (const row of allRows) {
     const ft = row.facility_type || "unknown";
@@ -302,8 +396,8 @@ export async function handleGetProviderCMSData(params: any) {
       networkData[ft].push(row);
     } else {
       const key = `${row.provider_id}_${ft}`;
-      if (!linkedFacilities[key] || (row.data_year || 0) > (linkedFacilities[key].data_year || 0)) {
-        linkedFacilities[key] = {
+      if (!linkedCandidates[key] || (parseDataYear(row.data_year) ?? -1) > (parseDataYear(linkedCandidates[key].data_year) ?? -1)) {
+        linkedCandidates[key] = {
           provider_id: row.provider_id,
           facility_name: row.facility_name,
           facility_type: ft,
@@ -314,6 +408,13 @@ export async function handleGetProviderCMSData(params: any) {
         };
       }
     }
+  }
+
+  // These rows are keyed by the provider's NPI, not a facility CCN: resolve
+  // each to real CCN-keyed facility rows so the card links somewhere real.
+  const linkedFacilities: any[] = [];
+  for (const candidate of Object.values(linkedCandidates)) {
+    linkedFacilities.push(await resolveLinkedFacilityCcn(candidate));
   }
 
   const hasMips = Object.keys(mipsByYear).length > 0;
@@ -351,7 +452,7 @@ export async function handleGetProviderCMSData(params: any) {
       has_data: Object.keys(networkData).length > 0,
       by_type: networkData,
     },
-    linked_facilities: Object.values(linkedFacilities),
+    linked_facilities: linkedFacilities,
     // Medicare services the provider may order or refer (CMS Order & Referring).
     order_referring: orderReferring,
     // The clinician's standing as a post-acute referral source (ReferralPotentialCard, the assistant).

@@ -1,4 +1,6 @@
 import { pool } from "../db";
+import { assertTerritory, type EntitledUser } from "../lib/entitlements";
+import { isOrgAdmin } from "../lib/roles";
 
 async function safeQuery(client: any, text: string, params: any[] = []) {
   try {
@@ -10,7 +12,9 @@ async function safeQuery(client: any, text: string, params: any[] = []) {
   }
 }
 
-export async function handleGetComprehensiveReport(payload: any) {
+const validState = (s: unknown) => /^[A-Z]{2}$/.test(String(s ?? "").trim().toUpperCase()) ? String(s).trim().toUpperCase() : null;
+
+export async function handleGetComprehensiveReport(payload: any, user?: EntitledUser | null) {
   const { npi, provider_id } = payload;
 
   if (!npi && !provider_id) {
@@ -120,8 +124,9 @@ export async function handleGetComprehensiveReport(payload: any) {
     }
 
     const facilityLookup = provider_id || npi;
+    let facRows: any[] = [];
     if (facilityLookup) {
-      const facRows = await safeQuery(client, `
+      facRows = await safeQuery(client, `
         SELECT id, facility_type, provider_id, facility_name, city, state,
           quality_rating, total_payments, total_discharges, data_year
         FROM medicare_facilities WHERE provider_id = $1
@@ -139,6 +144,16 @@ export async function handleGetComprehensiveReport(payload: any) {
         totalDischarges: f.total_discharges,
         dataYear: f.data_year,
       }));
+    }
+
+    // A restricted plan sees a provider only in its territory; owners and
+    // platform admins see everything. Checked against the practice location
+    // (else the facility), like the market views check a place.
+    if (!isOrgAdmin(user)) {
+      const place = result.locations.find((l: any) => l.location_type === "Practice" && validState(l.state))
+        ?? result.locations.find((l: any) => validState(l.state))
+        ?? facRows.find((f: any) => validState(f.state));
+      if (place) assertTerritory(user, { state: validState(place.state) });
     }
 
     // Aggregate totals and distinct years from the full table — not from the
