@@ -3,7 +3,7 @@ import { db } from "../db";
 import { tableMap, leadListMembers, outreachCampaigns, callSheetAccounts, crmContacts, crmActivities, crmReferrals } from "../db/schema";
 import { eq, desc, asc, sql, getTableColumns, and, inArray } from "drizzle-orm";
 import { authMiddleware, AuthRequest, SessionPrincipal, isOrgAdmin, isPlatformAdmin } from "../middleware/auth";
-import { leadLists, callSheets, crmAccounts } from "../db/schema";
+import { leadLists, callSheets, crmAccounts, users } from "../db/schema";
 import {
   InvalidFieldValueError,
   JSONB_OVERFLOW,
@@ -394,6 +394,7 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     sendDroppedFields(res, entityName, split.dropped);
     if (!(await stampOrg(entityName, data, req, res))) return;
     stampCrmCreate(entityName, data, req);
+    if (!(await guardClaimCreate(entityName, data, req, res))) return;
 
     const [row] = (await db.insert(table).values(data).returning()) as any[];
     res.status(201).json(decorateRow(entityName, row));
@@ -432,6 +433,7 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
     for (const data of cleaned) {
       if (!(await stampOrg(entityName, data, req, res, knownParents))) return;
       stampCrmCreate(entityName, data, req);
+      if (!(await guardClaimCreate(entityName, data, req, res))) return;
     }
 
     const rows = (await db.insert(table).values(cleaned).returning()) as any[];
@@ -470,8 +472,9 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     // campaign step can only be moved to a parent in the caller's own organization.
     if (ORG_SCOPED_ENTITIES.has(String(entityName))) delete data.org_id;
     // Who did the work and whose book an account sits on: attribution is
-    // admin-only, claims are self-only for marketers. See guardCrmUpdate.
-    guardCrmUpdate(entityName, data, req);
+    // admin-only, claims follow the transition rules in guardClaimUpdate.
+    guardCrmUpdateAttribution(entityName, data, req);
+    if (!(await guardClaimUpdate(entityName, data, req, res, table, idNum))) return;
     const via = PARENT_SCOPED[String(entityName)];
     if (via && data[via.key] !== undefined) {
       const orgId = orgIdOf(req);
@@ -545,47 +548,96 @@ async function parentInOrg(entityName: string, data: Record<string, any>, orgId:
 const CRM_ACTOR_ENTITIES = new Set(["CrmActivity", "CrmReferral"]);
 
 /**
- * Create-time: credit the caller for the CRM work they log. A client can't
- * take credit for someone else's work by leaving the field out; owners and
+ * Create-time: credit the caller for the CRM work they log. Non-admins always
+ * get their own id — a client can't attribute work to someone else. Org
  * admins may set it explicitly (e.g. logging on a marketer's behalf).
  */
 function stampCrmCreate(entityName: string, data: Record<string, any>, req: AuthRequest): void {
-  if (CRM_ACTOR_ENTITIES.has(entityName) && (data.user_id === undefined || data.user_id === null)) {
-    data.user_id = req.user?.id ?? null;
+  if (CRM_ACTOR_ENTITIES.has(entityName)) {
+    if (isOrgAdmin(req.user) && data.user_id !== undefined && data.user_id !== null) {
+      data.user_id = Number(data.user_id);
+    } else {
+      data.user_id = req.user?.id ?? null;
+    }
   }
-  normalizeClaim(entityName, data, req);
 }
 
 /**
  * Update-time rules. Attribution (who did the work) may only be changed by
  * an org admin or platform admin; anyone else's value is dropped. Claims
- * are self-only for marketers (see normalizeClaim).
+ * are validated against the current claim (see guardClaimUpdate).
  */
-function guardCrmUpdate(entityName: string, data: Record<string, any>, req: AuthRequest): void {
+function guardCrmUpdateAttribution(entityName: string, data: Record<string, any>, req: AuthRequest): void {
   if (CRM_ACTOR_ENTITIES.has(entityName) && !isOrgAdmin(req.user)) {
     delete data.user_id;
   }
-  normalizeClaim(entityName, data, req);
+}
+
+/** True when the user belongs to the organization (for admin claim targets). */
+async function userInOrg(userId: number, orgId: number | null): Promise<boolean> {
+  if (!Number.isInteger(userId) || orgId == null) return false;
+  const [u] = await db.select({ id: users.id }).from(users).where(and(eq(users.id, userId), eq(users.org_id, orgId))).limit(1);
+  return !!u;
 }
 
 /**
- * A marketer may claim an account into their own book, or release it (null);
- * they may not put it in someone else's book — that field is dropped.
- * An org admin or platform admin may assign any user. claimed_at always
- * follows claimed_by_user_id, so clients never set it directly.
+ * Create-time claims: a new account starts unclaimed, so a marketer may only
+ * claim it into their own book (or leave it unclaimed). An org admin may
+ * assign any user in the organization; cross-org targets are rejected.
+ * claimed_at always follows claimed_by_user_id, so clients never set it.
  */
-function normalizeClaim(entityName: string, data: Record<string, any>, req: AuthRequest): void {
-  if (entityName !== "CrmAccount" || !("claimed_by_user_id" in data)) return;
+async function guardClaimCreate(entityName: string, data: Record<string, any>, req: AuthRequest, res: Response): Promise<boolean> {
+  if (entityName !== "CrmAccount" || !("claimed_by_user_id" in data)) return true;
+  const me = req.user?.id ?? null;
+  const want = data.claimed_by_user_id == null ? null : Number(data.claimed_by_user_id);
   if (!isOrgAdmin(req.user)) {
-    const me = req.user?.id ?? null;
-    const want = data.claimed_by_user_id == null ? null : Number(data.claimed_by_user_id);
     if (want !== null && want !== me) {
       delete data.claimed_by_user_id;
-      return;
+      return true;
+    }
+    data.claimed_by_user_id = want;
+  } else {
+    if (want !== null && !(await userInOrg(want, orgIdOf(req)))) {
+      res.status(400).json({ message: "That user isn't in your organization." });
+      return false;
     }
     data.claimed_by_user_id = want;
   }
   data.claimed_at = data.claimed_by_user_id == null ? null : new Date();
+  return true;
+}
+
+/**
+ * Update-time claims. Marketers may only claim an unclaimed account into
+ * their own book, or release an account they claimed themselves — they can
+ * neither steal nor release someone else's claim. An org admin may assign
+ * any user, but only within the account's own organization. Answers 400/403
+ * and returns false when the transition isn't allowed.
+ */
+async function guardClaimUpdate(entityName: string, data: Record<string, any>, req: AuthRequest, res: Response, table: any, idNum: number): Promise<boolean> {
+  if (entityName !== "CrmAccount" || !("claimed_by_user_id" in data)) return true;
+  const me = req.user?.id ?? null;
+  const want = data.claimed_by_user_id == null ? null : Number(data.claimed_by_user_id);
+  const [cur] = await db
+    .select({ claimedBy: (table as any).claimed_by_user_id, orgId: (table as any).org_id })
+    .from(table)
+    .where(withOrg(eq(table.id, idNum), orgCondition(entityName, table, req)))
+    .limit(1);
+  if (!cur) return true; // the update below 404s; nothing to validate
+  const current = cur.claimedBy ?? null;
+  if (!isOrgAdmin(req.user)) {
+    const ok = (current === null && want === me) || (current === me && want === null);
+    if (!ok) {
+      res.status(403).json({ message: "You can only claim unclaimed accounts, or release accounts you claimed yourself." });
+      return false;
+    }
+  } else if (want !== null && !(await userInOrg(want, cur.orgId))) {
+    res.status(400).json({ message: "That user isn't in this account's organization." });
+    return false;
+  }
+  data.claimed_by_user_id = want;
+  data.claimed_at = want === null ? null : new Date();
+  return true;
 }
 
 /**

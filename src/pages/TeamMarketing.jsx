@@ -18,9 +18,12 @@ const PAGE = 5000;
 const CAP = 50000;
 const MARKETER_COLORS = ['#22d3ee', '#fbbf24', '#34d399', '#a78bfa', '#fb7185', '#38bdf8', '#f472b6', '#a3e635'];
 
-function todayStr() {
-  const d = new Date();
+function formatDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function todayStr() {
+  return formatDate(new Date());
 }
 
 function pct(n) {
@@ -47,10 +50,16 @@ async function loadTeam() {
   ]);
   // Owners and platform admins may list the organization's people. If that
   // ever fails, the roster falls back to the marketers the data mentions.
+  // The CRM entities are org-scoped, so the accounts define the working
+  // organization — for a platform admin the user endpoint returns every
+  // organization's users, which would pollute the marketer cards and the
+  // assignment dropdown with people who can't be assigned here.
+  const orgIds = new Set(accounts.rows.map((a) => Number(a.org_id)).filter((v) => Number.isInteger(v)));
   let roster = null;
   try {
     const res = await base44.admin.users.list();
-    roster = res.users || [];
+    const users = res.users || [];
+    roster = orgIds.size ? users.filter((u) => orgIds.has(Number(u.org_id))) : users;
   } catch (e) { roster = null; }
   return {
     accounts: accounts.rows, activities: activities.rows, referrals: referrals.rows, me, roster,
@@ -150,12 +159,13 @@ function Kpi({ label, value, hint }) {
   );
 }
 
-function CompletionBar({ value }) {
+function CompletionBar({ value, label = 'Call completion rate' }) {
   if (value == null) return <span className="text-xs text-slate-500">Nothing scheduled yet</span>;
   const color = value >= 0.8 ? 'bg-emerald-500' : value >= 0.6 ? 'bg-amber-400' : 'bg-rose-400';
+  const name = `${label}: ${Math.round(value * 100)} percent`;
   return (
     <span className="flex items-center gap-2">
-      <span className="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden" role="progressbar" aria-valuenow={Math.round(value * 100)} aria-valuemin={0} aria-valuemax={100}>
+      <span className="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden" role="progressbar" aria-label={name} aria-valuenow={Math.round(value * 100)} aria-valuemin={0} aria-valuemax={100} aria-valuetext={name}>
         <span className={`block h-full ${color}`} style={{ width: `${Math.round(value * 100)}%` }} />
       </span>
       <span className="text-xs text-slate-300 w-10 text-right">{pct(value)}</span>
@@ -366,8 +376,10 @@ function CallsView({ report, activities, accounts, roster, week, setWeek }) {
 }
 
 function shiftWeek(weekStart, deltaDays) {
+  // setDate handles month/year rollover and DST; fixed-millisecond math does not.
   const d = new Date(`${weekStart}T00:00:00`);
-  return todayStr(new Date(d.getTime() + deltaDays * 24 * 60 * 60 * 1000));
+  d.setDate(d.getDate() + deltaDays);
+  return formatDate(d);
 }
 
 function ReferralsView({ report, referrals, accounts, roster, month, marketer, setMarketer }) {

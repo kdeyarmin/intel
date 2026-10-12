@@ -72,8 +72,10 @@ export function buildTeamReport({ accounts = [], activities = [], referrals = []
 
   const calls = activities.filter(isCall);
   const doneInMonth = (uid) => calls.filter((a) => numId(a.user_id) === uid && a.done && inMonth(a.activity_date, month));
-  const overdueFor = (uid) => calls.filter((a) => numId(a.user_id) === uid && !a.done && a.activity_date < today);
-  const upcomingFor = (uid) => calls.filter((a) => numId(a.user_id) === uid && !a.done && a.activity_date >= today);
+  // Overdue/upcoming are month-scoped like completed calls, so the monthly
+  // completion rate only counts calls that belonged to the selected month.
+  const overdueFor = (uid) => calls.filter((a) => numId(a.user_id) === uid && !a.done && a.activity_date < today && inMonth(a.activity_date, month));
+  const upcomingFor = (uid) => calls.filter((a) => numId(a.user_id) === uid && !a.done && a.activity_date >= today && inMonth(a.activity_date, month));
 
   const refsInMonth = (uid) => referrals.filter((r) => numId(r.user_id) === uid && inMonth(r.received_on, month));
   const admittedInMonth = (uid) => referrals.filter((r) => numId(r.user_id) === uid && r.outcome === 'admitted' && inMonth(r.admitted_on || r.received_on, month));
@@ -127,11 +129,24 @@ export function buildTeamReport({ accounts = [], activities = [], referrals = []
     .sort((a, b) => String(a.name).localeCompare(String(b.name)));
 
   // Per-account figures for the book view. Referrals/admissions follow the
-  // selected month; last activity is all-time.
+  // selected month; last activity is all-time. Indexed by account_id in
+  // single passes so report construction stays linear in row count.
+  const actsByAccount = new Map();
+  for (const x of activities) {
+    const k = x.account_id;
+    if (!actsByAccount.has(k)) actsByAccount.set(k, []);
+    actsByAccount.get(k).push(x);
+  }
+  const refsByAccount = new Map();
+  for (const x of referrals) {
+    const k = x.account_id;
+    if (!refsByAccount.has(k)) refsByAccount.set(k, []);
+    refsByAccount.get(k).push(x);
+  }
   const accountStats = {};
   for (const a of accounts) {
-    const acts = activities.filter((x) => x.account_id === a.id);
-    const refs = referrals.filter((x) => x.account_id === a.id);
+    const acts = actsByAccount.get(a.id) || [];
+    const refs = refsByAccount.get(a.id) || [];
     const dates = acts.map((x) => x.activity_date).filter(Boolean).sort();
     accountStats[a.id] = {
       lastActivity: dates.length ? dates[dates.length - 1] : null,
