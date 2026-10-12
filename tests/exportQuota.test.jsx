@@ -71,10 +71,20 @@ describe('countExport', () => {
     await expect(countExport()).resolves.toEqual({ ok: false, message: 'Your organization has used its 50 exports for today.' });
   });
 
-  it("doesn't block an export because the count itself failed (offline, server error)", async () => {
+  it('stops the export when the count itself failed (offline, server error): a file is built only after a confirmed count', async () => {
     h.countExport.mockRejectedValue(Object.assign(new Error('Service unavailable'), { status: 503 }));
-    await expect(countExport()).resolves.toEqual({ ok: true });
+    await expect(countExport()).resolves.toEqual({ ok: false, message: "Couldn't check your daily export allowance. Try again in a moment." });
     h.countExport.mockRejectedValue(new TypeError('Failed to fetch'));
+    await expect(countExport()).resolves.toMatchObject({ ok: false });
+  });
+
+  it('stops it when the server answers that it did not count the export', async () => {
+    h.countExport.mockResolvedValue({ ok: true, counted: false });
+    await expect(countExport()).resolves.toMatchObject({ ok: false, message: expect.stringMatching(/Couldn't check/) });
+  });
+
+  it('lets it go ahead on a confirmed count', async () => {
+    h.countExport.mockResolvedValue({ ok: true, counted: true });
     await expect(countExport()).resolves.toEqual({ ok: true });
   });
 });

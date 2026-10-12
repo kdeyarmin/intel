@@ -53,7 +53,7 @@ describe('Help page', () => {
     expect(toggles).toHaveLength(1);
     expect(toggles[0]).toHaveTextContent('Lead Lists & Outreach');
     expect(toggles[0]).toHaveTextContent('1 of 4 topics');
-    expect(screen.getByRole('heading', { level: 3, name: 'Campaigns (admin)' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Campaigns (owners)' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 3, name: 'Lead lists' })).not.toBeInTheDocument();
     // Search keeps matching sections open, so the open/close controls are off.
     expect(toggles[0]).toBeDisabled();

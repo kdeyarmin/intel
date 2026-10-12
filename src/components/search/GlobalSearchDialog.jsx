@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { pagesConfig } from '@/pages.config.js';
 import { useAuth } from '@/lib/AuthContext';
-import { getVisibleNavSections } from '@/components/layout/navConfig';
+import { effectiveRole, getVisibleNavSections } from '@/components/layout/navConfig';
 import {
   Search, Users, MapPin, Building2, Activity, GitBranch,
   ListChecks, FileBarChart2, ArrowUp, ArrowDown
@@ -128,10 +128,12 @@ export default function GlobalSearchDialog({ open, onOpenChange }) {
 
   // Only sidebar pages the user can open: detail pages need an id, alias
   // routes duplicate real pages, and admin pages would just say "Access denied".
+  // Keyed by the role the session acts with (an owner or platform admin is made on the server, not by user.role).
+  const role = effectiveRole(user);
   const searchablePages = useMemo(() => (
-    getVisibleNavSections(user).flatMap((section) =>
+    getVisibleNavSections(role).flatMap((section) =>
       section.items.map((item) => ({ name: item.name, page: item.page, section: section.label })))
-  ), [user?.role]);
+  ), [role]);
 
   const allResults = useMemo(() => {
     if (!query || query.length < 2) return [];

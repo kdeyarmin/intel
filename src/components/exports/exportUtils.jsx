@@ -11,18 +11,23 @@ export function exportAttribution(date = new Date()) {
 
 /**
  * Counts one export against the organization's daily allowance before a file
- * is built. `ok: false` carries the message to show when the day's limit is
- * used up; any other failure (offline, server error) doesn't block the export.
+ * is built. `ok: false` carries the message to show: the day's limit is used
+ * up, or the count itself failed (offline, server error, a database that
+ * couldn't record it). A file is built only after a confirmed count, so the
+ * allowance can't be dodged by blocking or breaking the request.
  */
 export async function countExport() {
   try {
-    await base44.billing.countExport();
+    const res = await base44.billing.countExport();
+    if (res?.counted === false) return { ok: false, message: COUNT_FAILED };
     return { ok: true };
   } catch (err) {
     if (err?.status === 429) return { ok: false, message: err.message || "Today's export limit for your organization has been reached." };
-    return { ok: true };
+    return { ok: false, message: COUNT_FAILED };
   }
 }
+
+const COUNT_FAILED = "Couldn't check your daily export allowance. Try again in a moment.";
 
 /**
  * Load image as base64 for embedding in PDF. Null when it can't be loaded:

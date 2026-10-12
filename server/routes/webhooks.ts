@@ -20,15 +20,18 @@ router.post(
     const key = process.env.STRIPE_SECRET_KEY;
     if (!secret || !key) return res.status(503).json({ message: "Stripe webhook isn't configured (STRIPE_WEBHOOK_SECRET)." });
     let event: any;
+    let stripe: any;
     try {
       const { default: Stripe } = await import("stripe");
-      event = new Stripe(key).webhooks.constructEvent(req.body as Buffer, req.header("stripe-signature") ?? "", secret);
+      stripe = new Stripe(key);
+      event = stripe.webhooks.constructEvent(req.body as Buffer, req.header("stripe-signature") ?? "", secret);
     } catch (e: any) {
       return res.status(400).json({ message: `Invalid Stripe signature: ${String(e?.message || e).slice(0, 120)}` });
     }
     try {
       const [{ applyStripeEvent }, { recordAudit }] = await Promise.all([import("../lib/billing"), import("../lib/audit")]);
-      const result = await applyStripeEvent(event, pool, console, { audit: recordAudit });
+      // Events stamped to the same second can't be ordered by their time: the subscription is then read from Stripe.
+      const result = await applyStripeEvent(event, pool, console, { audit: recordAudit, fetchSubscription: (id) => stripe.subscriptions.retrieve(id) });
       if (result.handled && result.org_id) {
         const { publishSessionUserChange } = await import("../lib/sessionUsers");
         const { rows } = await pool.query("SELECT user_id FROM organization_members WHERE org_id = $1", [result.org_id]);
