@@ -9,17 +9,18 @@ import { fmtCount, fmtPct, fmtRate, fmtShare, fmtMoney } from '@/lib/marketForma
 import MarketShareTrendChart from './MarketShareTrendChart';
 import MarketFreshness from './MarketFreshness';
 import { useBusinessLine } from '@/lib/BusinessLineContext';
+import { isRecord, recordRows } from './marketData';
 
 const ORDER = ['snf', 'hha', 'hospice', 'irf', 'ltch', 'licensed'];
 const LICENSE_LABELS = { personal_care_home: 'Personal care home', assisted_living: 'Assisted living', memory_care: 'Memory care', nursing_home: 'Nursing home', adult_day: 'Adult day', domiciliary_care: 'Domiciliary care' };
 const licenseLabel = (t) => LICENSE_LABELS[t] || String(t || '').replace(/_/g, ' ');
 // The county's licensed homes: the totals cover every home, while the rows listed are capped.
-const licensedHomeCount = (licensed) => (licensed?.totals || []).reduce((sum, t) => sum + (Number(t.homes) || 0), 0) || licensed?.rows?.length || 0;
+const licensedHomeCount = (licensed) => recordRows(licensed?.totals).reduce((sum, t) => sum + (Number(t.homes) || 0), 0) || recordRows(licensed?.rows).length || 0;
 
 /** State-licensed homes (personal care, assisted living): not in CMS files, so no Medicare share, just who is there and how big. */
 function LicensedHomes({ licensed, countyName }) {
-  const rows = licensed?.rows || [];
-  const totals = licensed?.totals || [];
+  const rows = recordRows(licensed?.rows);
+  const totals = recordRows(licensed?.totals);
   if (rows.length === 0) {
     return <p className="text-sm text-slate-400">No state-licensed homes loaded for {countyName || 'this county'}. Import a state licensing export (Data Center › State-Licensed Homes) to see personal care homes and assisted living residences here.</p>;
   }
@@ -73,17 +74,21 @@ function LicensedHomes({ licensed, countyName }) {
 
 /** Post-acute providers located in a county, ranked by Medicare beneficiaries served, with agency coverage. */
 export default function PacCompetitorsTable({ competitors = {}, trends = {}, coverage = {}, licensed = null, labels = {}, rollups, countyName }) {
+  competitors = isRecord(competitors) ? competitors : {};
+  trends = isRecord(trends) ? trends : {};
+  coverage = isRecord(coverage) ? coverage : {};
+  labels = isRecord(labels) ? labels : {};
   const { profile } = useBusinessLine();
   const [showAll, setShowAll] = useState(false);
   const [setting, setSetting] = useState(null);
   const order = (!showAll && profile?.competitorSettings?.length) ? profile.competitorSettings : ORDER;
   const active = order.includes(setting) ? setting : (order.find((s) => (s === 'licensed' ? licensed?.rows?.length : competitors[s]?.rows?.length)) || order[0]);
   const allLabels = { ...labels, licensed: 'Personal care / assisted living' };
-  const showCensus = active === 'snf' && (competitors.snf?.rows || []).some((r) => r.census);
+  const showCensus = active === 'snf' && recordRows(competitors.snf?.rows).some((r) => isRecord(r.census));
   const current = competitors[active] || { data_year: null, rows: [] };
-  const rows = current.rows || [];
+  const rows = recordRows(current.rows);
   const max = Math.max(1, ...rows.map((r) => r.share ?? 0));
-  const cover = coverage[active] || [];
+  const cover = recordRows(coverage[active]);
   return (
     <Card className="bg-slate-800/50 border-slate-700/50">
       <CardHeader className="pb-2">

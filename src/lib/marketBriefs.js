@@ -1,7 +1,9 @@
 // Ready-made report math. Every figure is a published county count or a
 // ratio of two of them. Nothing here is a weighted "opportunity score."
 
-const num = (v) => (v == null || v === '' || Number.isNaN(Number(v)) ? null : Number(v));
+import { finiteNumber, recordRows } from '../components/market/marketData';
+
+const num = finiteNumber;
 
 export const GROWTH_SETTINGS = {
   hha: {
@@ -46,7 +48,7 @@ export const GROWTH_SETTINGS = {
 };
 
 export function median(values) {
-  const xs = values.filter((n) => n != null).sort((a, b) => a - b);
+  const xs = (Array.isArray(values) ? values : []).map(num).filter((n) => n != null).sort((a, b) => a - b);
   if (!xs.length) return null;
   const mid = Math.floor(xs.length / 2);
   return xs.length % 2 ? xs[mid] : (xs[mid - 1] + xs[mid]) / 2;
@@ -56,7 +58,7 @@ export function median(values) {
 export function countyGrowthRows(counties, settingKey) {
   const s = GROWTH_SETTINGS[settingKey];
   if (!s) return [];
-  return (counties || []).map((c) => {
+  return recordRows(counties).filter((c) => typeof c.name === 'string' && typeof c.fips === 'string').map((c) => {
     const v = c.values || {};
     const vol = c.volume || {};
     const users = num(vol[s.users]);
@@ -96,6 +98,7 @@ function byUsers(a, b) {
  * county with a handful of users and one provider does not win that line.
  */
 export function growthFacts(rows) {
+  rows = recordRows(rows);
   const withUsers = rows.filter((r) => r.users != null);
   const ranked = [...rows].sort(byUsers);
   const medianUsers = median(withUsers.map((r) => r.users));
@@ -114,20 +117,20 @@ export function growthFacts(rows) {
 
 /** Named reports. Each one answers one decision for one kind of provider. */
 export const REPORT_CATALOG = [
-  { id: 'expand-hha', purpose: 'Expansion', audience: 'Home health', title: 'Where to open or staff home health', needs: 'state', setting: 'hha', reason: 'Counties where home health use is large, or grew while the number of billing agencies did not.' },
-  { id: 'expand-hospice', purpose: 'Expansion', audience: 'Hospice', title: 'Where to open or staff hospice', needs: 'state', setting: 'hospice', reason: 'Counties where hospice use is large, or grew while the number of billing hospices did not.' },
-  { id: 'expand-snf', purpose: 'Expansion', audience: 'Nursing homes', title: 'Where skilled nursing demand is growing', needs: 'state', setting: 'snf', reason: 'Counties where skilled nursing use is large, or grew while the number of billing facilities did not.' },
-  { id: 'acquire-hha', purpose: 'Acquisition', audience: 'Home health', title: 'Largest home health agencies in the state', needs: 'state', setting: 'hha', reason: 'Agencies located in the state, ranked by the Medicare beneficiaries on their own claims.' },
-  { id: 'acquire-hospice', purpose: 'Acquisition', audience: 'Hospice', title: 'Largest hospices in the state', needs: 'state', setting: 'hospice', reason: 'Hospices located in the state, ranked by the Medicare beneficiaries on their own claims.' },
-  { id: 'acquire-snf', purpose: 'Acquisition', audience: 'Nursing homes', title: 'Largest nursing homes in the state', needs: 'state', setting: 'snf', reason: 'Nursing homes located in the state, with Medicare volume, census, and payer mix.' },
-  { id: 'hospital-partners', purpose: 'Hospital relationships', audience: 'Hospitals', title: 'Hospitals discharging a county', needs: 'county', setting: null, reason: 'Which hospitals discharge this county’s residents, and how their Medicare spend splits across home health, hospice, and skilled nursing.' },
-  { id: 'calls-hha', purpose: 'Referral development', audience: 'Home health', title: 'Clinicians to call for home health', needs: 'county', setting: 'hha', reason: 'Clinicians in one county ranked for home health, with panel size, certifications, and chronic conditions. Not confirmed referrals.' },
-  { id: 'calls-hospice', purpose: 'Referral development', audience: 'Hospice', title: 'Clinicians to call for hospice', needs: 'county', setting: 'hospice', reason: 'Clinicians in one county ranked for hospice, with panel size, oversight counts, and chronic conditions. Not confirmed referrals.' },
+  { id: 'expand-hha', purpose: 'Expansion', audience: 'Home health', title: 'Home Health Market Expansion Analysis', needs: 'state', setting: 'hha', reason: 'Compare published county utilization and billing-agency trends to inform expansion planning. These measures do not establish unmet demand.' },
+  { id: 'expand-hospice', purpose: 'Expansion', audience: 'Hospice', title: 'Hospice Market Expansion Analysis', needs: 'state', setting: 'hospice', reason: 'Compare published county utilization and billing-provider trends to inform expansion planning. These measures do not establish unmet demand.' },
+  { id: 'expand-snf', purpose: 'Expansion', audience: 'Nursing homes', title: 'Skilled Nursing Market Expansion Analysis', needs: 'state', setting: 'snf', reason: 'Compare published county utilization and billing-facility trends to inform expansion planning. These measures do not establish unmet demand.' },
+  { id: 'acquire-hha', purpose: 'Acquisition', audience: 'Home health', title: 'Home Health Acquisition Market Analysis', needs: 'state', setting: 'hha', reason: 'Agencies located in the state, ranked by the Medicare beneficiaries on their own claims. Listing does not indicate acquisition availability.' },
+  { id: 'acquire-hospice', purpose: 'Acquisition', audience: 'Hospice', title: 'Hospice Acquisition Market Analysis', needs: 'state', setting: 'hospice', reason: 'Hospices located in the state, ranked by the Medicare beneficiaries on their own claims. Listing does not indicate acquisition availability.' },
+  { id: 'acquire-snf', purpose: 'Acquisition', audience: 'Nursing homes', title: 'Skilled Nursing Acquisition Market Analysis', needs: 'state', setting: 'snf', reason: 'Nursing homes located in the state, with Medicare volume, census, and payer mix. Listing does not indicate acquisition availability.' },
+  { id: 'hospital-partners', purpose: 'Hospital relationships', audience: 'Hospitals', title: 'Hospital Discharge Sources', needs: 'county', setting: null, reason: 'Identify hospitals discharging county residents and compare post-acute Medicare episode spending. Spending is a proxy, not confirmed transfers or referral orders.' },
+  { id: 'calls-hha', purpose: 'Referral development', audience: 'Home health', title: 'Home Health Referral Source Prioritization', needs: 'county', setting: 'hha', reason: 'Prioritize clinician outreach using Medicare panel size, home health certifications, and chronic conditions. These are planning indicators, not confirmed referrals or guaranteed referral volume.' },
+  { id: 'calls-hospice', purpose: 'Referral development', audience: 'Hospice', title: 'Hospice Referral Source Prioritization', needs: 'county', setting: 'hospice', reason: 'Prioritize clinician outreach using Medicare panel size, hospice oversight counts, and chronic conditions. These are planning indicators, not confirmed referrals or guaranteed referral volume.' },
 ];
 
 /** Share held by the listed providers. `share` is a fraction of providers located in that market. */
 export function leaderFacts(rows) {
-  const list = rows || [];
+  const list = recordRows(rows);
   const shares = list.map((r) => num(r.share)).filter((n) => n != null);
   return {
     top: list[0] ?? null,

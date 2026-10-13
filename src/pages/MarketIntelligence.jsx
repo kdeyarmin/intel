@@ -70,7 +70,7 @@ export default function MarketIntelligence() {
     // the data vintages the table used and the source line every export carries.
     const fields = [{ key: 'fips', label: 'County FIPS' }, { key: 'name', label: 'County' }, ...COUNTY_LAYER_METRICS.map((m) => ({ key: m.key, label: csvHeader(m) }))];
     const exportRows = rows.map((r) => ({ fips: r.fips, name: r.name, ...Object.fromEntries(COUNTY_LAYER_METRICS.map((m) => [m.key, csvValue(r[m.key], m.format)])) }));
-    exportCSV(exportRows, fields, `caremetric-county-market-${url.state}`, { notes: [describeVintages(data?.vintages)] });
+    exportCSV(exportRows, fields, `caremetric-intel-county-market-${url.state}`, { notes: [describeVintages(data?.vintages)] });
   };
 
   return (

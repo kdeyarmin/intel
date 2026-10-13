@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Users, Percent, Building2, Activity, DollarSign, Hospital, HeartPulse } from 'lucide-react';
 import { fmtCount, fmtMoney, fmtPct, fmtShare, fmtRate } from '@/lib/marketFormat';
 import MarketFreshness from './MarketFreshness';
+import { isRecord, scalarRecord } from './marketData';
 
 function Kpi({ icon: Icon, color, label, value, sub }) {
   return (
@@ -21,7 +22,7 @@ function Kpi({ icon: Icon, color, label, value, sub }) {
 
 /** The one-row county market card: demand, Medicare Advantage, post-acute use and supply, hospital sources. */
 export default function CountyMarketProfile({ profile, vintages, rollups, countyName, line = null }) {
-  if (!profile?.available) {
+  if (!isRecord(profile) || !profile.available) {
     return (
       <div className="space-y-2">
         <p className="text-sm text-slate-400">No market profile for {countyName || 'this county'} yet. It needs the Medicare enrollment, market saturation and geographic variation files imported and the market rollups computed.</p>
@@ -29,7 +30,7 @@ export default function CountyMarketProfile({ profile, vintages, rollups, county
       </div>
     );
   }
-  const p = profile;
+  const p = scalarRecord(profile);
   const pac = [
     { key: 'hha', label: 'Home health', providers: p.hha_providers, users: p.hha_users, pct: p.hha_users_pct, spend: p.std_per_capita_hha, agencies: p.hha_agencies, usersChange: p.hha_users_change_pct, providersChange: p.hha_providers_change_pct, color: 'text-green-400' },
     { key: 'hospice', label: 'Hospice', providers: p.hospice_providers, users: p.hospice_users, pct: p.hospice_users_pct, spend: p.std_per_capita_hospice, agencies: p.hospice_agencies, usersChange: p.hospice_users_change_pct, providersChange: p.hospice_providers_change_pct, color: 'text-purple-400' },

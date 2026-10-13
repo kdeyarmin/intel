@@ -50,7 +50,7 @@ export default function ResetPassword() {
       const session = await adoptSession(user);
       navigate((session ?? user).status === 'pending' ? '/pending' : '/', { replace: true });
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.');
+      setError(err.message || 'Unable to update your password. Please try again.');
       setLoading(false);
     }
   };
@@ -62,7 +62,7 @@ export default function ResetPassword() {
         footer={<Link to="/login" className="text-cyan-400 hover:text-cyan-300">Back to sign in</Link>}
       >
         <Notice tone="error">
-          We couldn&apos;t check this link just now. It may still work, so try again in a moment.
+          We couldn&apos;t check this link just now. Please try again in a moment.
         </Notice>
         <button type="button" onClick={() => setLookupAttempt((n) => n + 1)} className={primaryButtonClass}>
           Try again

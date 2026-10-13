@@ -1,5 +1,4 @@
 import fs from "fs";
-import os from "os";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getMailerStatus, sendMail } from "../server/lib/mailer";
@@ -8,10 +7,13 @@ describe("MAIL_TRANSPORT=outbox", () => {
   const saved = { ...process.env };
   let dir: string;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), "outbox-"));
+    fs.mkdirSync(".data", { recursive: true });
+    dir = fs.mkdtempSync(path.resolve(".data", "outbox-"));
     process.env.MAIL_TRANSPORT = "outbox";
     process.env.MAIL_OUTBOX_PATH = path.join(dir, "nested", "mail.jsonl");
     delete process.env.SENDGRID_API_KEY;
+    delete process.env.SENDGRID_FROM_EMAIL;
+    delete process.env.ALLOWED_FROM_EMAILS;
   });
   afterEach(() => {
     process.env = { ...saved };
@@ -24,7 +26,7 @@ describe("MAIL_TRANSPORT=outbox", () => {
     await sendMail({ to: "b@example.com", subject: "Again", text: "two", attachments: [{ filename: "r.csv", content: "a,b", type: "text/csv" }] });
     const lines = fs.readFileSync(process.env.MAIL_OUTBOX_PATH!, "utf8").trim().split("\n").map((l) => JSON.parse(l));
     expect(lines).toHaveLength(2);
-    expect(lines[0]).toMatchObject({ messageId, to: "a@example.com", subject: "Hi" });
+    expect(lines[0]).toMatchObject({ messageId, to: "a@example.com", from: "noreply@caremetricintel.com", subject: "Hi" });
     expect(lines[1].attachments).toEqual([{ filename: "r.csv", type: "text/csv" }]);
   });
 

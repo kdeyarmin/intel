@@ -21,9 +21,12 @@ import HospitalSourcesTable from '../components/market/HospitalSourcesTable';
 import { useBusinessLine } from '@/lib/BusinessLineContext';
 import PacCompetitorsTable from '../components/market/PacCompetitorsTable';
 import ReferralSourcesTable from '../components/market/ReferralSourcesTable';
+import { fmtCount } from '@/lib/marketFormat';
+import { finiteNumber, isRecord, recordRows, scalarRecord } from '../components/market/marketData';
 
 function formatCurrency(val) {
-  const num = Number(val) || 0;
+  const num = finiteNumber(val);
+  if (num == null) return 'Not available';
   if (num >= 1e9) return `$${(num / 1e9).toFixed(1)}B`;
   if (num >= 1e6) return `$${(num / 1e6).toFixed(1)}M`;
   if (num >= 1e3) return `$${(num / 1e3).toFixed(0)}K`;
@@ -53,6 +56,7 @@ const TABS = [
   { value: 'competitors', label: 'Competitors', icon: Building2 },
   { value: 'referrals', label: 'Referral sources', icon: Target },
 ];
+const ROW_KEYS = { topSpecialties: 'name', topServices: 'code', referrals: 'fromNpi', facilitySummary: 'type', facilities: 'id', providers: 'npi' };
 
 function Kpi({ icon: Icon, label, value, sub, color }) {
   return (
@@ -78,14 +82,14 @@ export default function CountyIntelligence() {
   const tabs = TABS.filter((t) => t.value === 'overview' || everyLine || !profile || profile.countyTabs.includes(t.value));
   const tab = tabs.some((t) => t.value === url.tab) ? url.tab : 'overview';
 
-  const { data: counties, isLoading: loadingCounties } = useQuery({
+  const { data: counties, isLoading: loadingCounties, isError: countiesError, refetch: refetchCounties } = useQuery({
     queryKey: ['geoCounties', url.state],
     queryFn: () => invokeOrThrow('getGeoCounties', { state: url.state }),
     enabled: !!url.state,
     staleTime: 60 * 60 * 1000,
   });
 
-  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+  const { data: rawData, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['countyIntelligence', url.state, url.county],
     queryFn: () => invokeOrThrow('getCountyIntelligence', { state: url.state, county_fips: url.county }),
     enabled: !!url.state && !!url.county,
@@ -95,7 +99,7 @@ export default function CountyIntelligence() {
 
   // The market views come from the daily rollups (server/functions/market.ts). The referral tab makes its own
   // request, so it doesn't pay for the county payload it never shows.
-  const { data: market, isLoading: loadingMarket, isError: marketError, error: marketErr } = useQuery({
+  const { data: market, isLoading: loadingMarket, isError: marketError, error: marketErr, refetch: refetchMarket } = useQuery({
     queryKey: ['countyMarket', url.state, url.county],
     queryFn: () => invokeOrThrow('getCountyMarket', { state: url.state, county_fips: url.county }),
     enabled: !!url.state && !!url.county && MARKET_TABS.includes(url.tab),
@@ -103,9 +107,29 @@ export default function CountyIntelligence() {
     retry: 1,
   });
 
-  const countyList = counties?.counties || [];
+  const countyList = recordRows(counties?.counties).filter((c) => typeof c.fips === 'string' && c.fips && typeof c.name === 'string');
+  const data = useMemo(() => {
+    if (!isRecord(rawData)) return null;
+    return {
+      ...scalarRecord(rawData),
+      county: scalarRecord(rawData.county),
+      sample: scalarRecord(rawData.sample),
+      summary: scalarRecord(rawData.summary),
+      ...Object.fromEntries(['topSpecialties', 'topServices', 'referrals', 'facilitySummary', 'facilities', 'providers']
+        .map((key) => [key, recordRows(rawData[key]).map(scalarRecord)
+          .filter((row) => (typeof row[ROW_KEYS[key]] === 'string' || typeof row[ROW_KEYS[key]] === 'number') &&
+            (key !== 'referrals' || typeof row.toNpi === 'string'))
+          .map((row) => key === 'providers' ? { ...row, score: finiteNumber(row.score) } : row)])),
+    };
+  }, [rawData]);
   const summary = data?.summary || {};
-  const facilities = useMemo(() => data?.facilities || [], [data]);
+  const facilities = data?.facilities || [];
+  const count = (value) => finiteNumber(value) == null ? 'Not available' : fmtCount(value);
+  const partial = isRecord(rawData) && (!isRecord(rawData.summary) || !isRecord(rawData.sample) ||
+    ['topSpecialties', 'topServices', 'referrals', 'facilitySummary', 'facilities', 'providers']
+      .some((key) => !Array.isArray(rawData[key]) || data[key].length !== rawData[key].length));
+  const emptyMessage = (key, message) => Array.isArray(rawData?.[key])
+    ? message : 'This section is unavailable. Retry the county data or contact your administrator.';
   const list = (key, items, n) => (showAll[key] ? items : items.slice(0, n));
 
   return (
@@ -133,20 +157,25 @@ export default function CountyIntelligence() {
           <div className="space-y-1">
             <Label htmlFor="county-state" className="text-xs text-slate-400">State</Label>
             <Select value={url.state || undefined} onValueChange={(state) => setUrl({ state, county: '' })}>
-              <SelectTrigger id="county-state" className="w-40 bg-slate-900 border-slate-700"><SelectValue placeholder="Pick a state" /></SelectTrigger>
+              <SelectTrigger id="county-state" aria-label="State" className="w-40 bg-slate-900 border-slate-700"><SelectValue placeholder="Pick a state" /></SelectTrigger>
               <SelectContent>{US_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
             <Label htmlFor="county-county" className="text-xs text-slate-400">County</Label>
             <Select value={url.county || undefined} onValueChange={(county) => setUrl({ county })} disabled={!url.state || loadingCounties}>
-              <SelectTrigger id="county-county" className="w-72 bg-slate-900 border-slate-700">
+              <SelectTrigger id="county-county" aria-label="County" className="w-72 bg-slate-900 border-slate-700">
                 <SelectValue placeholder={!url.state ? 'Pick a state first' : loadingCounties ? 'Loading counties…' : 'Pick a county'} />
               </SelectTrigger>
               <SelectContent>{countyList.map((c) => <SelectItem key={c.fips} value={c.fips}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          {counties?.notLoaded && <p className="text-sm text-amber-400 self-end">{counties.message}</p>}
+          {counties?.notLoaded && <p className="text-sm text-amber-400 self-end">{typeof counties.message === 'string' ? counties.message : 'County geography is unavailable. Ask your administrator to check the geography import.'}</p>}
+          {url.state && !loadingCounties && (countiesError || !Array.isArray(counties?.counties)) && (
+            <div role="alert" className="text-sm text-amber-400">County list unavailable. Retry or select another state.
+              <Button variant="outline" size="sm" onClick={() => refetchCounties()}>Retry county list</Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -167,23 +196,32 @@ export default function CountyIntelligence() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-label="Loading county">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
       ) : data?.needsCounty || data?.notLoaded ? (
         <p className="text-sm text-slate-400">{data.message || 'That county wasn’t found. Pick one from the list.'}</p>
+      ) : !data || typeof data.county.name !== 'string' || !data.county.name || typeof data.county.fips !== 'string' || !data.county.fips ? (
+        <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-900/20 p-6 space-y-3">
+         <p className="text-sm text-amber-400">County intelligence is unavailable. Retry or select another county. If this continues, ask your administrator to check the county data.</p>
+         <Button variant="outline" size="sm" onClick={() => refetch()}>Retry county data</Button>
+        </div>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <h2 className="text-lg font-semibold text-slate-100">{data.county.name}, {data.state}</h2>
+            <h2 className="text-lg font-semibold text-slate-100">{data.county.name}, {typeof data.state === 'string' ? data.state : url.state}</h2>
             <Badge variant="outline" className="text-slate-400">FIPS {data.county.fips}</Badge>
-            <Badge variant="outline" className="text-slate-400">{data.zip_areas} ZIP areas</Badge>
+            {finiteNumber(data.zip_areas) != null && <Badge variant="outline" className="text-slate-400">{count(data.zip_areas)} ZIP areas</Badge>}
             {isFetching && <span className="text-xs text-slate-400">Refreshing…</span>}
           </div>
-          {(data.sample?.sampled || !data.sample?.details_cover_all || data.sample?.facilities_capped || data.sample?.providers_capped) && (
+          {partial && <div role="status" className="rounded-lg border border-amber-500/30 p-3 text-sm text-amber-400">
+            Some county data is unavailable. Missing measurements are not zero. Retry to refresh the available sections.
+            <Button variant="outline" size="sm" onClick={() => refetch()} className="ml-2">Retry county data</Button>
+          </div>}
+          {(data.sample?.sampled === true || data.sample?.details_cover_all === false || data.sample?.facilities_capped === true || data.sample?.providers_capped === true) && (
             <p className="flex items-start gap-1.5 text-xs text-slate-400">
               <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
-              {data.sample.sampled
-                ? `This county has more practice locations than we read at once; specialties and provider types describe ${summary.sampledProviders.toLocaleString()} of them.`
+              {data.sample.sampled === true
+                ? `This county has more practice locations than we read at once; specialties and provider types describe a limited sample${finiteNumber(summary.sampledProviders) != null ? ` of ${count(summary.sampledProviders)}` : ''}.`
                 : ''}
-              {!data.sample.details_cover_all && ` Referrals and services are from the first ${data.sample.detail_limit.toLocaleString()} providers.`}
-              {data.sample.facilities_capped && ` Facility totals cover the newest ${data.sample.facility_limit.toLocaleString()} facility records.`}
-              {data.sample.providers_capped && ` The provider list shows the ${data.sample.provider_limit.toLocaleString()} highest-scored of ${data.sample.providers_found.toLocaleString()} providers.`}
+              {data.sample.details_cover_all === false && ` Referrals and services cover a limited provider sample${finiteNumber(data.sample.detail_limit) != null ? ` (up to ${count(data.sample.detail_limit)} providers)` : ''}.`}
+              {data.sample.facilities_capped === true && ` Facility totals cover a limited set of the newest facility records${finiteNumber(data.sample.facility_limit) != null ? ` (up to ${count(data.sample.facility_limit)})` : ''}.`}
+              {data.sample.providers_capped === true && ' The provider list is limited to the highest-scored providers; it is not a complete county count.'}
             </p>
           )}
 
@@ -201,21 +239,21 @@ export default function CountyIntelligence() {
 
             <TabsContent value="overview" className="mt-0 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {summary.providersExact ? (
+            {summary.providersExact === true ? (
               <Kpi icon={Users} color="text-cyan-400" label="Providers practicing here"
-                value={(summary.totalProviders || 0).toLocaleString()}
-                sub={`${(summary.individualProviders || 0).toLocaleString()} individuals · ${(summary.orgProviders || 0).toLocaleString()} organizations`} />
+                value={count(summary.totalProviders)}
+                sub={`${count(summary.individualProviders)} individuals · ${count(summary.orgProviders)} organizations`} />
             ) : (
               <Kpi icon={Users} color="text-cyan-400" label="Practice locations here"
-                value={summary.practiceLocations != null
-                  ? `≈${summary.practiceLocations.toLocaleString()}`
-                  : `More than ${(summary.locationSample || 0).toLocaleString()}`}
-                sub={`A provider with several locations counts more than once. In the sample: ${(summary.individualProviders || 0).toLocaleString()} individuals · ${(summary.orgProviders || 0).toLocaleString()} organizations`} />
+                value={finiteNumber(summary.practiceLocations) != null
+                  ? `≈${count(summary.practiceLocations)}`
+                  : finiteNumber(summary.locationSample) != null ? `More than ${count(summary.locationSample)}` : 'Not available'}
+                sub="A provider with several locations counts more than once." />
             )}
-            <Kpi icon={Building2} color="text-violet-400" label="Medicare facilities" value={(summary.totalFacilities || 0).toLocaleString()} />
+            <Kpi icon={Building2} color="text-violet-400" label="Medicare facilities" value={count(summary.totalFacilities)} />
             <Kpi icon={DollarSign} color="text-emerald-400" label="Facility Medicare payments" value={formatCurrency(summary.totalPayments)}
-              sub={summary.totalPayments ? null : 'Not reported in the imported facility data'} />
-            <Kpi icon={Activity} color="text-amber-400" label="Facility discharges" value={(summary.totalDischarges || 0).toLocaleString()} />
+              sub={finiteNumber(summary.totalPayments) != null ? null : 'Not reported in the imported facility data'} />
+            <Kpi icon={Activity} color="text-amber-400" label="Facility discharges" value={count(summary.totalDischarges)} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -226,15 +264,15 @@ export default function CountyIntelligence() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {data.topSpecialties.length === 0 ? <p className="text-sm text-slate-400">No providers found in this county.</p> : (
+                {data.topSpecialties.length === 0 ? <p className="text-sm text-slate-400">{emptyMessage('topSpecialties', 'No specialties on file for this county.')}</p> : (
                   <ul className="space-y-1.5">
                     {list('spec', data.topSpecialties, 10).map((s) => {
-                      const max = data.topSpecialties[0].count || 1;
+                      const max = Math.max(1, ...data.topSpecialties.map((row) => finiteNumber(row.count) ?? 0));
                       return (
                         <li key={s.name} className="flex items-center gap-2 text-xs">
                           <span className="w-44 truncate text-slate-300">{s.name}</span>
-                          <span className="flex-1 h-2 rounded bg-slate-900"><span className="block h-2 rounded bg-cyan-500" style={{ width: `${(s.count / max) * 100}%` }} /></span>
-                          <span className="w-10 text-right text-slate-400">{s.count}</span>
+                          <span className="flex-1 h-2 rounded bg-slate-900">{finiteNumber(s.count) != null && <span className="block h-2 rounded bg-cyan-500" style={{ width: `${(Number(s.count) / max) * 100}%` }} />}</span>
+                          <span className="w-10 text-right text-slate-400">{count(s.count)}</span>
                         </li>
                       );
                     })}
@@ -253,7 +291,7 @@ export default function CountyIntelligence() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {data.topServices.length === 0 ? <p className="text-sm text-slate-400">No Medicare utilization imported for these providers.</p> : (
+                {data.topServices.length === 0 ? <p className="text-sm text-slate-400">{emptyMessage('topServices', 'No Medicare utilization imported for these providers.')}</p> : (
                   <ul className="space-y-1.5 text-xs">
                     {data.topServices.map((s) => (
                       <li key={s.code} className="flex items-center justify-between gap-2">
@@ -275,14 +313,14 @@ export default function CountyIntelligence() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {data.referrals.length === 0 ? <p className="text-sm text-slate-400">No referral data for providers here.</p> : (
+                {data.referrals.length === 0 ? <p className="text-sm text-slate-400">{emptyMessage('referrals', 'No referral data for providers here.')}</p> : (
                   <ul className="space-y-1.5">
                     {list('ref', data.referrals, 10).map((r) => (
                       <li key={`${r.fromNpi}>${r.toNpi}`} className="flex items-center gap-2 text-xs">
                         <Link to={createPageUrl(`ProviderDetail?npi=${r.fromNpi}`)} className="truncate text-cyan-400 hover:underline">{r.fromName || r.fromNpi}</Link>
                         <ArrowRight className="w-3 h-3 shrink-0 text-slate-400" aria-label="sends to" />
                         <Link to={createPageUrl(`ProviderDetail?npi=${r.toNpi}`)} className="truncate text-cyan-400 hover:underline">{r.toName || r.toNpi}</Link>
-                        <span className="ml-auto shrink-0 text-slate-300">{r.totalReferrals.toLocaleString()}</span>
+                        <span className="ml-auto shrink-0 text-slate-300">{count(r.totalReferrals)}</span>
                       </li>
                     ))}
                   </ul>
@@ -309,7 +347,7 @@ export default function CountyIntelligence() {
                 )}
               </CardHeader>
               <CardContent>
-                {facilities.length === 0 ? <p className="text-sm text-slate-400">No Medicare facilities found in this county.</p> : (
+                {facilities.length === 0 ? <p className="text-sm text-slate-400">{emptyMessage('facilities', 'No Medicare facilities found in this county.')}</p> : (
                   <ul className="space-y-1.5">
                     {list('fac', facilities, 10).map((f) => {
                       const body = (
@@ -348,7 +386,7 @@ export default function CountyIntelligence() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {data.providers.length === 0 ? <p className="text-sm text-slate-400">No providers found.</p> : (
+              {data.providers.length === 0 ? <p className="text-sm text-slate-400">{emptyMessage('providers', 'No providers found.')}</p> : (
                 <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {list('prov', data.providers, 20).map((p) => (
                     <li key={p.npi}>
@@ -379,8 +417,12 @@ export default function CountyIntelligence() {
                   <ReferralSourcesTable key={`${everyLine ? 'all' : (profile?.referralSetting || 'all')}:${url.county}`} state={url.state} countyFips={data.county.fips} countyName={data.county.name} initialSetting={everyLine ? 'all' : (profile?.referralSetting || 'all')} />
                 ) : marketError ? (
                   <p className="text-sm text-red-400" role="alert">Couldn't load the market data: {marketErr?.message}</p>
-                ) : loadingMarket || !market ? (
+                ) : loadingMarket ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-label="Loading market">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
+                ) : !isRecord(market) || market.needsCounty || market.notLoaded ? (
+                  <div role="status" className="text-sm text-amber-400">Market data is unavailable. Retry or ask your administrator to check imports and market rollups.
+                    <Button variant="outline" size="sm" onClick={() => refetchMarket()}>Retry market data</Button>
+                  </div>
                 ) : tab === 'market' ? (
                   <>
                     <CountyMarketProfile profile={market.profile} vintages={market.vintages} rollups={market.rollups} countyName={data.county.name} line={everyLine ? null : profile} />

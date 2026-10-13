@@ -15,7 +15,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/api/base44Client', () => ({ base44: { functions: { invoke: (...a) => api.invoke(...a) } } }));
 vi.mock('@/components/exports/exportUtils', () => ({
   countExport: () => quota.count(),
-  exportAttribution: () => 'Source: CareMetric analytics.',
+  exportAttribution: () => 'Source: CareMetric Intel analytics.',
 }));
 vi.mock('../src/components/reports/reportPdf', () => ({ downloadReportPdf: (m) => pdf.download(m) }));
 
@@ -76,7 +76,7 @@ describe('report sections', () => {
       'CMS physician shared-patient patterns; CMS Order and Referring file',
       'CMS Care Compare star ratings',
     ]);
-    expect(model.attribution).toBe('Source: CareMetric analytics.');
+    expect(model.attribution).toBe('Source: CareMetric Intel analytics.');
   });
 
   it('reads an unscored provider as Unscored, never zero', () => {
@@ -95,9 +95,13 @@ describe('report sections', () => {
     expect(model.sections[0].blocks[0].rows.map((r) => r.percentage.text)).toEqual(['80%', '—']);
     expect(model.sections[1].blocks[0].rows[0].value.text).toBe('$1,234,567');
     render(<ReportDocument model={model} />);
-    for (const value of ['Example Holdings', '80%', '$1,234,567', 'Discharge function score', '76.2', 'www.CareMetric.ai']) {
+    for (const value of ['Example Holdings', '80%', '$1,234,567', 'Discharge function score', '76.2']) {
       expect(screen.getByText(value)).toBeInTheDocument();
     }
+    screen.getAllByRole('link', { name: 'caremetricintel.com' }).forEach((link) => {
+      expect(link).toHaveAttribute('href', 'https://caremetricintel.com/');
+    });
+    expect(screen.getByText('CareMetric Intel')).toBeInTheDocument();
     expect(model.sources).toHaveLength(3);
     const empty = buildReportModel({}, ['ownership', 'costReports', 'additionalQuality'], { providerId: '390111' });
     empty.sections.forEach((s) => expect(s.blocks[0].emptyText).toMatch(/No .*linked/));
@@ -109,7 +113,7 @@ describe('report sections', () => {
     expect(model.subtitle).toBe('Facility Intelligence Report');
     expect(model.profile.metrics).toEqual([]);
     expect(model.profile.identifiers[0]).toEqual({ label: 'CCN', value: '390111' });
-    expect(reportFileName(model)).toBe('CareMetric-Erie-Manor-2026-10-01');
+    expect(reportFileName(model)).toBe('CareMetric-Intel-Erie-Manor-2026-10-01');
   });
 });
 
@@ -180,7 +184,7 @@ describe('ComprehensiveReport', () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => {
       expect(document.body.classList.contains('cm-printing-report')).toBe(true);
       expect(document.querySelector('.cm-print-root .cm-report-doc')).not.toBeNull();
-      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric AI');
+      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric Intel');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Data Sources');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Example Holdings');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Discharge function score');

@@ -17,6 +17,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router-dom';
 import Landing from '../src/pages/Landing';
 import { CAREMETRIC_LOGO_URL } from '../src/lib/branding';
+import Login from '../src/pages/Login';
+import AuthShell from '../src/components/auth/AuthShell';
+import { DataUsePage, PrivacyPage, TermsPage } from '../src/components/auth/LegalPages';
+import SessionUnavailable from '../src/components/auth/SessionUnavailable';
 
 afterEach(cleanup);
 
@@ -172,7 +176,8 @@ describe('Landing Page', () => {
       expect(screen.getByRole('heading', { name: /Your demo request is ready/i })).toBeInTheDocument();
     });
     const email = new URL(screen.getByRole('link', { name: /Email Demo Request/ }).href);
-    expect(email.pathname).toBe('sales@caremetric.ai');
+    expect(email.pathname).toBe('sales@caremetricintel.com');
+    expect(email.searchParams.get('subject')).toBe('CareMetric Intel demo request');
     expect(email.searchParams.get('body')).toContain('Dr. Jane Smith');
     expect(email.searchParams.get('body')).toContain('jane@hospicecare.org');
     expect(screen.getByText(/Your details have not been submitted yet/)).toBeInTheDocument();
@@ -199,9 +204,38 @@ describe('Landing Page', () => {
   it('renders footer with contact email and public healthcare data disclaimer', () => {
     renderLanding();
 
-    expect(screen.getByText(/support@caremetric\.ai/i)).toBeInTheDocument();
-    expect(screen.getByText(/sales@caremetric\.ai/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'support@caremetricintel.com' })).toHaveAttribute('href', 'mailto:support@caremetricintel.com');
+    expect(screen.getByRole('link', { name: 'sales@caremetricintel.com' })).toHaveAttribute('href', 'mailto:sales@caremetricintel.com');
+    expect(screen.getByRole('link', { name: 'caremetricintel.com' })).toHaveAttribute('href', 'https://caremetricintel.com/');
+    expect(screen.getByText('CareMetric Intel by CareMetric Healthcare Advisors')).toBeInTheDocument();
+    expect(screen.getByText(/© .*CareMetric Healthcare Advisors/)).toBeInTheDocument();
     expect(screen.getByText(/Data & Compliance Disclaimer:/i)).toBeInTheDocument();
     expect(screen.getByText(/CareMetric Intel aggregates and synthesizes public data releases/i)).toBeInTheDocument();
+  });
+
+  describe('Public account and legal branding', () => {
+    it.each([
+      ['login', Login],
+      ['signed-out screens', AuthShell],
+      ['terms', TermsPage],
+      ['privacy', PrivacyPage],
+      ['data use', DataUsePage],
+    ])('preserves the actual logo and company attribution on %s', (_, Page) => {
+      render(<MemoryRouter><Page /></MemoryRouter>);
+      expect(screen.getByRole('img', { name: 'CareMetric Healthcare Advisors' })).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+      expect(screen.getByRole('link', { name: 'caremetricintel.com' })).toHaveAttribute('href', 'https://caremetricintel.com/');
+      expect(document.body.textContent).toContain('CareMetric Intel');
+      expect(document.body.textContent).toContain('CareMetric Healthcare Advisors');
+      expect(document.body.textContent).not.toMatch(/CareMetric\s+AI|caremetric\.(ai|com)\b/);
+    });
+
+    it('provides branded, actionable language when a session cannot be checked', () => {
+      const retry = vi.fn();
+      render(<SessionUnavailable onRetry={retry} />);
+      expect(screen.getByRole('alert')).toHaveTextContent('CareMetric Intel is temporarily unavailable');
+      expect(screen.getByRole('alert')).toHaveTextContent('Please try again in a moment.');
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      expect(retry).toHaveBeenCalledOnce();
+    });
   });
 });

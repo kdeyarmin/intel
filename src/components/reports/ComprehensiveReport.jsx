@@ -71,7 +71,7 @@ function KeyValues({ items }) {
 
 function BlockBody({ block }) {
   const empty = block.kind === 'table' ? block.rows.length === 0 : block.items.length === 0;
-  if (empty) return <p className="text-xs text-slate-400 italic">{block.emptyText || 'No data on file.'}</p>;
+  if (empty) return <p className="text-xs text-slate-400 italic">{block.emptyText || 'No records are available for this section.'}</p>;
   return (
     <>
       {block.kind === 'table' ? (
@@ -224,7 +224,7 @@ function ReportContent({ npi, providerId, facilityName }) {
       if (!quota.ok) { toast.error(quota.message); return; }
       setPrinting(true);
     } catch {
-      toast.error("Couldn't prepare the print export. Please try again.");
+      toast.error('Unable to prepare the report for printing. Please try again.');
     } finally {
       setBusy(null);
     }
@@ -238,7 +238,7 @@ function ReportContent({ npi, providerId, facilityName }) {
       const { downloadReportPdf } = await import('./reportPdf');
       await downloadReportPdf(model);
     } catch {
-      toast.error("Couldn't build the PDF. Try Print and save as PDF instead.");
+      toast.error('Unable to generate the PDF. Please try again, or use Print to save a PDF.');
     } finally {
       setBusy(null);
     }
@@ -272,10 +272,10 @@ function ReportContent({ npi, providerId, facilityName }) {
     return (
       <Card className="bg-slate-800/50 border-slate-700/50">
         <CardContent className="py-6 text-center">
-          <p className="text-sm text-slate-400">Unable to generate report</p>
-          {typeof error?.message === 'string' && error.message && <p className="mt-1 text-xs text-slate-400">{error.message}</p>}
+          <p className="text-sm text-slate-400">Unable to generate the report.</p>
+          <p className="mt-1 text-xs text-slate-400">Please return to the section selection and try again.</p>
           <Button variant="ghost" size="sm" onClick={() => setRequested(null)} className="mt-2 text-xs text-cyan-400">
-            Close
+            Change sections
           </Button>
         </CardContent>
       </Card>
@@ -326,9 +326,9 @@ function ReportContent({ npi, providerId, facilityName }) {
           <div className="flex items-center gap-2.5">
             <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="w-32 h-10 object-contain bg-white rounded-md" />
             <div>
-              <p className="text-sm font-bold text-white leading-tight">CareMetric <span className="text-cyan-400">AI</span></p>
-              <p className="text-[10px] text-slate-400">Healthcare Provider Intelligence</p>
-              <a href="https://www.CareMetric.ai" className="text-[10px] text-cyan-400 hover:underline">www.CareMetric.ai</a>
+              <p className="text-sm font-bold text-white leading-tight">CareMetric <span className="text-cyan-400">Intel</span></p>
+              <p className="text-[10px] text-slate-400">CareMetric Healthcare Advisors</p>
+              <a href="https://caremetricintel.com/" className="text-[10px] text-cyan-400 hover:underline">caremetricintel.com</a>
             </div>
           </div>
           <div className="text-right">

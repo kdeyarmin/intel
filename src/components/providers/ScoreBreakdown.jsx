@@ -26,7 +26,7 @@ export default function ScoreBreakdown({ score, breakdown, reasons }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>CareMetric Fit Score</CardTitle>
+        <CardTitle>CareMetric Intel Fit Score</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {score != null && (

@@ -1,5 +1,6 @@
 import { createPageUrl } from '@/utils';
 import { exportAttribution } from '@/components/exports/exportUtils';
+import { isIdentifierField } from '@/components/exports/exportFormatting';
 
 /**
  * The parts of a comprehensive report a user can choose. Keys mirror
@@ -19,7 +20,7 @@ export const REPORT_SECTIONS = [
   { key: 'ownership', label: 'Ownership details', description: 'Reported owners, ownership percentages, types and roles where linked by CCN, NPI or enrollment', needsNpi: false, source: 'CMS All Owners and Nursing Home Ownership files' },
   { key: 'costReports', label: 'Cost report summaries', description: 'Latest reported revenue, expenses, beds and visits; only available metrics are shown', needsNpi: false, source: 'CMS Hospital, Home Health Agency and SNF Cost Reports' },
   { key: 'additionalQuality', label: 'Additional quality measures', description: 'A curated snapshot of reported performance scores and quality measures beyond star ratings', needsNpi: false, source: 'CMS Value-Based Purchasing, SNF Quality Reporting, Home Health and Nursing Home quality files' },
-  { key: 'leadScore', label: 'Lead score', description: 'CareMetric lead score and its components', needsNpi: true },
+  { key: 'leadScore', label: 'Lead score', description: 'CareMetric Intel lead score and its components', needsNpi: true },
   { key: 'enrichments', label: 'Enrichments', description: 'Contact and profile enrichment records', needsNpi: true },
 ];
 
@@ -32,8 +33,8 @@ const SECTION_SOURCES = {
   affiliations: 'CMS facility affiliations and NPPES',
   facilities: 'CMS Provider of Services and Care Compare facility files',
   quality: 'CMS Care Compare star ratings',
-  leadScore: 'CareMetric lead scoring',
-  enrichments: 'CareMetric enrichment records',
+  leadScore: 'CareMetric Intel lead scoring',
+  enrichments: 'CareMetric Intel enrichment records',
 };
 
 /** The sections that apply to a report about this NPI and/or CCN. */
@@ -205,7 +206,7 @@ function sectionBlocks(key, report) {
         dataset: { text: humanize(c.dataset) },
         period: { text: c.period || text(c.dataYear) },
         metric: { text: text(c.metric) },
-        value: { text: c.format === 'money' ? fmtMoney(c.value) : fmtInt(c.value) },
+        value: { text: isIdentifierField({ label: c.metric }) ? text(c.value) : c.format === 'money' ? fmtMoney(c.value) : fmtInt(c.value) },
       }));
       return [{
         ...table('costReports', 'Cost Report Summaries', [col('dataset', 'Dataset'), col('period', 'Reporting period'), col('metric', 'Metric'), col('value', 'Reported value', 'right')], rows, 'No linked cost report metrics on file.'),
@@ -249,7 +250,7 @@ function sectionBlocks(key, report) {
         confidence: { text: text(e.confidence) },
         status: { text: text(e.status) },
       }));
-      return [table('enrichments', 'Enrichment Records', [col('field', 'Field'), col('value', 'Value'), col('source', 'Source'), col('confidence', 'Confidence'), col('status', 'Status')], rows, 'No enrichment records.')];
+      return [table('enrichments', 'Enrichment Records', [col('field', 'Field'), col('value', 'Value'), col('source', 'Source'), col('confidence', 'Confidence'), col('status', 'Status')], rows, 'No enrichment records are available for this provider.')];
     }
     default:
       return [];
@@ -330,5 +331,5 @@ export function buildReportModel(report, selected, { npi, providerId, facilityNa
 /** A safe file name for the report download. */
 export function reportFileName(model) {
   const base = String(model?.title || 'report').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'report';
-  return `CareMetric-${base}-${(model?.generatedAt || new Date()).toISOString().slice(0, 10)}`;
+  return `CareMetric-Intel-${base}-${(model?.generatedAt || new Date()).toISOString().slice(0, 10)}`;
 }

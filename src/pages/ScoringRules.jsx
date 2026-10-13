@@ -136,7 +136,7 @@ export default function ScoringRules() {
       <PageTabs current="ScoringRules" />
       <PageHeader
         title="Scoring Configuration"
-        subtitle="CareMetric Referral Propensity Score (0-100) — configure weights for each factor"
+        subtitle="CareMetric Intel Referral Propensity Score (0–100) — configure factor weights"
         icon={Calculator}
         breadcrumbs={[{ label: 'Admin', page: 'DataCenter' }, { label: 'Scoring Rules' }]}
       />

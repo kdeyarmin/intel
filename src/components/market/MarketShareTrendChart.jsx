@@ -1,9 +1,11 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts';
 import { fmtCount } from '@/lib/marketFormat';
+import { recordRows } from './marketData';
 
 /** Medicare beneficiaries served and providers in a market by year (one post-acute setting). */
 export default function MarketShareTrendChart({ trend = [], label }) {
+  trend = recordRows(trend);
   if (!trend || trend.length < 2) return null;
   return (
     <div>

@@ -13,6 +13,7 @@ import { SPECIALTY_GROUPS } from '@/lib/specialtyGroups';
 import { fmtCount, fmtRate, fmtShare, referralListNote } from '@/lib/marketFormat';
 import AddToLeadListDialog from '../leadlists/AddToLeadListDialog';
 import MarketFreshness from './MarketFreshness';
+import { recordRows } from './marketData';
 
 const SETTINGS = [
   { value: 'all', label: 'Any' },
@@ -46,7 +47,7 @@ export default function ReferralSourcesTable({ state, countyFips, countyName, in
     enabled: !!state,
     staleTime: 5 * 60 * 1000,
   });
-  const rows = data?.rows || [];
+  const rows = recordRows(data?.rows);
   const listNote = referralListNote({ rowCount: rows.length, truncated: !!data?.truncated, searched: data?.searched, specialty: group !== 'all' });
 
   return (

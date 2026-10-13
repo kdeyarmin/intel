@@ -25,6 +25,13 @@ const counties = [
 ];
 
 describe("county growth rows", () => {
+  it("ignores malformed collections and non-finite measurements rather than inventing counts", () => {
+    expect(countyGrowthRows({} as any, "hha")).toEqual([]);
+    expect(countyGrowthRows([null] as any, "hha")).toEqual([]);
+    const [row] = countyGrowthRows([{ fips: "42003", name: "County", volume: { hha_users: Infinity }, values: { hha_providers: false, benes: " " } }], "hha");
+    expect(row).toMatchObject({ users: null, billing: null, benes: null, usersPerProvider: null });
+    expect(leaderFacts({} as any)).toMatchObject({ top: null, listed: 0, listedShare: null });
+  });
   it("ranks by published users and only flags demand that outpaced billing providers", () => {
     const rows = countyGrowthRows(counties, "hha");
     expect(rows.find((r) => r.fips === "42019")).toMatchObject({
@@ -57,6 +64,9 @@ describe("named reports", () => {
     expect(REPORT_CATALOG.filter((r) => r.purpose === "Expansion").map((r) => r.setting)).toEqual(["hha", "hospice", "snf"]);
     expect(REPORT_CATALOG.filter((r) => r.purpose === "Acquisition").map((r) => r.audience)).toEqual(["Home health", "Hospice", "Nursing homes"]);
     expect(REPORT_CATALOG.find((r) => r.id === "hospital-partners")!.needs).toBe("county");
+    expect(REPORT_CATALOG.find((r) => r.id === "expand-hha")!.title).toBe("Home Health Market Expansion Analysis");
+    expect(REPORT_CATALOG.find((r) => r.id === "hospital-partners")!.title).toBe("Hospital Discharge Sources");
+    expect(REPORT_CATALOG.find((r) => r.id === "calls-hha")!.reason).toMatch(/not confirmed referrals/);
     const facts = leaderFacts([{ share: 0.2, name: "A" }, { share: 0.1, name: "B" }, { share: null, name: "C" }]);
     expect(facts.top!.name).toBe("A");
     expect(facts.listedShare).toBeCloseTo(0.3);

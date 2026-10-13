@@ -70,7 +70,7 @@ def split_nppes_csv(file_path, chunk_size=500000):
         chunk.to_csv(output_file, index=False)
         file_count += 1
         
-    print("Done! You can now upload these smaller files to CareMetric.")
+    print("Done. You can now upload these smaller files to CareMetric Intel.")
 
 # Usage: Place this script in the same folder as your NPPES CSV
 # Update the filename below to match the downloaded CSV

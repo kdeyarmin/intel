@@ -1,10 +1,11 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { fmtCount, fmtMoney, fmtPct } from '@/lib/marketFormat';
+import { finiteNumber, isRecord, recordRows } from './marketData';
 
 function money(n) {
-  const v = Number(n);
-  return Number.isFinite(v) ? fmtMoney(v) : '—';
+  const v = finiteNumber(n);
+  return v != null ? fmtMoney(v) : '—';
 }
 
 const CARDIAC = {
@@ -73,21 +74,25 @@ function showSection(line, id) {
 
 /** Medicare Advantage plans, chronic-condition prevalence, and the drugs a county's clinicians write. */
 export function CountyReferenceCard({ reference, line = null }) {
-  if (!reference) return null;
-  const plans = showSection(line, 'plans') ? (reference.ma_plans || []) : [];
-  const stars = showSection(line, 'plans') ? (reference.ma_stars || []) : [];
-  const places = showSection(line, 'places') ? (reference.places || []) : [];
-  const drugs = showSection(line, 'drugs') ? (reference.drugs || []) : [];
-  const services = showSection(line, 'services') ? (reference.services || []) : [];
-  const shortage = showSection(line, 'shortage') ? (reference.shortage || []) : [];
-  const phc4 = showSection(line, 'phc4') ? reference.phc4 : null;
+  if (!isRecord(reference)) return null;
+  const plans = showSection(line, 'plans') ? recordRows(reference.ma_plans) : [];
+  const stars = showSection(line, 'plans') ? recordRows(reference.ma_stars) : [];
+  const places = showSection(line, 'places') ? recordRows(reference.places) : [];
+  const drugs = showSection(line, 'drugs') ? recordRows(reference.drugs) : [];
+  const services = showSection(line, 'services') ? recordRows(reference.services) : [];
+  const shortage = showSection(line, 'shortage') ? recordRows(reference.shortage) : [];
+  const phc4 = showSection(line, 'phc4') && isRecord(reference.phc4) ? {
+    ...reference.phc4,
+    payers: recordRows(reference.phc4.payers), ages: recordRows(reference.phc4.ages), conditions: recordRows(reference.phc4.conditions),
+    cardiac: recordRows(reference.phc4.cardiac), cancer: recordRows(reference.phc4.cancer),
+  } : null;
   const hasPhc4 = phc4 && (phc4.payers?.length || phc4.conditions?.length || phc4.cardiac?.length || phc4.cancer?.length);
-  const medicaid = showSection(line, 'medicaid') ? (reference.medicaid || []) : [];
-  const marketplace = showSection(line, 'marketplace') ? (reference.marketplace || []) : [];
-  const rates = showSection(line, 'rates') ? (reference.aca_rates || []) : [];
-  const mlr = showSection(line, 'mlr') ? (reference.mlr || []) : [];
-  const oep = showSection(line, 'oep') ? reference.oep : null;
-  const dme = showSection(line, 'dme') ? reference.dme : null;
+  const medicaid = showSection(line, 'medicaid') ? recordRows(reference.medicaid) : [];
+  const marketplace = showSection(line, 'marketplace') ? recordRows(reference.marketplace) : [];
+  const rates = showSection(line, 'rates') ? recordRows(reference.aca_rates) : [];
+  const mlr = showSection(line, 'mlr') ? recordRows(reference.mlr) : [];
+  const oep = showSection(line, 'oep') && isRecord(reference.oep) ? reference.oep : null;
+  const dme = showSection(line, 'dme') && isRecord(reference.dme) ? reference.dme : null;
   const hasPayers = medicaid.length || marketplace.length || rates.length || mlr.length || oep;
   if (!plans.length && !stars.length && !places.length && !drugs.length && !services.length && !shortage.length && !hasPhc4 && !hasPayers && !dme) return null;
   const show = (id) => showSection(line, id);
@@ -373,8 +378,8 @@ function DmeLines({ summary, lines, supplier, supplied }) {
 }
 
 function DmeCountyCard({ dme }) {
-  const products = dme.products || [];
-  const locations = dme.locations || [];
+  const products = recordRows(dme.products);
+  const locations = recordRows(dme.locations);
   return (
     <Card className="bg-slate-800/50 border-slate-700/50">
       <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-200">Durable medical equipment, {dme.year}</CardTitle></CardHeader>

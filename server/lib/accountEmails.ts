@@ -2,10 +2,11 @@
 // appBaseUrl in ./accounts), never the request's Host header.
 import type { MailMessage } from "./mailer";
 
-const PRODUCT = "CareMetric AI";
+const PRODUCT = "CareMetric Intel";
+const COMPANY = "CareMetric Healthcare Advisors";
 
 function lines(...parts: Array<string | false | null | undefined>): string {
-  return parts.filter((p) => p !== false && p != null).join("\n");
+  return [...parts.filter((p) => p !== false && p != null), "", `${PRODUCT} by ${COMPANY}`, "https://caremetricintel.com/", "Support: support@caremetricintel.com"].join("\n");
 }
 
 export function signupPendingEmail(to: string, newUser: { email: string; full_name: string | null; organization?: string | null }, base: string): MailMessage {
@@ -13,6 +14,7 @@ export function signupPendingEmail(to: string, newUser: { email: string; full_na
   const org = newUser.organization ? ` for ${newUser.organization}` : "";
   return {
     to,
+    fromName: PRODUCT,
     subject: `${PRODUCT}: ${newUser.email} is waiting for approval`,
     text: lines(
       `${who} created a ${PRODUCT} account${org} and is waiting for approval.`,
@@ -30,6 +32,7 @@ export function duplicateSubscriptionEmail(to: string, org: { id: number; name: 
   const name = org.name.replace(/\s+/g, " ").trim().slice(0, 80) || `organization #${org.id}`;
   return {
     to,
+    fromName: PRODUCT,
     subject: `${PRODUCT}: ${name} is paying for two subscriptions`,
     text: lines(
       `${name} (organization #${org.id}) completed a second Stripe checkout while its first subscription was still active, so both are billing.`,
@@ -46,6 +49,7 @@ export function duplicateSubscriptionEmail(to: string, org: { id: number; name: 
 export function approvedEmail(to: string, base: string): MailMessage {
   return {
     to,
+    fromName: PRODUCT,
     subject: `Your ${PRODUCT} account is approved`,
     text: lines(`An administrator approved your ${PRODUCT} account.`, "", `Sign in: ${base}/login`),
   };
@@ -54,6 +58,7 @@ export function approvedEmail(to: string, base: string): MailMessage {
 export function resetEmail(to: string, link: string): MailMessage {
   return {
     to,
+    fromName: PRODUCT,
     subject: `Reset your ${PRODUCT} password`,
     text: lines(
       `Someone asked to reset the password for ${to}.`,
@@ -69,6 +74,7 @@ export function resetEmail(to: string, link: string): MailMessage {
 export function inviteEmail(to: string, link: string, inviter: string | null): MailMessage {
   return {
     to,
+    fromName: PRODUCT,
     subject: `You're invited to ${PRODUCT}`,
     text: lines(
       `${inviter || "An administrator"} invited you to ${PRODUCT}.`,

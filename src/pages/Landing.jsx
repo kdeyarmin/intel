@@ -65,7 +65,7 @@ export default function Landing() {
     e.preventDefault();
     setDemoSubmitted(true);
   };
-  const demoEmail = `mailto:sales@caremetric.ai?subject=${encodeURIComponent('CareMetric Intel demo request')}&body=${encodeURIComponent(
+  const demoEmail = `mailto:sales@caremetricintel.com?subject=${encodeURIComponent('CareMetric Intel demo request')}&body=${encodeURIComponent(
     `Name: ${demoForm.fullName}\nEmail: ${demoForm.workEmail}\nOrganization: ${demoForm.organization}\nCare setting: ${demoForm.businessLine}\nTerritory: ${demoForm.territory}\nNotes: ${demoForm.notes}`,
   )}`;
 
@@ -1236,8 +1236,10 @@ export default function Landing() {
                 Precision provider intelligence, Medicare certification tracking, and referral network analytics for home health, hospice, and post-acute care teams.
               </p>
               <div className="pt-2 text-xs text-slate-400 space-y-1">
-                <p>Support: <a href="mailto:support@caremetric.ai" className="text-cyan-400 hover:underline">support@caremetric.ai</a></p>
-                <p>Sales: <a href="mailto:sales@caremetric.ai" className="text-cyan-400 hover:underline">sales@caremetric.ai</a></p>
+                <p>CareMetric Intel by CareMetric Healthcare Advisors</p>
+                <p>Website: <a href="https://caremetricintel.com/" className="text-cyan-400 hover:underline">caremetricintel.com</a></p>
+                <p>Support: <a href="mailto:support@caremetricintel.com" className="text-cyan-400 hover:underline">support@caremetricintel.com</a></p>
+                <p>Sales: <a href="mailto:sales@caremetricintel.com" className="text-cyan-400 hover:underline">sales@caremetricintel.com</a></p>
               </div>
             </div>
 
@@ -1284,7 +1286,7 @@ export default function Landing() {
               <strong>Data & Compliance Disclaimer:</strong> CareMetric Intel aggregates and synthesizes public data releases published by the Centers for Medicare & Medicaid Services (CMS), the National Plan and Provider Enumeration System (NPPES), and the U.S. Census Bureau under public record provisions and the Freedom of Information Act (FOIA). CareMetric does not store or process Protected Health Information (PHI). All data points represent public provider practice summaries, enrollment statuses, and historical utilization benchmarks.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 text-[11px] text-slate-400">
-              <p>© {new Date().getFullYear()} CareMetric Intel. All rights reserved.</p>
+              <p>© {new Date().getFullYear()} CareMetric Healthcare Advisors. All rights reserved.</p>
               <div className="flex items-center gap-4">
                 <Link to="/terms" className="hover:underline">Terms</Link>
                 <Link to="/privacy" className="hover:underline">Privacy</Link>

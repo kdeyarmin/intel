@@ -26,29 +26,33 @@ export default function ExportDialog({ data, fields, fileName, title, dateField,
 
   const handleExport = async () => {
     setExporting(true);
-    // Exports count against the organization's daily quota; a 429 means it is used up.
-    const quota = await countExport();
-    if (!quota.ok) {
+    try {
+      const rows = dateField ? applyDateRangeFilter(data, dateField, dateRange) : data;
+      if (rows.length === 0) {
+        toast.error('No records match the selected export filters. Please adjust the filters and try again.');
+        return;
+      }
+      // Exports count against the organization's daily quota; a 429 means it is used up.
+      const quota = await countExport();
+      if (!quota.ok) {
+        toast.error(quota.message);
+        return;
+      }
+      const activeFields = fields.filter(f => selectedFields.includes(f.key));
+      const picked = pickFields(rows, activeFields);
+      const ts = new Date().toISOString().split('T')[0];
+      const name = `${fileName}-${ts}`;
+
+      if (format === 'csv') exportCSV(picked, activeFields, name);
+      else if (format === 'excel') exportExcel(picked, activeFields, name);
+      else if (format === 'json') exportJSON(picked, activeFields, name);
+      else if (format === 'pdf') await exportPDF(picked, activeFields, name, title);
+      setOpen(false);
+    } catch {
+      toast.error('Unable to export the selected records. Please try again.');
+    } finally {
       setExporting(false);
-      toast.error(quota.message);
-      return;
     }
-    let rows = data;
-    if (dateField) {
-      rows = applyDateRangeFilter(rows, dateField, dateRange);
-    }
-    const activeFields = fields.filter(f => selectedFields.includes(f.key));
-    const picked = pickFields(rows, activeFields);
-    const ts = new Date().toISOString().split('T')[0];
-    const name = `${fileName}-${ts}`;
-
-    if (format === 'csv') exportCSV(picked, activeFields, name);
-    else if (format === 'excel') exportExcel(picked, activeFields, name);
-    else if (format === 'json') exportJSON(picked, activeFields, name);
-    else if (format === 'pdf') await exportPDF(picked, activeFields, name, title);
-
-    setExporting(false);
-    setOpen(false);
   };
 
   return (
@@ -103,7 +107,7 @@ export default function ExportDialog({ data, fields, fileName, title, dateField,
                 {showSchedule ? 'Hide Schedule' : 'Schedule'}
               </Button>
             </div>
-            <Button onClick={handleExport} disabled={selectedFields.length === 0 || exporting} className="bg-cyan-600 hover:bg-cyan-700">
+            <Button onClick={handleExport} disabled={selectedFields.length === 0 || data.length === 0 || exporting} className="bg-cyan-700 hover:bg-cyan-800 text-white">
               <Download className="w-4 h-4 mr-2" /> {exporting ? 'Exporting...' : `Export ${format.toUpperCase()}`}
             </Button>
           </div>

@@ -9,9 +9,9 @@ export default function WhyThisProvider({ score, utilization, referrals, orderRe
 
   // Score-based
   if (score?.score >= 80) {
-    reasons.push('Exceptional CareMetric Fit Score indicates strong alignment with target profile');
+    reasons.push('Exceptional CareMetric Intel Fit Score indicates strong alignment with target profile');
   } else if (score?.score >= 60) {
-    reasons.push('Good CareMetric Fit Score suggests potential partnership opportunity');
+    reasons.push('Good CareMetric Intel Fit Score suggests potential partnership opportunity');
   }
 
   // Volume-based

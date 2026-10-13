@@ -5,10 +5,11 @@ import { Hospital } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { fmtCount, fmtPct, fmtShare } from '@/lib/marketFormat';
 import MarketFreshness from './MarketFreshness';
+import { recordRows } from './marketData';
 
 /** The hospitals whose Medicare inpatients live in a county, with each one's post-discharge mix. */
 export default function HospitalSourcesTable({ sources, rollups, countyName }) {
-  const rows = sources?.rows || [];
+  const rows = recordRows(sources?.rows);
   const max = Math.max(1, ...rows.map((r) => r.share ?? 0));
   return (
     <Card className="bg-slate-800/50 border-slate-700/50">
@@ -22,7 +23,7 @@ export default function HospitalSourcesTable({ sources, rollups, countyName }) {
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <p className="text-sm text-slate-400">No Hospital Service Area data for this county yet.</p>
+          <p className="text-sm text-slate-400">No Hospital Service Area data for this county yet. Try another county or ask your administrator to check source imports and market rollups.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">

@@ -42,7 +42,7 @@ export default function ScheduleExportForm({ dataset, format, selectedColumns, f
       toast.success('Scheduled export created');
       onClose();
     },
-    onError: (err) => toast.error(`Failed to create export: ${err.message}`),
+    onError: () => toast.error('Unable to create the export schedule. Please try again.'),
   });
 
   const handleSubmit = () => {

@@ -4,8 +4,8 @@ export default function SessionUnavailable({ message, onRetry }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-slate-900 p-4">
       <div role="alert" className="max-w-sm rounded-lg border border-amber-500/30 bg-amber-900/30 p-6 text-center">
-        <p className="font-semibold text-amber-400">Can&apos;t reach CareMetric AI right now</p>
-        <p className="mt-2 text-sm text-slate-300">{message}</p>
+        <p className="font-semibold text-amber-400">CareMetric Intel is temporarily unavailable</p>
+        <p className="mt-2 text-sm text-slate-300">{message || 'We could not verify your session. Please try again in a moment.'}</p>
         <button
           type="button"
           onClick={onRetry}

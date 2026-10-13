@@ -49,7 +49,7 @@ export default function Dashboard() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6 w-full overflow-hidden">
       <PageHeader
         title="Dashboard"
-        subtitle={profile ? profile.label : 'CareMetric Provider Intelligence — all your data at a glance'}
+        subtitle={profile ? profile.label : 'CareMetric Intel — provider intelligence and data overview'}
         icon={LayoutDashboard}
         breadcrumbs={[{ label: 'Dashboard' }]}
       />

@@ -130,30 +130,30 @@ describe("report email", () => {
 describe("partitionRecipients", () => {
   it("allows app users and allowed domains only", () => {
     const { allowed, blocked } = partitionRecipients(
-      ["Admin@Example.com", "boss@caremetric.ai", "stranger@gmail.com", "admin@example.com", "nope"],
+      ["Admin@Example.com", "boss@caremetricintel.com", "stranger@gmail.com", "admin@example.com", "nope"],
       new Set(["admin@example.com"]),
-      ["caremetric.ai"],
+      ["caremetricintel.com"],
     );
-    expect(allowed).toEqual(["admin@example.com", "boss@caremetric.ai"]);
+    expect(allowed).toEqual(["admin@example.com", "boss@caremetricintel.com"]);
     expect(blocked).toEqual(["stranger@gmail.com"]);
   });
 
   it("blocks a pending or disabled account even on an allowed domain", () => {
     const { allowed, blocked } = partitionRecipients(
-      ["gone@caremetric.ai", "new@caremetric.ai"],
+      ["gone@caremetricintel.com", "new@caremetricintel.com"],
       new Set(),
-      ["caremetric.ai"],
-      new Set(["gone@caremetric.ai"]),
+      ["caremetricintel.com"],
+      new Set(["gone@caremetricintel.com"]),
     );
-    expect(allowed).toEqual(["new@caremetric.ai"]);
-    expect(blocked).toEqual(["gone@caremetric.ai"]);
+    expect(allowed).toEqual(["new@caremetricintel.com"]);
+    expect(blocked).toEqual(["gone@caremetricintel.com"]);
   });
 
   it("returns allowed addresses beyond the cap instead of dropping them", () => {
-    const many = Array.from({ length: 27 }, (_, i) => `u${i}@caremetric.ai`);
-    const { allowed, overflow } = partitionRecipients(many, new Set(), ["caremetric.ai"]);
+    const many = Array.from({ length: 27 }, (_, i) => `u${i}@caremetricintel.com`);
+    const { allowed, overflow } = partitionRecipients(many, new Set(), ["caremetricintel.com"]);
     expect(allowed).toHaveLength(25);
-    expect(overflow).toEqual(["u25@caremetric.ai", "u26@caremetric.ai"]);
+    expect(overflow).toEqual(["u25@caremetricintel.com", "u26@caremetricintel.com"]);
   });
 });
 

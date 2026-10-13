@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useSearchParams, useNavigate, Navigate, Link } from 'react-router-dom';
 import { safeReturnUrl } from '@/lib/returnUrl';
+import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
 
 export default function Login() {
   const { login, signup, isAuthenticated, isLoadingAuth, user, authError } = useAuth();
@@ -36,7 +37,7 @@ export default function Login() {
       }
       navigate(safeReturnUrl(searchParams.get('returnUrl')), { replace: true });
     } catch (err) {
-      setError(err.message || 'Authentication failed');
+      setError(err.message || 'Unable to sign in. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -53,7 +54,8 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/landing" className="inline-block hover:opacity-90 transition-opacity">
-            <h1 className="text-3xl font-bold text-white mb-2">CareMetric AI</h1>
+            <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="w-44 h-16 mx-auto mb-4 rounded-lg object-contain bg-white" />
+            <h1 className="text-3xl font-bold text-white mb-2">CareMetric Intel</h1>
           </Link>
           <p className="text-slate-400">Healthcare Provider Intelligence Platform</p>
           <div className="mt-2">
@@ -87,7 +89,7 @@ export default function Login() {
           )}
 
           {error && (
-            <div className="mb-4 p-3 bg-red-900/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+            <div className="mb-4 p-3 bg-red-900/10 border border-red-500/20 rounded-lg text-red-400 text-sm" role="alert">
               {error}
             </div>
           )}
@@ -213,6 +215,10 @@ export default function Login() {
           <Link to="/privacy" className="hover:text-slate-200">Privacy</Link>
           <Link to="/data-use" className="hover:text-slate-200">Data sources</Link>
         </nav>
+        <p className="mt-4 text-center text-xs text-slate-400">
+          CareMetric Intel by CareMetric Healthcare Advisors ·{' '}
+          <a href="https://caremetricintel.com/" className="text-cyan-400 hover:underline">caremetricintel.com</a>
+        </p>
       </div>
     </div>
   );

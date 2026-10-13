@@ -1,11 +1,12 @@
 import React from 'react';
 import { Clock } from 'lucide-react';
 import { describeVintages } from '@/lib/marketFormat';
+import { recordRows } from './marketData';
 
 /** When the rollups behind a market view were computed, and which data vintages they used. */
 export default function MarketFreshness({ rollups, jobs = [], vintages = null }) {
-  const states = jobs.map((j) => rollups?.[j]).filter(Boolean);
-  const refreshed = states.map((s) => s.refreshed_at).filter(Boolean).sort().pop();
+  const states = recordRows((Array.isArray(jobs) ? jobs : []).map((j) => rollups?.[j]));
+  const refreshed = states.map((s) => s.refreshed_at).filter((date) => typeof date === 'string' && Number.isFinite(Date.parse(date))).sort().pop();
   const failed = states.find((s) => s.status === 'failed');
   const busy = states.some((s) => s.status === 'running' || s.status === 'queued');
   const vintage = describeVintages(vintages);
@@ -20,7 +21,7 @@ export default function MarketFreshness({ rollups, jobs = [], vintages = null })
       <Clock className="w-3 h-3" aria-hidden="true" />
       {text}
       {vintage ? <span>{vintage}</span> : null}
-      {failed ? <span className="text-red-400">Last refresh failed{failed.error ? `: ${failed.error}` : ''}</span> : null}
+      {failed ? <span className="text-red-400">Last refresh failed{typeof failed.error === 'string' ? `: ${failed.error}` : ''}</span> : null}
     </p>
   );
 }

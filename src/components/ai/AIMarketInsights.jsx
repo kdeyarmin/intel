@@ -52,7 +52,7 @@ PROVIDER:
 - Type: ${provider?.entity_type}
 - Specialty: ${specialty}
 - Location: ${location?.city || ''}, ${location?.state || ''}
-- CareMetric Fit Score: ${score?.score || 'N/A'}/100
+- CareMetric Intel Fit Score: ${score?.score || 'N/A'}/100
 
 UTILIZATION DATA:
 - Latest beneficiaries: ${latestUtil?.total_medicare_beneficiaries || 0}

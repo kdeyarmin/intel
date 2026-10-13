@@ -38,7 +38,7 @@ export default function AccountDialog({ open, onOpenChange }) {
       reset();
       onOpenChange(false);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Unable to change your password. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -55,7 +55,7 @@ export default function AccountDialog({ open, onOpenChange }) {
     try {
       await logoutEverywhere();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Unable to sign out on every device. Please try again.');
     }
   };
 

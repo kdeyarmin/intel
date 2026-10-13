@@ -1,12 +1,14 @@
 import { jsPDF } from 'jspdf';
 import { base44 } from '@/api/base44Client';
 import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
+import { formatExportValue, isIdentifierField } from './exportFormatting';
 
-const CAREMETRIC_WEBSITE = 'www.CareMetric.ai';
+const CAREMETRIC_WEBSITE = 'caremetricintel.com';
+const CAREMETRIC_WEBSITE_URL = 'https://caremetricintel.com/';
 
 /** The source line every export carries (CMS asks that derived data not be presented as CMS data). */
 export function exportAttribution(date = new Date()) {
-  return `Source: CareMetric analytics derived from public CMS, NPPES and U.S. Census data, not CMS publications. Medicare figures are fee-for-service unless noted; counts under 11 are suppressed. Exported ${date.toISOString().slice(0, 10)}.`;
+  return `Source: CareMetric Intel analytics by CareMetric Healthcare Advisors, derived from public CMS, NPPES and U.S. Census data, not CMS publications. Medicare figures are fee-for-service unless noted; counts under 11 are suppressed. Exported ${date.toISOString().slice(0, 10)}.`;
 }
 
 /**
@@ -83,14 +85,15 @@ function addPDFHeader(doc, title, logoBase64) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('CareMetric AI', logoBase64 ? 36 : 14, 14);
+  doc.text('CareMetric Intel', logoBase64 ? 36 : 14, 14);
   doc.setFontSize(7);
   doc.setFont(undefined, 'normal');
-  doc.text('Provider Intel', logoBase64 ? 36 : 14, 20);
+  doc.text('CareMetric Healthcare Advisors', logoBase64 ? 36 : 14, 20);
   
   // Website right-aligned
   doc.setFontSize(7);
   doc.text(CAREMETRIC_WEBSITE, pageW - 14, 14, { align: 'right' });
+  doc.link(pageW - 14 - doc.getTextWidth(CAREMETRIC_WEBSITE), 10, doc.getTextWidth(CAREMETRIC_WEBSITE), 5, { url: CAREMETRIC_WEBSITE_URL });
   
   // Reset text color
   doc.setTextColor(0, 0, 0);
@@ -120,7 +123,7 @@ function addPDFFooter(doc, pageNum) {
   
   doc.setFontSize(6);
   doc.setTextColor(150);
-  doc.text(`CareMetric AI  •  ${CAREMETRIC_WEBSITE}  •  Confidential`, 14, pageH - 10);
+  doc.text(`CareMetric Intel  •  ${CAREMETRIC_WEBSITE}  •  Confidential`, 14, pageH - 10);
   doc.text(exportAttribution(), 14, pageH - 6, { maxWidth: pageW - 50 });
   doc.text(`Page ${pageNum}`, pageW - 14, pageH - 10, { align: 'right' });
   doc.setTextColor(0);
@@ -178,12 +181,14 @@ export function exportCSV(rows, fields, fileName, { notes = [] } = {}) {
  * Export rows to an Excel-compatible TSV file (.xls) for broad compatibility.
  */
 export function exportExcel(rows, fields, fileName) {
+  const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><table>';
-  html += '<tr>' + fields.map(f => `<th style="font-weight:bold;background:#e2e8f0">${f.label}</th>`).join('') + '</tr>';
+  html += '<tr>' + fields.map(f => `<th style="font-weight:bold;background:#e2e8f0">${escapeHTML(f.label)}</th>`).join('') + '</tr>';
   rows.forEach(row => {
-    html += '<tr>' + fields.map(f => `<td>${row[f.key] ?? ''}</td>`).join('') + '</tr>';
+    html += '<tr>' + fields.map(f => `<td${isIdentifierField(f) ? ' style="mso-number-format:\'\\@\';"' : ''}>${escapeHTML(row[f.key])}</td>`).join('') + '</tr>';
   });
   html += `<tr><td colspan="${fields.length}" style="color:#64748b;font-size:10px">${exportAttribution()}</td></tr>`;
+  html += `<tr><td colspan="${fields.length}"><a href="${CAREMETRIC_WEBSITE_URL}">${CAREMETRIC_WEBSITE}</a></td></tr>`;
   html += '</table></body></html>';
   downloadBlob(new Blob([html], { type: 'application/vnd.ms-excel' }), fileName + '.xls');
 }
@@ -231,7 +236,7 @@ export async function exportPDF(rows, fields, fileName, title) {
       y = 18;
     }
     fields.forEach((f, i) => {
-      const val = String(row[f.key] ?? '').substring(0, 22);
+      const val = formatExportValue(row[f.key], f).substring(0, 22);
       doc.text(val, 14 + i * colW, y);
     });
     y += 6;

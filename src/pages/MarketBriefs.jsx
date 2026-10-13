@@ -18,6 +18,8 @@ import { countExport } from '@/components/exports/exportUtils';
 import { toast } from 'sonner';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import MarketFreshness from '../components/market/MarketFreshness';
+import MarketDataState from '../components/market/MarketDataState';
+import { finiteNumber, isRecord, recordRows } from '../components/market/marketData';
 
 const URL_DEFAULTS = { report: '', state: 'PA', county: '', from: '', setting: 'hha', sort: 'users' };
 
@@ -43,7 +45,7 @@ function resolveReport(url) {
       id: 'county',
       purpose: from?.purpose || 'County',
       audience: from?.audience || 'County',
-      title: from ? `${from.audience} in this county` : 'County follow-up',
+      title: from ? `${from.audience} County Market Analysis` : 'County Market Analysis',
       needs: 'county',
       setting: from?.setting || 'hha',
       reason: 'Demand in this county, the hospitals discharging its residents, and the providers already serving it.',
@@ -76,8 +78,9 @@ function growthLead(state, setting, facts) {
 
 function acquireLead(state, spec, data) {
   const facts = leaderFacts(data?.rows || []);
-  if (!facts.top) return `${state} has no ${spec.audience.toLowerCase()} in the post-acute file yet.`;
+  if (!facts.top) return `No published ${spec.audience.toLowerCase()} records are available for ${state}. This does not mean there are no providers in the state.`;
   const top = facts.top;
+  if (finiteNumber(top.benes) == null) return `Provider records are available for ${state}, but Medicare beneficiary counts are unavailable. A volume ranking cannot be established from these records.`;
   const place = [top.city, top.state].filter(Boolean).join(', ');
   const parts = [`${top.name || top.ccn}${place ? ` (${place})` : ''} has the most Medicare beneficiaries among ${spec.audience.toLowerCase()} located in ${state}: ${fmtCount(top.benes)} (${fmtShare(top.share)} of beneficiaries served by providers located in the state).`];
   if (data.providers_in_market != null) parts.push(`${fmtCount(data.providers_in_market)} providers are ranked${data.data_year ? ` for ${data.data_year}` : ''}.`);
@@ -95,13 +98,13 @@ function Section({ title, children }) {
 }
 
 function Table({ headers, rows }) {
-  if (!rows.length) return <p className="text-xs text-slate-500">None on file.</p>;
+  if (!rows.length) return <MarketDataState title="No published records for this selection" />;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-left text-slate-500">
-            {headers.map((h) => <th key={h} className="py-1 pr-3 font-medium">{h}</th>)}
+          <tr className="text-left text-slate-400">
+            {headers.map((h, i) => <th key={`${h}-${i}`} scope="col" className="py-1 pr-3 font-medium">{h}</th>)}
           </tr>
         </thead>
         <tbody>
@@ -128,6 +131,7 @@ function sortGrowth(rows, key) {
 }
 
 function facilityLink(ccn, group, name) {
+  if (typeof ccn !== 'string' || !ccn) return <span>{typeof name === 'string' ? name : 'Provider identifier unavailable'}</span>;
   return <Link to={createPageUrl(`FacilityDetail?id=${encodeURIComponent(ccn)}&group=${group || 'hospital'}`)} className="text-cyan-400 hover:underline">{name || ccn}</Link>;
 }
 
@@ -141,45 +145,62 @@ export default function MarketBriefs() {
   const ready = !!url.state && !!url.county;
   const purposes = [...new Set(catalog.map((r) => r.purpose))];
 
-  const { data: counties } = useQuery({
+  const { data: counties, isLoading: countiesLoading, isError: countiesError, refetch: retryCounties } = useQuery({
     queryKey: ['geoCounties', url.state],
     queryFn: () => invokeOrThrow('getGeoCounties', { state: url.state }),
     enabled: !!url.state && (!spec || spec.needs === 'county'),
     staleTime: 60 * 60 * 1000,
   });
 
-  const { data: layer, isLoading: layerLoading, isError: layerError, error: layerErr } = useQuery({
+  const { data: layerRaw, isLoading: layerLoading, isError: layerError, refetch: retryLayer } = useQuery({
     queryKey: ['countyMarketLayer', url.state, 'all'],
     queryFn: () => invokeOrThrow('getCountyMarketLayer', { state: url.state, all: true }),
     enabled: !!spec && spec.id.startsWith('expand') && !!url.state,
     staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 
-  const { data: leaders, isLoading: leadersLoading, isError: leadersError, error: leadersErr } = useQuery({
+  const { data: leadersRaw, isLoading: leadersLoading, isError: leadersError, refetch: retryLeaders } = useQuery({
     queryKey: ['stateMarketLeaders', url.state, settingKey],
     queryFn: () => invokeOrThrow('getStateMarketLeaders', { state: url.state, setting: settingKey, limit: 15 }),
     enabled: !!spec && spec.id.startsWith('acquire') && !!url.state,
     staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 
-  const { data: market, isLoading, isError, error } = useQuery({
+  const { data: marketRaw, isLoading, isError, refetch: retryMarket } = useQuery({
     queryKey: ['countyMarket', url.state, url.county],
     queryFn: () => invokeOrThrow('getCountyMarket', { state: url.state, county_fips: url.county }),
-    enabled: ready && !!spec && spec.needs === 'county',
+    enabled: ready && !!spec && spec.needs === 'county' && !spec.id.startsWith('calls'),
     staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 
   const sourceSetting = settingKey === 'hospice' ? 'hospice' : 'hha';
-  const { data: sources } = useQuery({
+  const { data: sourcesRaw, isLoading: sourcesLoading, isError: sourcesError, refetch: retrySources } = useQuery({
     queryKey: ['referralSources', url.state, url.county, sourceSetting, spec?.id],
     queryFn: () => invokeOrThrow('getReferralSources', { state: url.state, county_fips: url.county, setting: sourceSetting, limit: spec?.id?.startsWith('calls') ? 25 : 8 }),
     enabled: ready && !!spec && (spec.id.startsWith('calls') || (spec.id === 'county' && settingKey !== 'snf')),
     staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 
-  const countyList = counties?.counties || [];
-  const countyName = countyList.find((c) => c.fips === url.county)?.name || market?.county?.name || 'This county';
+  const layer = !layerError && isRecord(layerRaw) && !layerRaw.notLoaded && Array.isArray(layerRaw.counties) ? layerRaw : null;
+  const leaders = !leadersError && isRecord(leadersRaw) && !leadersRaw.notLoaded && Array.isArray(leadersRaw.rows) ? leadersRaw : null;
+  const market = !isError && isRecord(marketRaw) && !marketRaw.needsCounty && !marketRaw.notLoaded &&
+    (isRecord(marketRaw.profile) || Array.isArray(marketRaw.hospital_sources?.rows)) ? marketRaw : null;
+  const sources = !sourcesError && isRecord(sourcesRaw) && !sourcesRaw.needsCounty && !sourcesRaw.notLoaded && Array.isArray(sourcesRaw.rows) ? sourcesRaw : null;
+  const countyList = recordRows(counties?.counties).filter((c) => typeof c.fips === 'string' && c.fips && typeof c.name === 'string');
+  const countyName = countyList.find((c) => c.fips === url.county)?.name || (typeof market?.county?.name === 'string' ? market.county.name : 'This county');
   const place = `${countyName}${url.state ? `, ${url.state}` : ''}`;
+  const facts = useMemo(() => growthFacts(countyGrowthRows(layer?.counties || [], settingKey)), [layer, settingKey]);
+  const ranked = useMemo(() => sortGrowth(facts.ranked, SORTS.some((s) => s.id === url.sort) ? url.sort : 'users').filter((r) => r.users != null).slice(0, 15), [facts, url.sort]);
+  const reportData = spec?.id.startsWith('expand') ? layer : spec?.id.startsWith('acquire') ? leaders : spec?.id.startsWith('calls') ? sources : market;
+  const reportLoading = spec?.id.startsWith('expand') ? layerLoading : spec?.id.startsWith('acquire') ? leadersLoading : spec?.id.startsWith('calls') ? sourcesLoading : isLoading;
+  const reportHasRecords = spec?.id.startsWith('expand') ? !!facts.top
+    : spec?.id.startsWith('acquire') || spec?.id.startsWith('calls') ? recordRows(reportData?.rows).length > 0
+      : spec?.id === 'hospital-partners' ? recordRows(market?.hospital_sources?.rows).length > 0
+        : market?.profile?.available || recordRows(market?.hospital_sources?.rows).length > 0;
 
   // Printing exports the full brief, so it counts against the organization's
   // daily export allowance like every other export.
@@ -191,8 +212,6 @@ export default function MarketBriefs() {
     }
     window.print();
   };
-  const facts = useMemo(() => growthFacts(countyGrowthRows(layer?.counties || [], settingKey)), [layer, settingKey]);
-  const ranked = useMemo(() => sortGrowth(facts.ranked, SORTS.some((s) => s.id === url.sort) ? url.sort : 'users').filter((r) => r.users != null).slice(0, 15), [facts, url.sort]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[900px] mx-auto space-y-6">
@@ -206,7 +225,7 @@ export default function MarketBriefs() {
           <p className="text-sm text-slate-400 mt-1">{profile ? profile.blurb : 'Each report answers one decision. The figures are the published counts, not a score built on top of them.'}</p>
         </div>
         {spec && (
-          <Button type="button" variant="outline" size="sm" onClick={handlePrint} disabled={spec.needs === 'county' && !ready}>
+          <Button type="button" variant="outline" size="sm" onClick={handlePrint} disabled={!url.state || (spec.needs === 'county' && !ready) || reportLoading || !reportHasRecords}>
             <Printer className="w-4 h-4 mr-1" aria-hidden="true" /> Print
           </Button>
         )}
@@ -216,7 +235,7 @@ export default function MarketBriefs() {
         <div className="space-y-1">
           <Label htmlFor="brief-state">State</Label>
           <Select value={url.state || undefined} onValueChange={(state) => setUrl({ state, county: '' })}>
-            <SelectTrigger id="brief-state" className="w-28"><SelectValue placeholder="State" /></SelectTrigger>
+            <SelectTrigger id="brief-state" aria-label="State" className="w-28"><SelectValue placeholder="State" /></SelectTrigger>
             <SelectContent>{US_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
           </Select>
         </div>
@@ -224,7 +243,7 @@ export default function MarketBriefs() {
           <div className="space-y-1">
             <Label htmlFor="brief-county">County</Label>
             <Select value={url.county || undefined} onValueChange={(county) => setUrl({ county })} disabled={!url.state}>
-              <SelectTrigger id="brief-county" className="w-52"><SelectValue placeholder="County" /></SelectTrigger>
+              <SelectTrigger id="brief-county" aria-label="County" className="w-52"><SelectValue placeholder="County" /></SelectTrigger>
               <SelectContent>{countyList.map((c) => <SelectItem key={c.fips} value={c.fips}>{c.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -234,6 +253,10 @@ export default function MarketBriefs() {
         )}
       </div>
 
+      {spec?.needs === 'county' && url.state && !countiesLoading && (countiesError || !Array.isArray(counties?.counties)) && (
+        <MarketDataState error={countiesError} title="County list unavailable" onRetry={() => retryCounties()} />
+      )}
+      {spec?.needs === 'state' && !url.state && <p role="status" className="text-sm text-slate-400">Select a state to open this report.</p>}
       {!spec && (
         <div className="space-y-6">
           {purposes.map((purpose) => (
@@ -242,7 +265,7 @@ export default function MarketBriefs() {
               <div className="grid gap-2">
                 {catalog.filter((r) => r.purpose === purpose).map((r) => (
                   <button key={r.id} type="button" onClick={() => setUrl({ report: r.id, from: '', county: r.needs === 'state' ? '' : url.county })} className="text-left rounded-lg border border-slate-800 bg-slate-900/40 p-3 hover:border-slate-600">
-                    <p className="text-[11px] uppercase tracking-wide text-slate-500">{r.audience}</p>
+                    <p className="text-[11px] uppercase tracking-wide text-slate-400">{r.audience}</p>
                     <p className="text-sm font-medium text-slate-100">{r.title}</p>
                     <p className="text-xs text-slate-400 mt-1">{r.reason}</p>
                   </button>
@@ -256,11 +279,11 @@ export default function MarketBriefs() {
       {spec?.id?.startsWith('expand') && (
         <article className="space-y-6" id="market-brief">
           <header>
-            <p className="text-[11px] uppercase tracking-wide text-slate-500">{spec.purpose} · {spec.audience}</p>
+            <p className="text-[11px] uppercase tracking-wide text-slate-400">{spec.purpose} · {spec.audience}</p>
             <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
             <p className="text-xs text-slate-400 mt-1">{spec.reason}</p>
             {layerLoading && <p className="text-sm text-slate-400 mt-2">Building the ranking…</p>}
-            {layerError && <p className="text-sm text-red-400 mt-2">{layerErr?.message || 'Could not rank counties.'}</p>}
+            {url.state && !layerLoading && (!layer || !facts.top) && <MarketDataState error={layerError} title="County utilization ranking unavailable" onRetry={() => retryLayer()} />}
             {layer && <p className="text-sm text-slate-300 mt-2">{growthLead(url.state, settingDef, facts)}</p>}
           </header>
           {layer && facts.rising.length > 0 && (
@@ -272,7 +295,7 @@ export default function MarketBriefs() {
                   fmtCount(r.users), fmtPct(r.usersChange), fmtCount(r.billing), fmtPct(r.billingChange),
                 ])}
               />
-              <p className="text-[11px] text-slate-500">Change is versus the prior year in the market-saturation file. A billing {settingDef.one} in another county still counts.</p>
+              <p className="text-[11px] text-slate-400">Change is versus the prior year in the market-saturation file. A billing {settingDef.one} in another county still counts.</p>
             </Section>
           )}
           {layer && (
@@ -280,7 +303,7 @@ export default function MarketBriefs() {
               <div className="print:hidden">
                 <Label htmlFor="brief-sort">Sort</Label>
                 <Select value={SORTS.some((s) => s.id === url.sort) ? url.sort : 'users'} onValueChange={(sort) => setUrl({ sort })}>
-                  <SelectTrigger id="brief-sort" className="mt-1 w-56"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="brief-sort" aria-label="Sort" className="mt-1 w-56"><SelectValue /></SelectTrigger>
                   <SelectContent>{SORTS.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
@@ -291,7 +314,7 @@ export default function MarketBriefs() {
                   fmtCount(r.users), fmtPct(r.usersPct), fmtPct(r.usersChange), fmtCount(r.billing), fmtCount(r.usersPerProvider), fmtMoney(r.spend),
                 ])}
               />
-              <p className="text-[11px] text-slate-500">Top 15. Users are Original Medicare residents, not the agency’s own claim count. Open a county for the hospitals and the providers already there.</p>
+              <p className="text-[11px] text-slate-400">Top 15. Users are Original Medicare residents, not the agency’s own claim count. Open a county for the hospitals and the providers already there.</p>
             </Section>
           )}
         </article>
@@ -300,11 +323,11 @@ export default function MarketBriefs() {
       {spec?.id?.startsWith('acquire') && (
         <article className="space-y-6" id="market-brief">
           <header>
-            <p className="text-[11px] uppercase tracking-wide text-slate-500">{spec.purpose} · {spec.audience}</p>
+            <p className="text-[11px] uppercase tracking-wide text-slate-400">{spec.purpose} · {spec.audience}</p>
             <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
             <p className="text-xs text-slate-400 mt-1">{spec.reason} Share is of providers located in the state, not of every resident who used the service.</p>
             {leadersLoading && <p className="text-sm text-slate-400 mt-2">Building the list…</p>}
-            {leadersError && <p className="text-sm text-red-400 mt-2">{leadersErr?.message || 'Could not list providers.'}</p>}
+            {url.state && !leadersLoading && !leaders && <MarketDataState error={leadersError} title="Provider ranking unavailable" onRetry={() => retryLeaders()} />}
             {leaders && <p className="text-sm text-slate-300 mt-2">{acquireLead(url.state, spec, leaders)}</p>}
           </header>
           {leaders && (
@@ -313,33 +336,37 @@ export default function MarketBriefs() {
                 headers={settingKey === 'snf'
                   ? ['Provider', 'Beneficiaries', 'Share', 'Payment', 'Residents', 'Medicare / Medicaid']
                   : ['Provider', 'Beneficiaries', 'Share', 'Payment', 'Dual %', 'Counties served']}
-                rows={(leaders.rows || []).map((r) => settingKey === 'snf' ? [
-                  <span key={r.ccn}>{facilityLink(r.ccn, r.facility_group, r.name)}<span className="block text-slate-500">{[r.city, r.state].filter(Boolean).join(', ')}{r.census?.chain ? ` · ${r.census.chain}` : ''}</span></span>,
+                rows={recordRows(leaders.rows).map((r) => settingKey === 'snf' ? [
+                  <span key={r.ccn}>{facilityLink(r.ccn, r.facility_group, r.name)}<span className="block text-slate-400">{[r.city, r.state].filter(Boolean).join(', ')}{r.census?.chain ? ` · ${r.census.chain}` : ''}</span></span>,
                   fmtCount(r.benes), fmtShare(r.share), fmtMoney(r.payment),
                   r.census ? fmtCount(r.census.total_residents) : '—',
                   r.census ? `${fmtShare(r.census.medicare_pct)} / ${fmtShare(r.census.medicaid_pct)}` : '—',
                 ] : [
-                  <span key={r.ccn}>{facilityLink(r.ccn, r.facility_group, r.name)}<span className="block text-slate-500">{[r.city, r.state].filter(Boolean).join(', ')}</span></span>,
+                  <span key={r.ccn}>{facilityLink(r.ccn, r.facility_group, r.name)}<span className="block text-slate-400">{[r.city, r.state].filter(Boolean).join(', ')}</span></span>,
                   fmtCount(r.benes), fmtShare(r.share), fmtMoney(r.payment), fmtPct(r.dual_pct, 0), r.counties_served == null ? '—' : fmtCount(r.counties_served),
                 ])}
               />
-              <p className="text-[11px] text-slate-500">{settingKey === 'snf' ? 'Residents and payer mix are the latest nursing-home census, not the Medicare year.' : 'Counties served is the ZIP service area, not the counties where the beneficiaries live.'}{leaders.data_year ? ` Medicare year ${leaders.data_year}.` : ''}</p>
+              <p className="text-[11px] text-slate-400">{settingKey === 'snf' ? 'Residents and payer mix are the latest nursing-home census, not the Medicare year.' : 'Counties served is the ZIP service area, not the counties where the beneficiaries live.'}{leaders.data_year ? ` Medicare year ${leaders.data_year}.` : ''}</p>
             </Section>
           )}
         </article>
       )}
 
       {spec && spec.needs === 'county' && !ready && <p className="text-sm text-slate-400">Pick a county to open this report.</p>}
-      {spec && spec.needs === 'county' && isLoading && <p className="text-sm text-slate-400">Building the report…</p>}
-      {spec && spec.needs === 'county' && isError && <p className="text-sm text-red-400">{error?.message || 'Could not build this report.'}</p>}
+      {spec && spec.needs === 'county' && !spec.id.startsWith('calls') && ready && (
+        isLoading ? <MarketDataState loading /> : !market ? <MarketDataState error={isError} title="County market report unavailable" onRetry={() => retryMarket()} /> : null
+      )}
 
       {spec?.id === 'hospital-partners' && ready && market && !market.needsCounty && (
         <article className="space-y-6" id="market-brief">
           <header>
-            <p className="text-[11px] uppercase tracking-wide text-slate-500">{spec.purpose} · {spec.audience}</p>
-            <h2 className="text-xl font-semibold text-slate-100">{place}</h2>
+            <p className="text-[11px] uppercase tracking-wide text-slate-400">{spec.purpose} · {spec.audience}</p>
+            <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
+            <p className="text-xs text-slate-400">{place}</p>
             <p className="text-sm text-slate-300 mt-2">
-              {market.hospital_sources?.total ? `${fmtCount(market.hospital_sources.total)} hospitals discharged residents of ${place}` : `No hospital origins are on file for ${place}`}
+              {finiteNumber(market.hospital_sources?.total) != null
+                ? `${fmtCount(market.hospital_sources.total)} hospitals are listed as discharge sources for residents of ${place}`
+                : `Hospital discharge sources for ${place}; the total hospital count is unavailable`}
               {market.hospital_sources?.data_year ? ` (${market.hospital_sources.data_year})` : ''}.
               {' '}The post-acute columns are that hospital’s Medicare episode spend, set next to the state figure.
             </p>
@@ -347,7 +374,7 @@ export default function MarketBriefs() {
           <Section title="Where to build a hospital relationship">
             <Table
               headers={['Hospital', 'Cases', 'Share of county', 'Home health', 'State', 'Hospice', 'State', 'SNF', 'State']}
-              rows={(market.hospital_sources?.rows || []).slice(0, 10).map((r) => {
+              rows={recordRows(market.hospital_sources?.rows).slice(0, 10).map((r) => {
                 const m = r.discharge_mix;
                 return [
                   facilityLink(r.ccn, 'hospital', r.name),
@@ -358,24 +385,26 @@ export default function MarketBriefs() {
                 ];
               })}
             />
-            <p className="text-[11px] text-slate-500">A higher home health, hospice, or skilled nursing percent than the state means more of that hospital’s episode spend went to that setting. It is not a referral order.</p>
+            <p className="text-[11px] text-slate-400">A higher home health, hospice, or skilled nursing percent than the state means more of that hospital’s episode spend went to that setting. It is not a referral order.</p>
           </Section>
         </article>
       )}
 
-      {spec?.id?.startsWith('calls') && ready && market && !market.needsCounty && (
+      {spec?.id?.startsWith('calls') && ready && (
         <article className="space-y-6" id="market-brief">
           <header>
-            <p className="text-[11px] uppercase tracking-wide text-slate-500">{spec.purpose} · {spec.audience}</p>
+            <p className="text-[11px] uppercase tracking-wide text-slate-400">{spec.purpose} · {spec.audience}</p>
             <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
             <p className="text-sm text-slate-300 mt-2">Clinicians in {place}. {spec.reason}</p>
           </header>
-          <Section title="Call list">
+          <Section title="Prioritized clinician outreach">
+            {sourcesLoading ? <MarketDataState loading /> : !sources ? <MarketDataState error={sourcesError} title="Referral source prioritization unavailable" onRetry={() => retrySources()} /> : (
+            <>
             <Table
               headers={sourceSetting === 'hospice'
                 ? ['Clinician', 'Specialty', 'Medicare patients', 'Hospice oversight', 'Heart failure', 'COPD', 'Alzheimer']
                 : ['Clinician', 'Specialty', 'Medicare patients', 'Home health certifications', 'Heart failure', 'COPD', 'Alzheimer']}
-              rows={(sources?.rows || []).map((r) => [
+              rows={recordRows(sources.rows).map((r) => [
                 <Link key={r.npi} to={createPageUrl(`ProviderDetail?npi=${r.npi}`)} className="text-cyan-400 hover:underline">{r.name}</Link>,
                 r.specialty || '—',
                 fmtCount(r.benes),
@@ -383,7 +412,9 @@ export default function MarketBriefs() {
                 fmtShare(r.chronic?.chf, 0), fmtShare(r.chronic?.copd, 0), fmtShare(r.chronic?.alzheimer, 0),
               ])}
             />
-            <p className="text-[11px] text-slate-500">{sources?.index_note || 'Ranked from the physician file.'}{sources?.data_year ? ` Physician year ${sources.data_year}.` : ''}{sources?.certifications_year ? ` Certifications ${sources.certifications_year}.` : ''} Chronic columns are the share of that clinician’s Medicare patients.</p>
+            <p className="text-[11px] text-slate-400">{typeof sources?.index_note === 'string' ? sources.index_note : 'Ranked from the physician file.'}{sources?.data_year ? ` Physician year ${sources.data_year}.` : ''}{sources?.certifications_year ? ` Certifications ${sources.certifications_year}.` : ''} Chronic columns are the share of that clinician’s Medicare patients.</p>
+            </>
+            )}
           </Section>
         </article>
       )}
@@ -391,7 +422,7 @@ export default function MarketBriefs() {
       {spec?.id === 'county' && ready && market && !market.needsCounty && (
         <article className="space-y-6" id="market-brief">
           <header>
-            <p className="text-[11px] uppercase tracking-wide text-slate-500">{spec.audience} · {place}</p>
+            <p className="text-[11px] uppercase tracking-wide text-slate-400">{spec.audience} · {place}</p>
             <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
             <p className="text-sm text-slate-300 mt-2">{spec.reason}</p>
           </header>
@@ -408,54 +439,59 @@ export default function MarketBriefs() {
                   fmtMoney(market.profile[settingDef.spend]),
                 ]]}
               />
-              <p className="text-[11px] text-slate-500">Billing includes {settingDef.noun} in other counties. {fmtCount(market.profile.benes)} Medicare beneficiaries live here, {fmtShare(market.profile.ma_penetration)} in Medicare Advantage.</p>
+              <p className="text-[11px] text-slate-400">Billing includes {settingDef.noun} in other counties. {fmtCount(market.profile.benes)} Medicare beneficiaries live here, {fmtShare(market.profile.ma_penetration)} in Medicare Advantage.</p>
             </Section>
           )}
           <Section title="Hospitals discharging residents">
             <Table
               headers={['Hospital', 'Cases', 'Share', settingDef.label]}
-              rows={(market.hospital_sources?.rows || []).slice(0, 6).map((r) => [
+              rows={recordRows(market.hospital_sources?.rows).slice(0, 6).map((r) => [
                 facilityLink(r.ccn, 'hospital', r.name),
                 fmtCount(r.cases), fmtShare(r.share),
                 r.discharge_mix ? fmtPct(r.discharge_mix[settingKey === 'hospice' ? 'pct_hospice' : settingKey === 'snf' ? 'pct_snf' : 'pct_hha']) : '—',
               ])}
             />
-            <p className="text-[11px] text-slate-500">{market.hospital_sources?.data_year ? `Origins ${market.hospital_sources.data_year}. ` : ''}The last column is the share of that hospital’s Medicare episode spend, not a referral order.</p>
+            <p className="text-[11px] text-slate-400">{market.hospital_sources?.data_year ? `Origins ${market.hospital_sources.data_year}. ` : ''}The last column is the share of that hospital’s Medicare episode spend, not a referral order.</p>
           </Section>
-          {(market.competitors?.[settingKey]?.rows || []).length > 0 && (
+          {recordRows(market.competitors?.[settingKey]?.rows).length > 0 && (
             <Section title={`Who already serves ${settingDef.label.toLowerCase()}`}>
               <Table
                 headers={['Provider', 'Beneficiaries', 'Share', 'Payment']}
-                rows={market.competitors[settingKey].rows.slice(0, 8).map((r) => [facilityLink(r.ccn, r.facility_group, r.name), fmtCount(r.benes), fmtShare(r.share), fmtMoney(r.payment)])}
+                rows={recordRows(market.competitors[settingKey].rows).slice(0, 8).map((r) => [facilityLink(r.ccn, r.facility_group, r.name), fmtCount(r.benes), fmtShare(r.share), fmtMoney(r.payment)])}
               />
-              {market.competitors[settingKey].data_year && <p className="text-[11px] text-slate-500">Share of beneficiaries served in this county, {market.competitors[settingKey].data_year}.</p>}
+              {market.competitors[settingKey].data_year && <p className="text-[11px] text-slate-400">Share of beneficiaries served in this county, {market.competitors[settingKey].data_year}.</p>}
             </Section>
           )}
           {settingKey !== 'snf' && (
-            <Section title="Clinicians to call">
+            <Section title="Referral source prioritization">
+              {sourcesLoading ? <MarketDataState loading /> : !sources ? <MarketDataState error={sourcesError} title="Referral source prioritization unavailable" onRetry={() => retrySources()} /> : (
+              <>
               <Table
                 headers={['Clinician', 'Specialty', 'Medicare patients']}
-                rows={(sources?.rows || []).slice(0, 8).map((r) => [
+                rows={recordRows(sources.rows).slice(0, 8).map((r) => [
                   <Link key={r.npi} to={createPageUrl(`ProviderDetail?npi=${r.npi}`)} className="text-cyan-400 hover:underline">{r.name}</Link>,
                   r.specialty || '—', fmtCount(r.benes),
                 ])}
               />
-              <p className="text-[11px] text-slate-500 print:hidden">
+              <p className="text-xs text-slate-400">Planning indicators, not confirmed referrals or guaranteed referral volume.</p>
+              <p className="text-[11px] text-slate-400 print:hidden">
                 <button type="button" className="text-cyan-400 hover:underline" onClick={() => setUrl({ report: settingKey === 'hospice' ? 'calls-hospice' : 'calls-hha', county: url.county })}>Open the full call list.</button>
               </p>
+              </>
+              )}
             </Section>
           )}
         </article>
       )}
 
-      {spec && (spec.id.startsWith('expand') ? layer : spec.id.startsWith('acquire') ? leaders : ready && market && !market.needsCounty) && (
+      {spec && (spec.id.startsWith('expand') ? layer : spec.id.startsWith('acquire') ? leaders : spec.id.startsWith('calls') ? ready : ready && market) && (
         <Card className="bg-slate-900/40 border-slate-800 print:border-0 print:shadow-none">
           <CardContent className="p-3 space-y-2">
             <ComplianceDisclaimer variant="market" />
             <MarketFreshness
-              rollups={(spec.id.startsWith('expand') ? layer : spec.id.startsWith('acquire') ? leaders : market)?.rollups}
-              jobs={['county_market_profile']}
-              vintages={(spec.id.startsWith('expand') ? layer : market)?.vintages}
+              rollups={reportData?.rollups}
+              jobs={spec.id.startsWith('calls') ? ['referral_sources'] : spec.id === 'hospital-partners' ? ['county_hospital_sources', 'hospital_discharge_mix'] : spec.id.startsWith('acquire') ? ['pac_market_share'] : ['county_market_profile']}
+              vintages={reportData?.vintages}
             />
           </CardContent>
         </Card>
