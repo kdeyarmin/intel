@@ -589,7 +589,7 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
           .orderBy(desc(importBatches.created_date))
           .limit(20);
 
-        const systemPrompt = `You are the CareMetric AI Import Manager. You help monitor and troubleshoot data import jobs.
+        const systemPrompt = `You are the CareMetric Healthcare Advisors Import Manager. You help monitor and troubleshoot data import jobs.
 
 Current import batches (most recent 20):
 ${JSON.stringify(batchRows, null, 2)}

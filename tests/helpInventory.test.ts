@@ -8,7 +8,7 @@ import {
 const sourceUrl = new URL('../src/pages/Help.jsx', import.meta.url);
 const manifestUrl = new URL('../artifacts/help/caremetric-intel-guide-sections.json', import.meta.url);
 
-describe('CareMetric Intel static help inventory', () => {
+describe('CareMetric static help inventory', () => {
   it('is a deterministic, privacy-scoped rendering of GUIDE_SECTIONS', async () => {
     const [source, manifestText] = await Promise.all([
       readFile(sourceUrl, 'utf8'),

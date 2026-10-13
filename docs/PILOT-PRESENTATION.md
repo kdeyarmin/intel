@@ -1,4 +1,4 @@
-# CareMetric Intel — Employee Pilot Launch Presentation
+# CareMetric Healthcare Advisors — Employee Pilot Launch Presentation
 
 **Engaging slide deck with speaker scripts**  
 *(Total delivery time: ~12–15 minutes. Scripts are written for a conversational, energy-building style.)*
@@ -9,7 +9,7 @@ Copy into Google Slides / PowerPoint. Speaker notes are under each slide.
 
 ## Slide 1: Title
 
-**CareMetric Intel**  
+**CareMetric Healthcare Advisors**
 **Employee Pilot Kickoff**
 
 *Turning public CMS & NPPES data into actionable intelligence*
@@ -17,13 +17,13 @@ Copy into Google Slides / PowerPoint. Speaker notes are under each slide.
 **Your feedback shapes what we build next.**
 
 **Speaker script (~45 sec):**  
-"Good morning / afternoon everyone! Welcome to the CareMetric Intel pilot kickoff. Over the next couple of weeks you’re going to be the first people outside the core team to use this platform in real work. Your job is simple: try it, break it if you can, and tell us what actually helps you. We’re not looking for polite feedback — we want the honest stuff. Let’s get started."
+"Good morning / afternoon everyone! Welcome to the CareMetric Healthcare Advisors pilot kickoff. Over the next couple of weeks you’re going to be the first people outside the core team to use this platform in real work. Your job is simple: try it, break it if you can, and tell us what actually helps you. We’re not looking for polite feedback — we want the honest stuff. Let’s get started."
 
 ---
 
 ## Slide 2: Agenda (and a quick poll)
 
-1. What is CareMetric Intel? (2 min)
+1. What is CareMetric? (2 min)
 2. Why we’re piloting **now** (1 min)
 3. The **six workflows** you’ll test (4 min)
 4. How the pilot runs + what we need from you (3 min)
@@ -35,7 +35,7 @@ Copy into Google Slides / PowerPoint. Speaker notes are under each slide.
 
 ---
 
-## Slide 3: What is CareMetric Intel?
+## Slide 3: What is CareMetric?
 
 **Public data → Private advantage**
 
@@ -47,7 +47,7 @@ Copy into Google Slides / PowerPoint. Speaker notes are under each slide.
 Multi-tenant, role-based, plan-scoped. Built for healthcare sales, BD, and market teams.
 
 **Speaker script (~90 sec):**  
-"At its core, CareMetric Intel takes the massive public Medicare and NPPES datasets and turns them into something you can actually use day-to-day. Instead of downloading giant CSVs or bouncing between CMS sites, you search, you open a detail page that already has the KPIs, referral signals, and linked facilities, and you can drop people straight into a lead list. There’s an AI layer that can summarize a provider or help you find emails. And everything is scoped to your organization and plan so you only see what you’re entitled to. The question we need you to answer is: does this actually save you time and help you prioritize better?"
+"At its core, CareMetric takes the massive public Medicare and NPPES datasets and turns them into something you can actually use day-to-day. Instead of downloading giant CSVs or bouncing between CMS sites, you search, you open a detail page that already has the KPIs, referral signals, and linked facilities, and you can drop people straight into a lead list. There’s an AI layer that can summarize a provider or help you find emails. And everything is scoped to your organization and plan so you only see what you’re entitled to. The question we need you to answer is: does this actually save you time and help you prioritize better?"
 
 ---
 
@@ -199,7 +199,7 @@ Search for one provider you know → open the detail page → drop a one-sentenc
 Thank you — your honesty makes this better.
 
 **Speaker script (~45 sec):**  
-"That’s it. Open floor for questions. And here’s your first tiny assignment so we get signal immediately: search for one provider you already know, open the detail page, and drop a one-sentence reaction in the feedback channel. Love it, hate it, confused by it — all good. Thank you for doing this. Let’s make CareMetric Intel something you’d actually want to use."
+"That’s it. Open floor for questions. And here’s your first tiny assignment so we get signal immediately: search for one provider you already know, open the detail page, and drop a one-sentence reaction in the feedback channel. Love it, hate it, confused by it — all good. Thank you for doing this. Let’s make CareMetric something you’d actually want to use."
 
 ---
 

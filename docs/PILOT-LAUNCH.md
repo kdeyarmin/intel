@@ -1,4 +1,4 @@
-# CareMetric Intel — Pilot Launch Checklist
+# CareMetric Healthcare Advisors — Pilot Launch Checklist
 
 Use this after completing the operational setup in [`docs/PILOT-SETUP.md`](PILOT-SETUP.md).
 

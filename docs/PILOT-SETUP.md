@@ -1,4 +1,4 @@
-# CareMetric Intel — Pilot Operational Setup Checklist
+# CareMetric Healthcare Advisors — Pilot Operational Setup Checklist
 
 This checklist covers the **must-have operational setup** before releasing the app to employees for pilot. Follow it for Railway or local.
 

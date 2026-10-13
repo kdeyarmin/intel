@@ -8,7 +8,7 @@ export const CAREMETRIC_INTEL_PRODUCTION_APP_ID = '6993c62145573ca8a97ad4a9';
 export const CAREMETRIC_INTEL_PRODUCTION_HOST = 'caremetricintel.com';
 
 /**
- * Match the one verified CareMetric Intel production identity. This controls
+ * Match the one verified CareMetric production identity. This controls
  * whether central contact routes are shown at all.
  */
 export function isVerifiedCareMetricIntelProduction({
