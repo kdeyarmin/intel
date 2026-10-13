@@ -84,7 +84,7 @@
   border-bottom: 3px solid #0891b2;
 }
 .cm-report-doc .cm-doc-brand-left { display: flex; align-items: center; gap: 10px; }
-.cm-report-doc .cm-doc-logo { width: 32px; height: 32px; border-radius: 6px; }
+.cm-report-doc .cm-doc-logo { width: 128px; height: 40px; object-fit: contain; background: white; border-radius: 6px; }
 .cm-report-doc .cm-doc-brand-name { font-size: 14pt; font-weight: 700; letter-spacing: -0.01em; }
 .cm-report-doc .cm-doc-brand-tag { font-size: 8pt; color: #cbd5e1; }
 .cm-report-doc .cm-doc-brand-right { text-align: right; font-size: 8.5pt; color: #e2e8f0; }

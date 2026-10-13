@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { base44 } from '@/api/base44Client';
+import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
 
-const CAREMETRIC_LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png';
 const CAREMETRIC_WEBSITE = 'www.CareMetric.ai';
 
 /** The source line every export carries (CMS asks that derived data not be presented as CMS data). */

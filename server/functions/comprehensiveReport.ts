@@ -1,6 +1,10 @@
 import { pool } from "../db";
-import { assertTerritory, type EntitledUser } from "../lib/entitlements";
+import { assertTerritory, isUnrestricted, type EntitledUser } from "../lib/entitlements";
 import { isOrgAdmin } from "../lib/roles";
+import {
+  ENROLLMENT_DATASETS, REPORT_DATASETS, enrollmentIds,
+  summarizeOwnership, summarizeCostReports, summarizeAdditionalQuality,
+} from "../lib/comprehensiveReportData";
 
 async function safeQuery(client: any, text: string, params: any[] = []) {
   try {
@@ -19,7 +23,7 @@ const validState = (s: unknown) => /^[A-Z]{2}$/.test(String(s ?? "").trim().toUp
 // and the headline totals.
 export const REPORT_SECTION_KEYS = [
   "profile", "locations", "taxonomies", "utilization", "referrals",
-  "affiliations", "facilities", "quality", "leadScore", "enrichments",
+  "affiliations", "facilities", "quality", "ownership", "costReports", "additionalQuality", "leadScore", "enrichments",
 ] as const;
 export type ReportSectionKey = typeof REPORT_SECTION_KEYS[number];
 
@@ -94,6 +98,9 @@ export async function handleGetComprehensiveReport(payload: any, user?: Entitled
       leadScore: null,
       enrichments: [],
       quality: [],
+      ownership: [],
+      costReports: [],
+      additionalQuality: [],
     };
     // Rows only the territory check reads when the locations section is off.
     let placeRows: any[] = [];
@@ -233,15 +240,65 @@ export async function handleGetComprehensiveReport(payload: any, user?: Entitled
       if (want("profile") && provider_id && facRows.length) result.facility = facilityProfile(facRows);
     }
 
+    const extraTypes = (["ownership", "costReports", "additionalQuality"] as const)
+      .filter((key) => want(key)).flatMap((key) => [...REPORT_DATASETS[key]]);
+    let extraRows: any[] = [];
+    if (extraTypes.length) {
+      // Statistical composite keys identify owner/measure rows, not facilities.
+      const ids = [...new Set([provider_id, npi].filter((id) =>
+        typeof id === "string" && /^(?:[a-z0-9]{6}|\d{10})$/i.test(id)))];
+      extraRows = await safeQuery(client, `
+        SELECT f.facility_type, f.provider_id, f.state, f.data_year,
+          COALESCE(r.raw_data, f.raw_data) AS raw_data
+        FROM medicare_facilities f
+        LEFT JOIN medicare_facilities_raw r ON r.facility_id = f.id
+        WHERE f.provider_id = ANY($1) AND f.facility_type = ANY($2)
+        ORDER BY f.data_year DESC NULLS LAST, f.id LIMIT 200
+      `, [ids, [...extraTypes, ...(want("ownership") ? ENROLLMENT_DATASETS : [])]]);
+    }
+
     // A restricted plan sees a provider only in its territory; owners and
     // platform admins see everything. Checked against the practice location
     // (else the facility), like the market views check a place.
     if (!isOrgAdmin(user)) {
       const place = placeRows.find((l: any) => l.location_type === "Practice" && validState(l.state))
         ?? placeRows.find((l: any) => validState(l.state))
-        ?? facRows.find((f: any) => validState(f.state));
+        ?? facRows.find((f: any) => validState(f.state))
+        ?? extraRows.find((f: any) => validState(f.state));
       if (place) assertTerritory(user, { state: validState(place.state) });
+      else if (extraRows.length && !isUnrestricted(user)) {
+        throw { status: 403, message: "Cannot verify the territory for these report datasets." };
+      }
+      // A caller can supply both identifiers: the NPI's permitted address
+      // must not authorize an unrelated facility outside its territory.
+      if (npi && provider_id && npi !== provider_id) {
+        const facilityRows = [...facRows, ...extraRows].filter((f: any) => f.provider_id === provider_id);
+        const facilityPlace = facilityRows.find((f: any) => validState(f.state));
+        if (facilityPlace) assertTerritory(user, { state: validState(facilityPlace.state) });
+        else if (facilityRows.length && !isUnrestricted(user)) {
+          throw { status: 403, message: "Cannot verify the facility's territory." };
+        }
+      }
     }
+
+    if (want("ownership")) {
+      // All Owners rows use enrollment_owner_role keys, not CCNs. Resolve only
+      // enrollment IDs present on the exact CCN/NPI rows; never match by name.
+      for (const id of enrollmentIds(extraRows)) {
+        extraRows.push(...await safeQuery(client, `
+          SELECT f.facility_type, f.data_year, COALESCE(r.raw_data, f.raw_data) AS raw_data
+          FROM medicare_facilities f
+          LEFT JOIN medicare_facilities_raw r ON r.facility_id = f.id
+          WHERE f.provider_id >= $1 AND f.provider_id < $2
+            AND left(f.provider_id, length($1) + 1) = $1 || '_'
+            AND f.facility_type = ANY($3)
+          ORDER BY f.data_year DESC NULLS LAST, f.id LIMIT 30
+        `, [id, `${id}z`, REPORT_DATASETS.ownership]));
+      }
+      result.ownership = summarizeOwnership(extraRows);
+    }
+    if (want("costReports")) result.costReports = summarizeCostReports(extraRows);
+    if (want("additionalQuality")) result.additionalQuality = summarizeAdditionalQuality(extraRows);
 
     // Aggregate totals and distinct years from the full table — not from the
     // 100-row display slice which undercounts providers with many HCPCS lines

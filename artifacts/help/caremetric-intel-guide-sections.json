@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "e532e04130ef36df8055d58d219277e0dc605d3e",
+    "ref": "279f05fac144520fc30fe7a54cae1802fe4c4757",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 37,
-    "text_character_count": 21406,
-    "canonical_sha256": "1b392bd458cd3fc9273183529d7151a700e657f0aaa8edc7b8b9279630a21e0b"
+    "text_character_count": 22038,
+    "canonical_sha256": "eacac1b7db567e180a6bb8298b5175da83ebdc641dab15def4d4d0aa7919a402"
   },
   "sections": [
     {
@@ -69,8 +69,8 @@
         },
         {
           "heading": "Providers and organizations",
-          "text": "**All Providers** lists individuals and organizations with state, type and specialty filters. **Organizations** lists organization NPIs. Opening any provider shows its profile: identity and specialties, practice locations, Medicare utilization, shared-patient partners, lead score, linked facilities and outreach history. Organizations also show affiliated providers.\n\nThe **Report** tab builds a report from the sections you tick (all are ticked to start): profile, locations, specialties, Medicare utilization, referrals sent and received, affiliations, linked facilities, quality ratings, lead score and enrichments. **Print** gives a clean, branded layout (choose Save as PDF in the print dialog), and **Download PDF** saves a branded PDF directly; each counts as one export against your organization's daily allowance.",
-          "sha256": "302dd709da2661cab19f4ec336cc0c5219e09a330a8c9e23f0c21e80b13c0066"
+          "text": "**All Providers** lists individuals and organizations with state, type and specialty filters. **Organizations** lists organization NPIs. Opening any provider shows its profile: identity and specialties, practice locations, Medicare utilization, shared-patient partners, lead score, linked facilities and outreach history. Organizations also show affiliated providers.\n\nThe **Report** tab builds a report from the sections you tick (all are ticked to start): profile, locations, specialties, Medicare utilization, referrals sent and received, affiliations, linked facilities, quality ratings, ownership details, cost report summaries, additional quality measures, lead score and enrichments. Ownership shows reported names, percentages and roles; cost reports show available revenue, expenses, beds and visits; additional quality is a curated snapshot, not every measure. These sections use linked CCN, NPI or enrollment records where available, keep each dataset's latest release, and say when data is missing rather than inventing values. **Print** gives a clean, branded layout (choose Save as PDF in the print dialog), and **Download PDF** saves a branded PDF directly; each counts as one export against your organization's daily allowance.",
+          "sha256": "8231dbf02267e95deacd4ae3daf30951e98f4acbf3d0aa19c43ae8ecb38b1951"
         },
         {
           "heading": "Locations",
@@ -79,8 +79,8 @@
         },
         {
           "heading": "Facilities",
-          "text": "One page lists Medicare facilities by type — hospitals, home health agencies, hospices, nursing homes, inpatient rehab, long-term care hospitals, DME suppliers and community health centers. Pick the type at the top, then search by name or filter by state. A facility's page summarizes its imported CMS records (up to 500 per facility, with the first 50 rows of each dataset listed) and links to the matching provider when there is one. Its **Report** tab builds the same printable report for the facility: profile, CMS records, quality ratings and, when it has a linked NPI, that provider's sections too.\n\nThe **DME report** tab exports DME suppliers to CSV or Excel; finding supplier emails is admin-only.",
-          "sha256": "666df4f5340e6f441658e8f155ceb38bb0c560221b74a954ca49d17d5504e591"
+          "text": "One page lists Medicare facilities by type — hospitals, home health agencies, hospices, nursing homes, inpatient rehab, long-term care hospitals, DME suppliers and community health centers. Pick the type at the top, then search by name or filter by state. A facility's page summarizes its imported CMS records (up to 500 per facility, with the first 50 rows of each dataset listed) and links to the matching provider when there is one. Its **Report** tab builds the same printable report for the facility: profile, CMS records, quality ratings, ownership details, cost report summaries, additional quality measures and, when it has a linked NPI, that provider's sections too. Financial periods and CMS quality units may differ across datasets; the report does not sum ownership interests or combine financial totals.\n\nThe **DME report** tab exports DME suppliers to CSV or Excel; finding supplier emails is admin-only.",
+          "sha256": "11e8d69af0a5c900fae53cb140d0b65d2f6db1544de98ab7127d1f85d24aee45"
         }
       ]
     },
