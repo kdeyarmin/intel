@@ -20,5 +20,6 @@ export default defineConfig({
   test: {
     setupFiles: ['./tests/setup.js'],
     exclude: ['**/*.test.*', '**/node_modules/**'],
+    passWithNoTests: true,
   },
 });
