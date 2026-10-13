@@ -59,6 +59,6 @@ describe('PendingApproval during an outage', () => {
     );
     expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't check your session.");
     expect(screen.queryByText('login screen')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
   });
 });
