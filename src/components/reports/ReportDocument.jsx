@@ -58,13 +58,13 @@ export default function ReportDocument({ model }) {
         <div className="cm-doc-brand-left">
           <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="cm-doc-logo" />
           <div>
-            <div className="cm-doc-brand-name">CareMetric AI</div>
-            <div className="cm-doc-brand-tag">Healthcare Provider Intelligence</div>
+            <div className="cm-doc-brand-name">CareMetric Intel</div>
+            <div className="cm-doc-brand-tag">CareMetric Healthcare Advisors</div>
           </div>
         </div>
         <div className="cm-doc-brand-right">
           <div>{model.subtitle}</div>
-          <div>www.CareMetric.ai</div>
+          <div>caremetricintel.com</div>
         </div>
       </header>
 
@@ -75,7 +75,7 @@ export default function ReportDocument({ model }) {
 
       {model.profile && (
         <section className="cm-doc-block">
-          <h2 className="cm-doc-h2">Profile &amp; Overview</h2>
+          <h2 className="cm-doc-h2">Profile & Overview</h2>
           {model.profile.identifiers.length > 0 && (
             <dl className="cm-doc-kv">
               {model.profile.identifiers.map((it) => (
@@ -115,7 +115,7 @@ export default function ReportDocument({ model }) {
           </>
         )}
         <p className="cm-doc-attrib">{model.attribution}</p>
-        <p className="cm-doc-attrib">Generated {model.generatedLabel} · CareMetric AI · www.CareMetric.ai · Confidential</p>
+        <p className="cm-doc-attrib">Generated {model.generatedLabel} · CareMetric Intel · caremetricintel.com · Confidential</p>
       </footer>
     </article>
   );
