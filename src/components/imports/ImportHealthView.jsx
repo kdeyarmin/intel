@@ -13,6 +13,7 @@ import {
   topErrorCategoriesFromBatches,
   summarizeRetryPipeline,
   unhealthySchedules,
+  isStaleImport,
 } from './healthMetrics';
 
 const IMPORT_TYPE_LABELS = buildImportTypeLabels({
@@ -180,6 +181,7 @@ export default function ImportHealthView() {
     [batches],
   );
   const failingSchedules = useMemo(() => unhealthySchedules(schedules, 1), [schedules]);
+  const staleBatches = batches.filter(batch => isStaleImport(batch));
 
   if (batchesLoading || schedulesLoading) {
     return (
@@ -195,6 +197,25 @@ export default function ImportHealthView() {
       <p className="text-xs text-slate-400">
         30-day overview of import outcomes, error patterns, schedule health, and the auto-retry pipeline.
       </p>
+
+      {staleBatches.length > 0 && (
+        <div role="status" className="rounded-lg border border-orange-500/30 bg-orange-900/10 p-4 space-y-2">
+          <p className="text-sm font-medium text-orange-400">
+            Potentially stalled imports ({staleBatches.length})
+          </p>
+          <p className="text-xs text-slate-300">
+            No progress for over 15 minutes (60 minutes for NPPES crawls). Maintenance automatically fails imports
+            after 2 hours without progress, allowing eligible imports to retry.
+          </p>
+          <ul className="space-y-1 text-xs text-slate-300">
+            {staleBatches.map(batch => (
+              <li key={batch.id}>
+                {IMPORT_TYPE_LABELS[batch.import_type] || batch.import_type} — batch #{batch.id}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiTile

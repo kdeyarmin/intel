@@ -54,7 +54,7 @@ describe('CMS Dataset Catalog', () => {
     }
     expect(screen.getAllByRole('button', { name: 'Import' })).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: 'Import' }));
-    expect(invoke).toHaveBeenCalledWith('triggerImport', expect.objectContaining({ import_type: 'home_health_all_owners' }));
+    expect(invoke).toHaveBeenCalledWith('triggerImport', { import_type: 'home_health_all_owners' });
     client.clear();
   });
 });

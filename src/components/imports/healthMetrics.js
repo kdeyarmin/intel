@@ -7,6 +7,14 @@ import { getAutoRetryState } from './retryStatus';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Warn before the server's conservative 2-hour stall sweep; crawls get longer to recover themselves.
+export function isStaleImport(batch, now = new Date()) {
+  if (batch.status !== 'processing' && batch.status !== 'validating') return false;
+  const updated = new Date(batch.updated_date || batch.created_date).getTime();
+  const threshold = (batch.import_type === 'nppes_registry' ? 60 : 15) * 60 * 1000;
+  return new Date(now).getTime() - updated > threshold;
+}
+
 function startOfUtcDay(date) {
   const d = new Date(date);
   d.setUTCHours(0, 0, 0, 0);

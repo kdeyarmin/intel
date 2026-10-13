@@ -63,10 +63,9 @@ export default function CMSDataSources() {
   });
 
   const importMutation = useMutation({
-    mutationFn: async ({ importType, year }) => {
+    mutationFn: async ({ importType }) => {
       return base44.functions.invoke('triggerImport', {
         import_type: importType,
-        year: year || new Date().getFullYear() - 2,
       });
     },
     onSuccess: (data, variables) => {

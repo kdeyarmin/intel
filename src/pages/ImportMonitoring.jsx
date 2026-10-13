@@ -29,6 +29,7 @@ import LiveProgressCard from '../components/imports/LiveProgressCard';
 import SystemStatusPanel from '../components/imports/SystemStatusPanel';
 import MaintenanceHealthPanel from '../components/imports/MaintenanceHealthPanel';
 import ImportHealthView from '../components/imports/ImportHealthView';
+import { isStaleImport } from '../components/imports/healthMetrics';
 import AlertNotificationSettings, { checkAndNotify } from '../components/imports/AlertNotificationSettings';
 import ExportImportData from '../components/imports/ExportImportData';
 import ImportTrendCharts from '../components/imports/ImportTrendCharts';
@@ -169,14 +170,7 @@ export default function ImportMonitoring() {
     });
   }, [batches]);
 
-  const STALE_THRESHOLD_MS = 15 * 60 * 1000;
-  const CRAWLER_STALE_THRESHOLD_MS = 60 * 60 * 1000;
-  const isStale = (batch) => {
-    if (batch.status !== 'processing' && batch.status !== 'validating') return false;
-    const updated = new Date(batch.updated_date || batch.created_date);
-    const threshold = batch.import_type === 'nppes_registry' ? CRAWLER_STALE_THRESHOLD_MS : STALE_THRESHOLD_MS;
-    return (Date.now() - updated.getTime()) > threshold;
-  };
+  const isStale = (batch) => isStaleImport(batch);
 
   const runningBatches = batches.filter(b => (b.status === 'processing' || b.status === 'validating') && !isStale(b));
   const staleBatches = batches.filter(b => isStale(b));
