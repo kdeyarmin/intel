@@ -14,6 +14,8 @@ import { toast } from 'sonner';
 import PageTabs from '@/components/layout/PageTabs';
 import { CONDITION_FIELDS, conditionList, parseList } from '@/lib/scoringRules';
 import { SPECIALTY_GROUPS } from '@/lib/specialtyGroups';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 // The score is computed on the server (server/lib/leadScoring.ts) for every
 // individual provider located in the configured states. This page edits each
@@ -29,6 +31,7 @@ export default function ScoringRules() {
   const confirm = useConfirm();
   const [user, setUser] = useState(null);
   const [editingRule, setEditingRule] = useState(null);
+  const [sort, setSort] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -47,6 +50,16 @@ export default function ScoringRules() {
     refetchInterval: (q) => (q.state.data?.job?.running ? 4000 : false),
   });
   const rules = status?.rules || [];
+  const sortedRules = sort
+    ? sortRows(rules, sort, (rule, key) => {
+      if (key === 'name') return ruleLabel(rule);
+      if (key === 'status') return rule.enabled === true && Number(rule.weight) > 0 ? 'Active' : 'Disabled';
+      if (key === 'conditions') {
+        return (CONDITION_FIELDS[rule.rule_type] || []).map((field) => conditionList(rule, field.key).join(', ')).join(' ');
+      }
+      return rule[key];
+    })
+    : rules;
   const job = status?.job || {};
   const territory = status?.territory || { states: [], counties: [] };
 
@@ -211,16 +224,16 @@ export default function ScoringRules() {
             <Table>
               <TableHeader>
               <TableRow>
-                <TableHead>Rule Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Weight</TableHead>
-                <TableHead>Conditions</TableHead>
-                <TableHead>Status</TableHead>
+                <SortableTableHead label="Rule" column="name" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                <SortableTableHead label="Description" column="description" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                <SortableTableHead label="Weight" column="weight" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                <SortableTableHead label="Conditions" column="conditions" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                <SortableTableHead label="Status" column="status" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rules.map(rule => {
+              {sortedRules.map(rule => {
                 const editing = editingRule?.id === rule.id;
                 const fields = CONDITION_FIELDS[rule.rule_type] || [];
                 // Matches the server (normalizeRules): only an explicitly

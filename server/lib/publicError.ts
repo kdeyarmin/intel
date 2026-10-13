@@ -7,7 +7,7 @@
 export function publicErrorMessage(e: any, production = process.env.NODE_ENV === "production"): string {
   const message = e?.message || "Request failed.";
   if (!production || e?.status) return message;
-  return isInternalError(e) ? "Something went wrong. Please try again." : message;
+  return isInternalError(e) ? "Unable to complete the request. Please try again." : message;
 }
 
 /** A PostgreSQL error (SQLSTATE code, severity) or a system/network error (ECONNREFUSED, ETIMEDOUT…). */

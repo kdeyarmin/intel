@@ -18,11 +18,14 @@ import { latestUtilizationTotals } from '../components/providers/utilizationTota
 import AIContactEnrichment from '../components/ai/AIContactEnrichment';
 import AILocationInsights from '../components/ai/AILocationInsights';
 import AIDataEnrichmentPanel from '../components/ai/AIDataEnrichmentPanel';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 export default function LocationDetail() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const locationId = searchParams.get('id');
+  const [providerSort, setProviderSort] = React.useState(null);
 
   const { data: allLocations = [], isLoading: loadingLoc, isError: locError, error: locLoadError, refetch: refetchLoc } = useQuery({
     queryKey: ['locationDetail', locationId],
@@ -52,6 +55,15 @@ export default function LocationDetail() {
     queryFn: () => base44.entities.Provider.filter({ npi: { $in: coLocatedNPIs } }, undefined, 500),
     enabled: coLocatedNPIs.length > 0,
   });
+  const sortedCoProviders = React.useMemo(
+    () => (providerSort ? sortRows(coProviders, providerSort, (provider, key) => {
+      if (key === 'name') return provider.entity_type === 'Individual'
+        ? `${provider.last_name || ''} ${provider.first_name || ''}`
+        : provider.organization_name;
+      return provider[key];
+    }) : coProviders),
+    [coProviders, providerSort],
+  );
 
   // Fetch utilization data for the main NPI
   const { data: utilizations = [] } = useQuery({
@@ -368,15 +380,15 @@ export default function LocationDetail() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>NPI</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Credential</TableHead>
+                    <SortableTableHead label="NPI" column="npi" sort={providerSort} onSort={(column) => setProviderSort((current) => nextSort(current, column))} />
+                    <SortableTableHead label="Name" column="name" sort={providerSort} onSort={(column) => setProviderSort((current) => nextSort(current, column))} />
+                    <SortableTableHead label="Type" column="entity_type" sort={providerSort} onSort={(column) => setProviderSort((current) => nextSort(current, column))} />
+                    <SortableTableHead label="Credential" column="credential" sort={providerSort} onSort={(column) => setProviderSort((current) => nextSort(current, column))} />
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {coProviders.map(p => (
+                  {sortedCoProviders.map(p => (
                     <TableRow key={p.id}>
                       <TableCell className="font-mono text-xs">{p.npi}</TableCell>
                       <TableCell className="font-medium">

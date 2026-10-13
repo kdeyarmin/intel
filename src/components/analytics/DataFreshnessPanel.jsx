@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Clock } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 const STATUS = {
   current: { label: 'Current', cls: 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30' },
@@ -17,6 +20,7 @@ const fmtCount = (v) => (v == null ? '—' : Number(v).toLocaleString());
 
 /** Which version of each dataset is loaded, and what CMS has published since. */
 export default function DataFreshnessPanel({ onlyLoaded = false }) {
+  const [sort, setSort] = useState(null);
   const { data, isLoading } = useQuery({
     queryKey: ['dataFreshness'],
     queryFn: async () => (await base44.functions.invoke('getDataFreshness', {})).data,
@@ -24,7 +28,10 @@ export default function DataFreshnessPanel({ onlyLoaded = false }) {
   });
   // Loaded means its rows are in the tables, whatever the latest refresh did: a dataset whose first import failed
   // has none (its status is "failed", not "never imported"), while one whose refresh failed keeps its earlier import.
-  const rows = (data?.datasets || []).filter((d) => !onlyLoaded || d.imported_at);
+  const filteredRows = (data?.datasets || []).filter((d) => !onlyLoaded || d.imported_at);
+  const rows = sort
+    ? sortRows(filteredRows, sort, (dataset, key) => key === 'label' ? dataset.label || dataset.import_type : dataset[key])
+    : filteredRows;
   const checkedAt = rows.map((d) => d.catalog_checked_at).filter(Boolean).sort().pop();
   return (
     <Card className="bg-slate-900/80 border-slate-800">
@@ -49,12 +56,12 @@ export default function DataFreshnessPanel({ onlyLoaded = false }) {
               <caption className="sr-only">Loaded datasets and their vintages</caption>
               <thead>
                 <tr className="text-left text-xs text-slate-400 border-b border-slate-800">
-                  <th scope="col" className="py-2 pr-3 font-medium">Dataset</th>
-                  <th scope="col" className="py-2 pr-3 font-medium">Data year</th>
-                  <th scope="col" className="py-2 pr-3 font-medium">CMS published</th>
-                  <th scope="col" className="py-2 pr-3 font-medium">Imported</th>
-                  <th scope="col" className="py-2 pr-3 font-medium text-right">Rows</th>
-                  <th scope="col" className="py-2 font-medium">Status</th>
+                  <SortableTableHead label="Dataset" column="label" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-2 pr-3 font-medium" />
+                  <SortableTableHead label="Data year" column="data_year" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-2 pr-3 font-medium" />
+                  <SortableTableHead label="CMS published" column="catalog_modified" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-2 pr-3 font-medium" />
+                  <SortableTableHead label="Imported" column="imported_at" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-2 pr-3 font-medium" />
+                  <SortableTableHead label="Rows" column="row_count" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-2 pr-3 font-medium text-right" />
+                  <SortableTableHead label="Status" column="status" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-2 font-medium" />
                 </tr>
               </thead>
               <tbody>

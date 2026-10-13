@@ -601,7 +601,7 @@ export async function runOperationsAlerts(): Promise<WorkerResult> {
           console.warn(`[operationsAlerts] email to ${to} failed:`, lastError);
         }
       }
-      if (emailed === 0) return { worker: "operationsAlerts", ok: false, durationMs: Date.now() - started, details: { ...open, emailed: false }, error: truncErr(`the digest couldn't be emailed to anyone: ${lastError}`) };
+      if (emailed === 0) return { worker: "operationsAlerts", ok: false, durationMs: Date.now() - started, details: { ...open, emailed: false }, error: truncErr(`Unable to email the digest to any recipients: ${lastError}`) };
       await db.insert(auditEvents).values({
         event_type: "operations_alert",
         user_email: "system",

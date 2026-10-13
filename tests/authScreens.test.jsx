@@ -39,7 +39,7 @@ describe('ResetPassword', () => {
   it('explains a dead link instead of showing a form', async () => {
     auth.tokenInfo.mockResolvedValue({ valid: false });
     at(`/reset-password?token=${TOKEN}`, <ResetPassword />);
-    expect(await screen.findByText("This link doesn't work")).toBeInTheDocument();
+    expect(await screen.findByText('This link is invalid or expired')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Request a new reset link/ })).toHaveAttribute('href', '/forgot-password');
   });
 
@@ -49,7 +49,7 @@ describe('ResetPassword', () => {
     auth.tokenInfo.mockResolvedValueOnce({ valid: true, purpose: 'reset', email: 'rep@example.com' });
     at(`/reset-password?token=${TOKEN}`, <ResetPassword />);
     expect(await screen.findByRole('alert')).toHaveTextContent("Unable to verify this link");
-    expect(screen.queryByText("This link doesn't work")).not.toBeInTheDocument();
+    expect(screen.queryByText('This link is invalid or expired')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByRole('alert')).toHaveTextContent("Unable to verify this link");
@@ -69,7 +69,7 @@ describe('ResetPassword', () => {
     fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'ivy-password' } });
     fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'ivy-passwrd' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent("don't match");
+    expect(await screen.findByRole('alert')).toHaveTextContent('The passwords do not match.');
     expect(auth.resetPassword).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'ivy-password' } });

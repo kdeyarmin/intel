@@ -20,6 +20,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 export const STATUS_META = {
   pending: { label: 'Awaiting approval', className: 'bg-amber-900/30 text-amber-400 border-amber-500/30' },
@@ -94,7 +96,7 @@ function DisableDialog({ user, onCancel, onConfirm, busy }) {
         <DialogHeader>
           <DialogTitle className="text-slate-100">Disable {user?.email}?</DialogTitle>
           <DialogDescription className="text-slate-400">
-            They're signed out everywhere right away and can't sign back in until an admin enables the account.
+            The account will be signed out immediately and remain unable to sign in until an administrator re-enables it.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
@@ -142,10 +144,10 @@ function InviteCard({ onInvited, platformAdmin, seats }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <UserPlus className="w-5 h-5 text-emerald-400" aria-hidden="true" />
-          Invite someone
+          Invite a user
         </CardTitle>
         <CardDescription>
-          They get a link to set a password. Invited accounts don't need approval.
+          The user will receive a link to set a password. Invited accounts do not require approval.
           {seats && seats.limit > 0 && <> {seats.used} of {seats.limit} seats used{seatsFull && <>; <Link to="/Billing" className="text-cyan-400 hover:underline">upgrade the plan</Link> to add people</>}.</>}
         </CardDescription>
       </CardHeader>
@@ -186,6 +188,7 @@ export default function UserManagement() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState(null);
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState(null);
   const [linkResult, setLinkResult] = useState(null);
   const [disabling, setDisabling] = useState(null);
 
@@ -203,10 +206,15 @@ export default function UserManagement() {
 
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return users.filter((u) =>
+    const filteredUsers = users.filter((u) =>
       (activeFilter === 'all' || u.status === activeFilter)
       && (!q || u.email.toLowerCase().includes(q) || (u.full_name || '').toLowerCase().includes(q)));
-  }, [users, activeFilter, search]);
+    return sort ? sortRows(filteredUsers, sort, (user, key) => {
+      if (key === 'user') return user.full_name || user.email;
+      if (key === 'role') return [user.org_role || '', user.role === 'admin' ? 'platform admin' : ''].filter(Boolean).join(' ');
+      return user[key];
+    }) : filteredUsers;
+  }, [users, activeFilter, search, sort]);
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: USERS_KEY });
@@ -327,11 +335,11 @@ export default function UserManagement() {
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-800/50 text-slate-400 border-b border-slate-700/50">
                   <tr>
-                    <th scope="col" className="px-4 py-3 font-medium">User</th>
-                    <th scope="col" className="px-4 py-3 font-medium">Role</th>
-                    <th scope="col" className="px-4 py-3 font-medium">Status</th>
-                    <th scope="col" className="px-4 py-3 font-medium hidden md:table-cell">Last sign-in</th>
-                    <th scope="col" className="px-4 py-3 font-medium hidden lg:table-cell">Joined</th>
+                    <SortableTableHead label="User" column="user" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-4 py-3 font-medium" />
+                    <SortableTableHead label="Role" column="role" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-4 py-3 font-medium" />
+                    <SortableTableHead label="Status" column="status" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-4 py-3 font-medium" />
+                    <SortableTableHead label="Last sign-in" column="last_login_at" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-4 py-3 font-medium hidden md:table-cell" />
+                    <SortableTableHead label="Joined" column="created_date" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-4 py-3 font-medium hidden lg:table-cell" />
                     <th scope="col" className="px-4 py-3 font-medium"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
@@ -425,7 +433,7 @@ export default function UserManagement() {
                   {shown.length === 0 && (
                     <tr>
                       <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
-                        {activeFilter === 'pending' ? 'Nobody is waiting for approval.' : 'No users match.'}
+                        {activeFilter === 'pending' ? 'No accounts are awaiting approval.' : 'No accounts match the current search and status filter.'}
                       </td>
                     </tr>
                   )}

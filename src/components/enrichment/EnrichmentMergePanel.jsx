@@ -6,10 +6,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ArrowRight, Check, Merge } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 export default function EnrichmentMergePanel({ provider, npiValidation, onMergeComplete }) {
   const [selectedFields, setSelectedFields] = useState({});
   const [isMerging, setIsMerging] = useState(false);
+  const [sort, setSort] = useState(null);
 
   // Only fields stored on the provider record. Address differences are listed
   // under "Discrepancies" above; locations are edited on the location itself.
@@ -34,6 +37,18 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
 
     return normExternal && normCurrent !== normExternal && normExternal !== 'undefined' && normExternal !== 'null';
   });
+  const sortedDiscrepancies = sort
+    ? sortRows(discrepancies, sort, (field, key) => {
+      const value = key === 'field'
+        ? field.label
+        : key === 'current'
+          ? provider[field.key]
+          : field.format
+            ? field.format(npiValidation[field.externalKey])
+            : npiValidation[field.externalKey];
+      return value == null ? '' : String(value);
+    })
+    : discrepancies;
 
   const handleToggleField = (key) => {
     setSelectedFields(prev => ({
@@ -56,19 +71,19 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
       });
 
       if (Object.keys(updates).length === 0) {
-        toast.info("No fields selected for merge");
+        toast.info('Select one or more fields to update.');
         setIsMerging(false);
         return;
       }
 
       await base44.entities.Provider.update(provider.id, updates);
       
-      toast.success(`Successfully merged ${Object.keys(updates).length} fields`);
+      toast.success(`Updated ${Object.keys(updates).length} fields from the NPI Registry.`);
       if (onMergeComplete) onMergeComplete();
       setSelectedFields({}); // Reset selection
     } catch (error) {
       console.error("Merge failed:", error);
-      toast.error("Failed to merge provider data");
+      toast.error('Unable to update provider data from the NPI Registry.');
     } finally {
       setIsMerging(false);
     }
@@ -79,7 +94,7 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
       <Card className="bg-slate-800/40 border-slate-700/50">
         <CardContent className="pt-6 flex flex-col items-center justify-center text-center">
           <Check className="w-12 h-12 text-green-500 mb-2" />
-          <h3 className="font-medium text-white">Data is Synchronized</h3>
+          <h3 className="font-medium text-white">Provider record matches the NPI Registry</h3>
           <p className="text-sm text-slate-400 mt-1">Provider record matches NPI Registry data.</p>
         </CardContent>
       </Card>
@@ -91,10 +106,10 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Merge className="w-5 h-5 text-amber-400" />
-          <CardTitle className="text-base text-white">Data Comparison & Merge</CardTitle>
+          <CardTitle className="text-base text-white">NPI Registry comparison</CardTitle>
         </div>
         <CardDescription>
-          Found {discrepancies.length} discrepancies between local record and NPI Registry. Select values to update.
+          {discrepancies.length} differences from the NPI Registry were found. Select values to apply to the provider record.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -103,14 +118,14 @@ export default function EnrichmentMergePanel({ provider, npiValidation, onMergeC
             <TableHeader className="bg-slate-800/40">
               <TableRow>
                 <TableHead className="w-[50px] text-center">Merge</TableHead>
-                <TableHead>Field</TableHead>
-                <TableHead className="text-slate-400">Current Value</TableHead>
+                <SortableTableHead label="Field" column="field" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column, 'asc'))} />
+                <SortableTableHead label="Current value" column="current" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column, 'asc'))} className="text-slate-400" />
                 <TableHead className="w-[30px]"><span className="sr-only">Replaced by</span></TableHead>
-                <TableHead className="text-blue-400 font-medium">NPI Registry Value</TableHead>
+                <SortableTableHead label="NPI Registry value" column="external" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column, 'asc'))} className="text-blue-400 font-medium" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {discrepancies.map((field) => {
+              {sortedDiscrepancies.map((field) => {
                 let externalVal = npiValidation[field.externalKey];
                 if (field.format) externalVal = field.format(externalVal);
                 const currentVal = provider[field.key] || <span className="text-slate-400 italic">Empty</span>;

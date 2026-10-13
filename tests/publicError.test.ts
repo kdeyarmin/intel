@@ -8,8 +8,8 @@ describe("publicErrorMessage", () => {
   const worded = new Error("Email isn't configured yet.");
 
   it("hides database and connection details in production", () => {
-    expect(publicErrorMessage(sql, true)).toBe("Something went wrong. Please retry.");
-    expect(publicErrorMessage(conn, true)).toBe("Something went wrong. Please retry.");
+    expect(publicErrorMessage(sql, true)).toBe("Unable to complete the request. Please try again.");
+    expect(publicErrorMessage(conn, true)).toBe("Unable to complete the request. Please try again.");
   });
 
   it("keeps messages handlers chose to show, and everything in development", () => {

@@ -7,6 +7,8 @@ import { ExternalLink, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { HIGH_INTENSITY_THRESHOLD } from '@/lib/scoringRules';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 const PAGE_SIZE = 50;
 
@@ -15,9 +17,9 @@ const primaryTaxonomy = (taxonomy) => (taxonomy || []).find(t => t?.is_primary) 
 
 export default function LeadResultsTable({ results, onStatusChange }) {
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState(null);
   const pageCount = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
-  const pageRows = results.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   const getScoreColor = (score) => {
     if (score >= 80) return 'bg-green-900/30 text-green-400';
@@ -40,19 +42,35 @@ export default function LeadResultsTable({ results, onStatusChange }) {
 
     return signals.length > 0 ? signals.join(' • ') : 'Standard Practice';
   };
+  const sortedResults = sort
+    ? sortRows(results, sort, (result, key) => {
+      const { provider, score, location, taxonomy, utilization, listMember } = result;
+      const name = provider.entity_type === 'Organization'
+        ? provider.organization_name
+        : `${provider.first_name || ''} ${provider.last_name || ''}`.trim();
+      if (key === 'name') return name;
+      if (key === 'specialty') return primaryTaxonomy(taxonomy)?.taxonomy_description;
+      if (key === 'location') return [location?.city, location?.state].filter(Boolean).join(', ');
+      if (key === 'score') return score?.score;
+      if (key === 'fingerprint') return getPatientFingerprint(provider, utilization, taxonomy);
+      if (key === 'status') return listMember?.status || 'New';
+      return location?.phone;
+    })
+    : results;
+  const pageRows = sortedResults.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   return (
     <div className="border rounded-lg overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Provider Name</TableHead>
-            <TableHead>Specialty</TableHead>
-            <TableHead>City, ST</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Score</TableHead>
-            <TableHead>Patient Fingerprint</TableHead>
-            <TableHead>Status</TableHead>
+            <SortableTableHead label="Provider" column="name" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+            <SortableTableHead label="Specialty" column="specialty" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+            <SortableTableHead label="City, state" column="location" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+            <SortableTableHead label="Phone" column="phone" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+            <SortableTableHead label="Score" column="score" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+            <SortableTableHead label="Utilization signals" column="fingerprint" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+            <SortableTableHead label="Status" column="status" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>

@@ -174,7 +174,7 @@ export default function AppLayout({ children, currentPageName }) {
             className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-cyan-400 hover:bg-slate-800/50 transition-colors"
           >
             <Search className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span className="flex-1 text-left">Search...</span>
+            <span className="flex-1 text-left">Search records…</span>
             <kbd className="text-[10px] text-slate-400 border border-slate-700 rounded px-1 py-0.5" aria-hidden="true">⌘K</kbd>
           </button>
         </div>
@@ -288,7 +288,7 @@ export default function AppLayout({ children, currentPageName }) {
         <div className="px-4 sm:px-8 py-2 border-t border-slate-800/60 bg-[#0b1120]/80">
           <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
             <span>{BRAND_NAME}</span>
-            <span>Analysis by CareMetric Healthcare Advisors · Sources: CMS, NPPES and U.S. Census Bureau</span>
+            <span>Data sources: CMS, NPPES and U.S. Census Bureau</span>
             <a href={`https://${BRAND_WEBSITE}`} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 hover:underline">{BRAND_WEBSITE}</a>
           </div>
         </div>

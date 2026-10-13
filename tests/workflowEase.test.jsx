@@ -148,7 +148,7 @@ describe('PageErrorBoundary', () => {
   it('contains a page crash and offers recovery', () => {
     render(<div><nav>sidebar</nav><PageErrorBoundary><Boom /></PageErrorBoundary></div>);
     expect(screen.getByText('sidebar')).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toHaveTextContent('This page ran into a problem');
+    expect(screen.getByRole('alert')).toHaveTextContent('We were unable to load this page');
     expect(screen.getByText('kaboom')).toBeInTheDocument();
   });
 

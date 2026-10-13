@@ -2,14 +2,14 @@ import React from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { TableHead } from '@/components/ui/table';
 
-export default function SortableTableHead({ label, column, sort, onSort, className = '' }) {
+export default function SortableTableHead({ label, column, sort, onSort, className = '', title }) {
   const active = sort?.key === column;
   const direction = active ? sort.direction : null;
   const Icon = direction === 'asc' ? ArrowUp : direction === 'desc' ? ArrowDown : ArrowUpDown;
   const ariaSort = direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none';
 
   return (
-    <TableHead scope="col" aria-sort={ariaSort} className={className}>
+    <TableHead scope="col" aria-sort={ariaSort} className={className} title={title}>
       <button
         type="button"
         onClick={() => onSort(column)}
@@ -17,7 +17,7 @@ export default function SortableTableHead({ label, column, sort, onSort, classNa
         className={`inline-flex items-center gap-1 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 rounded-sm ${className.includes('text-right') ? 'ml-auto' : ''}`}
       >
         {label}
-        <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <Icon className="h-3.5 w-3.5 shrink-0 print:hidden" aria-hidden="true" />
       </button>
     </TableHead>
   );

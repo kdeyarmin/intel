@@ -1,13 +1,20 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { MapPin, Phone, Printer } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { telHref } from './ProviderHeader';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 export default function LocationsTable({ locations = [] }) {
+  const [sort, setSort] = useState(null);
+  const sortedLocations = useMemo(
+    () => (sort ? sortRows(locations, sort, (location, key) => location[key]) : locations),
+    [locations, sort],
+  );
   if (!locations.length) return null;
 
   return (
@@ -24,16 +31,16 @@ export default function LocationsTable({ locations = [] }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Address</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>State</TableHead>
-                <TableHead>ZIP</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Type</TableHead>
+                <SortableTableHead label="Address" column="address_1" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                <SortableTableHead label="City" column="city" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                <SortableTableHead label="State" column="state" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                <SortableTableHead label="ZIP" column="zip" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                <SortableTableHead label="Phone" column="phone" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                <SortableTableHead label="Type" column="location_type" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {locations.map(loc => (
+              {sortedLocations.map(loc => (
                 <TableRow key={loc.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">

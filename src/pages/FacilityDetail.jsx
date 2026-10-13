@@ -15,6 +15,8 @@ import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import HospitalCatchmentCard from '../components/market/HospitalCatchmentCard';
 import MarketPositionCard from '../components/market/MarketPositionCard';
 import { DmeFacilityCard, DrgCard } from '../components/market/MarketReferenceCards';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 // Facility groups with a post-acute market view (getFacilityMarket setting).
 const MARKET_SETTING = { snf: 'snf', home_health: 'hha', hospice: 'hospice', irf: 'irf', ltch: 'ltch' };
@@ -159,6 +161,7 @@ function formatCellValue(key, val) {
 function RawDataTable({ rows, facilityType }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [expanded, setExpanded] = useState(false);
+  const [sort, setSort] = useState(null);
 
   if (!rows || rows.length === 0) return <p className="text-sm text-slate-400">No data available</p>;
 
@@ -188,7 +191,12 @@ function RawDataTable({ rows, facilityType }) {
 
   const displayRawKeys = expanded ? filteredRawKeys : filteredRawKeys.slice(0, 10);
   const hasMore = filteredRawKeys.length > 10;
-  const displayRows = rows.slice(0, 50);
+  const sortedRows = sort
+    ? sortRows(rows, sort, (row, key) => key.startsWith('raw:')
+      ? row.raw_data?.[key.slice(4)]
+      : row[key])
+    : rows;
+  const displayRows = sortedRows.slice(0, 50);
 
   const latestRow = [...rows].sort((a, b) => (Number(b.data_year) || 0) - (Number(a.data_year) || 0))[0];
   const summaryCols = activeCols.filter(c => c.key !== 'data_year');
@@ -243,14 +251,10 @@ function RawDataTable({ rows, facilityType }) {
           <thead>
             <tr className="bg-slate-800/70">
               {activeCols.map(col => (
-                <th key={col.key} className={`${col.align === 'left' ? 'text-left' : 'text-right'} py-2.5 px-3 text-slate-400 font-medium text-xs whitespace-nowrap sticky top-0 bg-slate-800/70`}>
-                  {col.label}
-                </th>
+                <SortableTableHead key={col.key} label={col.label} column={col.key} sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className={`${col.align === 'left' ? 'text-left' : 'text-right'} py-2.5 px-3 text-slate-400 font-medium text-xs whitespace-nowrap sticky top-0 bg-slate-800/70`} />
               ))}
               {displayRawKeys.map(k => (
-                <th key={k} className="text-right py-2.5 px-3 text-slate-400 font-medium text-xs whitespace-nowrap max-w-[220px] sticky top-0 bg-slate-800/70" title={k}>
-                  {k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).substring(0, 35)}
-                </th>
+                <SortableTableHead key={k} label={k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()).substring(0, 35)} column={`raw:${k}`} sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="text-right py-2.5 px-3 text-slate-400 font-medium text-xs whitespace-nowrap max-w-[220px] sticky top-0 bg-slate-800/70" title={k} />
               ))}
             </tr>
           </thead>

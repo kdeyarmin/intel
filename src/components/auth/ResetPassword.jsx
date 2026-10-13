@@ -40,7 +40,7 @@ export default function ResetPassword() {
     e.preventDefault();
     setError('');
     if (password !== confirm) {
-      setError("The passwords don't match.");
+      setError('The passwords do not match.');
       return;
     }
     setLoading(true);
@@ -50,7 +50,7 @@ export default function ResetPassword() {
       const session = await adoptSession(user);
       navigate((session ?? user).status === 'pending' ? '/pending' : '/', { replace: true });
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please retry.');
+      setError(err.message || 'Unable to reset the password. Please try again.');
       setLoading(false);
     }
   };
@@ -76,7 +76,7 @@ export default function ResetPassword() {
   if (!info.valid) {
     return (
       <AuthShell
-        title="This link doesn't work"
+        title="This link is invalid or expired"
         footer={<Link to="/login" className="text-cyan-400 hover:text-cyan-300">Back to sign in</Link>}
       >
         <Notice tone="warn">

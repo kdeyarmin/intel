@@ -1,11 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Database } from 'lucide-react';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
+
+function runMetrics(run) {
+  const state = (run.file_name?.match(/crawler_([A-Z]{2})/) || [null, '??'])[1];
+  const start = run.created_date ? new Date(run.created_date) : new Date();
+  const end = run.completed_at
+    ? new Date(run.completed_at)
+    : run.status === 'processing' || run.status === 'validating' ? new Date() : null;
+  const durationMs = end ? Math.max(0, end - start) : 0;
+  const durationSec = durationMs > 0 ? Math.max(1, Math.round(durationMs / 1000)) : 0;
+  const rows = run.total_rows || ((run.imported_rows || 0) + (run.updated_rows || 0) + (run.skipped_rows || 0) + (run.invalid_rows || 0));
+  const isTerminal = run.status === 'completed' || run.status === 'failed';
+  const speed = isTerminal && durationSec > 0 ? Math.round(rows / durationSec) : 0;
+  const errorCount = (run.error_samples || []).length + (run.invalid_rows || 0);
+  return { state, status: run.status, durationSec, rows, speed, errorCount };
+}
 
 export default function LastFiveRunsMetrics({ nppesImports, loading }) {
+  const [sort, setSort] = useState(null);
   if (loading) return <Card><CardContent className="p-6"><Skeleton className="h-64 w-full" /></CardContent></Card>;
 
   // Get last 5 *completed* or *failed* runs (exclude currently processing to show final metrics)
@@ -13,6 +31,9 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
   const runs = (nppesImports || [])
     .filter(b => b.import_type === 'nppes_registry' && b.file_name?.includes('crawler_'))
     .slice(0, 5);
+  const sortedRuns = sort
+    ? sortRows(runs, sort, (run, key) => runMetrics(run)[key])
+    : runs;
 
   return (
     <Card>
@@ -27,12 +48,12 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>State</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Duration</TableHead>
-              <TableHead className="text-right">Rows</TableHead>
-              <TableHead className="text-right">Speed</TableHead>
-              <TableHead className="text-right">Errors</TableHead>
+              <SortableTableHead label="State" column="state" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column, 'asc'))} />
+              <SortableTableHead label="Status" column="status" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column, 'asc'))} />
+              <SortableTableHead label="Duration" column="durationSec" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+              <SortableTableHead label="Rows" column="rows" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="text-right" />
+              <SortableTableHead label="Speed" column="speed" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="text-right" />
+              <SortableTableHead label="Errors" column="errorCount" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="text-right" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -43,16 +64,8 @@ export default function LastFiveRunsMetrics({ nppesImports, loading }) {
                 </TableCell>
               </TableRow>
             ) : (
-              runs.map(run => {
-                const state = (run.file_name?.match(/crawler_([A-Z]{2})/) || [null, '??'])[1];
-                const start = run.created_date ? new Date(run.created_date) : new Date();
-                const end = run.completed_at ? new Date(run.completed_at) : (run.status === 'processing' || run.status === 'validating') ? new Date() : null;
-                const durationMs = end ? Math.max(0, end - start) : 0;
-                const durationSec = durationMs > 0 ? Math.max(1, Math.round(durationMs / 1000)) : 0;
-                const rows = run.total_rows || ((run.imported_rows || 0) + (run.updated_rows || 0) + (run.skipped_rows || 0) + (run.invalid_rows || 0));
-                const isTerminal = run.status === 'completed' || run.status === 'failed';
-                const speed = isTerminal && durationSec > 0 ? Math.round(rows / durationSec) : 0;
-                const errorCount = (run.error_samples || []).length + (run.invalid_rows || 0);
+              sortedRuns.map(run => {
+                const { state, durationSec, rows, speed, errorCount } = runMetrics(run);
 
                 return (
                   <TableRow key={run.id}>

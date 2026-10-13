@@ -36,8 +36,8 @@ class ErrorBoundary extends Component {
       return (
         <div className="fixed inset-0 flex items-center justify-center bg-slate-900 text-white">
           <div className="text-center max-w-md p-8">
-            <h2 className="text-xl font-semibold mb-2">Something went wrong</h2>
-            <p className="text-slate-400 mb-4">{this.state.error?.message || 'An unexpected error occurred.'}</p>
+            <h2 className="text-xl font-semibold mb-2">We were unable to load the application</h2>
+            <p className="text-slate-400 mb-4">{this.state.error?.message || 'An unexpected error occurred. Please reload the page.'}</p>
             <button
               onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
               className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded text-sm"

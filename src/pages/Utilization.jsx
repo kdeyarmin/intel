@@ -9,7 +9,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
@@ -22,11 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 export default function Utilization() {
   const uid = useId();
   const [searchTerm, setSearchTerm] = useState('');
   const [yearFilter, setYearFilter] = useState('all');
+  const [sort, setSort] = useState(null);
 
   const { data: records, isLoading } = useQuery({
     queryKey: ['provider_utilization', yearFilter],
@@ -49,6 +51,9 @@ export default function Utilization() {
       (record.service_type && record.service_type.toLowerCase().includes(term))
     );
   });
+  const sortedRecords = sort
+    ? sortRows(filteredRecords, sort)
+    : filteredRecords;
 
   return (
     <div className="max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
@@ -99,13 +104,13 @@ export default function Utilization() {
             <Table>
               <TableHeader className="bg-slate-800/50">
                 <TableRow>
-                  <TableHead className="font-semibold text-slate-400">NPI</TableHead>
-                  <TableHead className="font-semibold text-slate-400">Service Type</TableHead>
-                  <TableHead className="font-semibold text-slate-400 text-right">Beneficiaries</TableHead>
-                  <TableHead className="font-semibold text-slate-400 text-right">Services</TableHead>
-                  <TableHead className="font-semibold text-slate-400 text-right">Avg Submitted</TableHead>
-                  <TableHead className="font-semibold text-slate-400 text-right">Total Medicare Paid</TableHead>
-                  <TableHead className="font-semibold text-slate-400">Year</TableHead>
+                  <SortableTableHead label="NPI" column="npi" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="font-semibold text-slate-400" />
+                  <SortableTableHead label="Service type" column="service_type" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="font-semibold text-slate-400" />
+                  <SortableTableHead label="Beneficiaries" column="total_unique_benes" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="font-semibold text-slate-400 text-right" />
+                  <SortableTableHead label="Services" column="total_services" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="font-semibold text-slate-400 text-right" />
+                  <SortableTableHead label="Average submitted charge" column="average_submitted_chrg_amt" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="font-semibold text-slate-400 text-right" />
+                  <SortableTableHead label="Medicare payments" column="total_medicare_payment_amt" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="font-semibold text-slate-400 text-right" />
+                  <SortableTableHead label="Year" column="data_year" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="font-semibold text-slate-400" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -131,7 +136,7 @@ export default function Utilization() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredRecords.map((record) => (
+                  sortedRecords.map((record) => (
                     <TableRow key={record.id} className="hover:bg-slate-800/50">
                       <TableCell className="font-medium text-cyan-400">{record.npi}</TableCell>
                       <TableCell>

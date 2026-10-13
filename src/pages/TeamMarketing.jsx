@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import PageTabs from '@/components/layout/PageTabs';
@@ -12,6 +12,8 @@ import { accountTypeLabel } from '@/lib/marketingReport';
 import {
   buildTeamReport, mondayOf, monthLabel, shiftMonth, thisMonth, userInitials, userLabel, weekBuckets,
 } from '@/lib/teamMarketingReport';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 const URL_DEFAULTS = { view: 'overview', month: '', week: '', marketer: '' };
 const PAGE = 5000;
@@ -296,8 +298,10 @@ function BookOfBusiness({ report, roster, me, month, onAssign }) {
 }
 
 function CallsView({ report, activities, accounts, roster, week, setWeek }) {
+  const [sort, setSort] = useState(null);
   const weekStart = /^\d{4}-\d{2}-\d{2}$/.test(week) ? week : mondayOf(todayStr());
   const days = weekBuckets(activities, roster, weekStart);
+  const sortedMarketers = sort ? sortRows(report.marketers, sort) : report.marketers;
   const byAccount = new Map(accounts.map((a) => [a.id, a.name]));
   const weekLabel = `${days[0].date} – ${days[6].date}`;
   return (
@@ -307,16 +311,16 @@ function CallsView({ report, activities, accounts, roster, week, setWeek }) {
         <div className="overflow-x-auto rounded-lg border border-slate-800">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                <th className="px-3 py-2 font-medium">Marketer</th>
-                <th className="px-3 py-2 font-medium">Done</th>
-                <th className="px-3 py-2 font-medium">Overdue</th>
-                <th className="px-3 py-2 font-medium">Upcoming</th>
-                <th className="px-3 py-2 font-medium w-56">Completion</th>
+              <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400 border-b border-slate-800">
+                <SortableTableHead label="Marketer" column="label" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-3 py-2 font-medium" />
+                <SortableTableHead label="Completed" column="callsDone" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-3 py-2 font-medium" />
+                <SortableTableHead label="Overdue" column="callsOverdue" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-3 py-2 font-medium" />
+                <SortableTableHead label="Upcoming" column="callsUpcoming" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-3 py-2 font-medium" />
+                <SortableTableHead label="Completion" column="completionPct" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-3 py-2 font-medium w-56" />
               </tr>
             </thead>
             <tbody>
-              {report.marketers.map((m) => (
+              {sortedMarketers.map((m) => (
                 <tr key={m.id} className="border-b border-slate-800/60 last:border-0">
                   <td className="px-3 py-2 text-slate-100">{m.label}</td>
                   <td className="px-3 py-2 text-slate-300">{m.callsDone}</td>
@@ -328,7 +332,7 @@ function CallsView({ report, activities, accounts, roster, week, setWeek }) {
             </tbody>
           </table>
         </div>
-        <p className="text-[11px] text-slate-500 mt-1">Completion is sales calls logged done out of everything that should have happened by now (done + overdue). Upcoming calls are still on the schedule.</p>
+        <p className="text-[11px] text-slate-400 mt-1">Completion reflects completed calls divided by completed plus overdue calls. Upcoming calls are excluded until their scheduled date.</p>
       </section>
 
       <section>
@@ -383,6 +387,7 @@ function shiftWeek(weekStart, deltaDays) {
 }
 
 function ReferralsView({ report, referrals, accounts, roster, month, marketer, setMarketer }) {
+  const [sort, setSort] = useState(null);
   const mId = marketer === '' ? null : Number(marketer);
   const byAccount = new Map(accounts.map((a) => [a.id, a]));
   const inScope = (r) => mId == null || Number(r.user_id) === mId;
@@ -392,6 +397,7 @@ function ReferralsView({ report, referrals, accounts, roster, month, marketer, s
     .sort((a, b) => (b.admitted_on || b.received_on).localeCompare(a.admitted_on || a.received_on));
   const lost = received.filter((r) => r.outcome === 'lost');
   const converted = received.filter((r) => r.outcome === 'admitted').length;
+  const sortedMarketers = sort ? sortRows(report.marketers, sort) : report.marketers;
 
   const cols = [
     { id: 'open', title: 'Open referrals', rows: open, color: 'text-amber-300', note: 'Not admissions yet.' },
@@ -418,7 +424,7 @@ function ReferralsView({ report, referrals, accounts, roster, month, marketer, s
         <label className="flex items-center gap-1.5 text-xs text-slate-400">
           Marketer
           <select value={marketer} onChange={(e) => setMarketer(e.target.value)} aria-label="Filter by marketer" className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-100">
-            <option value="">Everyone</option>
+            <option value="">All marketers</option>
             {report.marketers.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
         </label>
@@ -456,17 +462,17 @@ function ReferralsView({ report, referrals, accounts, roster, month, marketer, s
         <div className="overflow-x-auto rounded-lg border border-slate-800">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                <th className="px-3 py-2 font-medium">Marketer</th>
-                <th className="px-3 py-2 font-medium">Received</th>
-                <th className="px-3 py-2 font-medium">Admitted</th>
-                <th className="px-3 py-2 font-medium">Lost</th>
-                <th className="px-3 py-2 font-medium">Open</th>
-                <th className="px-3 py-2 font-medium">Referrals admitted</th>
+              <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400 border-b border-slate-800">
+                <SortableTableHead label="Marketer" column="label" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-3 py-2 font-medium" />
+                <SortableTableHead label="Received" column="referralsReceived" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-3 py-2 font-medium" />
+                <SortableTableHead label="Admitted" column="admitted" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-3 py-2 font-medium" />
+                <SortableTableHead label="Lost" column="lost" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-3 py-2 font-medium" />
+                <SortableTableHead label="Open" column="openReferrals" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-3 py-2 font-medium" />
+                <SortableTableHead label="Conversion rate" column="conversionPct" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="px-3 py-2 font-medium" />
               </tr>
             </thead>
             <tbody>
-              {report.marketers.map((m) => (
+              {sortedMarketers.map((m) => (
                 <tr key={m.id} className="border-b border-slate-800/60 last:border-0">
                   <td className="px-3 py-2 text-slate-100">{m.label}</td>
                   <td className="px-3 py-2 text-slate-300">{m.referralsReceived}</td>

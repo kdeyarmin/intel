@@ -2,7 +2,7 @@ import React, { useId, useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,8 @@ import {
 import PageHeader from '../components/shared/PageHeader';
 import { formatDateTimeET } from '../components/utils/dateUtils';
 import PageTabs from '@/components/layout/PageTabs';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 const EVENT_TYPE_CONFIG = {
   import: { label: 'Import', color: 'bg-blue-900/15 text-blue-400 border-blue-500/20', Icon: Upload },
@@ -33,6 +35,7 @@ export default function SecurityAudit() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterUser, setFilterUser] = useState('all');
+  const [sort, setSort] = useState(null);
 
   const { data: events = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ['securityAuditEvents'],
@@ -68,6 +71,14 @@ export default function SecurityAudit() {
       return true;
     });
   }, [events, filterType, filterUser, search]);
+  const sortedFiltered = useMemo(
+    () => (sort ? sortRows(filtered, sort, (event, key) => {
+      if (key === 'action') return event.details?.action || '';
+      if (key === 'details') return event.details?.message || '';
+      return event[key];
+    }) : filtered),
+    [filtered, sort],
+  );
 
   // Summary metrics
   const totalEvents = events.length;
@@ -88,7 +99,7 @@ export default function SecurityAudit() {
       <PageTabs current="SecurityAudit" />
       <PageHeader
         title="Security Audit"
-        subtitle="Full audit trail of all system activity, user access, and data operations"
+        subtitle="Review account activity, access changes, and data operations"
         icon={ShieldCheck}
         breadcrumbs={[{ label: 'Admin', page: 'DataCenter' }, { label: 'Security Audit' }]}
         actions={
@@ -255,11 +266,11 @@ export default function SecurityAudit() {
             <Table>
               <TableHeader>
                 <TableRow className="border-slate-700/50 hover:bg-transparent">
-                  <TableHead className="text-slate-400 font-medium">Type</TableHead>
-                  <TableHead className="text-slate-400 font-medium">User</TableHead>
-                  <TableHead className="text-slate-400 font-medium">Action</TableHead>
-                  <TableHead className="text-slate-400 font-medium">Details</TableHead>
-                  <TableHead className="text-slate-400 font-medium">Timestamp</TableHead>
+                  <SortableTableHead label="Type" column="event_type" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="text-slate-400 font-medium" />
+                  <SortableTableHead label="User" column="user_email" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="text-slate-400 font-medium" />
+                  <SortableTableHead label="Action" column="action" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="text-slate-400 font-medium" />
+                  <SortableTableHead label="Details" column="details" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="text-slate-400 font-medium" />
+                  <SortableTableHead label="Timestamp" column="created_date" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="text-slate-400 font-medium" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -280,7 +291,7 @@ export default function SecurityAudit() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map(event => {
+                  sortedFiltered.map(event => {
                     const { color, Icon } = getEventConfig(event.event_type);
                     return (
                       <TableRow key={event.id} className="border-slate-700/30 hover:bg-slate-800/30 transition-colors">

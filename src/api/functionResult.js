@@ -8,7 +8,7 @@ import { base44 } from '@/api/base44Client';
  */
 export class FunctionError extends Error {
   constructor(functionName, data) {
-    super(data?.error || data?.message || `${functionName} failed`);
+    super(data?.error || data?.message || 'The request could not be completed.');
     this.name = 'FunctionError';
     this.functionName = functionName;
     this.notConfigured = !!data?.notConfigured;
@@ -24,7 +24,7 @@ export async function invokeOrThrow(functionName, payload = {}) {
 }
 
 /** Toast an error from invokeOrThrow: info for not-configured features, error otherwise. */
-export function toastFunctionError(err, fallback = 'Something went wrong. Please retry.') {
+export function toastFunctionError(err, fallback = 'Unable to complete the request. Please try again.') {
   if (err?.notConfigured) toast.info(err.message);
   else toast.error(err?.message || fallback);
 }

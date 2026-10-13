@@ -26,11 +26,13 @@ export function signupPendingEmail(to: string, newUser: { email: string; full_na
 
 /** To the admins who run the Stripe account: an organization completed a second checkout while it still paid for the first. */
 export function duplicateSubscriptionEmail(to: string, org: { id: number; name: string }, subscriptions: { kept: string; previous: string }): MailMessage {
-  // The name is whatever the customer typed at signup: one line, of a length a subject can carry.
-  const name = org.name.replace(/\s+/g, " ").trim().slice(0, 80) || `organization #${org.id}`;
+  const subjectPrefix = `${PRODUCT}: `;
+  const subjectSuffix = " is paying for two subscriptions";
+  const maxNameLength = 139 - subjectPrefix.length - subjectSuffix.length;
+  const name = org.name.replace(/\s+/g, " ").trim().slice(0, maxNameLength) || `organization #${org.id}`;
   return {
     to,
-    subject: `${PRODUCT}: ${name} is paying for two subscriptions`,
+    subject: `${subjectPrefix}${name}${subjectSuffix}`,
     text: lines(
       `${name} (organization #${org.id}) completed a second Stripe checkout while its first subscription was still active, so both are billing.`,
       "",

@@ -155,7 +155,7 @@ describe('Lead List Builder export', () => {
     expect(h.record).toHaveBeenCalledWith('export', expect.objectContaining({ action: 'csv_export', entity: 'lead_list' }));
     expect(h.countExport).toHaveBeenCalledTimes(1);
     const text = await readBlob(blobs[0]);
-    expect(text).toContain('NPI,Name,Specialty,City,State,ZIP,Phone,Score,Patient Fingerprint');
+    expect(text).toContain('NPI,Name,Specialty,City,State,ZIP,Phone,Score,Utilization Signals');
     expect(text).toContain('not an official CMS publication');
   });
 

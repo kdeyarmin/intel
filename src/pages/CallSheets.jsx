@@ -16,10 +16,12 @@ import { KIND_LABEL, ROSTER_KINDS, SHEET_STATUSES, STATUS_LABEL, filterAccounts,
 import { useConfirm } from '@/components/shared/ConfirmDialog';
 import { useBusinessLine } from '@/lib/BusinessLineContext';
 import { toast } from 'sonner';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 const URL_DEFAULTS = { sheet: '', view: 'all' };
 const VIEWS = [
-  { id: 'all', label: 'Everyone' },
+  { id: 'all', label: 'All accounts' },
   { id: 'schedule', label: 'Schedule' },
   { id: 'accounts', label: 'Chart of accounts' },
 ];
@@ -35,6 +37,7 @@ export default function CallSheets() {
   const [kinds, setKinds] = useState(() => new Set(['hospital', 'hha', 'hospice', 'snf', 'clinician']));
   const [moreKinds, setMoreKinds] = useState(false);
   const [adding, setAdding] = useState('');
+  const [sort, setSort] = useState(null);
   const { profile, line } = useBusinessLine();
   useEffect(() => {
     setKinds(new Set(profile?.callSheetKinds || ['hospital', 'hha', 'hospice', 'snf', 'clinician']));
@@ -61,7 +64,10 @@ export default function CallSheets() {
     enabled: !!sheet,
   });
 
-  const shown = useMemo(() => sortAccounts(filterAccounts(accounts, url.view), url.view), [accounts, url.view]);
+  const shown = useMemo(() => {
+    const filtered = sortAccounts(filterAccounts(accounts, url.view), url.view);
+    return sort ? sortRows(filtered, sort, (account, key) => account[key]) : filtered;
+  }, [accounts, url.view, sort]);
   const countyList = counties?.counties || [];
 
   async function createSheet(e) {
@@ -228,13 +234,13 @@ export default function CallSheets() {
       {sheet && (
         <article className="space-y-4" id="call-sheet">
           <header>
-            <button type="button" className="text-xs text-cyan-400 hover:underline print:hidden" onClick={() => setUrl({ sheet: '' })}>All sheets</button>
+            <button type="button" className="text-xs text-cyan-400 hover:underline print:hidden" onClick={() => setUrl({ sheet: '' })}>All call sheets</button>
             <h2 className="text-xl font-semibold text-slate-100">{sheet.name}</h2>
             <p className="text-sm text-slate-400">{[sheet.county_name, sheet.state].filter(Boolean).join(', ')} · {fmtCount(accounts.length)} accounts</p>
           </header>
 
           <div className="rounded-lg border border-slate-800 p-3 space-y-3 print:hidden">
-            <p className="text-xs text-slate-400">Add everyone of the selected kinds. Accounts already on the sheet are skipped, and notes you have written stay.</p>
+            <p className="text-xs text-slate-400">Add all accounts matching the selected types. Accounts already on this sheet will be skipped, and existing notes will be preserved.</p>
             <div className="flex flex-wrap gap-2">
               {kindChoices.map((kind) => (
                 <label key={kind.id} className="flex items-center gap-1.5 text-xs text-slate-200">
@@ -254,7 +260,7 @@ export default function CallSheets() {
             </div>
             {profile && profile.callSheetKinds.length < ROSTER_KINDS.length && (
               <button type="button" className="text-xs text-cyan-400 hover:underline" onClick={() => setMoreKinds((v) => !v)}>
-                {moreKinds ? `Show only ${profile.label}` : 'Show every kind'}
+                {moreKinds ? `Show only ${profile.label}` : 'Show all account types'}
               </button>
             )}
             <Button type="button" onClick={pull} disabled={!!adding || kinds.size === 0}>{adding ? `Adding ${adding}…` : 'Add to this sheet'}</Button>
@@ -270,19 +276,19 @@ export default function CallSheets() {
           <p className="hidden print:block text-xs text-slate-600">{VIEWS.find((v) => v.id === url.view)?.label}</p>
 
           {accountsLoading && <p className="text-sm text-slate-400">Loading accounts…</p>}
-          {!accountsLoading && shown.length === 0 && <p className="text-sm text-slate-500">{accounts.length ? 'Nothing in this view.' : 'This sheet is empty. Add the providers and facilities in the county.'}</p>}
+          {!accountsLoading && shown.length === 0 && <p className="text-sm text-slate-400">{accounts.length ? 'No accounts match this view.' : 'No accounts are on this sheet. Add providers and facilities in this county.'}</p>}
 
           {shown.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-left text-slate-500">
-                    <th className="py-1 pr-3 font-medium">Account</th>
-                    <th className="py-1 pr-3 font-medium">Type</th>
-                    <th className="py-1 pr-3 font-medium">Phone</th>
-                    <th className="py-1 pr-3 font-medium">Status</th>
-                    <th className="py-1 pr-3 font-medium">Next</th>
-                    <th className="py-1 pr-3 font-medium">Notes</th>
+                  <tr className="text-left text-slate-400">
+                    <SortableTableHead label="Account" column="name" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-1 pr-3 font-medium" />
+                    <SortableTableHead label="Type" column="account_type" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-1 pr-3 font-medium" />
+                    <SortableTableHead label="Phone" column="phone" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-1 pr-3 font-medium" />
+                    <SortableTableHead label="Status" column="status" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-1 pr-3 font-medium" />
+                    <SortableTableHead label="Next follow-up" column="next_date" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-1 pr-3 font-medium" />
+                    <SortableTableHead label="Notes" column="notes" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-1 pr-3 font-medium" />
                     <th className="print:hidden" />
                   </tr>
                 </thead>

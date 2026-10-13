@@ -18,7 +18,7 @@ function notifyError(error, { kind, prefix }) {
         const base =
                 isFunctionError || (status && status >= 400 && status < 500)
                         ? (rawMessage || 'Request failed.')
-                        : 'Something went wrong. Please retry.';
+                        : 'Unable to complete the request. Please try again.';
         // Mutations can name the action via meta.errorMessage, e.g.
         // useMutation({ meta: { errorMessage: 'Failed to save filter' } }).
         const message = prefix ? `${prefix}: ${base}` : base;

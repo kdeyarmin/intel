@@ -14,6 +14,8 @@ import {
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/shared/ConfirmDialog';
 import UrlCheckButton from './UrlCheckButton';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 const MAINTENANCE_TASKS = [
   { key: 'runScheduledImports', label: 'Run Scheduled Imports', desc: 'Process all due schedules and fan out the maintenance workers.', icon: PlayCircle, accent: 'text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/20' },
@@ -73,12 +75,16 @@ export default function ImportScheduleManager() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [sort, setSort] = useState(null);
 
   const { data: schedules = [], isLoading } = useQuery({
     queryKey: ['importSchedules'],
     queryFn: () => base44.entities.ImportScheduleConfig.list('-updated_date', 100),
     refetchInterval: 30000,
   });
+  const sortedSchedules = sort
+    ? sortRows(schedules, sort, (schedule, key) => key === 'label' ? schedule.label || schedule.name : schedule[key])
+    : schedules;
 
   const runTask = async (key) => {
     setRunning(key);
@@ -240,16 +246,16 @@ export default function ImportScheduleManager() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-slate-400 border-b border-slate-700/50">
-                    <th className="py-2 pr-3 font-medium">Schedule</th>
-                    <th className="py-2 px-3 font-medium">Cadence</th>
-                    <th className="py-2 px-3 font-medium">Next run</th>
-                    <th className="py-2 px-3 font-medium">Last run</th>
-                    <th className="py-2 px-3 font-medium">Active</th>
+                    <SortableTableHead label="Schedule" column="label" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-2 pr-3 font-medium" />
+                    <SortableTableHead label="Cadence" column="schedule_frequency" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-2 px-3 font-medium" />
+                    <SortableTableHead label="Next run" column="next_run_at" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-2 px-3 font-medium" />
+                    <SortableTableHead label="Last run" column="last_run_at" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-2 px-3 font-medium" />
+                    <SortableTableHead label="Active" column="is_active" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="py-2 px-3 font-medium" />
                     <th className="py-2 pl-3 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {schedules.map((s) => (
+                  {sortedSchedules.map((s) => (
                     <tr key={s.id} className="border-b border-slate-800/60 hover:bg-slate-800/30">
                       <td className="py-2 pr-3">
                         <div className="text-slate-200">{s.label || s.name || '(unnamed)'}</div>

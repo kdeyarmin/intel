@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
@@ -11,6 +13,7 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
   const [compareBy, setCompareBy] = useState('entity_type');
   const [metric, setMetric] = useState('total_medicare_payment');
   const [viewMode, setViewMode] = useState('bar');
+  const [summarySort, setSummarySort] = useState(null);
 
   // Build NPI lookup maps
   const providerMap = useMemo(() => {
@@ -82,6 +85,11 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
     { key: 'total_medicare_beneficiaries', label: 'Beneficiaries' },
     { key: 'total_submitted_charges', label: 'Submitted Charges' },
   ];
+  const summaryRows = summarySort
+    ? sortRows(comparisonData.slice(0, 10), summarySort, (group, key) => key === 'average'
+      ? (group.count > 0 ? group.total_medicare_payment / group.count : 0)
+      : group[key])
+    : comparisonData.slice(0, 10);
 
   return (
     <Card>
@@ -147,18 +155,18 @@ export default function ComparativeAnalysisPanel({ providers = [], utilization =
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b">
-                <th className="text-left py-2 text-slate-400 font-medium">Group</th>
-                <th className="text-right py-2 text-slate-400 font-medium">Providers</th>
-                <th className="text-right py-2 text-slate-400 font-medium">Payments</th>
-                <th className="text-right py-2 text-slate-400 font-medium">Services</th>
-                <th className="text-right py-2 text-slate-400 font-medium">Avg $/Provider</th>
+                <SortableTableHead label="Group" column="name" sort={summarySort} onSort={(column) => setSummarySort((current) => nextSort(current, column, 'asc'))} className="text-left py-2 text-slate-400 font-medium" />
+                <SortableTableHead label="Providers" column="count" sort={summarySort} onSort={(column) => setSummarySort((current) => nextSort(current, column))} className="text-right py-2 text-slate-400 font-medium" />
+                <SortableTableHead label="Payments" column="total_medicare_payment" sort={summarySort} onSort={(column) => setSummarySort((current) => nextSort(current, column))} className="text-right py-2 text-slate-400 font-medium" />
+                <SortableTableHead label="Services" column="total_services" sort={summarySort} onSort={(column) => setSummarySort((current) => nextSort(current, column))} className="text-right py-2 text-slate-400 font-medium" />
+                <SortableTableHead label="Average payment per provider" column="average" sort={summarySort} onSort={(column) => setSummarySort((current) => nextSort(current, column))} className="text-right py-2 text-slate-400 font-medium" />
               </tr>
             </thead>
             <tbody>
-              {comparisonData.slice(0, 10).map((g, i) => (
+              {summaryRows.map((g) => (
                 <tr key={g.name} className="border-b border-slate-800">
                   <td className="py-1.5 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[comparisonData.findIndex((item) => item.name === g.name) % COLORS.length] }} />
                     <span className="font-medium text-slate-300 truncate max-w-[150px]">{g.name}</span>
                   </td>
                   <td className="text-right text-slate-400">{g.count}</td>

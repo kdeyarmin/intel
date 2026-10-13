@@ -38,12 +38,12 @@ export default class PageErrorBoundary extends Component {
         <div role="alert" className="mx-auto mt-12 max-w-lg rounded-xl border border-red-500/30 bg-red-900/20 p-8 text-center">
           <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-red-400" />
           <h1 className="mb-2 text-lg font-semibold text-white">
-            {stale ? 'A new version of the app is available' : 'This page ran into a problem'}
+            {stale ? 'A new version of the app is available' : 'We were unable to load this page'}
           </h1>
           <p className="mb-5 text-sm text-slate-300">
             {stale
               ? 'Reload to get the latest version.'
-              : 'The rest of the app still works — you can use the sidebar to go elsewhere, or try this page again.'}
+              : 'Other sections remain available through the sidebar. Retry this page or reload the application.'}
           </p>
           {!stale && error?.message && (
             <p className="mb-5 break-words rounded bg-slate-900/60 px-3 py-2 font-mono text-xs text-red-300/80">{error.message}</p>

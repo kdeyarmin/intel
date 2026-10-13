@@ -125,7 +125,7 @@ describe("evaluateOperationsAlerts", () => {
     const alerts = evaluateOperationsAlerts({ ...healthy, heartbeat: null, rollups: [{ job: "stale", status: "idle", last_success_at: daysAgo(3), error: null }] }, now);
     expect(alerts.map((a) => a.severity)).toEqual(["critical", "warning"]);
     const digest = formatAlertDigest(alerts, "https://app.example.com");
-    expect(digest.subject).toBe("CareMetric operations: 2 items need attention (1 critical)");
+    expect(digest.subject).toBe("CareMetric Healthcare Advisors operations: 2 items need attention (1 critical)");
     expect(digest.text).toContain("- [critical] Maintenance: No maintenance run has ever been recorded");
     expect(digest.text).toContain("- [warning] Rollup stale: Last refreshed 3 days ago.");
     expect(digest.text).toContain("https://app.example.com/ImportMonitoring?importsTab=health");

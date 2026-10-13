@@ -68,7 +68,7 @@ describe('ExternalDataDisplay', () => {
     expect(await screen.findByText(/"Frank Abbati-Jones" here/)).toBeTruthy();
     expect(screen.getByText('Active')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Re-check NPI Registry' })).toBeTruthy();
-    expect(screen.getByText('Data Comparison & Merge')).toBeTruthy();
+    expect(screen.getByText('NPI Registry comparison')).toBeTruthy();
   });
 
   it('hides the merge panel from non-admins', async () => {
@@ -76,7 +76,7 @@ describe('ExternalDataDisplay', () => {
     validations.rows = [record];
     renderCard();
     expect(await screen.findByText(/"Frank Abbati-Jones" here/)).toBeTruthy();
-    expect(screen.queryByText('Data Comparison & Merge')).toBeNull();
+    expect(screen.queryByText('NPI Registry comparison')).toBeNull();
   });
 
   it('labels NPIs that are missing from the registry', async () => {

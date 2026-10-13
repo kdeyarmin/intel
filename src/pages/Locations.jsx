@@ -17,6 +17,8 @@ import PageHeader from '../components/shared/PageHeader';
 import QueryErrorState from '../components/shared/QueryErrorState';
 import { useUrlState } from '@/hooks/useUrlState';
 import { US_STATES } from '@/lib/usStates';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 const PAGE_SIZE = 50;
 const RECENT_LIMIT = 200;
@@ -28,6 +30,7 @@ const STATE_OPTIONS = US_STATES.map((st) => ({ value: st, label: st }));
 
 export default function Locations() {
   const [url, setUrl] = useUrlState(URL_DEFAULTS);
+  const [sort, setSort] = useState(null);
   const { q: search, state: stateFilter, type: typeFilter, page } = url;
   const [searchBox, setSearchBox] = useState(search);
   const setSearch = useCallback((q) => setSearchBox(q), []);
@@ -93,6 +96,10 @@ export default function Locations() {
     () => (searching || !type ? locations : locations.filter((l) => l.location_type === type)),
     [locations, searching, type],
   );
+  const sortedFiltered = useMemo(
+    () => (sort ? sortRows(filtered, sort, (location, key) => location[key]) : filtered),
+    [filtered, sort],
+  );
 
   let subtitle;
   if (isPlaceholderData) subtitle = 'Searching…';
@@ -101,7 +108,7 @@ export default function Locations() {
   else subtitle = `Browsing the ${locations.length.toLocaleString()} most recently added locations. Search by NPI, ZIP, or "City, ST" to find any location.`;
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginatedLocations = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const paginatedLocations = sortedFiltered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const resetFilters = () => { setSearchBox(''); setUrl({ q: '', state: 'all', type: 'all', page: 0 }); };
 
@@ -165,13 +172,13 @@ export default function Locations() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>NPI</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>City</TableHead>
-                  <TableHead>State</TableHead>
-                  <TableHead>ZIP</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Type</TableHead>
+                  <SortableTableHead label="NPI" column="npi" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                  <SortableTableHead label="Address" column="address_1" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                  <SortableTableHead label="City" column="city" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                  <SortableTableHead label="State" column="state" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                  <SortableTableHead label="ZIP" column="zip" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                  <SortableTableHead label="Phone" column="phone" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                  <SortableTableHead label="Type" column="location_type" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
                   <TableHead><span className="sr-only">Open</span></TableHead>
                 </TableRow>
               </TableHeader>

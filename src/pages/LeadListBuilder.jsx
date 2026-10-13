@@ -262,7 +262,7 @@ export default function LeadListBuilder() {
     const fields = [
       { key: 'npi', label: 'NPI' }, { key: 'name', label: 'Name' }, { key: 'specialty', label: 'Specialty' }, { key: 'city', label: 'City' },
       { key: 'state', label: 'State' }, { key: 'zip', label: 'ZIP' }, { key: 'phone', label: 'Phone' }, { key: 'score', label: 'Score' },
-      { key: 'fingerprint', label: 'Patient Fingerprint' },
+      { key: 'fingerprint', label: 'Utilization Signals' },
     ];
     const rows = filteredResults.map(result => {
       const { provider, location, taxonomy, score, utilization } = result;

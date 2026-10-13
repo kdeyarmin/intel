@@ -16,7 +16,7 @@ export default function ForgotPassword() {
     try {
       setResult(await base44.auth.forgotPassword(email));
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please retry.');
+      setError(err.message || 'Unable to send the password reset request. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -33,7 +33,7 @@ export default function ForgotPassword() {
         <form onSubmit={submit} className="space-y-4">
           {error && <Notice tone="error">{error}</Notice>}
           <p className="text-sm text-slate-400">
-            Enter the email you sign in with. If password reset by email is set up, we'll send you a link.
+            Enter the email address associated with your account. If password resets are enabled, we’ll send a secure reset link.
           </p>
           <div>
             <label htmlFor="forgot-email" id="forgot-email-label" className="block text-sm font-medium text-slate-300 mb-1">Email</label>

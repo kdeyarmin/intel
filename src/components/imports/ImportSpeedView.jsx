@@ -7,9 +7,12 @@ import {
 import { format } from 'date-fns';
 import { AlertCircle, Zap } from 'lucide-react';
 import EnhancedErrorReport from './EnhancedErrorReport';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 export default function ImportSpeedView({ batches, onRefresh }) {
   const [errorReportBatch, setErrorReportBatch] = useState(null);
+  const [failedSort, setFailedSort] = useState(null);
 
   // Calculate speed data
   const speedData = useMemo(() => {
@@ -42,6 +45,7 @@ export default function ImportSpeedView({ batches, onRefresh }) {
       .sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
       .slice(0, 10);
   }, [batches]);
+  const shownFailedBatches = failedSort ? sortRows(failedBatches, failedSort) : failedBatches;
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -109,14 +113,14 @@ export default function ImportSpeedView({ batches, onRefresh }) {
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-slate-400 uppercase bg-slate-800/50">
                   <tr>
-                    <th className="px-4 py-3 font-medium">Batch File</th>
-                    <th className="px-4 py-3 font-medium">Import Type</th>
-                    <th className="px-4 py-3 font-medium">Date</th>
+                    <SortableTableHead label="Batch file" column="file_name" sort={failedSort} onSort={(column) => setFailedSort((current) => nextSort(current, column, 'asc'))} className="px-4 py-3 font-medium" />
+                    <SortableTableHead label="Import type" column="import_type" sort={failedSort} onSort={(column) => setFailedSort((current) => nextSort(current, column, 'asc'))} className="px-4 py-3 font-medium" />
+                    <SortableTableHead label="Date" column="created_date" sort={failedSort} onSort={(column) => setFailedSort((current) => nextSort(current, column))} className="px-4 py-3 font-medium" />
                     <th className="px-4 py-3 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
-                  {failedBatches.map(batch => (
+                  {shownFailedBatches.map(batch => (
                     <tr key={batch.id} className="hover:bg-slate-800/30">
                       <td className="px-4 py-3 font-medium text-slate-200">{batch.file_name}</td>
                       <td className="px-4 py-3 text-slate-400">{batch.import_type}</td>

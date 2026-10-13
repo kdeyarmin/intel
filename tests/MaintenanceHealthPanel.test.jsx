@@ -125,10 +125,10 @@ describe('MaintenanceHealthPanel — admin gating', () => {
     });
     render(<MaintenanceHealthPanel />);
     const section = await screen.findByTestId('operations-alerts');
-    expect(await within(section).findByRole('alert')).toHaveTextContent(/Couldn.t load the operations alerts/);
+    expect(await within(section).findByRole('alert')).toHaveTextContent(/Unable to load operations alerts/);
     expect(within(section).getByRole('alert')).toHaveTextContent(/Request failed \(500\)/);
-    expect(within(section).getByRole('alert')).toHaveTextContent(/nothing is checking the pipeline from here/);
-    expect(screen.queryByText(/Nothing open/)).toBeNull();
+    expect(within(section).getByRole('alert')).toHaveTextContent(/Pipeline health is not being monitored/);
+    expect(screen.queryByText(/No active alerts/)).toBeNull();
   });
 
   it("shows the alerts again once a later read works", async () => {
@@ -143,10 +143,10 @@ describe('MaintenanceHealthPanel — admin gating', () => {
         return { data: { alerts: [], checked_at: '2026-10-11T12:00:00Z' } };
       });
       render(<MaintenanceHealthPanel />);
-      expect(await screen.findByText(/Couldn.t load the operations alerts/)).toBeInTheDocument();
+      expect(await screen.findByText(/Unable to load operations alerts/)).toBeInTheDocument();
       await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 1000);
-      expect(await screen.findByText(/Nothing open/)).toBeInTheDocument();
-      expect(screen.queryByText(/Couldn.t load the operations alerts/)).toBeNull();
+      expect(await screen.findByText(/No active alerts/)).toBeInTheDocument();
+      expect(screen.queryByText(/Unable to load operations alerts/)).toBeNull();
     } finally {
       vi.useRealTimers();
     }

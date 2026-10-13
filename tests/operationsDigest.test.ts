@@ -92,7 +92,7 @@ describe("runOperationsAlerts", () => {
     const r = await runOperationsAlerts();
     warn.mockRestore();
     expect(r.ok).toBe(false);
-    expect(r.error).toMatch(/unable to be emailed to anyone: SMTP down/);
+    expect(r.error).toMatch(/Unable to email the digest to any recipients: SMTP down/);
     expect(h.inserts).toHaveLength(0);
   });
 

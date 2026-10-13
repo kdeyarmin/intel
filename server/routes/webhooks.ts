@@ -14,7 +14,7 @@ async function tellAdminsOfDuplicate(orgId: number, duplicate: { kept: string; p
     const { rows } = await pool.query("SELECT name FROM organizations WHERE id = $1", [orgId]);
     await notifyDuplicateSubscription(defaultAccountDeps(pool), { id: orgId, name: rows[0]?.name ?? `organization ${orgId}` }, duplicate);
   } catch (e: any) {
-    console.warn("[stripe webhook] couldn't notify the admins of a duplicate subscription:", e?.message || e);
+    console.warn("[stripe webhook] unable to notify the admins of a duplicate subscription:", e?.message || e);
   }
 }
 

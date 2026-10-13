@@ -101,10 +101,10 @@ function NeedsAttention({ enabled }) {
       </p>
       {failure ? (
         <p className="text-[11px] text-red-400" role="alert">
-          Unable to load the operations alerts ({failure}), so nothing is checking the pipeline from here. It will retry in a few minutes.
+          Unable to load operations alerts ({failure}). Pipeline health is not being monitored; the system will retry in a few minutes.
         </p>
       ) : alerts.length === 0 ? (
-        <p className="text-[11px] text-emerald-400">Nothing open: datasets are current, schedules and rollups are running.</p>
+        <p className="text-[11px] text-emerald-400">No active alerts. Datasets are current; schedules and rollups are operating normally.</p>
       ) : (
         <ul className="text-[11px] space-y-1">
           {alerts.map((a) => (
@@ -358,4 +358,3 @@ export default function MaintenanceHealthPanel() {
     </div>
   );
 }
-

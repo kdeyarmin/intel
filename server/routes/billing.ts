@@ -123,7 +123,7 @@ router.post("/checkout", authMiddleware, rateLimit("billing_checkout", 10, 60_00
     res.json({ url: session.url });
   } catch (e: any) {
     console.error("[billing] checkout failed:", e?.message || e);
-    res.status(502).json({ message: "Couldn't start checkout. Try again in a moment." });
+    res.status(502).json({ message: "Unable to start checkout. Please try again in a moment." });
   }
 });
 
@@ -186,7 +186,7 @@ router.post("/usage/export", authMiddleware, async (req: AuthRequest, res: Respo
     if (e instanceof QuotaError) return res.status(429).json({ message: e.message, code: e.code, kind: e.kind, limit: e.limit });
     // The file is built only after a confirmed count, so a count that failed is an error, not a free export.
     console.error("[billing] export count failed:", e?.message || e);
-    res.status(503).json({ message: "Couldn't count this export against your daily allowance. Try again in a moment.", counted: false });
+    res.status(503).json({ message: "Unable to count this export against your daily allowance. Please try again in a moment.", counted: false });
   }
 });
 

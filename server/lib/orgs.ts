@@ -95,7 +95,7 @@ export async function createOrgWithOwner(client: any, input: { name: string; own
     await client.query("INSERT INTO organization_members (org_id, user_id, org_role) VALUES ($1, $2, 'owner') ON CONFLICT DO NOTHING", [rows[0].id, input.ownerUserId]);
     return rowToSummary(rows[0]);
   }
-  throw new Error("Couldn't create the organization");
+  throw new Error("Unable to create the organization");
 }
 
 /** Active and pending members of an organization, for the seat limit. */

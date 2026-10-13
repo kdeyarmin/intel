@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 const categoryColors = {
   completeness: 'bg-blue-900/20 text-blue-400',
@@ -13,7 +15,8 @@ const categoryColors = {
 };
 
 export default function RuleResultsTable({ results = [] }) {
-  const sorted = [...results].sort((a, b) => a.pct - b.pct);
+  const [sort, setSort] = useState({ key: 'pct', direction: 'asc' });
+  const sorted = sortRows(results, sort);
 
   return (
     <div className="overflow-auto">
@@ -21,11 +24,11 @@ export default function RuleResultsTable({ results = [] }) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-8"><span className="sr-only">Status</span></TableHead>
-            <TableHead>Rule</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead className="text-right">Pass Rate</TableHead>
+            <SortableTableHead label="Rule" column="rule_name" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+            <SortableTableHead label="Category" column="category" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+            <SortableTableHead label="Pass Rate" column="pct" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="text-right" />
             <TableHead className="w-32">Progress</TableHead>
-            <TableHead className="text-right">Failing</TableHead>
+            <SortableTableHead label="Failing" column="failing" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} className="text-right" />
           </TableRow>
         </TableHeader>
         <TableBody>

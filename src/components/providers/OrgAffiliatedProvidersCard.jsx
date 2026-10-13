@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,10 +6,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Users } from 'lucide-react';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 // Individuals practicing at the same physical address(es) as an organization NPI.
 // Rendered on ProviderDetail for organization-type providers.
 export default function OrgAffiliatedProvidersCard({ npi, locations = [], allProviders = [], allLocations = [] }) {
+  const [sort, setSort] = useState(null);
   const affiliatedNPIs = useMemo(() => {
     if (!locations.length || !allLocations.length) return [];
     // Skip blank addresses so an org without a usable address doesn't match
@@ -32,6 +35,13 @@ export default function OrgAffiliatedProvidersCard({ npi, locations = [], allPro
     // provider array would be O(n·m).
     return allProviders.filter(p => affiliatedSet.has(p.npi) && p.entity_type === 'Individual');
   }, [allProviders, affiliatedNPIs]);
+  const sortedProviders = useMemo(
+    () => (sort ? sortRows(affiliatedProviders, sort, (provider, key) => {
+      if (key === 'name') return `${provider.last_name || ''} ${provider.first_name || ''}`;
+      return provider[key];
+    }) : affiliatedProviders),
+    [affiliatedProviders, sort],
+  );
 
   if (affiliatedProviders.length === 0) return null;
 
@@ -50,15 +60,15 @@ export default function OrgAffiliatedProvidersCard({ npi, locations = [], allPro
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>NPI</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Credential</TableHead>
-                <TableHead>Status</TableHead>
+                <SortableTableHead label="NPI" column="npi" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                <SortableTableHead label="Name" column="name" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                <SortableTableHead label="Credential" column="credential" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                <SortableTableHead label="Status" column="status" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {affiliatedProviders.slice(0, 50).map(p => (
+              {sortedProviders.slice(0, 50).map(p => (
                 <TableRow key={p.id}>
                   <TableCell className="font-mono text-xs">{p.npi}</TableCell>
                   <TableCell className="font-medium">{p.last_name}, {p.first_name}</TableCell>

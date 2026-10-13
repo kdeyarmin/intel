@@ -27,6 +27,8 @@ import QueryErrorState from '../components/shared/QueryErrorState';
 const URL_DEFAULTS = { list: '' };
 import { useConfirm } from '@/components/shared/ConfirmDialog';
 import { usePageAccess } from '@/hooks/usePageAccess';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 export default function LeadLists() {
   const confirm = useConfirm();
@@ -34,6 +36,7 @@ export default function LeadLists() {
   // Campaigns (and sending) are for an organization's owners.
   const { isOwner: canStartCampaign } = usePageAccess();
   const [url, setUrl] = useUrlState(URL_DEFAULTS);
+  const [sort, setSort] = React.useState(null);
 
   const { data: lists = [], isLoading, isError, error: loadError, refetch } = useQuery({
     queryKey: ['leadLists'],
@@ -48,6 +51,10 @@ export default function LeadLists() {
     enabled: !!url.list && /^\d+$/.test(url.list) && !isLoading && !listedOpen,
   });
   const openList = listedOpen || fetchedOpen;
+  const sortedLists = React.useMemo(
+    () => (sort ? sortRows(lists, sort, (list, key) => list[key]) : lists),
+    [lists, sort],
+  );
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.LeadList.delete(id),
@@ -107,15 +114,15 @@ export default function LeadLists() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Providers</TableHead>
-                    <TableHead>Created</TableHead>
+                    <SortableTableHead label="Name" column="name" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                    <SortableTableHead label="Description" column="description" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                    <SortableTableHead label="Providers" column="member_count" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
+                    <SortableTableHead label="Created" column="created_date" sort={sort} onSort={(column) => setSort((current) => nextSort(current, column))} />
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {lists.map(list => (
+                  {sortedLists.map(list => (
                     <TableRow key={list.id}>
                       <TableCell className="font-medium text-slate-200">
                         <button type="button" onClick={() => setUrl({ list: String(list.id) })} className="text-left hover:text-cyan-400 hover:underline">
