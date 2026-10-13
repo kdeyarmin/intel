@@ -27,7 +27,11 @@ export default function ReportDataTable({ chartData, config }) {
   const getFields = () => {
     return [
       { key: 'group', label: config.group_by || 'Group' },
-      ...metrics.map(m => ({ key: m, label: metricLabels[m] || m })),
+      ...metrics.map(m => ({
+        key: m,
+        label: metricLabels[m] || m,
+        ...(dsConfig?.countMetrics?.includes(m) ? { format: 'count' } : {}),
+      })),
     ];
   };
 

@@ -217,11 +217,17 @@ export default function CountyIntelligence() {
             <p className="flex items-start gap-1.5 text-xs text-slate-400">
               <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
               {data.sample.sampled === true
-                ? `This county has more practice locations than we read at once; specialties and provider types describe a limited sample${finiteNumber(summary.sampledProviders) != null ? ` of ${count(summary.sampledProviders)}` : ''}.`
+                ? `This county has more practice locations than we read at once; specialties and provider types describe ${finiteNumber(summary.sampledProviders) != null ? `${count(summary.sampledProviders)} of them` : 'a limited sample'}.`
                 : ''}
-              {data.sample.details_cover_all === false && ` Referrals and services cover a limited provider sample${finiteNumber(data.sample.detail_limit) != null ? ` (up to ${count(data.sample.detail_limit)} providers)` : ''}.`}
-              {data.sample.facilities_capped === true && ` Facility totals cover a limited set of the newest facility records${finiteNumber(data.sample.facility_limit) != null ? ` (up to ${count(data.sample.facility_limit)})` : ''}.`}
-              {data.sample.providers_capped === true && ' The provider list is limited to the highest-scored providers; it is not a complete county count.'}
+              {data.sample.details_cover_all === false && (finiteNumber(data.sample.detail_limit) != null
+                ? ` Referrals and services are from the first ${count(data.sample.detail_limit)} providers.`
+                : ' Referrals and services cover a limited provider sample.')}
+              {data.sample.facilities_capped === true && (finiteNumber(data.sample.facility_limit) != null
+                ? ` Facility totals cover the newest ${count(data.sample.facility_limit)} facility records.`
+                : ' Facility totals cover a limited set of the newest facility records.')}
+              {data.sample.providers_capped === true && (finiteNumber(data.sample.provider_limit) != null && finiteNumber(data.sample.providers_found) != null
+                ? ` The provider list shows the ${count(data.sample.provider_limit)} highest-scored of ${count(data.sample.providers_found)} providers.`
+                : ' The provider list is limited to the highest-scored providers; it is not a complete county count.')}
             </p>
           )}
 
@@ -252,7 +258,7 @@ export default function CountyIntelligence() {
             )}
             <Kpi icon={Building2} color="text-violet-400" label="Medicare facilities" value={count(summary.totalFacilities)} />
             <Kpi icon={DollarSign} color="text-emerald-400" label="Facility Medicare payments" value={formatCurrency(summary.totalPayments)}
-              sub={finiteNumber(summary.totalPayments) != null ? null : 'Not reported in the imported facility data'} />
+              sub={finiteNumber(summary.totalPayments) ? null : 'Not reported in the imported facility data'} />
             <Kpi icon={Activity} color="text-amber-400" label="Facility discharges" value={count(summary.totalDischarges)} />
           </div>
 

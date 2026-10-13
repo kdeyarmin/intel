@@ -4,10 +4,11 @@ function fieldName(value) {
 
 /** Identifiers are text, even when the source supplies a numeric value. */
 export function isIdentifierField(field = {}) {
+  if (field.format === 'count' || field.format === 'number') return false;
   const names = [fieldName(field.key), fieldName(field.label)];
   if (names.some((name) => /(^|_)(counts?|totals?|number_of)(_|$)/.test(name))) return false;
   return names.some((name) => {
-    return /(^|_)(year|years|zip|zipcode|postal|npi|ccn|fips|id|identifier|code|phone|license|licence)(_|$)/.test(name)
+    return /(^|_)(year|years|zip|zipcode|postal|npi|ccn|fips|id|identifier|code|phone|fax|license|licence)(_|$)/.test(name)
       || /(^|_)(provider|facility|enrollment)_number(_|$)/.test(name);
   });
 }

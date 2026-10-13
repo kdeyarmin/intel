@@ -6,6 +6,7 @@ import { formatExportValue, isIdentifierField } from '../src/components/exports/
 import { buildReportModel, fmtInt, fmtMoney } from '../src/components/reports/reportSections';
 import { exportAttribution, exportCSV, exportExcel, exportJSON, exportPDF } from '../src/components/exports/exportUtils';
 import ExportDialog from '../src/components/exports/ExportDialog';
+import ReportDataTable from '../src/components/customReports/ReportDataTable';
 
 const state = vi.hoisted(() => ({ doc: null, count: vi.fn(), error: vi.fn() }));
 vi.mock('@/api/base44Client', () => ({ base44: { billing: { countExport: state.count } } }));
@@ -24,6 +25,7 @@ vi.mock('jspdf', async (original) => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  state.doc = null;
   state.count.mockReset();
   state.error.mockReset();
 });
@@ -40,6 +42,8 @@ const identifiers = [
   ['Provider Number', 'Provider Number', '012345', '012345'],
   ['ZIP Code', 'ZIP Code', '02108', '02108'],
   ['ZIP+4', 'ZIP+4', '02108-1234', '02108-1234'],
+  ['fax', 'Fax', '0210812345', '0210812345'],
+  ['fax', 'Fax', 2125551234, '2125551234'],
 ];
 
 describe('report and export number formatting', () => {
@@ -53,6 +57,10 @@ describe('report and export number formatting', () => {
     expect(formatExportValue(12345, { key: 'npi_count', label: 'NPI count' })).toBe('12,345');
     expect(formatExportValue(12345, { key: 'total_npies', label: 'NPI' })).toBe('12,345');
     expect(formatExportValue(12345, { key: 'number_of_provider_ids', label: 'Provider IDs' })).toBe('12,345');
+    expect(isIdentifierField({ key: 'npi', label: 'Providers', format: 'count' })).toBe(false);
+    expect(isIdentifierField({ key: 'id', label: 'Campaigns', format: 'number' })).toBe(false);
+    expect(formatExportValue(12345, { key: 'npi', label: 'Providers', format: 'count' })).toBe('12,345');
+    expect(formatExportValue(12345, { key: 'id', label: 'Campaigns', format: 'number' })).toBe('12,345');
     expect(formatExportValue(12345.67, { key: 'totalPayment' })).toBe('$12,345.67');
     expect(fmtInt(12345)).toBe('12,345');
     expect(fmtMoney(12345)).toBe('$12,345');
@@ -97,6 +105,8 @@ describe('report and export number formatting', () => {
     }
     expect(output).not.toContain('2,024');
     expect(output).not.toContain('1,234,567,893');
+    expect(output).toContain('2125551234');
+    expect(output).not.toContain('2,125,551,234');
     expect(state.doc.save).toHaveBeenCalledWith('test.pdf');
   });
 
@@ -132,5 +142,55 @@ describe('report and export number formatting', () => {
     await waitFor(() => expect(state.error).toHaveBeenCalledWith('Unable to export the selected records. Please try again.'));
     expect(screen.getByRole('button', { name: 'Export CSV' })).not.toBeDisabled();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('exports explicit count and number fields as numeric Excel cells, not identifier text', async () => {
+    let blob;
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((value) => { blob = value; return 'blob:export'; });
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    exportExcel([{ npi: 12345, id: 23456, fax: '0210812345' }], [
+      { key: 'npi', label: 'Providers', format: 'count' },
+      { key: 'id', label: 'Campaigns', format: 'number' },
+      { key: 'fax', label: 'Fax' },
+    ], 'counts');
+    const html = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.readAsText(blob);
+    });
+    expect(html).toContain('<td>12345</td><td>23456</td>');
+    expect(html).toMatch(/<td style="mso-number-format:[^"]+">0210812345<\/td>/);
+  });
+
+  it.each([
+    ['providers', 'npi', 'Providers'],
+    ['hha_stats', 'npi', 'Agencies'],
+    ['outreach_metrics', 'id', 'Campaigns'],
+  ])('propagates %s count metadata from the report table while preserving the year grouping', async (dataset, metric, label) => {
+    state.count.mockResolvedValue({ counted: true });
+    let blob;
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((value) => { blob = value; return 'blob:export'; });
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    render(<ReportDataTable
+      chartData={[{ group: '2024', [metric]: 12345 }]}
+      config={{ dataset, metrics: [metric], group_by: 'data_year', name: 'Annual report' }}
+    />);
+    expect(screen.getByRole('columnheader', { name: label })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Excel' }));
+    await waitFor(() => expect(blob).toBeDefined());
+    const html = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.readAsText(blob);
+    });
+    expect(html).toMatch(/<td style="mso-number-format:[^"]+">2024<\/td><td>12345<\/td>/);
+    fireEvent.click(screen.getByRole('button', { name: 'PDF' }));
+    await waitFor(() => expect(state.doc.save).toHaveBeenCalledWith('Annual_report.pdf'));
+    const output = state.doc.output();
+    expect(output).toContain('12,345');
+    expect(output).toContain('2024');
+    expect(output).not.toContain('2,024');
   });
 });
