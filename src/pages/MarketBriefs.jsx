@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { invokeOrThrow } from '@/api/functionResult';
@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileBarChart2, Printer } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, FileBarChart2, Printer } from 'lucide-react';
 import { US_STATES } from '@/lib/usStates';
 import { fmtCount, fmtMoney, fmtPct, fmtShare } from '@/lib/marketFormat';
 import { GROWTH_SETTINGS, REPORT_CATALOG, countyGrowthRows, growthFacts, leaderFacts } from '@/lib/marketBriefs';
@@ -19,10 +19,12 @@ import { toast } from 'sonner';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import MarketFreshness from '../components/market/MarketFreshness';
 
-const URL_DEFAULTS = { report: '', state: 'PA', county: '', from: '', setting: 'hha', sort: 'users' };
+const URL_DEFAULTS = { report: '', state: 'PA', county: '', from: '', setting: 'hha', sort: 'users', direction: 'desc' };
 
 const SORTS = [
+  { id: 'name', label: 'County' },
   { id: 'users', label: 'Users' },
+  { id: 'billing', label: 'Providers' },
   { id: 'usersPerProvider', label: 'Users per provider' },
   { id: 'usersPct', label: 'Share of fee-for-service' },
   { id: 'usersChange', label: 'Change vs last year' },
@@ -94,18 +96,49 @@ function Section({ title, children }) {
   );
 }
 
-function Table({ headers, rows }) {
+function compareValues(a, b, direction) {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  const compared = typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b));
+  return direction === 'asc' ? compared : -compared;
+}
+
+function Table({ headers, rows, sortValues, sortKeys, sort, onSort, limit }) {
+  const [localSort, setLocalSort] = useState(null);
+  const activeSort = onSort ? sort : localSort;
+  const orderedRows = useMemo(() => {
+    if (onSort || !localSort) return rows;
+    return rows.map((cells, i) => ({ cells, values: sortValues[i] }))
+      .sort((a, b) => compareValues(a.values[localSort.key], b.values[localSort.key], localSort.direction))
+      .map((r) => r.cells);
+  }, [rows, sortValues, localSort, onSort]);
   if (!rows.length) return <p className="text-xs text-slate-500">None on file.</p>;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-left text-slate-500">
-            {headers.map((h) => <th key={h} className="py-1 pr-3 font-medium">{h}</th>)}
+          <tr className="text-left text-slate-400">
+            {headers.map((h, i) => {
+              const key = sortKeys ? sortKeys[i] : i;
+              const selected = activeSort?.key === key;
+              const Icon = selected ? (activeSort.direction === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+              return (
+                <th key={i} scope="col" aria-sort={selected ? (activeSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'} className="py-1 pr-3 font-medium">
+                  <button type="button" className="inline-flex items-center gap-1 cursor-pointer rounded hover:text-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400" onClick={() => {
+                    const next = { key, direction: selected && activeSort.direction === 'desc' ? 'asc' : 'desc' };
+                    if (onSort) onSort(next);
+                    else setLocalSort(next);
+                  }}>
+                    {h}<Icon className={`h-3 w-3 shrink-0 print:hidden ${selected ? 'text-cyan-400' : ''}`} aria-hidden="true" />
+                  </button>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
-          {rows.map((cells, i) => (
+          {(limit ? orderedRows.slice(0, limit) : orderedRows).map((cells, i) => (
             <tr key={i} className="border-t border-slate-800 text-slate-200">
               {cells.map((c, j) => <td key={j} className="py-1.5 pr-3 align-top">{c}</td>)}
             </tr>
@@ -116,14 +149,11 @@ function Table({ headers, rows }) {
   );
 }
 
-function sortGrowth(rows, key) {
+function sortGrowth(rows, key, direction) {
   return [...rows].sort((a, b) => {
     const va = a[key];
     const vb = b[key];
-    if (va == null && vb == null) return String(a.name).localeCompare(String(b.name));
-    if (va == null) return 1;
-    if (vb == null) return -1;
-    return vb - va || String(a.name).localeCompare(String(b.name));
+    return compareValues(va, vb, direction) || String(a.name).localeCompare(String(b.name));
   });
 }
 
@@ -192,7 +222,10 @@ export default function MarketBriefs() {
     window.print();
   };
   const facts = useMemo(() => growthFacts(countyGrowthRows(layer?.counties || [], settingKey)), [layer, settingKey]);
-  const ranked = useMemo(() => sortGrowth(facts.ranked, SORTS.some((s) => s.id === url.sort) ? url.sort : 'users').filter((r) => r.users != null).slice(0, 15), [facts, url.sort]);
+  const sortKey = SORTS.some((s) => s.id === url.sort) ? url.sort : 'users';
+  const direction = url.direction === 'asc' ? 'asc' : 'desc';
+  const ranked = useMemo(() => sortGrowth(facts.ranked, sortKey, direction).filter((r) => r.users != null).slice(0, 15), [facts, sortKey, direction]);
+  const providerLabel = settingDef.noun[0].toUpperCase() + settingDef.noun.slice(1);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[900px] mx-auto space-y-6">
@@ -264,10 +297,12 @@ export default function MarketBriefs() {
             {layer && <p className="text-sm text-slate-300 mt-2">{growthLead(url.state, settingDef, facts)}</p>}
           </header>
           {layer && facts.rising.length > 0 && (
-            <Section title={`Use rose; billing ${settingDef.noun} did not`}>
+            <Section title={`Use rose; ${settingDef.noun} did not`}>
               <Table
-                headers={['County', 'Users', 'Vs last year', `Billing ${settingDef.noun}`, 'Their change']}
-                rows={facts.rising.slice(0, 8).map((r) => [
+                headers={['County', 'Users', 'Vs last year', providerLabel, 'Their change']}
+                limit={8}
+                sortValues={facts.rising.map((r) => [r.name, r.users, r.usersChange, r.billing, r.billingChange])}
+                rows={facts.rising.map((r) => [
                   <button key={r.fips} type="button" className="text-cyan-400 hover:underline text-left" onClick={() => setUrl({ report: 'county', county: r.fips, from: spec.id })}>{r.name}</button>,
                   fmtCount(r.users), fmtPct(r.usersChange), fmtCount(r.billing), fmtPct(r.billingChange),
                 ])}
@@ -279,13 +314,16 @@ export default function MarketBriefs() {
             <Section title="Largest counties">
               <div className="print:hidden">
                 <Label htmlFor="brief-sort">Sort</Label>
-                <Select value={SORTS.some((s) => s.id === url.sort) ? url.sort : 'users'} onValueChange={(sort) => setUrl({ sort })}>
+                <Select value={sortKey} onValueChange={(sort) => setUrl({ sort, direction: 'desc' })}>
                   <SelectTrigger id="brief-sort" className="mt-1 w-56"><SelectValue /></SelectTrigger>
-                  <SelectContent>{SORTS.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{SORTS.map((s) => <SelectItem key={s.id} value={s.id}>{s.id === 'billing' ? providerLabel : s.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <Table
-                headers={['County', 'Users', 'Share of FFS', 'Vs last year', `Billing ${settingDef.noun}`, 'Users each', 'Spend / beneficiary']}
+                headers={['County', 'Users', 'Share of FFS', 'Vs last year', providerLabel, 'Users each', 'Spend / beneficiary']}
+                sortKeys={['name', 'users', 'usersPct', 'usersChange', 'billing', 'usersPerProvider', 'spend']}
+                sort={{ key: sortKey, direction }}
+                onSort={({ key, direction: nextDirection }) => setUrl({ sort: key, direction: nextDirection })}
                 rows={ranked.map((r) => [
                   <button key={r.fips} type="button" className="text-cyan-400 hover:underline text-left" onClick={() => setUrl({ report: 'county', county: r.fips, from: spec.id })}>{r.name}</button>,
                   fmtCount(r.users), fmtPct(r.usersPct), fmtPct(r.usersChange), fmtCount(r.billing), fmtCount(r.usersPerProvider), fmtMoney(r.spend),
@@ -313,6 +351,9 @@ export default function MarketBriefs() {
                 headers={settingKey === 'snf'
                   ? ['Provider', 'Beneficiaries', 'Share', 'Payment', 'Residents', 'Medicare / Medicaid']
                   : ['Provider', 'Beneficiaries', 'Share', 'Payment', 'Dual %', 'Counties served']}
+                sortValues={(leaders.rows || []).map((r) => settingKey === 'snf'
+                  ? [r.name || r.ccn, r.benes, r.share, r.payment, r.census?.total_residents, r.census?.medicare_pct]
+                  : [r.name || r.ccn, r.benes, r.share, r.payment, r.dual_pct, r.counties_served])}
                 rows={(leaders.rows || []).map((r) => settingKey === 'snf' ? [
                   <span key={r.ccn}>{facilityLink(r.ccn, r.facility_group, r.name)}<span className="block text-slate-500">{[r.city, r.state].filter(Boolean).join(', ')}{r.census?.chain ? ` · ${r.census.chain}` : ''}</span></span>,
                   fmtCount(r.benes), fmtShare(r.share), fmtMoney(r.payment),
@@ -347,6 +388,12 @@ export default function MarketBriefs() {
           <Section title="Where to build a hospital relationship">
             <Table
               headers={['Hospital', 'Cases', 'Share of county', 'Home health', 'State', 'Hospice', 'State', 'SNF', 'State']}
+              sortValues={(market.hospital_sources?.rows || []).slice(0, 10).map((r) => [
+                r.name || r.ccn, r.cases, r.share,
+                r.discharge_mix?.pct_hha, r.discharge_mix?.state?.pct_hha,
+                r.discharge_mix?.pct_hospice, r.discharge_mix?.state?.pct_hospice,
+                r.discharge_mix?.pct_snf, r.discharge_mix?.state?.pct_snf,
+              ])}
               rows={(market.hospital_sources?.rows || []).slice(0, 10).map((r) => {
                 const m = r.discharge_mix;
                 return [
@@ -375,6 +422,11 @@ export default function MarketBriefs() {
               headers={sourceSetting === 'hospice'
                 ? ['Clinician', 'Specialty', 'Medicare patients', 'Hospice oversight', 'Heart failure', 'COPD', 'Alzheimer']
                 : ['Clinician', 'Specialty', 'Medicare patients', 'Home health certifications', 'Heart failure', 'COPD', 'Alzheimer']}
+              sortValues={(sources?.rows || []).map((r) => [
+                r.name, r.specialty, r.benes,
+                sourceSetting === 'hospice' ? r.hospice_oversight_benes : r.hh_cert_benes,
+                r.chronic?.chf, r.chronic?.copd, r.chronic?.alzheimer,
+              ])}
               rows={(sources?.rows || []).map((r) => [
                 <Link key={r.npi} to={createPageUrl(`ProviderDetail?npi=${r.npi}`)} className="text-cyan-400 hover:underline">{r.name}</Link>,
                 r.specialty || '—',
@@ -398,7 +450,11 @@ export default function MarketBriefs() {
           {market.profile?.available && (
             <Section title={`${settingDef.label} demand`}>
               <Table
-                headers={['Users', 'Share of FFS', 'Vs last year', 'Billing', 'Located here', 'Spend / beneficiary']}
+                headers={['Users', 'Share of FFS', 'Vs last year', providerLabel, 'Located here', 'Spend / beneficiary']}
+                sortValues={[[
+                  market.profile[settingDef.users], market.profile[settingDef.usersPct], market.profile[settingDef.usersChange],
+                  market.profile[settingDef.billing], market.profile[settingDef.located], market.profile[settingDef.spend],
+                ]]}
                 rows={[[
                   fmtCount(market.profile[settingKey === 'hospice' ? 'hospice_users' : settingKey === 'snf' ? 'snf_users' : 'hha_users']),
                   fmtPct(market.profile[settingKey === 'hospice' ? 'hospice_users_pct' : settingKey === 'snf' ? 'snf_users_pct' : 'hha_users_pct']),
@@ -414,6 +470,10 @@ export default function MarketBriefs() {
           <Section title="Hospitals discharging residents">
             <Table
               headers={['Hospital', 'Cases', 'Share', settingDef.label]}
+              sortValues={(market.hospital_sources?.rows || []).slice(0, 6).map((r) => [
+                r.name || r.ccn, r.cases, r.share,
+                r.discharge_mix?.[settingKey === 'hospice' ? 'pct_hospice' : settingKey === 'snf' ? 'pct_snf' : 'pct_hha'],
+              ])}
               rows={(market.hospital_sources?.rows || []).slice(0, 6).map((r) => [
                 facilityLink(r.ccn, 'hospital', r.name),
                 fmtCount(r.cases), fmtShare(r.share),
@@ -426,6 +486,7 @@ export default function MarketBriefs() {
             <Section title={`Who already serves ${settingDef.label.toLowerCase()}`}>
               <Table
                 headers={['Provider', 'Beneficiaries', 'Share', 'Payment']}
+                sortValues={market.competitors[settingKey].rows.slice(0, 8).map((r) => [r.name || r.ccn, r.benes, r.share, r.payment])}
                 rows={market.competitors[settingKey].rows.slice(0, 8).map((r) => [facilityLink(r.ccn, r.facility_group, r.name), fmtCount(r.benes), fmtShare(r.share), fmtMoney(r.payment)])}
               />
               {market.competitors[settingKey].data_year && <p className="text-[11px] text-slate-500">Share of beneficiaries served in this county, {market.competitors[settingKey].data_year}.</p>}
@@ -435,6 +496,7 @@ export default function MarketBriefs() {
             <Section title="Clinicians to call">
               <Table
                 headers={['Clinician', 'Specialty', 'Medicare patients']}
+                sortValues={(sources?.rows || []).slice(0, 8).map((r) => [r.name, r.specialty, r.benes])}
                 rows={(sources?.rows || []).slice(0, 8).map((r) => [
                   <Link key={r.npi} to={createPageUrl(`ProviderDetail?npi=${r.npi}`)} className="text-cyan-400 hover:underline">{r.name}</Link>,
                   r.specialty || '—', fmtCount(r.benes),
