@@ -13,10 +13,9 @@ import {
   FileText, Printer, Download, ChevronDown, ChevronUp, SlidersHorizontal, Database, Loader2,
 } from 'lucide-react';
 import { countExport } from '@/components/exports/exportUtils';
+import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
 import ReportDocument from './ReportDocument';
 import { availableSections, buildReportModel, orderedSelection } from './reportSections';
-
-const LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png';
 
 const TONE = {
   amber: 'text-amber-400',
@@ -81,7 +80,7 @@ function BlockBody({ block }) {
             <thead>
               <tr className="bg-slate-900/60">
                 {block.columns.map((c) => (
-                  <th key={c.key} scope="col" className={`py-2 px-3 font-medium text-slate-400 ${c.align === 'right' ? 'text-right' : 'text-left'}`}>{c.label}</th>
+                  <th key={c.key} scope="col" className={`py-2 px-3 font-medium text-slate-400 ${c.align === 'right' ? 'text-right' : 'text-left'}`}>{c.label || c.key}</th>
                 ))}
               </tr>
             </thead>
@@ -167,6 +166,10 @@ function SectionPicker({ available, selected, onToggle, onAll, onNone, onGenerat
 }
 
 export default function ComprehensiveReport({ npi, providerId, facilityName }) {
+  return <ReportContent key={JSON.stringify([npi, providerId])} npi={npi} providerId={providerId} facilityName={facilityName} />;
+}
+
+function ReportContent({ npi, providerId, facilityName }) {
   const available = useMemo(() => availableSections({ npi, providerId }), [npi, providerId]);
   // Kept as the sections switched off, so a section that becomes available
   // later (a facility's linked NPI) starts selected like the rest.
@@ -216,10 +219,15 @@ export default function ComprehensiveReport({ npi, providerId, facilityName }) {
   // organization's daily export allowance like every other export.
   const handlePrint = async () => {
     setBusy('print');
-    const quota = await countExport();
-    setBusy(null);
-    if (!quota.ok) { toast.error(quota.message); return; }
-    setPrinting(true);
+    try {
+      const quota = await countExport();
+      if (!quota.ok) { toast.error(quota.message); return; }
+      setPrinting(true);
+    } catch {
+      toast.error("Couldn't prepare the print export. Please try again.");
+    } finally {
+      setBusy(null);
+    }
   };
 
   const handlePdf = async () => {
@@ -316,10 +324,11 @@ export default function ComprehensiveReport({ npi, providerId, facilityName }) {
       <div className="rounded-lg border border-slate-700/50 overflow-hidden">
         <div className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 border-b-2 border-cyan-500/60">
           <div className="flex items-center gap-2.5">
-            <img src={LOGO_URL} alt="" className="w-7 h-7 rounded-md" />
+            <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="w-32 h-10 object-contain bg-white rounded-md" />
             <div>
               <p className="text-sm font-bold text-white leading-tight">CareMetric <span className="text-cyan-400">AI</span></p>
               <p className="text-[10px] text-slate-400">Healthcare Provider Intelligence</p>
+              <a href="https://www.CareMetric.ai" className="text-[10px] text-cyan-400 hover:underline">www.CareMetric.ai</a>
             </div>
           </div>
           <div className="text-right">

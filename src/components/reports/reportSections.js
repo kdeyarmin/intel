@@ -16,6 +16,9 @@ export const REPORT_SECTIONS = [
   { key: 'affiliations', label: 'Affiliations', description: 'Organizations this provider is affiliated with', needsNpi: true },
   { key: 'facilities', label: 'Linked facilities', description: 'Medicare facility records under this CCN or NPI', needsNpi: false },
   { key: 'quality', label: 'Quality measures', description: 'Latest CMS star ratings by dataset', needsNpi: false },
+  { key: 'ownership', label: 'Ownership details', description: 'Reported owners, ownership percentages, types and roles where linked by CCN, NPI or enrollment', needsNpi: false, source: 'CMS All Owners and Nursing Home Ownership files' },
+  { key: 'costReports', label: 'Cost report summaries', description: 'Latest reported revenue, expenses, beds and visits; only available metrics are shown', needsNpi: false, source: 'CMS Hospital, Home Health Agency and SNF Cost Reports' },
+  { key: 'additionalQuality', label: 'Additional quality measures', description: 'A curated snapshot of reported performance scores and quality measures beyond star ratings', needsNpi: false, source: 'CMS Value-Based Purchasing, SNF Quality Reporting, Home Health and Nursing Home quality files' },
   { key: 'leadScore', label: 'Lead score', description: 'CareMetric lead score and its components', needsNpi: true },
   { key: 'enrichments', label: 'Enrichments', description: 'Contact and profile enrichment records', needsNpi: true },
 ];
@@ -106,7 +109,7 @@ function sectionBlocks(key, report) {
         license: { text: [t.license_number, t.license_state].filter(Boolean).join(' · ') || '—' },
         primary: { text: t.is_primary ? 'Primary' : '' },
       }));
-      return [table('taxonomies', 'Taxonomies', [col('description', 'Specialty'), col('code', 'Code'), col('license', 'License'), col('primary', '')], rows, 'No taxonomies on file.')];
+      return [table('taxonomies', 'Taxonomies', [col('description', 'Specialty'), col('code', 'Code'), col('license', 'License'), col('primary', 'Primary')], rows, 'No taxonomies on file.')];
     }
     case 'utilization': {
       const rows = (report.utilization || []).map((u) => ({
@@ -183,6 +186,43 @@ function sectionBlocks(key, report) {
         year: { text: text(q.dataYear) },
       }));
       return [table('quality', 'Quality Measures', [col('dataset', 'Dataset'), col('facility', 'Facility'), col('rating', 'Star rating', 'right'), col('year', 'Year', 'right')], rows, 'No CMS quality ratings on file.')];
+    }
+    case 'ownership': {
+      const rows = (report.ownership || []).map((o) => ({
+        owner: { text: text(o.ownerName) },
+        percentage: { text: num(o.percentage) == null ? '—' : `${num(o.percentage)}%` },
+        type: { text: [o.ownerType, o.role].filter(Boolean).join(' · ') || '—' },
+        dataset: { text: humanize(o.dataset) },
+        year: { text: text(o.dataYear) },
+      }));
+      return [{
+        ...table('ownership', 'Ownership Details', [col('owner', 'Owner'), col('percentage', 'Ownership', 'right'), col('type', 'Type / role'), col('dataset', 'Dataset'), col('year', 'Year', 'right')], rows, 'No linked ownership details on file.'),
+        note: 'Up to 30 reported ownership or management interests. Missing percentages are not zero; interests may overlap and are not summed.',
+      }];
+    }
+    case 'costReports': {
+      const rows = (report.costReports || []).map((c) => ({
+        dataset: { text: humanize(c.dataset) },
+        period: { text: c.period || text(c.dataYear) },
+        metric: { text: text(c.metric) },
+        value: { text: c.format === 'money' ? fmtMoney(c.value) : fmtInt(c.value) },
+      }));
+      return [{
+        ...table('costReports', 'Cost Report Summaries', [col('dataset', 'Dataset'), col('period', 'Reporting period'), col('metric', 'Metric'), col('value', 'Reported value', 'right')], rows, 'No linked cost report metrics on file.'),
+        note: 'Latest available release per dataset. Fiscal periods may differ; reported financial totals are not combined.',
+      }];
+    }
+    case 'additionalQuality': {
+      const rows = (report.additionalQuality || []).map((q) => ({
+        dataset: { text: humanize(q.dataset) },
+        measure: { text: text(q.metric) },
+        score: { text: text(q.value) },
+        year: { text: text(q.dataYear) },
+      }));
+      return [{
+        ...table('additionalQuality', 'Additional Quality Measures', [col('dataset', 'Dataset'), col('measure', 'Measure'), col('score', 'Reported score', 'right'), col('year', 'Year', 'right')], rows, 'No additional linked quality measures on file.'),
+        note: 'Up to five measures per record, 20 overall. CMS scores retain their source units; measures and reporting periods are not directly comparable. Suppressed or unavailable scores are omitted.',
+      }];
     }
     case 'leadScore': {
       const s = report.leadScore;
@@ -272,7 +312,7 @@ export function buildReportModel(report, selected, { npi, providerId, facilityNa
     label: REPORT_SECTIONS.find((s) => s.key === key)?.label || key,
     blocks: sectionBlocks(key, r),
   }));
-  const sources = [...new Set(keys.map((k) => SECTION_SOURCES[k]).filter(Boolean))];
+  const sources = [...new Set(keys.map((k) => SECTION_SOURCES[k] || REPORT_SECTIONS.find((s) => s.key === k)?.source).filter(Boolean))];
 
   return {
     title,

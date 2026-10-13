@@ -1,6 +1,6 @@
 import React from 'react';
+import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
 
-const LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png';
 
 function Block({ block }) {
   const empty = block.kind === 'table' ? block.rows.length === 0 : block.items.length === 0;
@@ -56,7 +56,7 @@ export default function ReportDocument({ model }) {
     <article className="cm-report-doc" aria-label={`${model.subtitle}: ${model.title}`}>
       <header className="cm-doc-brand">
         <div className="cm-doc-brand-left">
-          <img src={LOGO_URL} alt="" className="cm-doc-logo" />
+          <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="cm-doc-logo" />
           <div>
             <div className="cm-doc-brand-name">CareMetric AI</div>
             <div className="cm-doc-brand-tag">Healthcare Provider Intelligence</div>

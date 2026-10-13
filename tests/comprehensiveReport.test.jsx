@@ -20,6 +20,7 @@ vi.mock('@/components/exports/exportUtils', () => ({
 vi.mock('../src/components/reports/reportPdf', () => ({ downloadReportPdf: (m) => pdf.download(m) }));
 
 import ComprehensiveReport from '../src/components/reports/ComprehensiveReport';
+import ReportDocument from '../src/components/reports/ReportDocument';
 import { availableSections, buildReportModel, REPORT_SECTIONS, reportFileName } from '../src/components/reports/reportSections';
 
 afterEach(cleanup);
@@ -41,21 +42,24 @@ const REPORT = {
   orderReferring: { partb: true, dme: 'Y', hha: false, pmd: null, hospice: 'N' },
   leadScore: null,
   quality: [{ facilityType: 'snf', name: 'Erie Manor', qualityRating: 4, dataYear: '2024' }],
+  ownership: [{ dataset: 'snf_all_owners', ownerName: 'Example Holdings', percentage: 80, ownerType: 'Organization', role: 'Direct ownership', dataYear: '2024' }],
+  costReports: [{ dataset: 'snf_cost_report', metric: 'Total revenue', value: 1234567, format: 'money', dataYear: '2024' }],
+  additionalQuality: [{ dataset: 'snf_quality_reporting', metric: 'Discharge function score', value: '76.2', dataYear: '2024' }],
 };
 
 function wrap(ui) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  return { client, ...render(
     <QueryClientProvider client={client}>
       <MemoryRouter>{ui}</MemoryRouter>
     </QueryClientProvider>,
-  );
+  ) };
 }
 
 describe('report sections', () => {
   it('offers every section for an NPI and only facility sections for a CCN without one', () => {
     expect(availableSections({ npi: '1234567893' }).map((s) => s.key)).toEqual(REPORT_SECTIONS.map((s) => s.key));
-    expect(availableSections({ providerId: '390111' }).map((s) => s.key)).toEqual(['profile', 'facilities', 'quality']);
+    expect(availableSections({ providerId: '390111' }).map((s) => s.key)).toEqual(['profile', 'facilities', 'quality', 'ownership', 'costReports', 'additionalQuality']);
     expect(availableSections({})).toEqual([]);
   });
 
@@ -82,6 +86,21 @@ describe('report sections', () => {
     expect(block.emptyText).toMatch(/^Unscored/);
     const scored = buildReportModel({ ...REPORT, leadScore: { score: 71.6, outreach_potential: null } }, ['leadScore'], { npi: '1234567893' });
     expect(scored.sections[0].blocks[0].items[0]).toMatchObject({ label: 'Lead score', value: '72' });
+  });
+
+  it('uses the same curated data and sources in the print model, with missing values left blank', () => {
+    const model = buildReportModel({ ...REPORT, ownership: [...REPORT.ownership, { ownerName: 'Other Owner', percentage: null }] },
+      ['ownership', 'costReports', 'additionalQuality'], { providerId: '390111' });
+    expect(model.sections.map((s) => s.key)).toEqual(['ownership', 'costReports', 'additionalQuality']);
+    expect(model.sections[0].blocks[0].rows.map((r) => r.percentage.text)).toEqual(['80%', '—']);
+    expect(model.sections[1].blocks[0].rows[0].value.text).toBe('$1,234,567');
+    render(<ReportDocument model={model} />);
+    for (const value of ['Example Holdings', '80%', '$1,234,567', 'Discharge function score', '76.2', 'www.CareMetric.ai']) {
+      expect(screen.getByText(value)).toBeInTheDocument();
+    }
+    expect(model.sources).toHaveLength(3);
+    const empty = buildReportModel({}, ['ownership', 'costReports', 'additionalQuality'], { providerId: '390111' });
+    empty.sections.forEach((s) => expect(s.blocks[0].emptyText).toMatch(/No .*linked/));
   });
 
   it("titles a facility report with the facility, and shows no Medicare totals without an NPI", () => {
@@ -120,7 +139,40 @@ describe('ComprehensiveReport', () => {
   it('offers only facility sections for a facility without a linked NPI', () => {
     wrap(<ComprehensiveReport providerId="390111" facilityName="Erie Manor" />);
     expect(screen.getAllByRole('checkbox').map((b) => b.getAttribute('aria-labelledby') && document.getElementById(b.getAttribute('aria-labelledby')).textContent))
-      .toEqual(['Profile & overview', 'Linked facilities', 'Quality measures']);
+      .toEqual(['Profile & overview', 'Linked facilities', 'Quality measures', 'Ownership details', 'Cost report summaries', 'Additional quality measures']);
+  });
+
+  it.each([
+    [{ npi: '1234567893' }, { npi: '1111111112' }],
+    [{ providerId: '390111' }, { providerId: '390112' }],
+  ])('clears the report when its subject changes from %j to %j', async (first, second) => {
+    api.invoke.mockResolvedValue({ data: REPORT });
+    const view = wrap(<ComprehensiveReport {...first} />);
+    fireEvent.click(screen.getByRole('button', { name: /Generate Full Report/ }));
+    await screen.findByRole('button', { name: /Download PDF/ });
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <MemoryRouter><ComprehensiveReport {...second} /></MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByRole('button', { name: /Download PDF/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Generate Full Report/ })).toBeInTheDocument();
+    expect(api.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores an in-flight response for a previous subject', async () => {
+    let resolve;
+    api.invoke.mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const ui = (npi) => <QueryClientProvider client={client}><MemoryRouter><ComprehensiveReport npi={npi} /></MemoryRouter></QueryClientProvider>;
+    const view = render(ui('1234567893'));
+    fireEvent.click(screen.getByRole('button', { name: /Generate Full Report/ }));
+    await waitFor(() => expect(api.invoke).toHaveBeenCalledTimes(1));
+    view.rerender(ui('1111111112'));
+    resolve({ data: REPORT });
+    await waitFor(() => expect(client.getQueryState(['comprehensiveReport', '1234567893', undefined, REPORT_SECTIONS.map((s) => s.key)])?.status).toBe('success'));
+    expect(screen.queryByRole('button', { name: /Download PDF/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
   });
 
   it('counts the export, then prints the branded document', async () => {
@@ -130,6 +182,8 @@ describe('ComprehensiveReport', () => {
       expect(document.querySelector('.cm-print-root .cm-report-doc')).not.toBeNull();
       expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric AI');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Data Sources');
+      expect(document.querySelector('.cm-print-root').textContent).toContain('Example Holdings');
+      expect(document.querySelector('.cm-print-root').textContent).toContain('Discharge function score');
     });
     wrap(<ComprehensiveReport npi="1234567893" />);
     fireEvent.click(screen.getByRole('button', { name: /Generate Full Report/ }));
@@ -164,5 +218,20 @@ describe('ComprehensiveReport', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Download PDF/ }));
     await waitFor(() => expect(pdf.download).toHaveBeenCalledTimes(1));
     expect(pdf.download.mock.calls[0][0]).toMatchObject({ title: 'Ada Lovelace', selectedKeys: REPORT_SECTIONS.map((s) => s.key) });
+    expect(pdf.download.mock.calls[0][0].sections.find((s) => s.key === 'costReports').blocks[0].rows[0].value.text).toBe('$1,234,567');
+    expect(screen.getByText('Example Holdings')).toBeInTheDocument();
+  });
+
+  it('recovers print controls when export metering fails', async () => {
+    api.invoke.mockResolvedValue({ data: REPORT });
+    quota.count.mockRejectedValueOnce(new Error('network'));
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    wrap(<ComprehensiveReport npi="1234567893" />);
+    fireEvent.click(screen.getByRole('button', { name: /Generate Full Report/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Print/ }));
+    await waitFor(() => expect(quota.count).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: /Print/ })).not.toBeDisabled());
+    expect(print).not.toHaveBeenCalled();
+    print.mockRestore();
   });
 });

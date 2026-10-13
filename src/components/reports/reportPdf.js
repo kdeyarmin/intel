@@ -61,8 +61,14 @@ export async function downloadReportPdf(model) {
   let y = 0;
 
   const newPage = () => {
+    const font = doc.getFont();
+    const fontSize = doc.getFontSize();
+    const textColor = doc.getTextColor();
     doc.addPage();
     drawPageHeader(doc, model, logo);
+    doc.setFont(font.fontName, font.fontStyle);
+    doc.setFontSize(fontSize);
+    doc.setTextColor(textColor);
     y = HEADER_H + 8;
   };
   const ensure = (needed) => {
@@ -175,18 +181,20 @@ export async function downloadReportPdf(model) {
     const lineH = 3.3;
 
     const headerRow = () => {
-      doc.setFillColor(...HEAD_FILL);
-      doc.rect(MARGIN, y - 3.6, contentW, 5.6, 'F');
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(fontSize);
+      const labels = cols.map((c, i) => doc.splitTextToSize(String(c.label), widths[i] - 3));
+      const headerH = Math.max(...labels.map((lines) => lines.length)) * lineH + 2.3;
+      doc.setFillColor(...HEAD_FILL);
+      doc.rect(MARGIN, y - 3.6, contentW, headerH, 'F');
       doc.setTextColor(...INK);
       let x = MARGIN;
       cols.forEach((c, i) => {
         const tx = c.align === 'right' ? x + widths[i] - 1.5 : x + 1.5;
-        doc.text(String(c.label), tx, y, { align: c.align === 'right' ? 'right' : 'left' });
+        doc.text(labels[i], tx, y, { align: c.align === 'right' ? 'right' : 'left' });
         x += widths[i];
       });
-      y += 4.2;
+      y += headerH - 1.4;
     };
 
     ensure(12);
