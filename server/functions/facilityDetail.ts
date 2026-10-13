@@ -505,6 +505,7 @@ async function listLicensedFacilities(params: any, radius: ZipRadius | null) {
   ]);
   return {
     facility_group: "licensed",
+    ...(radius ? { radius_zip: radius.zip } : {}),
     facilities: rows.map((r: any) => ({ ...r, ...(radius ? { distance_miles: zipDistance(radius, r.zip) } : {}), provider_id: null, quality_rating: null, total_discharges: null, total_payments: null })),
     total: Number(counts[0]?.count || 0),
     page: safePage,
@@ -634,6 +635,7 @@ export async function handleListFacilities(params: any) {
   }
 
   return {
+    ...(radius ? { radius_zip: radius.zip } : {}),
     facilities: Array.from(seen.values()).map((r) => ({ ...r, ...(radius ? { distance_miles: zipDistance(radius, r.zip) } : {}) })),
     total: totalCount,
     page: safePage,

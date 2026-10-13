@@ -25,7 +25,7 @@ function UrlProbe() {
 }
 
 function renderList(facilityGroup, facilities, path = '/Facilities') {
-  invoke.mockReset().mockResolvedValue({ data: { facilities, total: facilities.length, available_states: ['PA'] } });
+  invoke.mockReset().mockResolvedValue({ data: { facilities, total: facilities.length, available_states: ['PA'], radius_zip: new URL(path, 'http://localhost').searchParams.get('zip') } });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -87,5 +87,15 @@ describe('FacilityListPage columns', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Radius ZIP code' })).toHaveValue('16501'));
     expect(screen.getByRole('combobox', { name: 'Radius distance in miles' })).toHaveTextContent('50 miles');
     await waitFor(() => expect(invoke).toHaveBeenLastCalledWith('listFacilities', expect.objectContaining({ radius_zip: '16501', radius_miles: 50 })));
+  });
+
+  it('keeps the original distance origin while previous results remain visible during a new search', async () => {
+    renderList('snf', [{ provider_id: '1', facility_name: 'Nearby', distance_miles: 0 }], '/Facilities?zip=15213&miles=5');
+    await screen.findByText('≈ 0.0 miles from 15213');
+    invoke.mockImplementation(() => new Promise(() => {}));
+    fireEvent.click(screen.getByRole('button', { name: 'Open radius link' }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Updating'));
+    expect(screen.getByText('≈ 0.0 miles from 15213')).toBeInTheDocument();
+    expect(screen.queryByText('≈ 0.0 miles from 16501')).toBeNull();
   });
 });

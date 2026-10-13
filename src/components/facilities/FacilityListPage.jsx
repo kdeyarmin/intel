@@ -145,7 +145,7 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-200 truncate">{f.facility_name || f.provider_id}</p>
                   <p className="text-[10px] text-slate-400 md:hidden">{f.city}, {f.state} {f.zip}</p>
-                  {f.distance_miles != null ? <p className="text-xs text-cyan-400">≈ {Number(f.distance_miles).toFixed(1)} miles from {url.zip}</p> : null}
+                  {f.distance_miles != null ? <p className="text-xs text-cyan-400">≈ {Number(f.distance_miles).toFixed(1)} miles from {data?.radius_zip || url.zip}</p> : null}
                   {f.license_type ? <p className="text-[10px] text-slate-400">{String(f.license_type).replace(/_/g, ' ')}{f.license_number ? ` · license ${f.license_number}` : ''}{f.status ? ` · ${f.status}` : ''}</p> : null}
                 </div>
               </div>

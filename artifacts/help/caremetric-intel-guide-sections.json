@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "279f05fac144520fc30fe7a54cae1802fe4c4757",
+    "ref": "1b7f7e507116e45c2868e34698b0b66f05cb88e9",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -27,9 +27,9 @@
   },
   "summary": {
     "section_count": 9,
-    "topic_count": 37,
-    "text_character_count": 22038,
-    "canonical_sha256": "eacac1b7db567e180a6bb8298b5175da83ebdc641dab15def4d4d0aa7919a402"
+    "topic_count": 38,
+    "text_character_count": 22906,
+    "canonical_sha256": "0d66607f90e4c93cba45016d7298e12bde2d30be566588c224d2c716b9dcbf24"
   },
   "sections": [
     {
@@ -76,6 +76,11 @@
           "heading": "Locations",
           "text": "Find practice and mailing addresses by NPI, ZIP, \"City, ST\" or state. Each location opens its provider and nearby details.",
           "sha256": "0cff1ecea7e4f7dc456eb356b71c752c6f2f56ac328adbf7fb8870ef5ebfadc3"
+        },
+        {
+          "heading": "ZIP radius search",
+          "text": "On **Providers** and **Facilities**, enter a five-digit ZIP, choose **5, 10, 25 or 50 miles**, then press **Apply radius**. Use it with the existing name, state and other filters; the ZIP and distance stay in the page address and saved provider filters. **Clear radius** removes only the radius filter.\n\nDistances are approximate straight-line miles between 2020 Census ZIP-area centers, not street-address or driving distances. Provider results show the nearest matching location, including practice or mailing addresses. Locations without a known ZIP-area center are excluded; ZIPs with no Census centroid (such as some PO-box ZIPs) need a nearby ZIP instead. Provider results are capped at 300, with a bounded location sample in dense areas; narrow the radius or add a name or NPI when the page says results are capped. Facility filtering applies before pagination.",
+          "sha256": "104e5a385d76b83d7907616ba369082f92c8779d801752dc698c2f05d0e19bd5"
         },
         {
           "heading": "Facilities",

@@ -39,9 +39,16 @@ describe('guide content', () => {
   });
 
   it('no longer promises features the app does not have', () => {
-    for (const claim of [/Sales Rep/i, /radius/i, /dry[- ]run/i, /Enrichment Hub/i, /cleaning rules/i]) {
+    for (const claim of [/Sales Rep/i, /dry[- ]run/i, /Enrichment Hub/i, /cleaning rules/i]) {
       expect(guideBlock).not.toMatch(claim);
     }
+  });
+
+  it('documents radius search as approximate ZIP-center distances with capped provider results', () => {
+    expect(guideBlock).toMatch(/ZIP radius search/);
+    expect(guideBlock).toMatch(/5, 10, 25 or 50 miles/);
+    expect(guideBlock).toMatch(/not street-address or driving distances/);
+    expect(guideBlock).toMatch(/Provider results are capped at 300/);
   });
 });
 
