@@ -19,5 +19,11 @@ export default defineConfig({
   },
   test: {
     setupFiles: ['./tests/setup.js'],
+    include: [
+      'tests/centralSupport.test.ts',
+      'tests/checkCMSDataApiUrls.test.ts',
+      'tests/cmsCatalog.test.ts',
+      'tests/cmsTypedTables.test.ts'
+    ],
   },
 });
