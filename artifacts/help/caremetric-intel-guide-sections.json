@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "279f05fac144520fc30fe7a54cae1802fe4c4757",
+    "ref": "ef4a9b4f5f0c4a4634b55950484704a4c71b44f0",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 37,
-    "text_character_count": 22038,
-    "canonical_sha256": "eacac1b7db567e180a6bb8298b5175da83ebdc641dab15def4d4d0aa7919a402"
+    "text_character_count": 22145,
+    "canonical_sha256": "a6c3c6beacca76470bc936b65eb4378f187570925b42658e6d3822aa4888d1f6"
   },
   "sections": [
     {
@@ -37,19 +37,19 @@
       "title": "Getting Started",
       "topics": [
         {
-          "heading": "Welcome to CareMetric AI",
-          "text": "CareMetric AI is a provider intelligence app for home health, hospice and post-acute teams. It brings together public CMS data — the NPPES provider registry, Medicare utilization and payments, Medicare shared-patient patterns and Medicare facility datasets — with your own lead scores, lead lists and outreach.\n\nStart on the **Dashboard** for record counts, data health and recent activity.",
-          "sha256": "d8830abf371e339be10c1273a8db528f2bb4fdcb081659b2658d285ad496464d"
+          "heading": "Welcome to CareMetric Intel",
+          "text": "CareMetric Intel by CareMetric Healthcare Advisors is a provider intelligence app for home health, hospice and post-acute teams. It brings together public CMS data — the NPPES provider registry, Medicare utilization and payments, Medicare shared-patient patterns and Medicare facility datasets — with your own lead scores, lead lists and outreach.\n\nStart on the **Dashboard** for record counts, data health and recent activity.",
+          "sha256": "7f9cc0202cf01b5076430aadb95cadc15edc0746aff32b17998a351d04a476d6"
         },
         {
           "heading": "Your account",
-          "text": "New accounts need approval: after signing up you'll see a waiting screen until an administrator approves you. Owners invite the people in their own organization, by link.\n\nThere are three roles:\n• **Member** — the directory, facilities, analytics, territory, AI Assistant, reports and lead lists.\n• **Owner** — a member who also manages the organization: its people, plan and billing, security audit and campaigns.\n• **Platform admin** (CareMetric staff) — everything, plus data imports, the NPPES crawler, provider intelligence, scoring rules and every organization's accounts.\n\nForgot your password? Use **Forgot password** on the sign-in page (when email is set up) or ask an owner for a reset link. **Account** at the bottom of the sidebar changes your password or signs you out on every device.",
-          "sha256": "ad4c590ea7fea11046ff711b3a364e70c516e800299fba36da619886f8864940"
+          "text": "New accounts need approval: after signing up you'll see a waiting screen until an administrator approves you. Owners invite the people in their own organization, by link.\n\nThere are three roles:\n• **Member** — the directory, facilities, analytics, territory, AI Assistant, reports and lead lists.\n• **Owner** — a member who also manages the organization: its people, plan and billing, security audit and campaigns.\n• **Platform admin** (CareMetric Healthcare Advisors staff) — everything, plus data imports, the NPPES crawler, provider intelligence, scoring rules and every organization's accounts.\n\nForgot your password? Use **Forgot password** on the sign-in page (when email is set up) or ask an owner for a reset link. **Account** at the bottom of the sidebar changes your password or signs you out on every device.",
+          "sha256": "d643b11834724596b2d5e139f2167d82822cfaefdea4efe182d074218998cde1"
         },
         {
           "heading": "What data is this and how fresh is it?",
-          "text": "Everything in CareMetric comes from public sources: the **NPPES** provider registry, Medicare public use files from **data.cms.gov** and **Care Compare**, and U.S. Census geography. No patient-level data is used; CMS suppresses counts under 11 before publishing, and figures here are CareMetric analytics derived from those files, not CMS publications.\n\nEach dataset carries a **data year** (the period it describes) and an import date. The line at the bottom of data pages summarises what is loaded and when it was last refreshed; admins see the full table on **Data Center › Dataset catalog**. CMS publishes most files once a year (for example the Hospital Service Area file each summer and post-acute utilization in late summer), Care Compare files quarterly, and the NPPES registry weekly. A daily check of the CMS catalogs flags datasets with a newer release, and schedules set to **on release** import them automatically.",
-          "sha256": "7f29b02753cf2b426836811f0ba385e52eed4ce63a5dc648fd0fcb0f320585c6"
+          "text": "Everything in CareMetric Intel comes from public sources: the **NPPES** provider registry, Medicare public use files from **data.cms.gov** and **Care Compare**, and U.S. Census geography. No patient-level data is used; CMS suppresses counts under 11 before publishing, and figures here are CareMetric Intel analytics derived from those files, not CMS publications.\n\nEach dataset carries a **data year** (the period it describes) and an import date. The line at the bottom of data pages summarises what is loaded and when it was last refreshed; admins see the full table on **Data Center › Dataset catalog**. CMS publishes most files once a year (for example the Hospital Service Area file each summer and post-acute utilization in late summer), Care Compare files quarterly, and the NPPES registry weekly. A daily check of the CMS catalogs flags datasets with a newer release, and schedules set to **on release** import them automatically.",
+          "sha256": "1f525d56861c4bf919b16b239b1367e1b61a3e474fd48b43941f664e05aa5cee"
         },
         {
           "heading": "Finding your way",
@@ -131,8 +131,8 @@
         },
         {
           "heading": "What market share means here",
-          "text": "Market share is a provider's share of the Medicare fee-for-service beneficiaries served by all providers of that setting **located in the same county** (or state), from the CMS Post-Acute Care Utilization files. It describes Original Medicare only: Medicare Advantage, Medicaid and private-pay patients are not in the files, so a county with a high Medicare Advantage share is under-counted. Home health agencies and hospices serve patients beyond their home county, which is why the service-area coverage list is shown alongside. CMS suppresses counts under 11 before publishing, and all of these figures are CareMetric analytics derived from public CMS data rather than CMS publications.",
-          "sha256": "7a54d926938d58c00f3ef6375ac198f3d1773f2801e0d3eaac3450d0e2894fdf"
+          "text": "Market share is a provider's share of the Medicare fee-for-service beneficiaries served by all providers of that setting **located in the same county** (or state), from the CMS Post-Acute Care Utilization files. It describes Original Medicare only: Medicare Advantage, Medicaid and private-pay patients are not in the files, so a county with a high Medicare Advantage share is under-counted. Home health agencies and hospices serve patients beyond their home county, which is why the service-area coverage list is shown alongside. CMS suppresses counts under 11 before publishing, and all of these figures are CareMetric Intel analytics derived from public CMS data rather than CMS publications.",
+          "sha256": "81f61607e3af3b0ebf7a3c472cce112d68e1090720f2091defa6d86b109f1d59"
         },
         {
           "heading": "About the geography",
@@ -241,8 +241,8 @@
       "topics": [
         {
           "heading": "Users and your organization",
-          "text": "Every account belongs to an organization: the one created when its first owner signed up. Under **Admin Settings → Users** an owner sees their organization's people: invite people by link (up to the plan's seat limit), make someone an owner or a member, disable or re-enable accounts, create password reset links and sign someone out everywhere. Owners manage people, billing and campaigns; members use everything else. You can't change your own account here. Account activity is recorded.\n\nPlatform admins (CareMetric staff) see every organization, approve new sign-ups (one that subscribes is approved by its payment), run imports and maintenance, and are the only ones who can make other platform admins.",
-          "sha256": "1d845913fc9619be9dcc2bfb64590580ad98be3f2a6877cf1c3ebfc2e152f0ae"
+          "text": "Every account belongs to an organization: the one created when its first owner signed up. Under **Admin Settings → Users** an owner sees their organization's people: invite people by link (up to the plan's seat limit), make someone an owner or a member, disable or re-enable accounts, create password reset links and sign someone out everywhere. Owners manage people, billing and campaigns; members use everything else. You can't change your own account here. Account activity is recorded.\n\nPlatform admins (CareMetric Healthcare Advisors staff) see every organization, approve new sign-ups (one that subscribes is approved by its payment), run imports and maintenance, and are the only ones who can make other platform admins.",
+          "sha256": "dfceac21a352134855f4057e73ed9a1f81d966f84746f03143b0f9f10271adbe"
         },
         {
           "heading": "Plan, billing and territory",
@@ -251,8 +251,8 @@
         },
         {
           "heading": "Scoring rules",
-          "text": "The CareMetric score (0–100) weights specialty match, Medicare participation, patient volume, service intensity, geographic priority, practice type and behavioral-health potential. Adjust the weights (they should total 100%); the **Geographic Priority** rule's conditions name the states that are scored and any priority counties, and the **Specialty Match** rule lists the specialty groups that count as a match.\n\nScores are computed on the server for every individual provider with a practice location in those states, from the NPPES taxonomy (by NUCC code), the CMS Order & Referring list, Physician & Other Practitioners by Provider volumes and facility affiliations. **Recalculate scores** runs the job in the background (it takes a few minutes per state) and it also runs weekly after imports. Each score keeps its breakdown and reasons, shown on provider pages; providers outside the scored states show as Unscored.",
-          "sha256": "5be1a09669d21f4a6a82948c857578924174c5f8057b2ad1c35dd380bb0cf894"
+          "text": "The CareMetric Intel score (0–100) weights specialty match, Medicare participation, patient volume, service intensity, geographic priority, practice type and behavioral-health potential. Adjust the weights (they should total 100%); the **Geographic Priority** rule's conditions name the states that are scored and any priority counties, and the **Specialty Match** rule lists the specialty groups that count as a match.\n\nScores are computed on the server for every individual provider with a practice location in those states, from the NPPES taxonomy (by NUCC code), the CMS Order & Referring list, Physician & Other Practitioners by Provider volumes and facility affiliations. **Recalculate scores** runs the job in the background (it takes a few minutes per state) and it also runs weekly after imports. Each score keeps its breakdown and reasons, shown on provider pages; providers outside the scored states show as Unscored.",
+          "sha256": "21bafa25f2c57e919b6c022f0ce2e5a49cfaacbf7fdd58ad16d636e089f69abf"
         },
         {
           "heading": "Data quality",
@@ -266,8 +266,8 @@
         },
         {
           "heading": "Terms, privacy and data use",
-          "text": "Signing up accepts the Terms of Service and Privacy Policy, linked from the sign-in page (/terms, /privacy). The data-use page (/data-use) lists every source behind the app and what the figures are: CareMetric analytics derived from public CMS, NPPES and Census files (never presented as CMS data), Medicare fee-for-service only unless noted, counts under 11 suppressed, no patient-level data, and shared-patient patterns that are not confirmed referrals. Every export carries that source line. Use the data for your own organization's research and outreach within your plan's territory; don't resell or republish it.",
-          "sha256": "1b5c52086b9aa92f258eb3dccd54a2f30faa0c67144b473269074d4f12b1b22c"
+          "text": "Signing up accepts the Terms of Service and Privacy Policy, linked from the sign-in page (/terms, /privacy). The data-use page (/data-use) lists every source behind the app and what the figures are: CareMetric Intel analytics derived from public CMS, NPPES and Census files (never presented as CMS data), Medicare fee-for-service only unless noted, counts under 11 suppressed, no patient-level data, and shared-patient patterns that are not confirmed referrals. Every export carries that source line. Use the data for your own organization's research and outreach within your plan's territory; don't resell or republish it.",
+          "sha256": "bc418e38cc75f45b7382ababba0e3882494beff0f321b364bd31226fe86121fb"
         }
       ]
     }
