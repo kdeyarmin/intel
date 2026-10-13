@@ -326,8 +326,8 @@ function ReportContent({ npi, providerId, facilityName }) {
           <div className="flex items-center gap-2.5">
             <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="w-32 h-10 object-contain bg-white rounded-md" />
             <div>
-              <p className="text-sm font-bold text-white leading-tight">CareMetric <span className="text-cyan-400">AI</span></p>
-              <p className="text-[10px] text-slate-400">Healthcare Provider Intelligence</p>
+              <p className="text-sm font-bold text-white leading-tight">CareMetric</p>
+              <p className="text-[10px] text-slate-400">Healthcare Advisors</p>
               <a href="https://www.CareMetric.ai" className="text-[10px] text-cyan-400 hover:underline">www.CareMetric.ai</a>
             </div>
           </div>
