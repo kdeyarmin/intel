@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useSearchParams, useNavigate, Navigate, Link } from 'react-router-dom';
 import { safeReturnUrl } from '@/lib/returnUrl';
+import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
 
 export default function Login() {
   const { login, signup, isAuthenticated, isLoadingAuth, user, authError } = useAuth();
@@ -53,9 +54,9 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/landing" className="inline-block hover:opacity-90 transition-opacity">
-            <h1 className="text-3xl font-bold text-white mb-2">CareMetric AI</h1>
+            <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="w-72 h-24 object-contain mx-auto mb-4 rounded-lg bg-white p-3 text-slate-900" />
           </Link>
-          <p className="text-slate-400">Healthcare Provider Intelligence Platform</p>
+          <p className="text-sm font-medium tracking-wide text-slate-300">Healthcare Provider Intelligence</p>
           <div className="mt-2">
             <Link to="/landing" className="text-xs text-cyan-400 hover:text-cyan-300">
               ← Explore product features &amp; pricing

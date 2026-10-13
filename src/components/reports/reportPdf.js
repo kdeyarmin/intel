@@ -26,6 +26,8 @@ function drawPageHeader(doc, model, logo) {
       const scale = Math.min(40 / image.width, 14 / image.height);
       const width = image.width * scale;
       const height = image.height * scale;
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(MARGIN - 1, (HEADER_H - height) / 2 - 1, width + 2, height + 2, 1, 1, 'F');
       doc.addImage(logo, 'PNG', MARGIN, (HEADER_H - height) / 2, width, height);
       x += width + 3;
     } catch { /* a report without the logo is still a report */ }

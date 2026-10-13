@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { CAREMETRIC_LOGO_URL } from '../src/lib/branding';
 
 afterEach(cleanup);
 
@@ -28,7 +29,6 @@ function setWidth(width) {
 }
 
 function renderLayout() {
-  // The sidebar's billing widget reads the plan with react-query.
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
@@ -68,6 +68,22 @@ describe('closed sidebar', () => {
 });
 
 describe('sidebar footer', () => {
+  it('uses the full brand logo in expanded and collapsed chrome without the billing widget', () => {
+    setWidth(1280);
+    const aside = renderLayout();
+    expect(aside).not.toHaveTextContent(/AI requests today|CareMetric \(legacy\)|NATIONAL|ACTIVE/);
+    expect(screen.queryByRole('link', { name: 'Plan and billing' })).toBeNull();
+    screen.getAllByRole('img', { name: 'CareMetric Healthcare Advisors' }).forEach((logo) => {
+      expect(logo).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    screen.getAllByRole('img', { name: 'CareMetric Healthcare Advisors' }).forEach((logo) => {
+      expect(logo).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+    });
+    expect(screen.queryByText('Intelligence')).toBeNull();
+    expect(aside).not.toHaveTextContent(/AI requests today|CareMetric \(legacy\)|NATIONAL|ACTIVE/);
+  });
+
   it('names the role the account acts with, not the raw user role', () => {
     setWidth(1280);
     const aside = renderLayout();

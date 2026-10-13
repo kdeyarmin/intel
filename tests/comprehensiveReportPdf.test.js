@@ -14,6 +14,7 @@ vi.mock('jspdf', async (original) => {
       if (state.imageSize) {
         state.doc.getImageProperties = vi.fn(() => state.imageSize);
         state.doc.addImage = vi.fn();
+        vi.spyOn(state.doc, 'roundedRect');
       }
       return state.doc;
     },
@@ -35,6 +36,7 @@ describe('comprehensive report PDF', () => {
     const model = buildReportModel({}, ['profile'], { providerId: '390111' });
     await downloadReportPdf(model);
     expect(state.doc.addImage).toHaveBeenCalledWith('test-logo', 'PNG', 14, 5, 40, 10);
+    expect(state.doc.roundedRect).toHaveBeenCalledWith(13, 4, 42, 12, 1, 1, 'F');
   });
 
   it('generates a real paginated PDF with branding, curated sections and repeated headers', async () => {

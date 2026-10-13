@@ -75,18 +75,28 @@ function addPDFHeader(doc, title, logoBase64) {
   doc.rect(0, 0, pageW, 28, 'F');
   
   // Logo
+  let brandX = 14;
   if (logoBase64) {
-    try { doc.addImage(logoBase64, 'PNG', 10, 3, 22, 22); } catch {}
+    try {
+      const image = doc.getImageProperties(logoBase64);
+      const scale = Math.min(45 / image.width, 18 / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(10, (28 - height) / 2 - 1, width + 2, height + 2, 1, 1, 'F');
+      doc.addImage(logoBase64, 'PNG', 11, (28 - height) / 2, width, height);
+      brandX = 10 + width + 6;
+    } catch {}
   }
   
   // Brand text
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('CareMetric AI', logoBase64 ? 36 : 14, 14);
+  doc.text('CareMetric AI', brandX, 14);
   doc.setFontSize(7);
   doc.setFont(undefined, 'normal');
-  doc.text('Provider Intel', logoBase64 ? 36 : 14, 20);
+  doc.text('Healthcare Provider Intelligence', brandX, 20);
   
   // Website right-aligned
   doc.setFontSize(7);

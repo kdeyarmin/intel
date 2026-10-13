@@ -1,11 +1,13 @@
+import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
+
 /** Shared frame for the signed-out screens (login, reset, awaiting approval). */
 export default function AuthShell({ title, children, footer }) {
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">CareMetric AI</h1>
-          <p className="text-slate-400">Healthcare Provider Intelligence Platform</p>
+          <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="w-72 h-24 object-contain mx-auto mb-4 rounded-lg bg-white p-3 text-slate-900" />
+          <p className="text-sm font-medium tracking-wide text-slate-300">Healthcare Provider Intelligence</p>
         </div>
         <main className="bg-slate-800 rounded-xl border border-slate-700 p-8">
           {title && <h2 className="text-xl font-semibold text-white mb-6">{title}</h2>}

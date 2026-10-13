@@ -8,6 +8,7 @@ import {
 import PageHeader from '../components/shared/PageHeader';
 import HelpSection from '../components/help/HelpSection';
 import CentralSupportCard from '../components/help/CentralSupportCard';
+import { pdfLogo } from '@/components/exports/exportUtils';
 import {
   buildCareMetricIntelSupportUrl,
   isVerifiedCareMetricIntelProduction,
@@ -186,6 +187,18 @@ export default function Help() {
       // Title page
       doc.setFillColor(15, 23, 41);
       doc.rect(0, 0, 210, 297, 'F');
+      const logo = await pdfLogo();
+      if (logo) {
+        try {
+          const image = doc.getImageProperties(logo);
+          const scale = Math.min(70 / image.width, 24 / image.height);
+          const width = image.width * scale;
+          const height = image.height * scale;
+          doc.setFillColor(255, 255, 255);
+          doc.roundedRect(margin - 2, 20, width + 4, height + 4, 2, 2, 'F');
+          doc.addImage(logo, 'PNG', margin, 22, width, height);
+        } catch { /* a guide without the logo is still a guide */ }
+      }
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(28);
       doc.text('CareMetric AI', margin, 60);

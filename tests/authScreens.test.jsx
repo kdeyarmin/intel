@@ -14,6 +14,8 @@ vi.mock('@/lib/AuthContext', () => ({ useAuth: () => ({ adoptSession }) }));
 
 import ResetPassword from '../src/components/auth/ResetPassword';
 import ForgotPassword from '../src/components/auth/ForgotPassword';
+import { CAREMETRIC_LOGO_URL } from '../src/lib/branding';
+import { TermsPage, PrivacyPage, DataUsePage } from '../src/components/auth/LegalPages';
 
 function at(path, element) {
   return render(
@@ -39,6 +41,7 @@ describe('ResetPassword', () => {
   it('explains a dead link instead of showing a form', async () => {
     auth.tokenInfo.mockResolvedValue({ valid: false });
     at(`/reset-password?token=${TOKEN}`, <ResetPassword />);
+    expect(screen.getByRole('img', { name: 'CareMetric Healthcare Advisors' })).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
     expect(await screen.findByText("This link doesn't work")).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Request a new reset link/ })).toHaveAttribute('href', '/forgot-password');
   });
@@ -110,6 +113,11 @@ describe('ResetPassword', () => {
 });
 
 describe('ForgotPassword', () => {
+  it('uses the same wordmark on the recovery screen', () => {
+    at('/forgot-password', <ForgotPassword />);
+    expect(screen.getByRole('img', { name: 'CareMetric Healthcare Advisors' })).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+  });
+
   it("says to ask an admin when email reset isn't set up", async () => {
     auth.forgotPassword.mockResolvedValue({ success: true, emailReset: false, message: 'Password reset by email isn’t set up. Ask an administrator for a reset link.' });
     at('/forgot-password', <ForgotPassword />);
@@ -117,5 +125,13 @@ describe('ForgotPassword', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send reset link' }));
     await waitFor(() => expect(auth.forgotPassword).toHaveBeenCalledWith('rep@example.com'));
     expect(await screen.findByText(/Ask an administrator/)).toBeInTheDocument();
+  });
+
+  describe('public legal branding', () => {
+    it.each([TermsPage, PrivacyPage, DataUsePage])('uses the official wordmark on %s', (Page) => {
+      render(<MemoryRouter><Page /></MemoryRouter>);
+      expect(screen.getByRole('img', { name: 'CareMetric Healthcare Advisors' })).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+      expect(screen.getByRole('link', { name: 'CareMetric Healthcare Advisors' })).toHaveAttribute('href', '/login');
+    });
   });
 });
