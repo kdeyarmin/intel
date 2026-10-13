@@ -11,7 +11,7 @@ function Block({ block }) {
         {block.kind === 'table' && <span className="cm-doc-count">{block.count} record{block.count === 1 ? '' : 's'}</span>}
       </h3>
       {empty ? (
-        <p className="cm-doc-note">{block.emptyText || 'No data on file.'}</p>
+        <p className="cm-doc-note">{block.emptyText || 'No data on file for this section. This section draws on public CMS and NPPES records; nothing was returned for this provider.'}</p>
       ) : block.kind === 'table' ? (
         <table className="cm-doc-table">
           <thead>
@@ -58,13 +58,13 @@ export default function ReportDocument({ model }) {
         <div className="cm-doc-brand-left">
           <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="cm-doc-logo" />
           <div>
-            <div className="cm-doc-brand-name">CareMetric AI</div>
-            <div className="cm-doc-brand-tag">Healthcare Provider Intelligence</div>
+            <div className="cm-doc-brand-name">CareMetric Intel</div>
+            <div className="cm-doc-brand-tag">CareMetric Healthcare Advisors</div>
           </div>
         </div>
         <div className="cm-doc-brand-right">
           <div>{model.subtitle}</div>
-          <div>www.CareMetric.ai</div>
+          <div>caremetricintel.com</div>
         </div>
       </header>
 
@@ -114,8 +114,7 @@ export default function ReportDocument({ model }) {
             </ul>
           </>
         )}
-        <p className="cm-doc-attrib">{model.attribution}</p>
-        <p className="cm-doc-attrib">Generated {model.generatedLabel} · CareMetric AI · www.CareMetric.ai · Confidential</p>
+        <p className="cm-doc-attrib">CareMetric Intel · caremetricintel.com</p>
       </footer>
     </article>
   );
