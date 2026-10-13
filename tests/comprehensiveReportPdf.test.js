@@ -52,12 +52,13 @@ describe('comprehensive report PDF', () => {
     const output = state.doc.output();
     expect(output).toMatch(/^%PDF-/);
     expect(state.doc.getNumberOfPages()).toBeGreaterThan(1);
-    for (const text of ['CareMetric AI', 'www.CareMetric.ai', 'Example Holding Company 29', '1,234,567', '45.6', 'Data Sources']) {
+    for (const text of ['CareMetric Intel', 'CareMetric Healthcare Advisors', 'https://caremetricintel.com/', 'Example Holding Company 29', '1,234,567', '45.6', 'Data Sources']) {
       expect(output).toContain(text);
     }
-    expect(output.match(/CareMetric AI/g)?.length).toBeGreaterThanOrEqual(state.doc.getNumberOfPages());
+    expect(output.match(/CareMetric Intel/g)?.length).toBeGreaterThanOrEqual(state.doc.getNumberOfPages());
+    expect(output).not.toMatch(/CareMetric AI|Healthcare Provider Intelligence|CareMetric\.ai/);
     expect(output.match(/\(Owner\)/g)?.length).toBeGreaterThan(1);
-    expect(state.doc.save).toHaveBeenCalledWith('CareMetric-Example-Hospital-2026-10-01.pdf');
+    expect(state.doc.save).toHaveBeenCalledWith('CareMetric-Intel-Example-Hospital-2026-10-01.pdf');
   });
 
   it('downloads a graceful empty-data report without a logo', async () => {
@@ -65,5 +66,21 @@ describe('comprehensive report PDF', () => {
     await downloadReportPdf(model);
     expect(state.doc.output()).toContain('No linked cost report metrics on file.');
     expect(state.doc.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('prints identifier spellings and ungrouped years while grouping actual measurements', async () => {
+    const model = buildReportModel({
+      provider: { npi: '0123456789' },
+      facility: { providerId: '001234', name: 'Example Hospital', latestYear: 2024 },
+      locations: [{ city: 'Holtsville', state: 'NY', zip: '00501' }],
+      utilization: [{ dataYear: 2024, totalServices: 1234567, totalPayment: 1234567 }],
+      costReports: [{ metric: 'Associate ID', value: '0244144871' }, { metric: 'CCN', value: 'A71234' }],
+    }, ['profile', 'locations', 'utilization', 'costReports'], { npi: '0123456789', providerId: '001234' });
+    await downloadReportPdf(model);
+    const output = state.doc.output();
+    for (const value of ['0123456789', '001234', '00501', '0244144871', 'A71234', '2024', '1,234,567']) {
+      expect(output).toContain(value);
+    }
+    expect(output).not.toMatch(/2,024|123,456,789|244,144,871/);
   });
 });

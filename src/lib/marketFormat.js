@@ -4,6 +4,16 @@
 
 export const fmtCount = (v) => (v == null || v === '' || Number.isNaN(Number(v)) ? '—' : Math.round(Number(v)).toLocaleString());
 
+/** Identifiers and years are labels, not quantities; retain leading zeros and letters. */
+export const fmtIdentifier = (v) => (v == null || v === '' ? '—' : String(v));
+
+export function isIdentifierField(field) {
+  const key = String(field).replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  return /(?:^|_)(?:year|npi|ccn|fips|id)(?:_|$)/.test(key)
+    || /(?:^|_)(?:zipcode|zip_code|zip_cd|zip5|postal_code|postalcode|provider_number|provider_num|prvdr_num|certification_number)(?:_|$)/.test(key)
+    || /(?:^|_)zip(?:$|_\d)/.test(key);
+}
+
 /** A fraction (0.31) as a percentage ("31%"). */
 export const fmtShare = (v, digits = 0) => (v == null || Number.isNaN(Number(v)) ? '—' : `${(Number(v) * 100).toFixed(digits)}%`);
 
@@ -25,6 +35,11 @@ export function fmtMoney(v) {
 /** Formats a value by the server's format name (count, percent = fraction, pct_units, money, rate). */
 export function formatMetric(value, format) {
   switch (format) {
+    case 'year':
+    case 'identifier':
+    case 'zip':
+    case 'npi':
+    case 'ccn': return fmtIdentifier(value);
     case 'percent': return fmtShare(value, 1);
     case 'pct_units': return fmtPct(value, 1);
     case 'money': return fmtMoney(value);
@@ -43,6 +58,7 @@ export function csvHeader(metric) {
 
 /** A metric value as exported: shares are percent numbers (0.62 → 62), dollars and counts stay numbers, missing stays empty. */
 export function csvValue(value, format) {
+  if (['year', 'identifier', 'zip', 'npi', 'ccn'].includes(format)) return value == null ? '' : String(value);
   if (value == null || value === '' || Number.isNaN(Number(value))) return '';
   const n = Number(value);
   return format === 'percent' ? Math.round(n * 1e6) / 1e4 : n;

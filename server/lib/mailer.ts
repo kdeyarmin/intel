@@ -44,7 +44,7 @@ export function allowedFromAddresses(): string[] {
   ]
     .map((s) => (s || "").trim().toLowerCase())
     .filter(Boolean);
-  return list.length > 0 ? list : ["noreply@caremetric.com"];
+  return list.length > 0 ? list : ["noreply@caremetricintel.com"];
 }
 
 export function resolveFrom(requested?: string): string {

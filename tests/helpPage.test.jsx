@@ -5,7 +5,7 @@
  * open it.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,8 +14,18 @@ import { extractGuideSections } from '../scripts/generate-help-inventory.mjs';
 
 afterEach(cleanup);
 
-const { auth } = vi.hoisted(() => ({ auth: { value: { user: { role: 'user' } } } }));
+const { auth, pdf } = vi.hoisted(() => ({
+  auth: { value: { user: { role: 'user' } } },
+  pdf: {
+    setProperties: vi.fn(), setFillColor: vi.fn(), rect: vi.fn(), setTextColor: vi.fn(),
+    setFontSize: vi.fn(), text: vi.fn(), addPage: vi.fn(), save: vi.fn(), addImage: vi.fn(),
+    getImageProperties: vi.fn(() => ({ width: 200, height: 100 })),
+    splitTextToSize: vi.fn((text) => [text]),
+  },
+}));
 vi.mock('@/lib/AuthContext', () => ({ useAuth: () => auth.value, useOptionalAuth: () => auth.value }));
+vi.mock('jspdf', () => ({ jsPDF: class { constructor() { return pdf; } } }));
+vi.mock('../src/components/exports/exportUtils', () => ({ pdfLogo: vi.fn(async () => 'canonical-logo') }));
 
 import Help from '../src/pages/Help';
 
@@ -46,6 +56,19 @@ describe('guide content', () => {
 });
 
 describe('Help page', () => {
+  it('brands the guide and downloadable PDF with the product, company, website and canonical logo', async () => {
+    renderHelp('user');
+    expect(screen.getByText(/Learn how to use CareMetric Intel/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Welcome to CareMetric Intel' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Download PDF/ }));
+    await waitFor(() => expect(pdf.save).toHaveBeenCalledWith('CareMetric_Intel_User_Guide.pdf'));
+    expect(pdf.setProperties).toHaveBeenCalledWith({ title: 'CareMetric Intel User Guide', author: 'CareMetric Healthcare Advisors' });
+    expect(pdf.text).toHaveBeenCalledWith('CareMetric Intel', 20, 60);
+    expect(pdf.text).toHaveBeenCalledWith('CareMetric Healthcare Advisors', 20, 85);
+    expect(pdf.text).toHaveBeenCalledWith('https://caremetricintel.com/', 20, 103);
+    expect(pdf.addImage).toHaveBeenCalledWith('canonical-logo', 'PNG', 20, 20, 40, 20);
+  });
+
   it('search opens the sections with matching topics and hides the rest', () => {
     renderHelp('user');
     fireEvent.change(screen.getByRole('textbox', { name: 'Search help topics' }), { target: { value: 'unsubscribe' } });

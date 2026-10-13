@@ -33,7 +33,7 @@ describe('CareMetric Intel central support integration', () => {
 
   it('uses the owner-verified support phone and email', () => {
     expect(CENTRAL_SUPPORT_PHONE).toBe('+18775212890');
-    expect(CENTRAL_SUPPORT_EMAIL).toBe('support@caremetric.ai');
+    expect(CENTRAL_SUPPORT_EMAIL).toBe('support@caremetricintel.com');
   });
 
   it('activates only for the verified production app and host', () => {

@@ -18,6 +18,7 @@ vi.mock('@/pages.config.js', () => ({ pagesConfig: { preloadPage: () => {} } }))
 vi.mock('../src/components/shared/NotificationBell', () => ({ default: () => null }));
 
 import AppLayout from '../src/components/layout/AppLayout';
+import { CAREMETRIC_LOGO_URL } from '../src/lib/branding';
 
 function setWidth(width) {
   window.innerWidth = width;
@@ -28,7 +29,7 @@ function setWidth(width) {
 }
 
 function renderLayout() {
-  // The sidebar's billing widget reads the plan with react-query.
+  // Sidebar controls may read shared state with react-query.
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
@@ -74,5 +75,24 @@ describe('sidebar footer', () => {
     expect(aside).toHaveTextContent('rep@example.com');
     expect(aside).toHaveTextContent('Member');
     expect(aside).not.toHaveTextContent(/\buser\b/);
+  });
+
+  it('uses the canonical logo and a single branded data footer without a billing widget', () => {
+    setWidth(1280);
+    const aside = renderLayout();
+    const footer = document.querySelector('main > footer');
+    expect(document.querySelectorAll('main > footer')).toHaveLength(1);
+    expect(footer).toHaveTextContent('CareMetric Intel');
+    expect(footer).toHaveTextContent('CareMetric Healthcare Advisors');
+    expect(footer).toHaveTextContent('Data Sources:');
+    expect(footer.querySelector('a[href="https://caremetricintel.com/"]')).not.toBeNull();
+    expect(footer.querySelector('a[href="/terms"]')).not.toBeNull();
+    expect(footer.querySelector('a[href="/privacy"]')).not.toBeNull();
+    expect(aside).not.toHaveTextContent('Plan and billing');
+    expect(aside).not.toHaveTextContent('County Pack');
+    expect(screen.getByRole('img', { name: 'CareMetric Healthcare Advisors' })).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+    expect(document.body).not.toHaveTextContent('CareMetric AI');
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    expect(screen.getAllByRole('img', { name: 'CareMetric Healthcare Advisors' }).every((img) => img.src === CAREMETRIC_LOGO_URL)).toBe(true);
   });
 });

@@ -1,12 +1,10 @@
 import { jsPDF } from 'jspdf';
 import { base44 } from '@/api/base44Client';
-import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
-
-const CAREMETRIC_WEBSITE = 'www.CareMetric.ai';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_PRODUCT, CAREMETRIC_COMPANY, CAREMETRIC_WEBSITE } from '@/lib/branding';
 
 /** The source line every export carries (CMS asks that derived data not be presented as CMS data). */
 export function exportAttribution(date = new Date()) {
-  return `Source: CareMetric analytics derived from public CMS, NPPES and U.S. Census data, not CMS publications. Medicare figures are fee-for-service unless noted; counts under 11 are suppressed. Exported ${date.toISOString().slice(0, 10)}.`;
+  return `Source: ${CAREMETRIC_PRODUCT} analytics derived from public CMS, NPPES and U.S. Census data, not CMS publications. Medicare figures are fee-for-service unless noted; counts under 11 are suppressed. Exported ${date.toISOString().slice(0, 10)}.`;
 }
 
 /**
@@ -75,18 +73,26 @@ function addPDFHeader(doc, title, logoBase64) {
   doc.rect(0, 0, pageW, 28, 'F');
   
   // Logo
+  let brandX = 14;
   if (logoBase64) {
-    try { doc.addImage(logoBase64, 'PNG', 10, 3, 22, 22); } catch {}
+    try {
+      const image = doc.getImageProperties(logoBase64);
+      const scale = Math.min(40 / image.width, 22 / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      doc.addImage(logoBase64, 'PNG', 10, (28 - height) / 2, width, height);
+      brandX = 10 + width + 4;
+    } catch {}
   }
   
   // Brand text
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('CareMetric AI', logoBase64 ? 36 : 14, 14);
+  doc.text(CAREMETRIC_PRODUCT, brandX, 14);
   doc.setFontSize(7);
   doc.setFont(undefined, 'normal');
-  doc.text('Provider Intel', logoBase64 ? 36 : 14, 20);
+  doc.text(CAREMETRIC_COMPANY, brandX, 20);
   
   // Website right-aligned
   doc.setFontSize(7);
@@ -120,7 +126,7 @@ function addPDFFooter(doc, pageNum) {
   
   doc.setFontSize(6);
   doc.setTextColor(150);
-  doc.text(`CareMetric AI  •  ${CAREMETRIC_WEBSITE}  •  Confidential`, 14, pageH - 10);
+  doc.text(`${CAREMETRIC_PRODUCT}  •  ${CAREMETRIC_COMPANY}  •  ${CAREMETRIC_WEBSITE}  •  Confidential`, 14, pageH - 10);
   doc.text(exportAttribution(), 14, pageH - 6, { maxWidth: pageW - 50 });
   doc.text(`Page ${pageNum}`, pageW - 14, pageH - 10, { align: 'right' });
   doc.setTextColor(0);

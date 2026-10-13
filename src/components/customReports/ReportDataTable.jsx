@@ -7,13 +7,14 @@ import { DATASET_CONFIG } from './reportConfig';
 import { toast } from 'sonner';
 import { countExport, exportCSV, exportExcel, exportPDF } from '../exports/exportUtils';
 
-function fmt(n) {
-  if (n === null || n === undefined) return '—';
-  if (typeof n !== 'number') return String(n);
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+function fmt(value, money = false) {
+  if (value == null || value === '') return '—';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  return n.toLocaleString('en-US', {
+    maximumFractionDigits: 1,
+    ...(money ? { style: 'currency', currency: 'USD', minimumFractionDigits: 0 } : {}),
+  });
 }
 
 export default function ReportDataTable({ chartData, config }) {
@@ -78,7 +79,9 @@ export default function ReportDataTable({ chartData, config }) {
                 <TableRow key={i}>
                   <TableCell className="text-xs font-medium">{row.group}</TableCell>
                   {metrics.map(m => (
-                    <TableCell key={m} className="text-xs text-right tabular-nums">{fmt(row[m])}</TableCell>
+                    <TableCell key={m} className="text-xs text-right tabular-nums">
+                      {fmt(row[m], metricLabels[m]?.includes('($)'))}
+                    </TableCell>
                   ))}
                 </TableRow>
               ))}

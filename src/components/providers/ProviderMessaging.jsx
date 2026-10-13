@@ -53,7 +53,7 @@ export default function ProviderMessaging({ provider, locations = [] }) {
     try {
       await base44.integrations.Core.SendEmail({
         to: providerEmail,
-        subject: `Message from CareMetric regarding ${providerName}`,
+        subject: `Message from CareMetric Intel regarding ${providerName}`,
         body: newMessage,
       });
       setNewMessage('');

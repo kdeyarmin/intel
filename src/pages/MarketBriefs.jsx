@@ -22,11 +22,11 @@ import MarketFreshness from '../components/market/MarketFreshness';
 const URL_DEFAULTS = { report: '', state: 'PA', county: '', from: '', setting: 'hha', sort: 'users' };
 
 const SORTS = [
-  { id: 'users', label: 'Users' },
-  { id: 'usersPerProvider', label: 'Users per provider' },
-  { id: 'usersPct', label: 'Share of fee-for-service' },
-  { id: 'usersChange', label: 'Change vs last year' },
-  { id: 'spend', label: 'Spend per beneficiary' },
+  { id: 'users', label: 'Medicare patients' },
+  { id: 'usersPerProvider', label: 'Patients per billing provider' },
+  { id: 'usersPct', label: 'Share of Original Medicare patients' },
+  { id: 'usersChange', label: 'Patient change vs. prior year' },
+  { id: 'spend', label: 'Spending per beneficiary' },
 ];
 
 function resolveReport(url) {
@@ -43,45 +43,45 @@ function resolveReport(url) {
       id: 'county',
       purpose: from?.purpose || 'County',
       audience: from?.audience || 'County',
-      title: from ? `${from.audience} in this county` : 'County follow-up',
+      title: from ? `${from.audience} county market overview` : 'County market overview',
       needs: 'county',
       setting: from?.setting || 'hha',
-      reason: 'Demand in this county, the hospitals discharging its residents, and the providers already serving it.',
+      reason: 'Review county demand, hospitals discharging residents, and providers located in the county.',
     };
   }
   return null;
 }
 
 function growthLead(state, setting, facts) {
-  if (!facts.top) return `${state} does not have ${setting.label.toLowerCase()} user counts on the county profiles yet.`;
+  if (!facts.top) return `No county-level Medicare patient counts are available for ${setting.label.toLowerCase()} in ${state}.`;
   const top = facts.top;
   const detail = [
-    top.usersPct != null ? `${fmtPct(top.usersPct)} of fee-for-service` : null,
-    top.billing != null ? `billed by ${fmtCount(top.billing)} ${setting.noun}` : null,
+    top.usersPct != null ? `${fmtPct(top.usersPct)} of Original Medicare residents` : null,
+    top.billing != null ? `${fmtCount(top.billing)} ${setting.noun} billed for residents’ care` : null,
   ].filter(Boolean);
-  const parts = [`${state} has ${setting.label.toLowerCase()} user counts for ${fmtCount(facts.countiesWithUsers)} counties. ${top.name} has the most: ${fmtCount(top.users)} users${detail.length ? ` (${detail.join(', ')})` : ''}.`];
+  const parts = [`${state} has ${setting.label.toLowerCase()} Medicare patient counts for ${fmtCount(facts.countiesWithUsers)} counties. ${top.name} has the highest volume: ${fmtCount(top.users)} patients${detail.length ? ` (${detail.join(', ')})` : ''}.`];
   if (facts.busiest && facts.medianUsers != null) {
     const b = facts.busiest;
     const each = fmtCount(b.usersPerProvider);
-    if (b.fips === top.fips) parts.push(`It also has the most users per billing ${setting.one} among counties at or above the median user count (${fmtCount(facts.medianUsers)}): ${each}.`);
-    else parts.push(`Among counties with at least the median user count (${fmtCount(facts.medianUsers)}), ${b.name} has the most per billing ${setting.one}: ${each} across ${fmtCount(b.billing)} ${setting.noun}.`);
+    if (b.fips === top.fips) parts.push(`It also has the highest patient-to-billing-${setting.one} ratio among counties at or above the median patient count (${fmtCount(facts.medianUsers)}): ${each}.`);
+    else parts.push(`Among counties at or above the median patient count (${fmtCount(facts.medianUsers)}), ${b.name} has the highest patient-to-billing-${setting.one} ratio: ${each} across ${fmtCount(b.billing)} ${setting.noun}.`);
   }
   if (facts.rising.length) {
     const names = facts.rising.slice(0, 3).map((r) => r.name);
     const verb = facts.rising.length === 1 ? '1 county had' : `${fmtCount(facts.rising.length)} counties had`;
-    parts.push(`${verb} more users than the year before while the number of billing ${setting.noun} did not rise: ${names.join(', ')}${facts.rising.length > 3 ? ', and others' : ''}.`);
+    parts.push(`${verb} more Medicare patients than the prior year while the number of billing ${setting.noun} remained flat or declined: ${names.join(', ')}${facts.rising.length > 3 ? ', and others' : ''}.`);
   }
   return parts.join(' ');
 }
 
 function acquireLead(state, spec, data) {
   const facts = leaderFacts(data?.rows || []);
-  if (!facts.top) return `${state} has no ${spec.audience.toLowerCase()} in the post-acute file yet.`;
+  if (!facts.top) return `No Medicare provider records are available for ${spec.audience.toLowerCase()} located in ${state}.`;
   const top = facts.top;
   const place = [top.city, top.state].filter(Boolean).join(', ');
-  const parts = [`${top.name || top.ccn}${place ? ` (${place})` : ''} has the most Medicare beneficiaries among ${spec.audience.toLowerCase()} located in ${state}: ${fmtCount(top.benes)} (${fmtShare(top.share)} of beneficiaries served by providers located in the state).`];
+  const parts = [`${top.name || top.ccn}${place ? ` (${place})` : ''} has the highest Medicare patient volume among ${spec.audience.toLowerCase()} located in ${state}: ${fmtCount(top.benes)} (${fmtShare(top.share)} of patients served by providers located in the state).`];
   if (data.providers_in_market != null) parts.push(`${fmtCount(data.providers_in_market)} providers are ranked${data.data_year ? ` for ${data.data_year}` : ''}.`);
-  if (facts.listedShare != null) parts.push(`The ${fmtCount(facts.listed)} listed here account for ${fmtShare(facts.listedShare)} of beneficiaries served by providers located in the state.`);
+  if (facts.listedShare != null) parts.push(`The ${fmtCount(facts.listed)} providers listed here account for ${fmtShare(facts.listedShare)} of patients served by providers located in the state.`);
   return parts.join(' ');
 }
 
@@ -95,7 +95,7 @@ function Section({ title, children }) {
 }
 
 function Table({ headers, rows }) {
-  if (!rows.length) return <p className="text-xs text-slate-500">None on file.</p>;
+  if (!rows.length) return <p className="text-xs text-slate-400">No records are available for this selection.</p>;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
@@ -170,7 +170,7 @@ export default function MarketBriefs() {
   });
 
   const sourceSetting = settingKey === 'hospice' ? 'hospice' : 'hha';
-  const { data: sources } = useQuery({
+  const { data: sources, isLoading: sourcesLoading, isError: sourcesError, error: sourcesErr } = useQuery({
     queryKey: ['referralSources', url.state, url.county, sourceSetting, spec?.id],
     queryFn: () => invokeOrThrow('getReferralSources', { state: url.state, county_fips: url.county, setting: sourceSetting, limit: spec?.id?.startsWith('calls') ? 25 : 8 }),
     enabled: ready && !!spec && (spec.id.startsWith('calls') || (spec.id === 'county' && settingKey !== 'snf')),
@@ -203,7 +203,7 @@ export default function MarketBriefs() {
             <FileBarChart2 className="w-6 h-6 text-cyan-400" aria-hidden="true" />
             Reports
           </h1>
-          <p className="text-sm text-slate-400 mt-1">{profile ? profile.blurb : 'Each report answers one decision. The figures are the published counts, not a score built on top of them.'}</p>
+          <p className="text-sm text-slate-400 mt-1">{profile ? profile.blurb : 'Decision-focused reports based on published counts and ratios, not composite opportunity scores.'}</p>
         </div>
         {spec && (
           <Button type="button" variant="outline" size="sm" onClick={handlePrint} disabled={spec.needs === 'county' && !ready}>
@@ -259,24 +259,24 @@ export default function MarketBriefs() {
             <p className="text-[11px] uppercase tracking-wide text-slate-500">{spec.purpose} · {spec.audience}</p>
             <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
             <p className="text-xs text-slate-400 mt-1">{spec.reason}</p>
-            {layerLoading && <p className="text-sm text-slate-400 mt-2">Building the ranking…</p>}
-            {layerError && <p className="text-sm text-red-400 mt-2">{layerErr?.message || 'Could not rank counties.'}</p>}
+            {layerLoading && <p className="text-sm text-slate-400 mt-2">Loading county rankings…</p>}
+            {layerError && <p className="text-sm text-red-400 mt-2">Unable to load county rankings. {layerErr?.message || 'Please try again.'}</p>}
             {layer && <p className="text-sm text-slate-300 mt-2">{growthLead(url.state, settingDef, facts)}</p>}
           </header>
           {layer && facts.rising.length > 0 && (
-            <Section title={`Use rose; billing ${settingDef.noun} did not`}>
+            <Section title={`Demand grew; billing ${settingDef.noun} remained flat or declined`}>
               <Table
-                headers={['County', 'Users', 'Vs last year', `Billing ${settingDef.noun}`, 'Their change']}
+                headers={['County', 'Medicare patients', 'Patient change', settingKey === 'hospice' ? 'Hospices' : `Billing ${settingDef.noun}`, 'Provider change']}
                 rows={facts.rising.slice(0, 8).map((r) => [
                   <button key={r.fips} type="button" className="text-cyan-400 hover:underline text-left" onClick={() => setUrl({ report: 'county', county: r.fips, from: spec.id })}>{r.name}</button>,
                   fmtCount(r.users), fmtPct(r.usersChange), fmtCount(r.billing), fmtPct(r.billingChange),
                 ])}
               />
-              <p className="text-[11px] text-slate-500">Change is versus the prior year in the market-saturation file. A billing {settingDef.one} in another county still counts.</p>
+              <p className="text-[11px] text-slate-500">Changes compare with the prior year in the CMS Market Saturation file. Provider counts include {settingDef.noun} billing for county residents’ care, including those located in other counties.</p>
             </Section>
           )}
           {layer && (
-            <Section title="Largest counties">
+            <Section title="County demand comparison">
               <div className="print:hidden">
                 <Label htmlFor="brief-sort">Sort</Label>
                 <Select value={SORTS.some((s) => s.id === url.sort) ? url.sort : 'users'} onValueChange={(sort) => setUrl({ sort })}>
@@ -285,13 +285,13 @@ export default function MarketBriefs() {
                 </Select>
               </div>
               <Table
-                headers={['County', 'Users', 'Share of FFS', 'Vs last year', `Billing ${settingDef.noun}`, 'Users each', 'Spend / beneficiary']}
+                headers={['County', 'Medicare patients', 'Share of Original Medicare', 'Patient change', settingKey === 'hospice' ? 'Hospices' : `Billing ${settingDef.noun}`, 'Patients / billing provider', 'Spending / beneficiary']}
                 rows={ranked.map((r) => [
                   <button key={r.fips} type="button" className="text-cyan-400 hover:underline text-left" onClick={() => setUrl({ report: 'county', county: r.fips, from: spec.id })}>{r.name}</button>,
                   fmtCount(r.users), fmtPct(r.usersPct), fmtPct(r.usersChange), fmtCount(r.billing), fmtCount(r.usersPerProvider), fmtMoney(r.spend),
                 ])}
               />
-              <p className="text-[11px] text-slate-500">Top 15. Users are Original Medicare residents, not the agency’s own claim count. Open a county for the hospitals and the providers already there.</p>
+              <p className="text-[11px] text-slate-500">Up to 15 counties in the selected sort order. Patients are Original Medicare residents receiving this service, not a provider’s own claims count. Provider counts include {settingDef.noun} billing for residents’ care, even when located outside the county. Open a county to review hospitals and locally based providers.</p>
             </Section>
           )}
         </article>
@@ -302,17 +302,17 @@ export default function MarketBriefs() {
           <header>
             <p className="text-[11px] uppercase tracking-wide text-slate-500">{spec.purpose} · {spec.audience}</p>
             <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
-            <p className="text-xs text-slate-400 mt-1">{spec.reason} Share is of providers located in the state, not of every resident who used the service.</p>
-            {leadersLoading && <p className="text-sm text-slate-400 mt-2">Building the list…</p>}
-            {leadersError && <p className="text-sm text-red-400 mt-2">{leadersErr?.message || 'Could not list providers.'}</p>}
+            <p className="text-xs text-slate-400 mt-1">{spec.reason} Market share reflects patients served by providers located in the state, not all state residents receiving care.</p>
+            {leadersLoading && <p className="text-sm text-slate-400 mt-2">Loading provider rankings…</p>}
+            {leadersError && <p className="text-sm text-red-400 mt-2">Unable to load provider rankings. {leadersErr?.message || 'Please try again.'}</p>}
             {leaders && <p className="text-sm text-slate-300 mt-2">{acquireLead(url.state, spec, leaders)}</p>}
           </header>
           {leaders && (
-            <Section title="Largest by Medicare beneficiaries">
+            <Section title="Providers ranked by Medicare patient volume">
               <Table
                 headers={settingKey === 'snf'
-                  ? ['Provider', 'Beneficiaries', 'Share', 'Payment', 'Residents', 'Medicare / Medicaid']
-                  : ['Provider', 'Beneficiaries', 'Share', 'Payment', 'Dual %', 'Counties served']}
+                  ? ['Provider', 'Medicare patients', 'Market share', 'Medicare payments', 'Residents', 'Medicare / Medicaid']
+                  : ['Provider', 'Medicare patients', 'Market share', 'Medicare payments', 'Dual eligibility', 'Counties served']}
                 rows={(leaders.rows || []).map((r) => settingKey === 'snf' ? [
                   <span key={r.ccn}>{facilityLink(r.ccn, r.facility_group, r.name)}<span className="block text-slate-500">{[r.city, r.state].filter(Boolean).join(', ')}{r.census?.chain ? ` · ${r.census.chain}` : ''}</span></span>,
                   fmtCount(r.benes), fmtShare(r.share), fmtMoney(r.payment),
@@ -323,30 +323,33 @@ export default function MarketBriefs() {
                   fmtCount(r.benes), fmtShare(r.share), fmtMoney(r.payment), fmtPct(r.dual_pct, 0), r.counties_served == null ? '—' : fmtCount(r.counties_served),
                 ])}
               />
-              <p className="text-[11px] text-slate-500">{settingKey === 'snf' ? 'Residents and payer mix are the latest nursing-home census, not the Medicare year.' : 'Counties served is the ZIP service area, not the counties where the beneficiaries live.'}{leaders.data_year ? ` Medicare year ${leaders.data_year}.` : ''}</p>
+              <p className="text-[11px] text-slate-500">{settingKey === 'snf' ? 'Resident counts and payer mix reflect the latest nursing-home census, which may differ from the Medicare data year.' : 'Counties served reflects ZIP service areas, not patients’ counties of residence. Dual eligibility is the percentage of patients eligible for both Medicare and Medicaid.'}{leaders.data_year ? ` Medicare data year: ${leaders.data_year}.` : ''}</p>
             </Section>
           )}
         </article>
       )}
 
-      {spec && spec.needs === 'county' && !ready && <p className="text-sm text-slate-400">Pick a county to open this report.</p>}
-      {spec && spec.needs === 'county' && isLoading && <p className="text-sm text-slate-400">Building the report…</p>}
-      {spec && spec.needs === 'county' && isError && <p className="text-sm text-red-400">{error?.message || 'Could not build this report.'}</p>}
+      {spec && spec.needs === 'county' && !ready && <p className="text-sm text-slate-400">Select a state and county to view this report.</p>}
+      {spec && spec.needs === 'state' && !url.state && <p className="text-sm text-slate-400">Select a state to view this report.</p>}
+      {spec && spec.needs === 'county' && isLoading && <p className="text-sm text-slate-400">Loading county market data…</p>}
+      {spec && spec.needs === 'county' && isError && <p className="text-sm text-red-400">Unable to load county market data. {error?.message || 'Please try again.'}</p>}
+      {spec && spec.needs === 'county' && ready && market?.needsCounty && <p className="text-sm text-slate-400">No county market data is available for this selection.</p>}
 
       {spec?.id === 'hospital-partners' && ready && market && !market.needsCounty && (
         <article className="space-y-6" id="market-brief">
           <header>
             <p className="text-[11px] uppercase tracking-wide text-slate-500">{spec.purpose} · {spec.audience}</p>
-            <h2 className="text-xl font-semibold text-slate-100">{place}</h2>
+            <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
+            <p className="text-xs text-slate-400 mt-1">{place}. {spec.reason}</p>
             <p className="text-sm text-slate-300 mt-2">
-              {market.hospital_sources?.total ? `${fmtCount(market.hospital_sources.total)} hospitals discharged residents of ${place}` : `No hospital origins are on file for ${place}`}
+              {market.hospital_sources?.total ? `${fmtCount(market.hospital_sources.total)} hospitals discharged residents of ${place}` : `No hospital discharge records are available for ${place}`}
               {market.hospital_sources?.data_year ? ` (${market.hospital_sources.data_year})` : ''}.
-              {' '}The post-acute columns are that hospital’s Medicare episode spend, set next to the state figure.
+              {' '}Post-acute columns show each hospital’s share of Medicare episode spending alongside the state benchmark.
             </p>
           </header>
-          <Section title="Where to build a hospital relationship">
+          <Section title="Hospital discharge sources and spending benchmarks">
             <Table
-              headers={['Hospital', 'Cases', 'Share of county', 'Home health', 'State', 'Hospice', 'State', 'SNF', 'State']}
+              headers={['Hospital', 'Discharges', 'Share of county discharges', 'Home health', 'State home health', 'Hospice', 'State hospice', 'Skilled nursing', 'State skilled nursing']}
               rows={(market.hospital_sources?.rows || []).slice(0, 10).map((r) => {
                 const m = r.discharge_mix;
                 return [
@@ -358,7 +361,7 @@ export default function MarketBriefs() {
                 ];
               })}
             />
-            <p className="text-[11px] text-slate-500">A higher home health, hospice, or skilled nursing percent than the state means more of that hospital’s episode spend went to that setting. It is not a referral order.</p>
+            <p className="text-[11px] text-slate-500">A percentage above the state benchmark indicates a larger share of Medicare episode spending in that setting. It does not measure transfers, referral orders, or referral relationships.</p>
           </Section>
         </article>
       )}
@@ -370,11 +373,14 @@ export default function MarketBriefs() {
             <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
             <p className="text-sm text-slate-300 mt-2">Clinicians in {place}. {spec.reason}</p>
           </header>
-          <Section title="Call list">
+          <Section title="Clinician outreach priorities">
+            {sourcesLoading && <p className="text-sm text-slate-400">Loading clinician rankings…</p>}
+            {sourcesError && <p className="text-sm text-red-400">Unable to load clinician rankings. {sourcesErr?.message || 'Please try again.'}</p>}
+            {!sourcesLoading && !sourcesError && (
             <Table
               headers={sourceSetting === 'hospice'
-                ? ['Clinician', 'Specialty', 'Medicare patients', 'Hospice oversight', 'Heart failure', 'COPD', 'Alzheimer']
-                : ['Clinician', 'Specialty', 'Medicare patients', 'Home health certifications', 'Heart failure', 'COPD', 'Alzheimer']}
+                ? ['Clinician', 'Specialty', 'Medicare patients', 'Hospice oversight', 'Heart failure', 'COPD', 'Alzheimer’s disease']
+                : ['Clinician', 'Specialty', 'Medicare patients', 'Home health certifications', 'Heart failure', 'COPD', 'Alzheimer’s disease']}
               rows={(sources?.rows || []).map((r) => [
                 <Link key={r.npi} to={createPageUrl(`ProviderDetail?npi=${r.npi}`)} className="text-cyan-400 hover:underline">{r.name}</Link>,
                 r.specialty || '—',
@@ -383,7 +389,8 @@ export default function MarketBriefs() {
                 fmtShare(r.chronic?.chf, 0), fmtShare(r.chronic?.copd, 0), fmtShare(r.chronic?.alzheimer, 0),
               ])}
             />
-            <p className="text-[11px] text-slate-500">{sources?.index_note || 'Ranked from the physician file.'}{sources?.data_year ? ` Physician year ${sources.data_year}.` : ''}{sources?.certifications_year ? ` Certifications ${sources.certifications_year}.` : ''} Chronic columns are the share of that clinician’s Medicare patients.</p>
+            )}
+            <p className="text-[11px] text-slate-500">{sources?.index_note || 'Rankings use published physician data, not confirmed referrals.'}{sources?.data_year ? ` Physician data year: ${sources.data_year}.` : ''}{sources?.certifications_year ? ` Certification data year: ${sources.certifications_year}.` : ''} Chronic condition columns show the share of each clinician’s Medicare patients. Certification and oversight counts sum patients across reported services and care settings; a patient may be counted more than once. CMS suppresses counts of 10 or fewer; zero means no listed count, not no patients.</p>
           </Section>
         </article>
       )}
@@ -398,7 +405,7 @@ export default function MarketBriefs() {
           {market.profile?.available && (
             <Section title={`${settingDef.label} demand`}>
               <Table
-                headers={['Users', 'Share of FFS', 'Vs last year', 'Billing', 'Located here', 'Spend / beneficiary']}
+                headers={['Medicare patients', 'Share of Original Medicare', 'Patient change', settingKey === 'hospice' ? 'Hospices' : 'Billing providers', 'Providers located here', 'Spending / beneficiary']}
                 rows={[[
                   fmtCount(market.profile[settingKey === 'hospice' ? 'hospice_users' : settingKey === 'snf' ? 'snf_users' : 'hha_users']),
                   fmtPct(market.profile[settingKey === 'hospice' ? 'hospice_users_pct' : settingKey === 'snf' ? 'snf_users_pct' : 'hha_users_pct']),
@@ -408,31 +415,35 @@ export default function MarketBriefs() {
                   fmtMoney(market.profile[settingDef.spend]),
                 ]]}
               />
-              <p className="text-[11px] text-slate-500">Billing includes {settingDef.noun} in other counties. {fmtCount(market.profile.benes)} Medicare beneficiaries live here, {fmtShare(market.profile.ma_penetration)} in Medicare Advantage.</p>
+              <p className="text-[11px] text-slate-500">Patient counts reflect Original Medicare residents receiving this service. Patient change compares with the prior year. Billing provider counts include {settingDef.noun} in other counties; located providers are based in this county. {fmtCount(market.profile.benes)} Medicare beneficiaries live here, with {fmtShare(market.profile.ma_penetration)} enrolled in Medicare Advantage.</p>
             </Section>
           )}
-          <Section title="Hospitals discharging residents">
+          {!market.profile?.available && <p className="text-sm text-slate-400">No county demand data is available for this selection.</p>}
+          <Section title="Hospitals discharging county residents">
             <Table
-              headers={['Hospital', 'Cases', 'Share', settingDef.label]}
+              headers={['Hospital', 'Discharges', 'Share of county discharges', `${settingDef.label} spending share`]}
               rows={(market.hospital_sources?.rows || []).slice(0, 6).map((r) => [
                 facilityLink(r.ccn, 'hospital', r.name),
                 fmtCount(r.cases), fmtShare(r.share),
                 r.discharge_mix ? fmtPct(r.discharge_mix[settingKey === 'hospice' ? 'pct_hospice' : settingKey === 'snf' ? 'pct_snf' : 'pct_hha']) : '—',
               ])}
             />
-            <p className="text-[11px] text-slate-500">{market.hospital_sources?.data_year ? `Origins ${market.hospital_sources.data_year}. ` : ''}The last column is the share of that hospital’s Medicare episode spend, not a referral order.</p>
+            <p className="text-[11px] text-slate-500">{market.hospital_sources?.data_year ? `Hospital discharge data year: ${market.hospital_sources.data_year}. ` : ''}The last column shows the share of each hospital’s Medicare episode spending, not transfers or referral orders.</p>
           </Section>
           {(market.competitors?.[settingKey]?.rows || []).length > 0 && (
-            <Section title={`Who already serves ${settingDef.label.toLowerCase()}`}>
+            <Section title={`${settingDef.label} providers located in the county`}>
               <Table
-                headers={['Provider', 'Beneficiaries', 'Share', 'Payment']}
+                headers={['Provider', 'Medicare patients', 'Market share', 'Medicare payments']}
                 rows={market.competitors[settingKey].rows.slice(0, 8).map((r) => [facilityLink(r.ccn, r.facility_group, r.name), fmtCount(r.benes), fmtShare(r.share), fmtMoney(r.payment)])}
               />
-              {market.competitors[settingKey].data_year && <p className="text-[11px] text-slate-500">Share of beneficiaries served in this county, {market.competitors[settingKey].data_year}.</p>}
+              <p className="text-[11px] text-slate-500">Market share reflects patients served by providers located in this county, not all county residents receiving care.{market.competitors[settingKey].data_year ? ` Medicare data year: ${market.competitors[settingKey].data_year}.` : ''}</p>
             </Section>
           )}
           {settingKey !== 'snf' && (
-            <Section title="Clinicians to call">
+            <Section title="Clinician outreach priorities">
+              {sourcesLoading && <p className="text-sm text-slate-400">Loading clinician rankings…</p>}
+              {sourcesError && <p className="text-sm text-red-400">Unable to load clinician rankings. {sourcesErr?.message || 'Please try again.'}</p>}
+              {!sourcesLoading && !sourcesError && (
               <Table
                 headers={['Clinician', 'Specialty', 'Medicare patients']}
                 rows={(sources?.rows || []).slice(0, 8).map((r) => [
@@ -440,8 +451,9 @@ export default function MarketBriefs() {
                   r.specialty || '—', fmtCount(r.benes),
                 ])}
               />
+              )}
               <p className="text-[11px] text-slate-500 print:hidden">
-                <button type="button" className="text-cyan-400 hover:underline" onClick={() => setUrl({ report: settingKey === 'hospice' ? 'calls-hospice' : 'calls-hha', county: url.county })}>Open the full call list.</button>
+                <button type="button" className="text-cyan-400 hover:underline" onClick={() => setUrl({ report: settingKey === 'hospice' ? 'calls-hospice' : 'calls-hha', county: url.county })}>View all clinician outreach priorities.</button>
               </p>
             </Section>
           )}

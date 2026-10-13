@@ -14,6 +14,7 @@ vi.mock('@/lib/AuthContext', () => ({ useAuth: () => ({ adoptSession }) }));
 
 import ResetPassword from '../src/components/auth/ResetPassword';
 import ForgotPassword from '../src/components/auth/ForgotPassword';
+import { CAREMETRIC_LOGO_URL } from '../src/lib/branding';
 
 function at(path, element) {
   return render(
@@ -34,6 +35,15 @@ describe('ResetPassword', () => {
   beforeEach(() => {
     for (const fn of Object.values(auth)) fn.mockReset();
     adoptSession.mockReset();
+  });
+
+  it('uses the product name and canonical company logo on signed-out screens', async () => {
+    auth.tokenInfo.mockResolvedValue({ valid: false });
+    at(`/reset-password?token=${TOKEN}`, <ResetPassword />);
+    expect(screen.getByRole('heading', { level: 1, name: 'CareMetric Intel' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'CareMetric Healthcare Advisors' })).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+    expect(screen.getByText('CareMetric Healthcare Advisors')).toBeInTheDocument();
+    await screen.findByText("This link doesn't work");
   });
 
   it('explains a dead link instead of showing a form', async () => {

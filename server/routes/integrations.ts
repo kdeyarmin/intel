@@ -119,7 +119,7 @@ router.post("/email/send", authMiddleware, adminOnly, rateLimit("email_send", 10
       return res.status(503).json({ message: "Email sending isn't configured", detail: `Missing ${missing.join(", ")}.` });
     }
     if (await isSuppressed(to)) {
-      return res.status(409).json({ message: "This address has unsubscribed or bounced", detail: "CareMetric won't email it again." });
+      return res.status(409).json({ message: "This address has unsubscribed or bounced", detail: "CareMetric Intel won't email it again." });
     }
 
     // An owner's email counts against the organization's daily allowance, like campaign mail.

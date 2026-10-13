@@ -1,5 +1,7 @@
 import { createPageUrl } from '@/utils';
 import { exportAttribution } from '@/components/exports/exportUtils';
+import { fmtIdentifier, isIdentifierField } from '@/lib/marketFormat';
+import { CAREMETRIC_PRODUCT } from '@/lib/branding';
 
 /**
  * The parts of a comprehensive report a user can choose. Keys mirror
@@ -19,7 +21,7 @@ export const REPORT_SECTIONS = [
   { key: 'ownership', label: 'Ownership details', description: 'Reported owners, ownership percentages, types and roles where linked by CCN, NPI or enrollment', needsNpi: false, source: 'CMS All Owners and Nursing Home Ownership files' },
   { key: 'costReports', label: 'Cost report summaries', description: 'Latest reported revenue, expenses, beds and visits; only available metrics are shown', needsNpi: false, source: 'CMS Hospital, Home Health Agency and SNF Cost Reports' },
   { key: 'additionalQuality', label: 'Additional quality measures', description: 'A curated snapshot of reported performance scores and quality measures beyond star ratings', needsNpi: false, source: 'CMS Value-Based Purchasing, SNF Quality Reporting, Home Health and Nursing Home quality files' },
-  { key: 'leadScore', label: 'Lead score', description: 'CareMetric lead score and its components', needsNpi: true },
+  { key: 'leadScore', label: 'Lead score', description: `${CAREMETRIC_PRODUCT} lead score and its components`, needsNpi: true },
   { key: 'enrichments', label: 'Enrichments', description: 'Contact and profile enrichment records', needsNpi: true },
 ];
 
@@ -32,8 +34,8 @@ const SECTION_SOURCES = {
   affiliations: 'CMS facility affiliations and NPPES',
   facilities: 'CMS Provider of Services and Care Compare facility files',
   quality: 'CMS Care Compare star ratings',
-  leadScore: 'CareMetric lead scoring',
-  enrichments: 'CareMetric enrichment records',
+  leadScore: `${CAREMETRIC_PRODUCT} lead scoring`,
+  enrichments: `${CAREMETRIC_PRODUCT} enrichment records`,
 };
 
 /** The sections that apply to a report about this NPI and/or CCN. */
@@ -73,7 +75,17 @@ export function fmtMoneyCompact(v) {
   return fmtMoney(n);
 }
 
-const text = (v) => (v == null || v === '' ? '—' : String(v));
+const text = fmtIdentifier;
+
+/** Identifiers retain source spelling; only measurements receive numeric formatting. */
+export function formatReportValue(value, { key = '', label = '', format } = {}) {
+  if (format === 'text' || format === 'identifier' || isIdentifierField(key) || isIdentifierField(label)) return text(value);
+  if (format === 'money') return fmtMoney(value);
+  if (format === 'count') return fmtInt(value);
+  const n = num(value);
+  return n == null ? text(value) : n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
 const yesNo = (v) => {
   if (v == null || v === '') return '—';
   return v === true || /^(y|yes|true|1)$/i.test(String(v)) ? 'Yes' : 'No';
@@ -205,7 +217,7 @@ function sectionBlocks(key, report) {
         dataset: { text: humanize(c.dataset) },
         period: { text: c.period || text(c.dataYear) },
         metric: { text: text(c.metric) },
-        value: { text: c.format === 'money' ? fmtMoney(c.value) : fmtInt(c.value) },
+        value: { text: formatReportValue(c.value, { key: c.key, label: c.metric, format: c.format || 'count' }) },
       }));
       return [{
         ...table('costReports', 'Cost Report Summaries', [col('dataset', 'Dataset'), col('period', 'Reporting period'), col('metric', 'Metric'), col('value', 'Reported value', 'right')], rows, 'No linked cost report metrics on file.'),
@@ -330,5 +342,5 @@ export function buildReportModel(report, selected, { npi, providerId, facilityNa
 /** A safe file name for the report download. */
 export function reportFileName(model) {
   const base = String(model?.title || 'report').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'report';
-  return `CareMetric-${base}-${(model?.generatedAt || new Date()).toISOString().slice(0, 10)}`;
+  return `${CAREMETRIC_PRODUCT.replace(/\s+/g, '-')}-${base}-${(model?.generatedAt || new Date()).toISOString().slice(0, 10)}`;
 }

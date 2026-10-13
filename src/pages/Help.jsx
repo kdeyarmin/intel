@@ -21,7 +21,7 @@ const GUIDE_SECTIONS = [
     icon: Zap,
     color: 'text-amber-400',
     content: [
-      { page: 'Dashboard', heading: 'Welcome to CareMetric AI', text: 'CareMetric AI is a provider intelligence app for home health, hospice and post-acute teams. It brings together public CMS data — the NPPES provider registry, Medicare utilization and payments, Medicare shared-patient patterns and Medicare facility datasets — with your own lead scores, lead lists and outreach.\n\nStart on the **Dashboard** for record counts, data health and recent activity.' },
+      { page: 'Dashboard', heading: 'Welcome to CareMetric Intel', text: 'CareMetric Intel by CareMetric Healthcare Advisors is a provider intelligence app for home health, hospice and post-acute teams. Visit **https://caremetricintel.com/** for product information. It brings together public CMS data — the NPPES provider registry, Medicare utilization and payments, Medicare shared-patient patterns and Medicare facility datasets — with your own lead scores, lead lists and outreach.\n\nStart on the **Dashboard** for record counts, data health and recent activity.' },
       { page: 'Dashboard', heading: 'Your account', text: 'New accounts need approval: after signing up you\'ll see a waiting screen until an administrator approves you. Owners invite the people in their own organization, by link.\n\nThere are three roles:\n• **Member** — the directory, facilities, analytics, territory, AI Assistant, reports and lead lists.\n• **Owner** — a member who also manages the organization: its people, plan and billing, security audit and campaigns.\n• **Platform admin** (CareMetric staff) — everything, plus data imports, the NPPES crawler, provider intelligence, scoring rules and every organization\'s accounts.\n\nForgot your password? Use **Forgot password** on the sign-in page (when email is set up) or ask an owner for a reset link. **Account** at the bottom of the sidebar changes your password or signs you out on every device.' },
       { page: 'Dashboard', heading: 'What data is this and how fresh is it?', text: 'Everything in CareMetric comes from public sources: the **NPPES** provider registry, Medicare public use files from **data.cms.gov** and **Care Compare**, and U.S. Census geography. No patient-level data is used; CMS suppresses counts under 11 before publishing, and figures here are CareMetric analytics derived from those files, not CMS publications.\n\nEach dataset carries a **data year** (the period it describes) and an import date. The line at the bottom of data pages summarises what is loaded and when it was last refreshed; admins see the full table on **Data Center › Dataset catalog**. CMS publishes most files once a year (for example the Hospital Service Area file each summer and post-acute utilization in late summer), Care Compare files quarterly, and the NPPES registry weekly. A daily check of the CMS catalogs flags datasets with a newer release, and schedules set to **on release** import them automatically.' },
       { page: 'Dashboard', heading: 'Finding your way', text: 'The sidebar has five sections: **Overview**, **Directory**, **Analytics**, **Sales & Outreach** and **Administration** (admins only). Related pages share one sidebar entry and switch with tabs at the top of the page — for example **Territory & County**, or **Data Center** with its Dataset catalog and Import monitor.\n\nThe **Business** menu on the Dashboard and in the sidebar picks a line of business: home health, hospice, nursing home, personal care home, hospital, or DME. Reports, facilities, the county view, the market table, and call sheets then open on that line. **All lines** shows everything again.\n\nPress **Ctrl+K** (⌘K on a Mac) anywhere to search. On the directory pages (Providers, Organizations, Locations, Facilities), Territory & County, Referral Network and Lead Lists, filters and tabs are kept in the page address, so you can bookmark or share the view and Back returns to it. Other pages, such as the Lead Builder, start fresh each visit. Old links to pages that moved still work.' },
@@ -173,8 +173,13 @@ export default function Help() {
   const generatePDF = async () => {
     setGenerating(true);
     try {
-      const { jsPDF } = await import('jspdf');
+      const [{ jsPDF }, { pdfLogo }] = await Promise.all([
+        import('jspdf'),
+        import('../components/exports/exportUtils'),
+      ]);
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      doc.setProperties({ title: 'CareMetric Intel User Guide', author: 'CareMetric Healthcare Advisors' });
+      const logo = await pdfLogo();
       const pageWidth = 210;
       const margin = 20;
       const contentWidth = pageWidth - margin * 2;
@@ -186,16 +191,25 @@ export default function Help() {
       // Title page
       doc.setFillColor(15, 23, 41);
       doc.rect(0, 0, 210, 297, 'F');
+      if (logo) {
+        try {
+          const image = doc.getImageProperties(logo);
+          const width = 40;
+          const height = Math.min(25, width * image.height / image.width);
+          doc.addImage(logo, 'PNG', margin, 20, width, height);
+        } catch { /* The guide remains usable if the logo cannot be decoded. */ }
+      }
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(28);
-      doc.text('CareMetric AI', margin, 60);
+      doc.text('CareMetric Intel', margin, 60);
       doc.setFontSize(16);
       doc.setTextColor(0, 188, 212);
       doc.text('User Guide', margin, 72);
       doc.setFontSize(10);
       doc.setTextColor(148, 163, 184);
-      doc.text('Medicare Provider Intelligence Platform', margin, 85);
+      doc.text('CareMetric Healthcare Advisors', margin, 85);
       doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, margin, 95);
+      doc.text('https://caremetricintel.com/', margin, 103);
 
       // Table of Contents
       addPage();
@@ -246,10 +260,10 @@ export default function Help() {
       // Footer on last page
       doc.setTextColor(148, 163, 184);
       doc.setFontSize(8);
-      doc.text('CareMetric AI — www.CareMetric.ai', margin, 285);
+      doc.text('CareMetric Intel — https://caremetricintel.com/', margin, 285);
       doc.text('Data sources: CMS Medicare and NPPES provider files; U.S. Census Bureau geography', margin, 290);
 
-      doc.save('CareMetric_AI_User_Guide.pdf');
+      doc.save('CareMetric_Intel_User_Guide.pdf');
     } catch (err) {
       console.error('PDF generation failed:', err);
     } finally {
@@ -261,7 +275,7 @@ export default function Help() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
       <PageHeader
         title="Help & User Guide"
-        subtitle="Learn how to use CareMetric AI — browse topics or download the full PDF guide"
+        subtitle="Learn how to use CareMetric Intel — browse topics or download the full PDF guide"
         icon={HelpCircle}
         breadcrumbs={[{ label: 'Help' }]}
         actions={

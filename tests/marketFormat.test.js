@@ -1,7 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { csvHeader, csvValue, describeVintages, fmtCount, fmtMoney, fmtPct, fmtShare, formatMetric, ordinal, referralListNote, sortRows, toCsv } from '../src/lib/marketFormat.js';
+import { csvHeader, csvValue, describeVintages, fmtCount, fmtIdentifier, isIdentifierField, fmtMoney, fmtPct, fmtShare, formatMetric, ordinal, referralListNote, sortRows, toCsv } from '../src/lib/marketFormat.js';
 
 describe('market formatting', () => {
+  it('preserves years and identifiers without grouping or losing leading zeros', () => {
+    for (const field of ['data_year', 'programYear', 'ZIP Code', 'Prvdr_Zip', 'Rndrng_Prvdr_Zip5', 'ZIP_CD', 'Prvdr_Num', 'Rfrg_NPI', 'CCN', 'Associate ID', 'provider_id', 'CMS Certification Number (CCN)', 'county_fips']) {
+      expect(isIdentifierField(field), field).toBe(true);
+    }
+    for (const field of ['total_users', 'zips_served', 'zip_count', 'providers_in_market', 'total_payment']) {
+      expect(isIdentifierField(field), field).toBe(false);
+    }
+    for (const [format, value] of [['year', 2025], ['zip', '02108'], ['identifier', '0012345678'], ['npi', 1234567890], ['ccn', '01A234']]) {
+      expect(formatMetric(value, format)).toBe(String(value));
+      expect(csvValue(value, format)).toBe(String(value));
+    }
+    expect(fmtIdentifier(null)).toBe('—');
+    expect(fmtCount(2025)).toBe('2,025');
+  });
+
   it('formats counts, fractions, percent units, money and rates, with a dash for nothing', () => {
     expect(fmtCount(310412.4)).toBe('310,412');
     expect(fmtShare(0.6213)).toBe('62%');

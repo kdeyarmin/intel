@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { pdfLogo } from '@/components/exports/exportUtils';
 import { reportFileName } from './reportSections';
+import { CAREMETRIC_COMPANY, CAREMETRIC_PRODUCT, CAREMETRIC_WEBSITE } from '@/lib/branding';
 
 const MARGIN = 14;
 const HEADER_H = 20;
@@ -33,13 +34,13 @@ function drawPageHeader(doc, model, logo) {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text('CareMetric AI', x, 10);
+  doc.text(CAREMETRIC_PRODUCT, x, 10);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.text('Healthcare Provider Intelligence', x, 15);
+  doc.text(CAREMETRIC_COMPANY, x, 15);
   doc.setFontSize(8);
   doc.text(model.subtitle, w - MARGIN, 10, { align: 'right' });
-  doc.text('www.CareMetric.ai', w - MARGIN, 15, { align: 'right' });
+  doc.text(CAREMETRIC_WEBSITE, w - MARGIN, 15, { align: 'right' });
 }
 
 function drawPageFooter(doc, model, page, pages) {
@@ -51,10 +52,11 @@ function drawPageFooter(doc, model, page, pages) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(...MUTED);
-  doc.text(`CareMetric AI  •  ${model.title}  •  Generated ${model.generatedLabel}  •  Confidential`, MARGIN, h - FOOTER_H + 7, { maxWidth: w - MARGIN * 2 - 25 });
+  doc.text(`${CAREMETRIC_PRODUCT}  •  Generated ${model.generatedLabel}  •  Confidential`, MARGIN, h - FOOTER_H + 7, { maxWidth: w - MARGIN * 2 - 25 });
   doc.text(`Page ${page} of ${pages}`, w - MARGIN, h - FOOTER_H + 7, { align: 'right' });
   doc.setFontSize(6);
-  doc.text(doc.splitTextToSize(model.attribution, w - MARGIN * 2), MARGIN, h - FOOTER_H + 11);
+  doc.text(`${CAREMETRIC_COMPANY}  •  ${CAREMETRIC_WEBSITE}`, MARGIN, h - FOOTER_H + 11);
+  doc.text(doc.splitTextToSize(model.attribution, w - MARGIN * 2), MARGIN, h - FOOTER_H + 15);
 }
 
 /** Lays out the report model as a branded, paginated PDF and downloads it. */

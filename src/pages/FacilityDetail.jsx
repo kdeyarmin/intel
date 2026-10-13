@@ -15,6 +15,7 @@ import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import HospitalCatchmentCard from '../components/market/HospitalCatchmentCard';
 import MarketPositionCard from '../components/market/MarketPositionCard';
 import { DmeFacilityCard, DrgCard } from '../components/market/MarketReferenceCards';
+import { fmtIdentifier, isIdentifierField } from '@/lib/marketFormat';
 
 // Facility groups with a post-acute market view (getFacilityMarket setting).
 const MARKET_SETTING = { snf: 'snf', home_health: 'hha', hospice: 'hospice', irf: 'irf', ltch: 'ltch' };
@@ -143,11 +144,12 @@ function isNumericish(val) {
 
 function isCurrencyField(key) {
   const k = key.toLowerCase();
-  return k.includes('payment') || k.includes('charge') || k.includes('cost') || k.includes('spend') || k.includes('revenue') || k.includes('price') || k.includes('dollar') || k.includes('_amt');
+  return k.includes('payment') || (k.includes('charge') && !k.includes('discharge')) || k.includes('cost') || k.includes('spend') || k.includes('revenue') || k.includes('price') || k.includes('dollar') || k.includes('_amt');
 }
 
 function formatCellValue(key, val) {
   if (val == null || val === '') return '—';
+  if (isIdentifierField(key)) return fmtIdentifier(val);
   if (isCurrencyField(key) && isNumericish(val)) return formatCurrency(val);
   if (isNumericish(val) && !String(val).includes('-') && String(val).length < 15) {
     const num = Number(String(val).replace(/[$,%]/g, ''));
@@ -205,7 +207,7 @@ function RawDataTable({ rows, facilityType }) {
               <div key={col.key} className="p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/40">
                 <p className="text-[10px] text-slate-400 font-medium">{col.label}</p>
                 <p className="text-base font-bold text-slate-100">
-                  {col.key.includes('payment') || col.key.includes('charge')
+                  {isIdentifierField(col.key) ? fmtIdentifier(latestRow[col.key]) : isCurrencyField(col.key)
                     ? formatCurrency(latestRow[col.key])
                     : latestRow[col.key] != null ? formatNumber(latestRow[col.key]) : '—'}
                 </p>
@@ -259,7 +261,7 @@ function RawDataTable({ rows, facilityType }) {
               <tr key={i} className="border-t border-slate-800/50 hover:bg-slate-800/30 transition-colors">
                 {activeCols.map(col => (
                   <td key={col.key} className={`${col.align === 'left' ? 'text-left' : 'text-right'} py-2 px-3 text-slate-300 whitespace-nowrap`}>
-                    {col.key.includes('payment') || col.key.includes('charge')
+                    {isIdentifierField(col.key) ? fmtIdentifier(row[col.key]) : isCurrencyField(col.key)
                       ? formatCurrency(row[col.key])
                       : row[col.key] != null ? formatNumber(row[col.key]) : '—'}
                   </td>

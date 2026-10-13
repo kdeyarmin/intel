@@ -160,13 +160,16 @@ export default function CountyIntelligence() {
       ) : isError ? (
         <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-6 text-center space-y-3" role="alert">
           <AlertTriangle className="w-8 h-8 text-red-400 mx-auto" aria-hidden="true" />
-          <p className="text-red-400 text-sm">Couldn't load this county: {error?.message}</p>
+          <p className="text-red-400 text-sm">Unable to load county intelligence. {error?.message || 'Please try again.'}</p>
           <Button variant="outline" size="sm" onClick={() => refetch()} className="border-red-500/30 text-red-400">Try again</Button>
         </div>
       ) : isLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-label="Loading county">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
-      ) : data?.needsCounty || data?.notLoaded ? (
-        <p className="text-sm text-slate-400">{data.message || 'That county wasn’t found. Pick one from the list.'}</p>
+      ) : data?.needsCounty || data?.notLoaded || !data?.county ? (
+        <div className="text-sm text-slate-400 space-y-3" role="status">
+          <p>{data?.message || 'County information is unavailable. Select a county from the list or try again.'}</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>Try again</Button>
+        </div>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -175,15 +178,15 @@ export default function CountyIntelligence() {
             <Badge variant="outline" className="text-slate-400">{data.zip_areas} ZIP areas</Badge>
             {isFetching && <span className="text-xs text-slate-400">Refreshing…</span>}
           </div>
-          {(data.sample?.sampled || !data.sample?.details_cover_all || data.sample?.facilities_capped || data.sample?.providers_capped) && (
+          {data.sample && (data.sample.sampled || !data.sample.details_cover_all || data.sample.facilities_capped || data.sample.providers_capped) && (
             <p className="flex items-start gap-1.5 text-xs text-slate-400">
               <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
-              {data.sample.sampled
+              {data.sample.sampled && summary.sampledProviders != null
                 ? `This county has more practice locations than we read at once; specialties and provider types describe ${summary.sampledProviders.toLocaleString()} of them.`
                 : ''}
-              {!data.sample.details_cover_all && ` Referrals and services are from the first ${data.sample.detail_limit.toLocaleString()} providers.`}
-              {data.sample.facilities_capped && ` Facility totals cover the newest ${data.sample.facility_limit.toLocaleString()} facility records.`}
-              {data.sample.providers_capped && ` The provider list shows the ${data.sample.provider_limit.toLocaleString()} highest-scored of ${data.sample.providers_found.toLocaleString()} providers.`}
+              {!data.sample.details_cover_all && data.sample.detail_limit != null && ` Referrals and services are from the first ${data.sample.detail_limit.toLocaleString()} providers.`}
+              {data.sample.facilities_capped && data.sample.facility_limit != null && ` Facility totals cover the newest ${data.sample.facility_limit.toLocaleString()} facility records.`}
+              {data.sample.providers_capped && data.sample.provider_limit != null && data.sample.providers_found != null && ` The provider list shows the ${data.sample.provider_limit.toLocaleString()} highest-scored of ${data.sample.providers_found.toLocaleString()} providers.`}
             </p>
           )}
 
@@ -378,7 +381,7 @@ export default function CountyIntelligence() {
                 {tab === 'referrals' ? (
                   <ReferralSourcesTable key={`${everyLine ? 'all' : (profile?.referralSetting || 'all')}:${url.county}`} state={url.state} countyFips={data.county.fips} countyName={data.county.name} initialSetting={everyLine ? 'all' : (profile?.referralSetting || 'all')} />
                 ) : marketError ? (
-                  <p className="text-sm text-red-400" role="alert">Couldn't load the market data: {marketErr?.message}</p>
+                  <p className="text-sm text-red-400" role="alert">Unable to load county market data. {marketErr?.message || 'Please try again.'}</p>
                 ) : loadingMarket || !market ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-label="Loading market">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
                 ) : tab === 'market' ? (

@@ -40,7 +40,7 @@ describe("allowedFromAddresses", () => {
   it("returns the hardcoded fallback when no env vars are set", () => {
     delete process.env.SENDGRID_FROM_EMAIL;
     delete process.env.ALLOWED_FROM_EMAILS;
-    expect(allowedFromAddresses()).toEqual(["noreply@caremetric.com"]);
+    expect(allowedFromAddresses()).toEqual(["noreply@caremetricintel.com"]);
   });
 
   it("returns SENDGRID_FROM_EMAIL as the first entry when set", () => {
@@ -84,13 +84,13 @@ describe("allowedFromAddresses", () => {
   it("returns fallback when SENDGRID_FROM_EMAIL is empty string and ALLOWED_FROM_EMAILS unset", () => {
     process.env.SENDGRID_FROM_EMAIL = "";
     delete process.env.ALLOWED_FROM_EMAILS;
-    expect(allowedFromAddresses()).toEqual(["noreply@caremetric.com"]);
+    expect(allowedFromAddresses()).toEqual(["noreply@caremetricintel.com"]);
   });
 
   it("returns fallback when both env vars are whitespace-only", () => {
     process.env.SENDGRID_FROM_EMAIL = "   ";
     process.env.ALLOWED_FROM_EMAILS = "   ,   ";
-    expect(allowedFromAddresses()).toEqual(["noreply@caremetric.com"]);
+    expect(allowedFromAddresses()).toEqual(["noreply@caremetricintel.com"]);
   });
 
   it("does not include duplicates from env (dedup is caller responsibility, but order is preserved)", () => {
@@ -145,7 +145,7 @@ describe("resolveFrom", () => {
   it("falls back to hardcoded default when env is completely empty", () => {
     delete process.env.SENDGRID_FROM_EMAIL;
     delete process.env.ALLOWED_FROM_EMAILS;
-    expect(resolveFrom("anything@external.com")).toBe("noreply@caremetric.com");
+    expect(resolveFrom("anything@external.com")).toBe("noreply@caremetricintel.com");
   });
 
   it("returns the first allowed address (SENDGRID_FROM_EMAIL) as default when multiple are configured", () => {

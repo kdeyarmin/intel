@@ -51,6 +51,34 @@ describe("county growth rows", () => {
 });
 
 describe("named reports", () => {
+  it("uses decision-focused titles for every catalog report", () => {
+    expect(REPORT_CATALOG.map(({ id, title }) => [id, title])).toEqual([
+      ["expand-hha", "Home health expansion outlook"],
+      ["expand-hospice", "Hospice expansion outlook"],
+      ["expand-snf", "Skilled nursing expansion outlook"],
+      ["acquire-hha", "Home health acquisition landscape"],
+      ["acquire-hospice", "Hospice acquisition landscape"],
+      ["acquire-snf", "Skilled nursing acquisition landscape"],
+      ["hospital-partners", "Hospital partnership landscape"],
+      ["calls-hha", "Home health clinician outreach priorities"],
+      ["calls-hospice", "Hospice clinician outreach priorities"],
+    ]);
+    for (const report of REPORT_CATALOG) {
+      if (report.purpose === "Expansion") {
+        expect(report.reason).toContain("Original Medicare patient volume");
+        expect(report.reason).toContain("billing for residents’ care remained flat or declined");
+      } else if (report.purpose === "Acquisition") {
+        expect(report.reason).toContain("located in the state");
+        expect(report.reason).toContain("their own claims");
+      } else if (report.purpose === "Referral development") {
+        expect(report.reason).toContain("do not confirm referrals");
+      } else {
+        expect(report.reason).toContain("Spending is a proxy");
+        expect(report.reason).toContain("not a count of transfers or referrals");
+      }
+    }
+  });
+
   it("gives each decision its own report and does not invent a score", () => {
     const ids = REPORT_CATALOG.map((r) => r.id);
     expect(new Set(ids).size).toBe(ids.length);

@@ -21,7 +21,9 @@ vi.mock('../src/components/reports/reportPdf', () => ({ downloadReportPdf: (m) =
 
 import ComprehensiveReport from '../src/components/reports/ComprehensiveReport';
 import ReportDocument from '../src/components/reports/ReportDocument';
-import { availableSections, buildReportModel, REPORT_SECTIONS, reportFileName } from '../src/components/reports/reportSections';
+import { availableSections, buildReportModel, formatReportValue, REPORT_SECTIONS, reportFileName } from '../src/components/reports/reportSections';
+import { CAREMETRIC_LOGO_URL } from '../src/lib/branding';
+import ReportDataTable from '../src/components/customReports/ReportDataTable';
 
 afterEach(cleanup);
 beforeEach(() => {
@@ -57,6 +59,57 @@ function wrap(ui) {
 }
 
 describe('report sections', () => {
+  it.each([
+    ['data_year', 2024, '2024'],
+    ['dataYear', 2024, '2024'],
+    ['zip', '00501', '00501'],
+    ['ZIP Code', '00501-0012', '00501-0012'],
+    ['associate_id', '0244144871', '0244144871'],
+    ['associateId', 244144871, '244144871'],
+    ['organization_npi', '0123456789', '0123456789'],
+    ['NPI', 1234567893, '1234567893'],
+    ['CCN', '001234', '001234'],
+    ['provider_id', 'A71234', 'A71234'],
+    ['Provider Number', '001234', '001234'],
+    ['County FIPS', '01001', '01001'],
+    ['enrollment_id', 'O20020812000015', 'O20020812000015'],
+  ])('preserves %s without grouping or coercing its source value', (key, value, expected) => {
+    expect(formatReportValue(value, { key })).toBe(expected);
+    expect(formatReportValue(value, { label: key, format: 'count' })).toBe(expected);
+  });
+
+  it('formats true counts and currency normally without converting identifiers in model rows', () => {
+    expect(formatReportValue(1234567, { key: 'beneficiaries', format: 'count' })).toBe('1,234,567');
+    expect(formatReportValue('1234567', { label: 'Revenue', format: 'money' })).toBe('$1,234,567');
+    const model = buildReportModel({
+      provider: { npi: '0123456789' },
+      facility: { providerId: '001234', latestYear: 2024 },
+      locations: [{ city: 'Holtsville', state: 'NY', zip: '00501' }],
+      utilization: [{ dataYear: 2024, totalServices: 12345, totalPayment: 1234567 }],
+      referralsFrom: [{ toNpi: '0123456789', dataYear: 2024 }],
+      affiliations: [{ organization_npi: '0123456789' }],
+      costReports: [{ metric: 'Associate ID', value: '0244144871' }, { metric: 'CCN', value: 'A71234' }],
+    }, ['profile', 'locations', 'utilization', 'referrals', 'affiliations', 'costReports'], { npi: '0123456789', providerId: '001234' });
+    expect(model.profile.identifiers).toEqual(expect.arrayContaining([
+      { label: 'CCN', value: '001234' }, { label: 'Linked NPI', value: '0123456789' }, { label: 'Latest data year', value: '2024' },
+    ]));
+    const rowsFor = (key) => model.sections.find((s) => s.key === key).blocks[0].rows;
+    expect(rowsFor('locations')[0].place.text).toBe('Holtsville, NY, 00501');
+    expect(rowsFor('utilization')[0]).toMatchObject({ year: { text: '2024' }, services: { text: '12,345' }, payment: { text: '$1,234,567' } });
+    expect(rowsFor('referrals')[0].npi.text).toBe('0123456789');
+    expect(rowsFor('affiliations')[0].npi.text).toBe('0123456789');
+    expect(rowsFor('costReports').map((r) => r.value.text)).toEqual(['0244144871', 'A71234']);
+  });
+
+  it('brands the printed document with the canonical full logo and company website', () => {
+    render(<ReportDocument model={buildReportModel(REPORT, ['profile'], { npi: '1234567893' })} />);
+    expect(screen.getByRole('img', { name: 'CareMetric Healthcare Advisors' })).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+    expect(screen.getByRole('link', { name: 'https://caremetricintel.com/' })).toHaveAttribute('href', 'https://caremetricintel.com/');
+    expect(screen.getByText('CareMetric Intel')).toBeInTheDocument();
+    expect(screen.getByText('CareMetric Healthcare Advisors')).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/CareMetric AI|Healthcare Provider Intelligence|CareMetric\.ai/);
+  });
+
   it('offers every section for an NPI and only facility sections for a CCN without one', () => {
     expect(availableSections({ npi: '1234567893' }).map((s) => s.key)).toEqual(REPORT_SECTIONS.map((s) => s.key));
     expect(availableSections({ providerId: '390111' }).map((s) => s.key)).toEqual(['profile', 'facilities', 'quality', 'ownership', 'costReports', 'additionalQuality']);
@@ -95,7 +148,7 @@ describe('report sections', () => {
     expect(model.sections[0].blocks[0].rows.map((r) => r.percentage.text)).toEqual(['80%', '—']);
     expect(model.sections[1].blocks[0].rows[0].value.text).toBe('$1,234,567');
     render(<ReportDocument model={model} />);
-    for (const value of ['Example Holdings', '80%', '$1,234,567', 'Discharge function score', '76.2', 'www.CareMetric.ai']) {
+    for (const value of ['Example Holdings', '80%', '$1,234,567', 'Discharge function score', '76.2', 'https://caremetricintel.com/']) {
       expect(screen.getByText(value)).toBeInTheDocument();
     }
     expect(model.sources).toHaveLength(3);
@@ -109,11 +162,23 @@ describe('report sections', () => {
     expect(model.subtitle).toBe('Facility Intelligence Report');
     expect(model.profile.metrics).toEqual([]);
     expect(model.profile.identifiers[0]).toEqual({ label: 'CCN', value: '390111' });
-    expect(reportFileName(model)).toBe('CareMetric-Erie-Manor-2026-10-01');
+    expect(reportFileName(model)).toBe('CareMetric-Intel-Erie-Manor-2026-10-01');
   });
 });
 
 describe('ComprehensiveReport', () => {
+  it('brands the screen report consistently with the print document', async () => {
+    api.invoke.mockResolvedValue({ data: REPORT });
+    wrap(<ComprehensiveReport npi="1234567893" />);
+    fireEvent.click(screen.getByRole('button', { name: /Generate Full Report/ }));
+    await screen.findByRole('button', { name: /Download PDF/ });
+    expect(screen.getByRole('img', { name: 'CareMetric Healthcare Advisors' })).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+    expect(screen.getByRole('link', { name: 'https://caremetricintel.com/' })).toHaveAttribute('href', 'https://caremetricintel.com/');
+    expect(screen.getByText('CareMetric Healthcare Advisors')).toBeInTheDocument();
+    expect(document.body.textContent).toContain('CareMetric Intel');
+    expect(document.body.textContent).not.toMatch(/CareMetric AI|Healthcare Provider Intelligence|CareMetric\.ai/);
+  });
+
   it('selects every section by default and asks only for the ones left checked', async () => {
     api.invoke.mockResolvedValue({ data: REPORT });
     wrap(<ComprehensiveReport npi="1234567893" />);
@@ -134,6 +199,31 @@ describe('ComprehensiveReport', () => {
     // Sections that weren't chosen stay out even when the payload has them.
     expect(screen.queryByRole('button', { name: /^Taxonomies/ })).not.toBeInTheDocument();
     expect(screen.queryByText('Ada Lovelace')).toBeInTheDocument();
+  });
+
+  describe('custom report identifiers and measurements', () => {
+    it.each(['00501', '0123456789', '001234', 'A71234', 2024])('keeps group %s unchanged and counts distinct from money', (group) => {
+      render(<ReportDataTable chartData={[{ group, total_services: 1234567, total_medicare_payment_amt: 1234567 }]}
+        config={{ dataset: 'cms_utilization', group_by: 'npi', metrics: ['total_services', 'total_medicare_payment_amt'] }} />);
+      expect(screen.getByRole('cell', { name: String(group) })).toBeInTheDocument();
+      expect(screen.getByRole('cell', { name: '1,234,567' })).toBeInTheDocument();
+      expect(screen.getByRole('cell', { name: '$1,234,567' })).toBeInTheDocument();
+    });
+
+    it('formats an NPI aggregate as a count, not as an identifier or currency', () => {
+      render(<ReportDataTable chartData={[{ group: 'PA', npi: 1234567 }]}
+        config={{ dataset: 'hha_stats', group_by: 'state', metrics: ['npi'] }} />);
+      expect(screen.getByRole('cell', { name: '1,234,567' })).toBeInTheDocument();
+      expect(screen.queryByRole('cell', { name: /\$/ })).not.toBeInTheDocument();
+    });
+
+    it('retains fractional measurements without introducing currency for non-money metrics', () => {
+      render(<ReportDataTable chartData={[{ group: '2024', total_services: 1234.5, total_medicare_payment_amt: 1234.5 }]}
+        config={{ dataset: 'cms_utilization', group_by: 'data_year', metrics: ['total_services', 'total_medicare_payment_amt'] }} />);
+      expect(screen.getByRole('cell', { name: '2024' })).toBeInTheDocument();
+      expect(screen.getByRole('cell', { name: '1,234.5' })).toBeInTheDocument();
+      expect(screen.getByRole('cell', { name: '$1,234.5' })).toBeInTheDocument();
+    });
   });
 
   it('offers only facility sections for a facility without a linked NPI', () => {
@@ -180,7 +270,7 @@ describe('ComprehensiveReport', () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => {
       expect(document.body.classList.contains('cm-printing-report')).toBe(true);
       expect(document.querySelector('.cm-print-root .cm-report-doc')).not.toBeNull();
-      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric AI');
+      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric Intel');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Data Sources');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Example Holdings');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Discharge function score');
