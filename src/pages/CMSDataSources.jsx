@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import PageTabs from '@/components/layout/PageTabs';
 import PageHeader from '@/components/shared/PageHeader';
 import DataFreshnessPanel from '@/components/analytics/DataFreshnessPanel';
+import { isAvailableCmsDataset } from '@/lib/cmsImportTypes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -97,8 +98,11 @@ export default function CMSDataSources() {
     return map;
   }, [batches]);
 
-  const datasets = catalog?.data?.datasets || catalog?.datasets || [];
-  const categories = catalog?.data?.categories || catalog?.categories || [];
+  const datasets = useMemo(
+    () => (catalog?.data?.datasets || catalog?.datasets || []).filter(isAvailableCmsDataset),
+    [catalog],
+  );
+  const categories = useMemo(() => [...new Set(datasets.map(ds => ds.category))], [datasets]);
 
   const filteredDatasets = useMemo(() => {
     let filtered = datasets;
@@ -207,8 +211,8 @@ export default function CMSDataSources() {
         <div className="flex items-center gap-3 text-sm text-slate-400">
           <span>{datasets.length} datasets available</span>
           <span className="text-slate-400">|</span>
-          <span className="text-green-400">{Object.values(batchStatusMap).filter(b => b.status === 'completed').length} imported</span>
-          <span className="text-cyan-400">{Object.values(batchStatusMap).filter(b => b.status === 'processing').length} active</span>
+          <span className="text-green-400">{datasets.filter(ds => batchStatusMap[ds.id]?.status === 'completed').length} imported</span>
+          <span className="text-cyan-400">{datasets.filter(ds => batchStatusMap[ds.id]?.status === 'processing').length} active</span>
         </div>
       </PageHeader>
 

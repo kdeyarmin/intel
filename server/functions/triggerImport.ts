@@ -351,7 +351,7 @@ const CMS_DATASET_CATALOG = [
   { id: "nursing_home_chains", title: "Nursing Home Chain Data", description: "Performance data aggregated at the nursing home chain level including star ratings and facility counts.", category: "Nursing Homes & SNF", records: "~1K", priority: "medium" },
   { id: "inpatient_drg", title: "Medicare Inpatient Hospitals - by Provider and Service", description: "Discharges and average Medicare payment for each hospital and DRG. Not the one-row-per-hospital totals.", category: "Hospitals", records: "~200K+", priority: "medium" },
   { id: "provider_ownership", title: "Provider & Supplier Ownership (Retired)", description: "Retired by CMS: the combined ownership file returns 404 and has no replacement. Import the All Owners files (hospital, home health, hospice, SNF, FQHC, rural health clinic) instead.", category: "Medicare Programs", records: "N/A", priority: "low", unavailable: true },
-  { id: "home_health_pdgm", title: "Home Health PDGM Data (Retired)", description: "Patient-Driven Groupings Model data — dataset retired by CMS. Use HHA Utilization by Geography & Case-Mix instead.", category: "Home Health", records: "N/A", priority: "low" },
+  { id: "home_health_pdgm", title: "Home Health PDGM Data (Retired)", description: "Patient-Driven Groupings Model data — dataset retired by CMS. Use HHA Utilization by Geography & Case-Mix instead.", category: "Home Health", records: "N/A", priority: "low", unavailable: true },
   { id: "snf_quality_reporting", title: "SNF Quality Reporting Program", description: "Quality measure data from the SNF Quality Reporting Program.", category: "Nursing Homes & SNF", records: "~15K", priority: "medium" },
   { id: "snf_utilization_geo_casemix", title: "SNF Utilization by Geography & Case-Mix", description: "Skilled nursing facility utilization and payment data broken down by geographic area, provider, and case-mix grouping.", category: "Nursing Homes & SNF", records: "~100K", priority: "medium" },
   { id: "hha_utilization_geo_casemix", title: "HHA Utilization by Geography & Case-Mix", description: "Home health agency utilization data by geographic area, provider, and patient case-mix grouping.", category: "Home Health", records: "~127K", priority: "medium" },
@@ -360,16 +360,19 @@ const CMS_DATASET_CATALOG = [
 ];
 
 export function getCMSDatasetCatalog() {
-  return {
-    datasets: CMS_DATASET_CATALOG.map(ds => ({
+  const datasets = CMS_DATASET_CATALOG
+    .filter(ds => !ds.unavailable && !/\bretired\b/i.test(ds.title))
+    .map(ds => ({
       ...ds,
       url: IMPORT_TYPE_URLS[ds.id] || null,
       // Upload-capable datasets and the NPPES files have no CMS data-api endpoint; they are available as files.
       available: !!(IMPORT_TYPE_URLS[ds.id] || NPPES_FILE_TYPES[ds.id] || UPLOAD_CAPABLE_TYPES.has(ds.id)),
       unavailable: !!(ds as any).unavailable,
-    })),
-    total: CMS_DATASET_CATALOG.length,
-    categories: [...new Set(CMS_DATASET_CATALOG.map(ds => ds.category))],
+    })).filter(ds => ds.available);
+  return {
+    datasets,
+    total: datasets.length,
+    categories: [...new Set(datasets.map(ds => ds.category))],
   };
 }
 

@@ -47,15 +47,21 @@ describe("pinned CMS datasets", () => {
 
   it("does not auto-import the retired Provider & Supplier Ownership file", () => {
     expect(IMPORT_TYPE_URLS.provider_ownership).toBeUndefined();
-    const entry = getCMSDatasetCatalog().datasets.find((d: { id: string }) => d.id === "provider_ownership");
-    expect(entry?.url).toBeNull();
-    expect(entry?.available).toBe(true);
-    expect(entry?.unavailable).toBe(true);
-    expect(entry?.description).toMatch(/retired|All Owners/i);
+    expect(getCMSDatasetCatalog().datasets.some(d => d.id === "provider_ownership")).toBe(false);
     expect(autoImportBlock("provider_ownership", null)).toMatch(/404/);
     expect(autoImportBlock("provider_ownership", "https://example.com/owners.csv")).toBeNull();
     expect(fileUrlProblem("provider_ownership", "/api/storage/owners.csv", 2024)).toBeNull();
     expect(fileUrlProblem("provider_ownership", "/api/storage/owners.csv", undefined)).toMatch(/year is required/);
+  });
+
+  it("offers only available, non-retired datasets and counts those datasets", () => {
+    const catalog = getCMSDatasetCatalog();
+    expect(catalog.datasets.some(d => d.id === "home_health_pdgm")).toBe(false);
+    expect(catalog.datasets.every(d => d.available && !d.unavailable && !/\bretired\b/i.test(d.title))).toBe(true);
+    expect(catalog.total).toBe(catalog.datasets.length);
+    expect(catalog.categories).toEqual([...new Set(catalog.datasets.map(d => d.category))]);
+    expect(catalog.datasets.some(d => d.id === "home_health_all_owners")).toBe(true);
+    expect(catalog.datasets.some(d => d.id === "hha_utilization_geo_casemix")).toBe(true);
   });
 
   it("reads inpatient DRG from by Provider and Service, not the by-provider totals", () => {
