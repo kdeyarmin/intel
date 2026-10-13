@@ -81,6 +81,7 @@
 @page cm-report { size: letter; margin: 12mm 12mm 14mm; }
 
 @media print {
+  body { background: #fff !important; color: #0f172a; }
   body.cm-printing-report { background: #fff !important; }
   body.cm-printing-report > *:not(.cm-print-root) { display: none !important; }
   body.cm-printing-report > .cm-print-root { display: block !important; page: cm-report; }

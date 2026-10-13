@@ -118,6 +118,15 @@ describe('app shell', () => {
     expect(screen.getAllByRole('img', { name: CAREMETRIC_NAME }).at(-1)).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
   });
 
+  it('keeps navigation out of print layouts and lets reports span pages', () => {
+    const { container } = wrap(<AppLayout currentPageName="Dashboard"><h1>Dashboard</h1></AppLayout>);
+    expect(container.firstElementChild).toHaveClass('print:block', 'print:h-auto');
+    expect(screen.getByRole('complementary', { name: 'Sidebar' })).toHaveClass('print:hidden');
+    expect(screen.getByRole('main')).toHaveClass('print:overflow-visible', 'print:pt-0');
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    expect(screen.getByRole('button', { name: 'Open sidebar' }).parentElement).toHaveClass('print:hidden');
+  });
+
   it('has no axe violations, landmarks and a working skip link', async () => {
     wrap(<AppLayout currentPageName="Dashboard"><h1>Dashboard</h1></AppLayout>);
     expect(await violations()).toEqual([]);
