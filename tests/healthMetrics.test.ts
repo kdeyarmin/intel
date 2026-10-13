@@ -5,7 +5,32 @@ import {
   topErrorCategoriesFromBatches,
   summarizeRetryPipeline,
   unhealthySchedules,
+  isStaleImport,
 } from '../src/components/imports/healthMetrics';
+
+describe('isStaleImport', () => {
+  const now = new Date('2026-10-13T12:00:00Z');
+  const quietSince = (minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString();
+
+  it.each(['processing', 'validating'])('warns after 15 minutes for %s imports', status => {
+    expect(isStaleImport({ status, updated_date: quietSince(15) }, now)).toBe(false);
+    expect(isStaleImport({ status, updated_date: quietSince(16) }, now)).toBe(true);
+    expect(isStaleImport({ status, created_date: quietSince(16) }, now)).toBe(true);
+  });
+
+  it('allows NPPES crawls an hour to recover', () => {
+    expect(isStaleImport({ status: 'processing', import_type: 'nppes_registry', updated_date: quietSince(60) }, now)).toBe(false);
+    expect(isStaleImport({ status: 'processing', import_type: 'nppes_registry', updated_date: quietSince(61) }, now)).toBe(true);
+  });
+
+  it('does not warn for finished, paused, recently updated, or undated imports', () => {
+    for (const status of ['completed', 'failed', 'cancelled', 'paused']) {
+      expect(isStaleImport({ status, updated_date: quietSince(180) }, now)).toBe(false);
+    }
+    expect(isStaleImport({ status: 'processing', updated_date: quietSince(1), created_date: quietSince(180) }, now)).toBe(false);
+    expect(isStaleImport({ status: 'processing' }, now)).toBe(false);
+  });
+});
 
 describe('successRateByDay', () => {
   const now = new Date('2026-05-09T12:00:00Z');

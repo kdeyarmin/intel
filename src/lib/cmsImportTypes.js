@@ -99,8 +99,8 @@ const CMS_IMPORT_TYPE_DEFINITIONS = [
   { id: 'mds_frequency', label: 'MDS Frequency', supportsUrl: true },
   { id: 'nursing_home_chains', label: 'Nursing Home Chains', supportsUrl: true },
   { id: 'inpatient_drg', label: 'Inpatient DRG', supportsUrl: true },
-  { id: 'home_health_pdgm', label: 'Home Health PDGM', supportsUrl: true },
-  { id: 'provider_ownership', label: 'Provider Ownership (retired)', supportsUrl: false },
+  { id: 'home_health_pdgm', label: 'Home Health PDGM', supportsUrl: false, retired: true },
+  { id: 'provider_ownership', label: 'Provider Ownership (retired)', supportsUrl: false, retired: true },
   { id: 'home_health_agencies', label: 'Home Health Agencies', supportsUrl: true },
   { id: 'home_infusion_therapy', label: 'Home Infusion Therapy', supportsUrl: true },
   { id: 'hospice_general_info', label: 'Hospice General Info', supportsUrl: true },
@@ -118,7 +118,15 @@ export const CMS_IMPORT_TYPE_ALIAS_MAP = {
   cms_service_utilization: 'provider_service_utilization',
 };
 
-export const CMS_IMPORT_TYPES = CMS_IMPORT_TYPE_DEFINITIONS.map(def => ({
+const RETIRED_IMPORT_TYPES = new Set(CMS_IMPORT_TYPE_DEFINITIONS.filter(def => def.retired).map(def => def.id));
+
+export function isAvailableCmsDataset(dataset) {
+  return dataset.unavailable !== true && dataset.available !== false &&
+    dataset.retired !== true && !RETIRED_IMPORT_TYPES.has(dataset.id) &&
+    !/\bretired\b/i.test(dataset.title || dataset.label || '');
+}
+
+export const CMS_IMPORT_TYPES = CMS_IMPORT_TYPE_DEFINITIONS.filter(isAvailableCmsDataset).map(def => ({
   ...def,
   normalizedId: def.id,
 }));

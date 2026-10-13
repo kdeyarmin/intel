@@ -3,6 +3,7 @@
  * data.json again (the daily throttle only counts successful checks).
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 
 const query = vi.fn();
 vi.mock("../server/db", () => ({ db: {}, pool: { query: (...args: unknown[]) => query(...args) } }));
@@ -71,6 +72,7 @@ describe("refreshCatalog's daily throttle", () => {
       }
       return { rows: [], rowCount: 0 };
     });
+
   });
 
   it("is not satisfied by another source's check", async () => {
@@ -87,5 +89,39 @@ describe("refreshCatalog's daily throttle", () => {
     expect(r.skipped).toMatch(/checked 60 minutes ago/);
     expect(good).not.toHaveBeenCalled();
     rows[0].catalog_checked_at = new Date(T0.getTime() - 48 * 3600_000);
+  });
+});
+
+describe("refreshCatalog release-driven schedules", () => {
+  const url = "https://data.cms.gov/data-api/v1/dataset/22e11819-48e8-44a8-a036-fd6351f4173a/data";
+  const catalog = JSON.parse(readFileSync(new URL("./fixtures/cms/data_json_slice.json", import.meta.url), "utf8"));
+
+  it.each([
+    { status: "current", importedModified: "2025-01-01", active: false, wake: true },
+    { status: "current", importedModified: "2026-07-06", active: false, wake: false },
+    { status: "importing", importedModified: "2025-01-01", active: true, wake: false },
+  ])("wakes only when a newer release is ready (%j)", async ({ status, importedModified, active, wake }) => {
+    query.mockImplementation(async (sql: string) => {
+      if (sql.startsWith("SELECT * FROM dataset_versions")) {
+        return { rows: [{ import_type: "hospital_service_area", status, imported_modified: importedModified }] };
+      }
+      if (sql.startsWith("SELECT DISTINCT import_type")) {
+        return { rows: active ? [{ import_type: "hospital_service_area" }] : [] };
+      }
+      return { rows: [], rowCount: sql.startsWith("UPDATE import_schedule_configs") ? 1 : 0 };
+    });
+    const fetch = vi.fn(async (url: string) => url.endsWith("data.json") ? catalog : []);
+    const result = await refreshCatalog({ urls: { hospital_service_area: url }, now: T0, fetch });
+    expect(result.checked).toBe(1);
+    expect(result.updates_available).toEqual(wake ? ["hospital_service_area"] : []);
+    expect(result.woken).toBe(wake ? 1 : 0);
+    const wakes = query.mock.calls.filter(([sql]) => sql.startsWith("UPDATE import_schedule_configs"));
+    expect(wakes).toHaveLength(wake ? 1 : 0);
+    if (wake) {
+      expect(wakes[0][1]).toEqual([T0, ["hospital_service_area"]]);
+      expect(wakes[0][0]).toContain("schedule_frequency = 'on_release'");
+      expect(wakes[0][0]).toContain("is_active = true AND enabled = true");
+      expect(wakes[0][0]).toContain("last_run_status IS DISTINCT FROM 'running'");
+    }
   });
 });
