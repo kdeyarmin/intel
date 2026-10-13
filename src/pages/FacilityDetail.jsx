@@ -571,17 +571,16 @@ export default function FacilityDetail() {
         <AffiliatedProvidersCard facilityNpi={linked.npi} providerId={providerId} facilityName={data.facility_name} />
       )}
 
-      <div className="mt-4">
-        <ComprehensiveReport providerId={providerId} npi={linked?.npi} />
-      </div>
-
-      <Tabs defaultValue={facilityTypes[0] || 'overview'}>
+      <Tabs defaultValue={facilityTypes[0] || 'report'}>
         <TabsList className="bg-slate-800/70 border border-slate-700/50 flex-wrap h-auto gap-1 p-1">
           {facilityTypes.map(ft => (
             <TabsTrigger key={ft} value={ft} className="text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-slate-100 text-slate-400 whitespace-nowrap">
               {TYPE_LABELS[ft] || ft.replace(/_/g, ' ')}
             </TabsTrigger>
           ))}
+          <TabsTrigger value="report" className="text-xs data-[state=active]:bg-slate-700 data-[state=active]:text-slate-100 text-slate-400 whitespace-nowrap">
+            <FileText className="w-3.5 h-3.5 mr-1" aria-hidden="true" /> Report
+          </TabsTrigger>
         </TabsList>
         {facilityTypes.map(ft => (
           <TabsContent key={ft} value={ft} className="mt-4">
@@ -601,6 +600,9 @@ export default function FacilityDetail() {
             </Card>
           </TabsContent>
         ))}
+        <TabsContent value="report" className="mt-4">
+          <ComprehensiveReport providerId={providerId} npi={linked?.npi} facilityName={data.facility_name} />
+        </TabsContent>
       </Tabs>
 
       <DataSourcesFooter />

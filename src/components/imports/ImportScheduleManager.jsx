@@ -19,7 +19,7 @@ const MAINTENANCE_TASKS = [
   { key: 'runScheduledImports', label: 'Run Scheduled Imports', desc: 'Process all due schedules and fan out the maintenance workers.', icon: PlayCircle, accent: 'text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/20' },
   { key: 'autoRetryFailedImports', label: 'Retry Failed', desc: 'Re-dispatch failed batches whose error looks transient.', icon: RotateCcw, accent: 'text-amber-400 border-amber-500/30 hover:bg-amber-900/20' },
   { key: 'autoResumePausedImports', label: 'Resume Paused', desc: 'Resume paused batches from their saved offset.', icon: ResumeIcon, accent: 'text-sky-400 border-sky-500/30 hover:bg-sky-900/20' },
-  { key: 'cancelStalledImports', label: 'Cancel Stalled', desc: 'Fail batches with no progress for over an hour.', icon: AlertTriangle, accent: 'text-rose-400 border-rose-500/30 hover:bg-rose-900/20' },
+  { key: 'cancelStalledImports', label: 'Cancel Stalled', desc: 'Fail batches with no progress for over 2 hours; crawlers use their own watchdog.', icon: AlertTriangle, accent: 'text-rose-400 border-rose-500/30 hover:bg-rose-900/20' },
 ];
 
 const FREQUENCIES = ['daily', 'weekly', 'monthly', 'on_completion', 'on_release'];

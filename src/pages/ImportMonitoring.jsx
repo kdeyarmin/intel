@@ -547,8 +547,8 @@ export default function ImportMonitoring() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-amber-400/70 mb-3">
-              These jobs haven't updated in over 15 minutes. They may resume on their own after a server restart. Cancel stops a job for good; Mark Failed lets automatic retry pick it up.
+            <p className="text-sm text-amber-400 mb-3">
+              No progress for over 15 minutes (60 minutes for NPPES registry imports). This is an early warning: maintenance ticks mark jobs failed after 2 hours without progress; crawlers use their own watchdog. Cancel stops a job for good. Mark Failed moves it to failed imports; automatic retry applies only to eligible transient errors.
             </p>
             <div className="space-y-2">
               {staleBatches.map(batch => (

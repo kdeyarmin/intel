@@ -56,3 +56,71 @@
     cursor: pointer;
   }
 }
+/* Comprehensive report print layout (src/components/reports/ReportDocument.jsx).
+   The document is mounted only while printing; everything else on the page is
+   hidden so the PDF/printout is the report alone, light and high-contrast. */
+.cm-print-root { display: none; }
+
+@page cm-report { size: letter; margin: 12mm 12mm 14mm; }
+
+@media print {
+  body.cm-printing-report { background: #fff !important; }
+  body.cm-printing-report > *:not(.cm-print-root) { display: none !important; }
+  body.cm-printing-report > .cm-print-root { display: block !important; page: cm-report; }
+}
+
+.cm-report-doc {
+  color: #0f172a;
+  background: #fff;
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 10pt;
+  line-height: 1.4;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.cm-report-doc .cm-doc-brand {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #0f172a; color: #fff; padding: 10px 14px;
+  border-bottom: 3px solid #0891b2;
+}
+.cm-report-doc .cm-doc-brand-left { display: flex; align-items: center; gap: 10px; }
+.cm-report-doc .cm-doc-logo { width: 32px; height: 32px; border-radius: 6px; }
+.cm-report-doc .cm-doc-brand-name { font-size: 14pt; font-weight: 700; letter-spacing: -0.01em; }
+.cm-report-doc .cm-doc-brand-tag { font-size: 8pt; color: #cbd5e1; }
+.cm-report-doc .cm-doc-brand-right { text-align: right; font-size: 8.5pt; color: #e2e8f0; }
+.cm-report-doc .cm-doc-titleblock { padding: 14px 0 6px; border-bottom: 1px solid #cbd5e1; margin-bottom: 10px; }
+.cm-report-doc .cm-doc-title { font-size: 20pt; font-weight: 700; margin: 0; color: #0f172a; }
+.cm-report-doc .cm-doc-meta { margin: 2px 0 0; font-size: 9pt; color: #475569; }
+.cm-report-doc .cm-doc-h2,
+.cm-report-doc .cm-doc-h3 {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 12pt; font-weight: 700; color: #0f172a;
+  margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 2px solid #0891b2;
+  break-after: avoid; page-break-after: avoid;
+}
+.cm-report-doc .cm-doc-count { font-size: 8.5pt; font-weight: 400; color: #475569; }
+.cm-report-doc .cm-doc-block { break-inside: auto; }
+.cm-report-doc .cm-doc-section + .cm-doc-section { margin-top: 4px; }
+.cm-report-doc .cm-doc-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+.cm-report-doc .cm-doc-table thead { display: table-header-group; }
+.cm-report-doc .cm-doc-table th {
+  background: #e2e8f0; color: #0f172a; font-weight: 700; text-align: left;
+  padding: 4px 6px; border-bottom: 1px solid #94a3b8;
+}
+.cm-report-doc .cm-doc-table td { padding: 3px 6px; border-bottom: 1px solid #e2e8f0; vertical-align: top; color: #0f172a; }
+.cm-report-doc .cm-doc-table tr { break-inside: avoid; page-break-inside: avoid; }
+.cm-report-doc .cm-doc-table tbody tr:nth-child(even) td { background: #f8fafc; }
+.cm-report-doc .cm-right { text-align: right !important; font-variant-numeric: tabular-nums; }
+.cm-report-doc .cm-doc-kv { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; margin: 0; }
+.cm-report-doc .cm-doc-kv > div { display: flex; gap: 8px; break-inside: avoid; }
+.cm-report-doc .cm-doc-kv dt { min-width: 110px; color: #475569; font-weight: 600; }
+.cm-report-doc .cm-doc-kv dd { margin: 0; color: #0f172a; word-break: break-word; }
+.cm-report-doc .cm-doc-emph { font-size: 14pt; font-weight: 700; }
+.cm-report-doc .cm-doc-metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; break-inside: avoid; }
+.cm-report-doc .cm-doc-metric { border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 8px; background: #f8fafc; }
+.cm-report-doc .cm-doc-metric-label { font-size: 7.5pt; color: #475569; }
+.cm-report-doc .cm-doc-metric-value { font-size: 13pt; font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums; }
+.cm-report-doc .cm-doc-note { font-size: 8.5pt; font-style: italic; color: #475569; margin: 2px 0 6px; }
+.cm-report-doc .cm-doc-footer { margin-top: 18px; break-inside: avoid; }
+.cm-report-doc .cm-doc-sources { margin: 0 0 8px 16px; padding: 0; list-style: disc; font-size: 8.5pt; }
+.cm-report-doc .cm-doc-attrib { font-size: 7.5pt; color: #475569; margin: 4px 0 0; border-top: 1px solid #e2e8f0; padding-top: 4px; }

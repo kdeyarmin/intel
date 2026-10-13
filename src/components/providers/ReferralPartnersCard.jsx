@@ -16,7 +16,7 @@ export default function ReferralPartnersCard({ npi, referrals = [] }) {
     queryKey: ['referralsReceived', npi],
     queryFn: async () => {
       try {
-        const result = await base44.functions.invoke('getComprehensiveReport', { npi });
+        const result = await base44.functions.invoke('getComprehensiveReport', { npi, sections: ['referrals'] });
         const data = result?.data || result;
         return data?.referralsTo || [];
       } catch {
