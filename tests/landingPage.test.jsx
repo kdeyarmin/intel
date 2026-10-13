@@ -172,7 +172,7 @@ describe('Landing Page', () => {
       expect(screen.getByRole('heading', { name: /Your demo request is ready/i })).toBeInTheDocument();
     });
     const email = new URL(screen.getByRole('link', { name: /Email Demo Request/ }).href);
-    expect(email.pathname).toBe('sales@caremetric.ai');
+    expect(email.pathname).toBe('sales@caremetricintel.com');
     expect(email.searchParams.get('body')).toContain('Dr. Jane Smith');
     expect(email.searchParams.get('body')).toContain('jane@hospicecare.org');
     expect(screen.getByText(/Your details have not been submitted yet/)).toBeInTheDocument();
@@ -199,8 +199,8 @@ describe('Landing Page', () => {
   it('renders footer with contact email and public healthcare data disclaimer', () => {
     renderLanding();
 
-    expect(screen.getByText(/support@caremetric\.ai/i)).toBeInTheDocument();
-    expect(screen.getByText(/sales@caremetric\.ai/i)).toBeInTheDocument();
+    expect(screen.getByText(/support@caremetricintel\.com/i)).toBeInTheDocument();
+    expect(screen.getByText(/sales@caremetricintel\.com/i)).toBeInTheDocument();
     expect(screen.getByText(/Data & Compliance Disclaimer:/i)).toBeInTheDocument();
     expect(screen.getByText(/CareMetric Intel aggregates and synthesizes public data releases/i)).toBeInTheDocument();
   });

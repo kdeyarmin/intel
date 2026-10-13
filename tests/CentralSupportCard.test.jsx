@@ -9,8 +9,8 @@ describe('CentralSupportCard', () => {
 
     expect(screen.getByRole('link', { name: '(877) 521-2890' }))
       .toHaveAttribute('href', 'tel:+18775212890');
-    expect(screen.getByRole('link', { name: 'support@caremetric.ai' }))
-      .toHaveAttribute('href', 'mailto:support@caremetric.ai');
+    expect(screen.getByRole('link', { name: 'support@caremetricintel.com' }))
+      .toHaveAttribute('href', 'mailto:support@caremetricintel.com');
     expect(screen.queryByRole('link', { name: /open caremetric help center/i })).not.toBeInTheDocument();
   });
 

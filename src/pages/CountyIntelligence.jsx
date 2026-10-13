@@ -165,7 +165,7 @@ export default function CountyIntelligence() {
         </div>
       ) : isLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-label="Loading county">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
-      ) : data?.needsCounty || data?.notLoaded ? (
+      ) : data?.needsCounty || data?.notLoaded || !data?.county ? (
         <p className="text-sm text-slate-400">{data.message || 'That county wasn’t found. Pick one from the list.'}</p>
       ) : (
         <>

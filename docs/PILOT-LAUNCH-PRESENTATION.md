@@ -36,7 +36,7 @@ Real CMS + NPPES intelligence for our team.
 
 ## Slide 3: What is CareMetric Intel?
 
-A healthcare provider intelligence + CRM + analytics platform.
+CareMetric Intel — a provider intelligence, CRM, and analytics platform from CareMetric Healthcare Advisors.
 
 **It turns public data into action:**
 - Provider & facility profiles with CMS quality, utilization & financial data

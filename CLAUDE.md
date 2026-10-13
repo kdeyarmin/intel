@@ -6,7 +6,7 @@ security model, and DB performance notes.
 
 ## What this is
 
-CareMetric AI Intelligence: a healthcare provider intelligence / CRM /
+CareMetric Intel: a healthcare provider intelligence / CRM /
 analytics platform. Three layers:
 
 1. **`src/`** — React 18 + Vite SPA. Pages are auto-registered in

@@ -65,7 +65,7 @@ export default function Landing() {
     e.preventDefault();
     setDemoSubmitted(true);
   };
-  const demoEmail = `mailto:sales@caremetric.ai?subject=${encodeURIComponent('CareMetric Intel demo request')}&body=${encodeURIComponent(
+  const demoEmail = `mailto:sales@caremetricintel.com?subject=${encodeURIComponent('CareMetric Intel demo request')}&body=${encodeURIComponent(
     `Name: ${demoForm.fullName}\nEmail: ${demoForm.workEmail}\nOrganization: ${demoForm.organization}\nCare setting: ${demoForm.businessLine}\nTerritory: ${demoForm.territory}\nNotes: ${demoForm.notes}`,
   )}`;
 
@@ -244,7 +244,7 @@ export default function Landing() {
           {/* Tagline Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 text-xs sm:text-sm font-medium mb-8 shadow-inner">
             <Sparkles className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-            <span>Healthcare Provider Intelligence & Referral Mapping</span>
+            <span>CareMetric Healthcare Advisors & Referral Mapping</span>
           </div>
 
           {/* Main Headline */}
@@ -1236,8 +1236,8 @@ export default function Landing() {
                 Precision provider intelligence, Medicare certification tracking, and referral network analytics for home health, hospice, and post-acute care teams.
               </p>
               <div className="pt-2 text-xs text-slate-400 space-y-1">
-                <p>Support: <a href="mailto:support@caremetric.ai" className="text-cyan-400 hover:underline">support@caremetric.ai</a></p>
-                <p>Sales: <a href="mailto:sales@caremetric.ai" className="text-cyan-400 hover:underline">sales@caremetric.ai</a></p>
+                <p>Support: <a href="mailto:support@caremetricintel.com" className="text-cyan-400 hover:underline">support@caremetricintel.com</a></p>
+                <p>Sales: <a href="mailto:sales@caremetricintel.com" className="text-cyan-400 hover:underline">sales@caremetricintel.com</a></p>
               </div>
             </div>
 

@@ -130,7 +130,16 @@ function formatCurrency(val) {
   return `$${num.toLocaleString()}`;
 }
 
-function formatNumber(val) {
+// Identifiers are labels, not quantities: ZIP codes, NPIs, CCNs, associate
+// IDs and years must never gain thousands separators (a ZIP of 02134 is not
+// "2,134", and a data year is not "2,024").
+const IDENTIFIER_KEY = /(zip|postal|npi|ccn|associate|years?)/i;
+function isIdentifierField(key) {
+  return IDENTIFIER_KEY.test(String(key || ''));
+}
+
+function formatNumber(val, key) {
+  if (key && isIdentifierField(key)) return String(val ?? '');
   if (!val) return '0';
   return Number(val).toLocaleString();
 }
@@ -148,6 +157,9 @@ function isCurrencyField(key) {
 
 function formatCellValue(key, val) {
   if (val == null || val === '') return '—';
+  if (isIdentifierField(key)) return String(val);
+  // A leading zero marks an identifier (e.g. a ZIP code), never a quantity.
+  if (/^0\d+$/.test(String(val).trim())) return String(val);
   if (isCurrencyField(key) && isNumericish(val)) return formatCurrency(val);
   if (isNumericish(val) && !String(val).includes('-') && String(val).length < 15) {
     const num = Number(String(val).replace(/[$,%]/g, ''));
@@ -207,7 +219,7 @@ function RawDataTable({ rows, facilityType }) {
                 <p className="text-base font-bold text-slate-100">
                   {col.key.includes('payment') || col.key.includes('charge')
                     ? formatCurrency(latestRow[col.key])
-                    : latestRow[col.key] != null ? formatNumber(latestRow[col.key]) : '—'}
+                    : latestRow[col.key] != null ? formatNumber(latestRow[col.key], col.key) : '—'}
                 </p>
               </div>
             ))}
@@ -261,7 +273,7 @@ function RawDataTable({ rows, facilityType }) {
                   <td key={col.key} className={`${col.align === 'left' ? 'text-left' : 'text-right'} py-2 px-3 text-slate-300 whitespace-nowrap`}>
                     {col.key.includes('payment') || col.key.includes('charge')
                       ? formatCurrency(row[col.key])
-                      : row[col.key] != null ? formatNumber(row[col.key]) : '—'}
+                      : row[col.key] != null ? formatNumber(row[col.key], col.key) : '—'}
                   </td>
                 ))}
                 {displayRawKeys.map(k => (

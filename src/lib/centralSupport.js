@@ -1,7 +1,7 @@
 export const CENTRAL_SUPPORT_HUB_ORIGIN = 'https://support-hub-web-production.up.railway.app';
 export const CENTRAL_SUPPORT_PHONE = '+18775212890';
 export const CENTRAL_SUPPORT_PHONE_DISPLAY = '(877) 521-2890';
-export const CENTRAL_SUPPORT_EMAIL = 'support@caremetric.ai';
+export const CENTRAL_SUPPORT_EMAIL = 'support@caremetricintel.com';
 
 export const CAREMETRIC_INTEL_PRODUCT = 'caremetric-intel';
 export const CAREMETRIC_INTEL_PRODUCTION_APP_ID = '6993c62145573ca8a97ad4a9';
