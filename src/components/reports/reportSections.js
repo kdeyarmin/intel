@@ -100,7 +100,7 @@ function sectionBlocks(key, report) {
         type: { text: text(l.location_type) },
         phone: { text: text(l.phone) },
       }));
-      return [table('locations', 'Locations', [col('address', 'Address'), col('place', 'City, State ZIP'), col('type', 'Type'), col('phone', 'Phone')], rows, 'No addresses on file.')];
+      return [table('locations', 'Locations', [col('address', 'Address'), col('place', 'City, State ZIP'), col('type', 'Type'), col('phone', 'Phone')], rows, 'No practice or mailing addresses on file. Addresses come from this provider\'s NPPES registry record; none are listed there.')];
     }
     case 'taxonomies': {
       const rows = (report.taxonomies || []).map((t) => ({
@@ -109,7 +109,7 @@ function sectionBlocks(key, report) {
         license: { text: [t.license_number, t.license_state].filter(Boolean).join(' · ') || '—' },
         primary: { text: t.is_primary ? 'Primary' : '' },
       }));
-      return [table('taxonomies', 'Taxonomies', [col('description', 'Specialty'), col('code', 'Code'), col('license', 'License'), col('primary', 'Primary')], rows, 'No taxonomies on file.')];
+      return [table('taxonomies', 'Taxonomies', [col('description', 'Specialty'), col('code', 'Code'), col('license', 'License'), col('primary', 'Primary')], rows, 'No specialties or taxonomies on file. Taxonomies come from the provider\'s NPPES registry record (NUCC codes); none are listed there.')];
     }
     case 'utilization': {
       const rows = (report.utilization || []).map((u) => ({
@@ -119,7 +119,10 @@ function sectionBlocks(key, report) {
         benes: { text: fmtInt(u.totalBeneficiaries) },
         payment: { text: fmtMoney(u.totalPayment) },
       }));
-      return [table('utilization', 'Service Utilization', [col('service', 'Service'), col('year', 'Year', 'right'), col('services', 'Services', 'right'), col('benes', 'Beneficiaries', 'right'), col('payment', 'Medicare paid', 'right')], rows, 'No Medicare utilization on file.')];
+      return [{
+        ...table('utilization', 'Service Utilization', [col('service', 'Service'), col('year', 'Year', 'right'), col('services', 'Services', 'right'), col('benes', 'Beneficiaries', 'right'), col('payment', 'Medicare paid', 'right')], rows, 'No Medicare utilization on file. Utilization comes from the CMS Medicare Physician & Other Practitioners dataset; this provider has no reported services in the current release.'),
+        note: 'Medicare fee-for-service volume by service type. Use it to gauge practice scale, service mix and capacity before outreach.',
+      }];
     }
     case 'referrals': {
       const sent = (report.referralsFrom || []).map((r) => ({
@@ -138,8 +141,9 @@ function sectionBlocks(key, report) {
       }));
       const cols = [col('partner', 'Partner'), col('npi', 'NPI'), col('referrals', 'Shared patients', 'right'), col('benes', 'Beneficiaries', 'right'), col('year', 'Year', 'right')];
       const blocks = [
-        table('referralsSent', 'Referrals Sent', cols, sent, 'No outbound shared-patient partners on file.'),
-        table('referralsReceived', 'Referrals Received', cols, received, 'No inbound shared-patient partners on file.'),
+        { ...table('referralsSent', 'Referrals Sent', cols, sent, 'No outbound shared-patient partners on file. Shared-patient patterns come from CMS physician shared-patient data; no qualifying relationships were found for this provider.'),
+          note: 'Shared patients are beneficiaries both providers treated within 30 days (CMS shared-patient patterns). They indicate likely referral relationships, not confirmed referrals.' },
+        table('referralsReceived', 'Referrals Received', cols, received, 'No inbound shared-patient partners on file. Shared-patient patterns come from CMS physician shared-patient data; no qualifying relationships were found for this provider.'),
       ];
       const o = report.orderReferring;
       if (o) {
@@ -166,7 +170,7 @@ function sectionBlocks(key, report) {
         type: { text: text(a.affiliation_type) },
         place: { text: [a.city, a.state].filter(Boolean).join(', ') || '—' },
       }));
-      return [table('affiliations', 'Affiliations', [col('org', 'Organization'), col('npi', 'NPI'), col('type', 'Type'), col('place', 'Location')], rows, 'No affiliations on file.')];
+      return [table('affiliations', 'Affiliations', [col('org', 'Organization'), col('npi', 'NPI'), col('type', 'Type'), col('place', 'Location')], rows, 'No affiliations on file. Affiliations come from CMS facility affiliation records and NPPES; none are linked to this provider.')];
     }
     case 'facilities': {
       const rows = (report.facilities || []).map((f) => ({
@@ -176,7 +180,7 @@ function sectionBlocks(key, report) {
         year: { text: text(f.dataYear) },
         payments: { text: f.totalPayments == null ? '—' : fmtMoney(f.totalPayments) },
       }));
-      return [table('facilities', 'Linked Facilities', [col('name', 'Facility'), col('dataset', 'Dataset'), col('place', 'Location'), col('year', 'Year', 'right'), col('payments', 'Payments', 'right')], rows, 'No Medicare facility records linked.')];
+      return [table('facilities', 'Linked Facilities', [col('name', 'Facility'), col('dataset', 'Dataset'), col('place', 'Location'), col('year', 'Year', 'right'), col('payments', 'Payments', 'right')], rows, 'No Medicare facility records linked. Facility records come from CMS Provider of Services and Care Compare files; none match this provider\'s CCN or NPI.')];
     }
     case 'quality': {
       const rows = (report.quality || []).map((q) => ({
@@ -185,7 +189,10 @@ function sectionBlocks(key, report) {
         rating: { text: num(q.qualityRating) == null ? '—' : `${num(q.qualityRating)} / 5` },
         year: { text: text(q.dataYear) },
       }));
-      return [table('quality', 'Quality Measures', [col('dataset', 'Dataset'), col('facility', 'Facility'), col('rating', 'Star rating', 'right'), col('year', 'Year', 'right')], rows, 'No CMS quality ratings on file.')];
+      return [{
+        ...table('quality', 'Quality Measures', [col('dataset', 'Dataset'), col('facility', 'Facility'), col('rating', 'Star rating', 'right'), col('year', 'Year', 'right')], rows, 'No CMS quality ratings on file. Star ratings come from CMS Care Compare; no published rating exists for the linked facilities in the current release.'),
+        note: 'Overall CMS Care Compare star ratings for the linked facilities, from the latest published release.',
+      }];
     }
     case 'ownership': {
       const rows = (report.ownership || []).map((o) => ({
@@ -196,7 +203,7 @@ function sectionBlocks(key, report) {
         year: { text: text(o.dataYear) },
       }));
       return [{
-        ...table('ownership', 'Ownership Details', [col('owner', 'Owner'), col('percentage', 'Ownership', 'right'), col('type', 'Type / role'), col('dataset', 'Dataset'), col('year', 'Year', 'right')], rows, 'No linked ownership details on file.'),
+        ...table('ownership', 'Ownership Details', [col('owner', 'Owner'), col('percentage', 'Ownership', 'right'), col('type', 'Type / role'), col('dataset', 'Dataset'), col('year', 'Year', 'right')], rows, 'No linked ownership details on file. Ownership comes from the CMS All Owners and Nursing Home Ownership files; no ownership or management interests are linked to this provider.'),
         note: 'Up to 30 reported ownership or management interests. Missing percentages are not zero; interests may overlap and are not summed.',
       }];
     }
@@ -208,7 +215,7 @@ function sectionBlocks(key, report) {
         value: { text: c.format === 'money' ? fmtMoney(c.value) : fmtInt(c.value) },
       }));
       return [{
-        ...table('costReports', 'Cost Report Summaries', [col('dataset', 'Dataset'), col('period', 'Reporting period'), col('metric', 'Metric'), col('value', 'Reported value', 'right')], rows, 'No linked cost report metrics on file.'),
+        ...table('costReports', 'Cost Report Summaries', [col('dataset', 'Dataset'), col('period', 'Reporting period'), col('metric', 'Metric'), col('value', 'Reported value', 'right')], rows, 'No linked cost report metrics on file. Cost reports come from the CMS Hospital, Home Health Agency and SNF Cost Report files; none are linked to this provider.'),
         note: 'Latest available release per dataset. Fiscal periods may differ; reported financial totals are not combined.',
       }];
     }
@@ -220,7 +227,7 @@ function sectionBlocks(key, report) {
         year: { text: text(q.dataYear) },
       }));
       return [{
-        ...table('additionalQuality', 'Additional Quality Measures', [col('dataset', 'Dataset'), col('measure', 'Measure'), col('score', 'Reported score', 'right'), col('year', 'Year', 'right')], rows, 'No additional linked quality measures on file.'),
+        ...table('additionalQuality', 'Additional Quality Measures', [col('dataset', 'Dataset'), col('measure', 'Measure'), col('score', 'Reported score', 'right'), col('year', 'Year', 'right')], rows, 'No additional quality measures on file. These measures come from CMS Value-Based Purchasing, SNF Quality Reporting, Home Health and Nursing Home quality files; none are linked to this provider.'),
         note: 'Up to five measures per record, 20 overall. CMS scores retain their source units; measures and reporting periods are not directly comparable. Suppressed or unavailable scores are omitted.',
       }];
     }
@@ -238,7 +245,8 @@ function sectionBlocks(key, report) {
           { label: 'Referral likelihood', value: num(s.referral_likelihood) == null ? '—' : String(Math.round(num(s.referral_likelihood))) },
           { label: 'Data completeness', value: num(s.data_completeness) == null ? '—' : String(Math.round(num(s.data_completeness))) },
         ] : [],
-        emptyText: 'Unscored: no lead score has been calculated for this provider.',
+        emptyText: 'Unscored: no lead score has been calculated for this provider. CareMetric calculates lead scores from Medicare utilization, shared-patient referral patterns and data completeness.',
+        note: 'The lead score (0-100) ranks outreach priority, combining referral likelihood, outreach potential and data completeness.',
       }];
     }
     case 'enrichments': {
@@ -249,7 +257,7 @@ function sectionBlocks(key, report) {
         confidence: { text: text(e.confidence) },
         status: { text: text(e.status) },
       }));
-      return [table('enrichments', 'Enrichment Records', [col('field', 'Field'), col('value', 'Value'), col('source', 'Source'), col('confidence', 'Confidence'), col('status', 'Status')], rows, 'No enrichment records.')];
+      return [table('enrichments', 'Enrichment Records', [col('field', 'Field'), col('value', 'Value'), col('source', 'Source'), col('confidence', 'Confidence'), col('status', 'Status')], rows, 'No enrichment records. Enrichments are contact and profile additions recorded by CareMetric; none exist for this provider.')];
     }
     default:
       return [];

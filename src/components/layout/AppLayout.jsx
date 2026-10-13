@@ -7,7 +7,6 @@ import { LogOut, Search, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpe
 import { Button } from '@/components/ui/button';
 import NotificationBell from '../shared/NotificationBell';
 import AccountDialog from '../auth/AccountDialog';
-import BillingStatusWidget from './BillingStatusWidget';
 import BusinessLineSelect from '@/components/shared/BusinessLineSelect';
 import { getNavPageFor, getVisibleNavSections, roleLabel } from './navConfig';
 
@@ -146,7 +145,7 @@ export default function AppLayout({ children, currentPageName }) {
               style={{ background: 'transparent', mixBlendMode: 'screen' }}
             />
             <div>
-              <p className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-cyan-400">AI</span></p>
+              <p className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-cyan-400">Intel</span></p>
               <p className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Intelligence</p>
             </div>
           </div>
@@ -228,7 +227,6 @@ export default function AppLayout({ children, currentPageName }) {
           })}
         </nav>
 
-        <BillingStatusWidget sidebarOpen={sidebarOpen} />
 
         {/* User footer */}
         <div className="p-3 border-t border-slate-800/60 min-w-[14rem]">
@@ -275,7 +273,7 @@ export default function AppLayout({ children, currentPageName }) {
             <PanelLeftOpen className="w-5 h-5" aria-hidden="true" />
           </Button>
           <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="" className="w-7 h-7 rounded-lg" style={{ background: 'transparent', mixBlendMode: 'screen' }} />
-          <p className="text-sm font-bold text-white flex-1">CareMetric <span className="text-cyan-400">AI</span></p>
+          <p className="text-sm font-bold text-white flex-1">CareMetric <span className="text-cyan-400">Intel</span></p>
           <button type="button" onClick={openSearch} onMouseEnter={loadGlobalSearchDialog} onFocus={loadGlobalSearchDialog} aria-label="Search" className="text-slate-400 hover:text-cyan-400 transition-colors p-1.5">
             <Search className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -297,14 +295,11 @@ export default function AppLayout({ children, currentPageName }) {
                 className="w-4 h-4 rounded"
                 style={{ background: 'transparent', mixBlendMode: 'screen' }}
               />
-              <span className="text-[11px] text-slate-400 font-medium">CareMetric AI</span>
+              <span className="text-[11px] text-slate-400 font-medium">CareMetric Intel</span>
               <span className="text-[11px] text-slate-400">•</span>
-              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline">www.CareMetric.ai</a>
+              <a href="https://caremetricintel.com" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline">caremetricintel.com</a>
             </div>
           </div>
-          <p className="text-[9px] text-slate-400 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
-            Data Sources: All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files; county and ZIP geography from the U.S. Census Bureau (2020 Gazetteer and ZCTA relationship files). Insights are estimates based on public data patterns and do not represent confirmed referral relationships.
-          </p>
         </div>
       </main>
     </div>
