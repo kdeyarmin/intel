@@ -86,6 +86,32 @@ function countyAnswers(fn, payload) {
   throw new Error(`unexpected ${fn}`);
 }
 
+describe('CountyIntelligence missing county data', () => {
+  it.each(['overview', 'market', 'hospitals', 'competitors', 'referrals'].flatMap((tab) => [
+    { tab, response: {}, kind: 'omitted county' },
+    { tab, response: { county: null }, kind: 'null county' },
+    { tab, response: null, kind: 'null data' },
+  ]))('shows a friendly fallback on $tab with $kind', async ({ tab, response }) => {
+    invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(fn === 'getCountyIntelligence'
+      ? response
+      : countyAnswers(fn, payload)));
+    renderAt(`/CountyIntelligence?state=PA&county=42003&tab=${tab}`, CountyIntelligence, '/CountyIntelligence');
+
+    expect(await screen.findByText('That county wasn’t found. Pick one from the list.')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Allegheny County, PA' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+  });
+
+  it('uses the API message when county data is missing', async () => {
+    invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(fn === 'getCountyIntelligence'
+      ? { message: 'County data is unavailable. Please choose another county.' }
+      : countyAnswers(fn, payload)));
+    renderAt('/CountyIntelligence?state=PA&county=42003', CountyIntelligence, '/CountyIntelligence');
+
+    expect(await screen.findByText('County data is unavailable. Please choose another county.')).toBeInTheDocument();
+  });
+});
+
 describe('CountyIntelligence market tabs', () => {
   it('opens the hospital sources tab from the URL and lists hospitals with their discharge mix', async () => {
     invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(countyAnswers(fn, payload)));
