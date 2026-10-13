@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "6786a5df9294b13c1fa83e122825e74934781c30",
+    "ref": "279f05fac144520fc30fe7a54cae1802fe4c4757",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
