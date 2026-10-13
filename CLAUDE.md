@@ -338,3 +338,12 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   for backfills, not for keeping data fresh.
 - **Component tests need jsdom.** Add `// @vitest-environment jsdom` at the top
   of the test file; the default environment is `node`.
+
+## Deployment
+
+- Railway (project "CareMetric Intel") deploys the Intel service from `main`
+  and is configured to **wait for GitHub CI**: if the `CI` workflow
+  (`.github/workflows/ci.yml` — lint, typecheck, test, build on the Node
+  version in `.nvmrc`) fails on a commit, Railway **skips** that deployment
+  silently. A merged PR is not live until its merge commit's CI is green and
+  the Railway deployment shows success.
