@@ -21,7 +21,14 @@ function drawPageHeader(doc, model, logo) {
   doc.rect(0, HEADER_H, w, 0.8, 'F');
   let x = MARGIN;
   if (logo) {
-    try { doc.addImage(logo, 'PNG', MARGIN, 3, 14, 14); x += 17; } catch { /* a report without the logo is still a report */ }
+    try {
+      const image = doc.getImageProperties(logo);
+      const scale = Math.min(40 / image.width, 14 / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      doc.addImage(logo, 'PNG', MARGIN, (HEADER_H - height) / 2, width, height);
+      x += width + 3;
+    } catch { /* a report without the logo is still a report */ }
   }
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');

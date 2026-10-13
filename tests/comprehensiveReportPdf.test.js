@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ doc: null, logo: vi.fn(async () => null) }));
+const state = vi.hoisted(() => ({ doc: null, logo: vi.fn(async () => null), imageSize: null }));
 vi.mock('@/components/exports/exportUtils', () => ({
   pdfLogo: state.logo,
   exportAttribution: () => 'Source: CareMetric analytics derived from public CMS files.',
@@ -11,6 +11,10 @@ vi.mock('jspdf', async (original) => {
     jsPDF: function (options) {
       state.doc = new jsPDF(options);
       state.doc.save = vi.fn();
+      if (state.imageSize) {
+        state.doc.getImageProperties = vi.fn(() => state.imageSize);
+        state.doc.addImage = vi.fn();
+      }
       return state.doc;
     },
   };
@@ -19,7 +23,20 @@ vi.mock('jspdf', async (original) => {
 import { downloadReportPdf } from '../src/components/reports/reportPdf';
 import { buildReportModel } from '../src/components/reports/reportSections';
 
+afterEach(() => {
+  state.imageSize = null;
+  state.logo.mockReset().mockResolvedValue(null);
+});
+
 describe('comprehensive report PDF', () => {
+  it('fits a full wordmark without stretching it to a square', async () => {
+    state.logo.mockResolvedValue('test-logo');
+    state.imageSize = { width: 400, height: 100 };
+    const model = buildReportModel({}, ['profile'], { providerId: '390111' });
+    await downloadReportPdf(model);
+    expect(state.doc.addImage).toHaveBeenCalledWith('test-logo', 'PNG', 14, 5, 40, 10);
+  });
+
   it('generates a real paginated PDF with branding, curated sections and repeated headers', async () => {
     const report = {
       generatedAt: '2026-10-01T12:00:00Z',
