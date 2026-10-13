@@ -19,5 +19,6 @@ export default defineConfig({
   },
   test: {
     setupFiles: ['./tests/setup.js'],
+    include: ['tests/cmsCatalog.test.ts'],
   },
 });
