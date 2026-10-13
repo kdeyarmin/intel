@@ -9,7 +9,7 @@ export default function Login() {
   const navigate = useNavigate();
   const sessionExpired = searchParams.get('reason') === 'expired';
   const accountDisabled = authError?.type === 'account_disabled';
-  const [isSignup, setIsSignup] = useState(false);
+  const [isSignup, setIsSignup] = useState(() => searchParams.get('signup') === 'true');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -52,8 +52,15 @@ export default function Login() {
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">CareMetric AI</h1>
+          <Link to="/landing" className="inline-block hover:opacity-90 transition-opacity">
+            <h1 className="text-3xl font-bold text-white mb-2">CareMetric AI</h1>
+          </Link>
           <p className="text-slate-400">Healthcare Provider Intelligence Platform</p>
+          <div className="mt-2">
+            <Link to="/landing" className="text-xs text-cyan-400 hover:text-cyan-300">
+              ← Explore product features &amp; pricing
+            </Link>
+          </div>
         </div>
 
         <main className="bg-slate-800 rounded-xl border border-slate-700 p-8">
@@ -200,7 +207,8 @@ export default function Login() {
             </button>
           </div>
         </main>
-        <nav aria-label="Legal" className="mt-6 flex justify-center gap-4 text-xs text-slate-400">
+        <nav aria-label="Legal and Product" className="mt-6 flex justify-center gap-4 text-xs text-slate-400">
+          <Link to="/landing" className="hover:text-slate-200">Product overview</Link>
           <Link to="/terms" className="hover:text-slate-200">Terms</Link>
           <Link to="/privacy" className="hover:text-slate-200">Privacy</Link>
           <Link to="/data-use" className="hover:text-slate-200">Data sources</Link>
