@@ -7,9 +7,9 @@ import { LogOut, Search, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpe
 import { Button } from '@/components/ui/button';
 import NotificationBell from '../shared/NotificationBell';
 import AccountDialog from '../auth/AccountDialog';
-import BillingStatusWidget from './BillingStatusWidget';
 import BusinessLineSelect from '@/components/shared/BusinessLineSelect';
 import { getNavPageFor, getVisibleNavSections, roleLabel } from './navConfig';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_NAME, CAREMETRIC_WEBSITE } from '@/lib/branding';
 
 const loadGlobalSearchDialog = () => import('../search/GlobalSearchDialog');
 const GlobalSearchDialog = lazy(loadGlobalSearchDialog);
@@ -140,14 +140,13 @@ export default function AppLayout({ children, currentPageName }) {
         <div className="p-4 flex items-center justify-between border-b border-slate-800/60 min-w-[14rem]">
           <div className="flex items-center gap-3">
             <img
-              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
-              alt=""
-              className="w-10 h-10 rounded-xl flex-shrink-0"
-              style={{ background: 'transparent', mixBlendMode: 'screen' }}
+              src={CAREMETRIC_LOGO_URL}
+              alt={CAREMETRIC_NAME}
+              className="w-10 h-10 rounded-xl flex-shrink-0 object-contain"
             />
             <div>
-              <p className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-cyan-400">AI</span></p>
-              <p className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Intelligence</p>
+              <p className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric</p>
+              <p className="text-[10px] text-slate-400 font-medium tracking-wider">Healthcare Advisors</p>
             </div>
           </div>
           <Button
@@ -228,8 +227,6 @@ export default function AppLayout({ children, currentPageName }) {
           })}
         </nav>
 
-        <BillingStatusWidget sidebarOpen={sidebarOpen} />
-
         {/* User footer */}
         <div className="p-3 border-t border-slate-800/60 min-w-[14rem]">
           <div className="mb-2 px-2 flex items-center justify-between">
@@ -274,8 +271,8 @@ export default function AppLayout({ children, currentPageName }) {
           <Button ref={openButtonRef} variant="ghost" size="icon" onClick={toggleSidebar} aria-label="Open sidebar" aria-expanded="false" className="text-slate-400 hover:text-white hover:bg-slate-800/60 h-8 w-8">
             <PanelLeftOpen className="w-5 h-5" aria-hidden="true" />
           </Button>
-          <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="" className="w-7 h-7 rounded-lg" style={{ background: 'transparent', mixBlendMode: 'screen' }} />
-          <p className="text-sm font-bold text-white flex-1">CareMetric <span className="text-cyan-400">AI</span></p>
+          <img src={CAREMETRIC_LOGO_URL} alt={CAREMETRIC_NAME} className="w-7 h-7 rounded-lg object-contain" />
+          <p className="text-sm font-bold text-white flex-1">CareMetric</p>
           <button type="button" onClick={openSearch} onMouseEnter={loadGlobalSearchDialog} onFocus={loadGlobalSearchDialog} aria-label="Search" className="text-slate-400 hover:text-cyan-400 transition-colors p-1.5">
             <Search className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -292,18 +289,17 @@ export default function AppLayout({ children, currentPageName }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
+                src={CAREMETRIC_LOGO_URL}
                 alt=""
-                className="w-4 h-4 rounded"
-                style={{ background: 'transparent', mixBlendMode: 'screen' }}
+                className="w-4 h-4 rounded object-contain"
               />
-              <span className="text-[11px] text-slate-400 font-medium">CareMetric AI</span>
+              <span className="text-[11px] text-slate-400 font-medium">CareMetric Healthcare Advisors</span>
               <span className="text-[11px] text-slate-400">•</span>
-              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline">www.CareMetric.ai</a>
+              <a href={CAREMETRIC_WEBSITE} target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline">caremetricadvisors.com</a>
             </div>
           </div>
-          <p className="text-[9px] text-slate-400 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
-            Data Sources: All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files; county and ZIP geography from the U.S. Census Bureau (2020 Gazetteer and ZCTA relationship files). Insights are estimates based on public data patterns and do not represent confirmed referral relationships.
+          <p className="text-[9px] text-slate-500 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
+            Data from public CMS Medicare datasets, NPPES, and U.S. Census Bureau. Estimates based on public data; not confirmed referral relationships.
           </p>
         </div>
       </main>
