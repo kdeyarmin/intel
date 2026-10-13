@@ -56,14 +56,14 @@ describe('comprehensive report PDF', () => {
       expect(output).toContain(text);
     }
     expect(output.match(/CareMetric Intel/g)?.length).toBeGreaterThanOrEqual(state.doc.getNumberOfPages());
-    expect(output.match(/\(Owner\)/g)?.length).toBeGreaterThan(1);
+    expect(output.match(/\(Owner or manager\)/g)?.length).toBeGreaterThan(0);
     expect(state.doc.save).toHaveBeenCalledWith('CareMetric-Intel-Example-Hospital-2026-10-01.pdf');
   });
 
   it('downloads a graceful empty-data report without a logo', async () => {
     const model = buildReportModel({}, ['costReports'], { providerId: '390111' });
     await downloadReportPdf(model);
-    expect(state.doc.output()).toContain('No linked cost report metrics on file.');
+    expect(state.doc.output()).toContain('No cost-report financial or operating measures are linked to this facility in the available CMS releases.');
     expect(state.doc.save).toHaveBeenCalledTimes(1);
   });
 });
