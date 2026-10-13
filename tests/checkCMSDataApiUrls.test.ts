@@ -114,6 +114,10 @@ describe("isKnownCatalogType", () => {
       "physician_shared_patient_patterns",
       "provider_ownership",
       "home_health_pdgm",
+      // ZIP-file Medicare imports (dedicated importers, no CMS URL).
+      "medicare_hha_stats",
+      "medicare_ma_inpatient",
+      "medicare_snf_stats",
     ]) {
       expect(isKnownCatalogType(t, t)).toBe(true);
     }
