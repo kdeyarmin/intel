@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { pdfLogo } from '@/components/exports/exportUtils';
-import { reportFileName } from './reportSections';
+import { blockHasData, reportFileName } from './reportSections';
+import { CAREMETRIC_INTEL_NAME, CAREMETRIC_INTEL_WEBSITE } from '@/lib/branding';
 
 const MARGIN = 14;
 const HEADER_H = 20;
@@ -26,6 +27,8 @@ function drawPageHeader(doc, model, logo) {
       const scale = Math.min(40 / image.width, 14 / image.height);
       const width = image.width * scale;
       const height = image.height * scale;
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(MARGIN - 1, (HEADER_H - height) / 2 - 1, width + 2, height + 2, 1, 1, 'F');
       doc.addImage(logo, 'PNG', MARGIN, (HEADER_H - height) / 2, width, height);
       x += width + 3;
     } catch { /* a report without the logo is still a report */ }
@@ -33,13 +36,13 @@ function drawPageHeader(doc, model, logo) {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text('CareMetric AI', x, 10);
+  doc.text(CAREMETRIC_INTEL_NAME, x, 10);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.text('Healthcare Provider Intelligence', x, 15);
   doc.setFontSize(8);
   doc.text(model.subtitle, w - MARGIN, 10, { align: 'right' });
-  doc.text('www.CareMetric.ai', w - MARGIN, 15, { align: 'right' });
+  doc.text(CAREMETRIC_INTEL_WEBSITE, w - MARGIN, 15, { align: 'right' });
 }
 
 function drawPageFooter(doc, model, page, pages) {
@@ -51,10 +54,11 @@ function drawPageFooter(doc, model, page, pages) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(...MUTED);
-  doc.text(`CareMetric AI  •  ${model.title}  •  Generated ${model.generatedLabel}  •  Confidential`, MARGIN, h - FOOTER_H + 7, { maxWidth: w - MARGIN * 2 - 25 });
+  doc.text(`${CAREMETRIC_INTEL_NAME}  •  ${CAREMETRIC_INTEL_WEBSITE}  •  Confidential`, MARGIN, h - FOOTER_H + 7);
   doc.text(`Page ${page} of ${pages}`, w - MARGIN, h - FOOTER_H + 7, { align: 'right' });
   doc.setFontSize(6);
-  doc.text(doc.splitTextToSize(model.attribution, w - MARGIN * 2), MARGIN, h - FOOTER_H + 11);
+  doc.text(`Generated ${model.generatedLabel}`, MARGIN, h - FOOTER_H + 10);
+  doc.text(doc.splitTextToSize(model.attribution, w - MARGIN * 2), MARGIN, h - FOOTER_H + 13);
 }
 
 /** Lays out the report model as a branded, paginated PDF and downloads it. */
@@ -81,6 +85,53 @@ export async function downloadReportPdf(model) {
   const ensure = (needed) => {
     if (y + needed > bottom) newPage();
   };
+  const paragraph = (str, { font = 'normal', size = 8.5, color = MUTED, lineH = 4 } = {}) => {
+    doc.setFont('helvetica', font);
+    doc.setFontSize(size);
+    doc.setTextColor(...color);
+    const lines = doc.splitTextToSize(String(str), contentW);
+    for (const line of lines) {
+      ensure(lineH);
+      doc.text(line, MARGIN, y);
+      y += lineH;
+    }
+    y += 2;
+  };
+  const drawKv = (block, labelW = 34) => {
+    const colW = contentW / 2;
+    doc.setFontSize(8.5);
+    for (let i = 0; i < block.items.length; i += 2) {
+      const pair = block.items.slice(i, i + 2);
+      const labels = pair.map((it) => {
+        doc.setFont('helvetica', 'normal');
+        return doc.splitTextToSize(String(it.label), labelW - 3);
+      });
+      const values = pair.map((it) => {
+        doc.setFont('helvetica', 'bold');
+        return doc.splitTextToSize(String(it.value), colW - labelW - 4);
+      });
+      const lines = Math.max(...labels.map((l) => l.length), ...values.map((l) => l.length));
+      for (let offset = 0; offset < lines;) {
+        ensure(4);
+        const count = Math.min(lines - offset, Math.max(1, Math.floor((bottom - y) / 4)));
+        pair.forEach((_it, j) => {
+          const x = MARGIN + j * colW;
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...MUTED);
+          const label = labels[j].slice(offset, offset + count);
+          if (label.length) doc.text(label, x, y);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...INK);
+          const value = values[j].slice(offset, offset + count);
+          if (value.length) doc.text(value, x + labelW, y);
+        });
+        y += count * 4;
+        offset += count;
+      }
+      y += 2;
+    }
+    y += 2;
+  };
 
   drawPageHeader(doc, model, logo);
   y = HEADER_H + 12;
@@ -99,49 +150,42 @@ export async function downloadReportPdf(model) {
   y += 8;
 
   if (model.profile) {
+    paragraph('Executive Overview', { font: 'bold', size: 12, color: INK, lineH: 6 });
     const ids = model.profile.identifiers;
     if (ids.length) {
-      const colW = contentW / 2;
-      doc.setFontSize(8.5);
-      for (let i = 0; i < ids.length; i += 2) {
-        const pair = ids.slice(i, i + 2);
-        const lines = pair.map((it) => doc.splitTextToSize(String(it.value), colW - 34));
-        const rowH = Math.max(...lines.map((l) => l.length)) * 4 + 1.5;
-        ensure(rowH);
-        pair.forEach((it, j) => {
-          const x = MARGIN + j * colW;
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(...MUTED);
-          doc.text(it.label, x, y);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(...INK);
-          doc.text(lines[j], x + 32, y);
-        });
-        y += rowH;
-      }
-      y += 3;
+      drawKv({ items: ids });
     }
     const metrics = model.profile.metrics;
     if (metrics.length) {
-      ensure(20);
       const gap = 3;
-      const boxW = (contentW - gap * (metrics.length - 1)) / metrics.length;
-      metrics.forEach((m, i) => {
-        const x = MARGIN + i * (boxW + gap);
-        doc.setDrawColor(...RULE);
-        doc.setFillColor(...ZEBRA);
-        doc.roundedRect(x, y, boxW, 16, 1.5, 1.5, 'FD');
+      const columns = Math.min(metrics.length, 3);
+      const boxW = (contentW - gap * (columns - 1)) / columns;
+      for (let start = 0; start < metrics.length; start += columns) {
+        const row = metrics.slice(start, start + columns);
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7);
-        doc.setTextColor(...MUTED);
-        doc.text(doc.splitTextToSize(m.label, boxW - 4)[0], x + 2.5, y + 5);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(12);
-        doc.setTextColor(...INK);
-        doc.text(String(m.value), x + 2.5, y + 12.5);
-      });
-      y += 22;
+        doc.setFontSize(7.5);
+        const labels = row.map((m) => doc.splitTextToSize(m.label, boxW - 5));
+        const boxH = Math.max(...labels.map((l) => l.length)) * 3.5 + 13;
+        ensure(boxH + 3);
+        row.forEach((m, i) => {
+          const x = MARGIN + i * (boxW + gap);
+          doc.setDrawColor(...RULE);
+          doc.setFillColor(...ZEBRA);
+          doc.roundedRect(x, y, boxW, boxH, 1.5, 1.5, 'FD');
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(...MUTED);
+          doc.text(labels[i], x + 2.5, y + 5);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(11);
+          doc.setTextColor(...INK);
+          doc.text(String(m.value), x + 2.5, y + boxH - 4);
+        });
+        y += boxH + 4;
+      }
+      y += 2;
     }
+    for (const fact of model.profile.highlights || []) paragraph(fact);
   }
 
   const heading = (title, count) => {
@@ -150,14 +194,16 @@ export async function downloadReportPdf(model) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11.5);
     doc.setTextColor(...INK);
-    doc.text(title, MARGIN, y);
+    const lines = doc.splitTextToSize(title, contentW - (count != null ? 30 : 0));
+    ensure(lines.length * 5 + 10);
+    doc.text(lines, MARGIN, y);
     if (count != null) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(...MUTED);
       doc.text(`${count} record${count === 1 ? '' : 's'}`, pageW - MARGIN, y, { align: 'right' });
     }
-    y += 1.8;
+    y += (lines.length - 1) * 5 + 1.8;
     doc.setDrawColor(...ACCENT);
     doc.setLineWidth(0.6);
     doc.line(MARGIN, y, pageW - MARGIN, y);
@@ -166,13 +212,7 @@ export async function downloadReportPdf(model) {
   };
 
   const note = (str) => {
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(8);
-    doc.setTextColor(...MUTED);
-    const lines = doc.splitTextToSize(str, contentW);
-    ensure(lines.length * 3.6 + 2);
-    doc.text(lines, MARGIN, y);
-    y += lines.length * 3.6 + 2;
+    paragraph(str, { font: 'italic', size: 8, lineH: 3.6 });
   };
 
   const drawTable = (block) => {
@@ -204,67 +244,76 @@ export async function downloadReportPdf(model) {
       y += headerH - 1.4;
     };
 
-    ensure(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fontSize);
+    const headerH = Math.max(...cols.map((c, i) => doc.splitTextToSize(String(c.label), widths[i] - 3).length)) * lineH + 2.3;
+    doc.setFont('helvetica', 'normal');
+    const firstH = Math.max(1, ...cols.map((c, i) => doc.splitTextToSize(String(block.rows[0]?.[c.key]?.text ?? ''), widths[i] - 3).length)) * lineH + 1.4;
+    ensure(Math.min(headerH + firstH + 14, bottom - HEADER_H - 8));
+    heading(block.title, block.count);
     headerRow();
     doc.setFont('helvetica', 'normal');
     block.rows.forEach((row, ri) => {
       doc.setFontSize(fontSize);
       const cells = cols.map((c, i) => doc.splitTextToSize(String(row[c.key]?.text ?? ''), widths[i] - 3));
-      const rowH = Math.max(1, ...cells.map((l) => l.length)) * lineH + 1.4;
-      if (y + rowH > bottom) {
+      const lineCount = Math.max(1, ...cells.map((l) => l.length));
+      const rowH = lineCount * lineH + 1.4;
+      if (y + rowH > bottom && rowH < bottom - HEADER_H - 8 - headerH) {
         newPage();
         headerRow();
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(fontSize);
       }
-      if (ri % 2 === 1) {
-        doc.setFillColor(...ZEBRA);
-        doc.rect(MARGIN, y - 3, contentW, rowH, 'F');
+      for (let offset = 0; offset < lineCount;) {
+        if (y + lineH + 1.4 > bottom) {
+          newPage();
+          headerRow();
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(fontSize);
+        }
+        const count = Math.min(lineCount - offset, Math.max(1, Math.floor((bottom - y - 1.4) / lineH)));
+        const fragmentH = count * lineH + 1.4;
+        if (ri % 2 === 1) {
+          doc.setFillColor(...ZEBRA);
+          doc.rect(MARGIN, y - 3, contentW, fragmentH, 'F');
+        }
+        doc.setTextColor(...INK);
+        let x = MARGIN;
+        cols.forEach((c, i) => {
+          const tx = c.align === 'right' ? x + widths[i] - 1.5 : x + 1.5;
+          const lines = cells[i].slice(offset, offset + count);
+          if (lines.length) doc.text(lines, tx, y, { align: c.align === 'right' ? 'right' : 'left' });
+          x += widths[i];
+        });
+        y += fragmentH;
+        offset += count;
       }
-      doc.setTextColor(...INK);
-      let x = MARGIN;
-      cols.forEach((c, i) => {
-        const tx = c.align === 'right' ? x + widths[i] - 1.5 : x + 1.5;
-        doc.text(cells[i], tx, y, { align: c.align === 'right' ? 'right' : 'left' });
-        x += widths[i];
-      });
-      y += rowH;
       doc.setDrawColor(...RULE);
       doc.line(MARGIN, y - 3, pageW - MARGIN, y - 3);
     });
     y += 3;
   };
 
-  const drawKv = (block) => {
-    const colW = contentW / 2;
-    doc.setFontSize(9);
-    for (let i = 0; i < block.items.length; i += 2) {
-      ensure(7);
-      block.items.slice(i, i + 2).forEach((it, j) => {
-        const x = MARGIN + j * colW;
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...MUTED);
-        doc.text(it.label, x, y);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...INK);
-        doc.text(String(it.value), x + 40, y);
-      });
-      y += 6;
-    }
-    y += 1;
-  };
-
   model.sections.forEach((section) => {
-    section.blocks.forEach((block) => {
-      heading(block.title, block.kind === 'table' ? block.count : null);
-      const empty = block.kind === 'table' ? block.rows.length === 0 : block.items.length === 0;
-      if (empty) note(block.emptyText || 'No data on file.');
-      else if (block.kind === 'table') drawTable(block);
-      else drawKv(block);
+    section.blocks.filter(blockHasData).forEach((block) => {
+      if (block.kind === 'table') drawTable(block);
+      else {
+        heading(block.title);
+        drawKv(block);
+      }
       if (block.note) note(block.note);
       y += 3;
     });
   });
+  if (model.availability?.length) {
+    heading('Data Availability');
+    note('Unavailable or suppressed data does not mean zero activity or poor performance.');
+    model.availability.forEach((it) => {
+      ensure(12);
+      paragraph(it.label, { font: 'bold', size: 8.5, color: INK });
+      paragraph(it.message, { size: 8 });
+    });
+  }
 
   if (model.sources.length) {
     heading('Data Sources');

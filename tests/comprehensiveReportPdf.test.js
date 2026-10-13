@@ -52,10 +52,12 @@ describe('comprehensive report PDF', () => {
     const output = state.doc.output();
     expect(output).toMatch(/^%PDF-/);
     expect(state.doc.getNumberOfPages()).toBeGreaterThan(1);
-    for (const text of ['CareMetric AI', 'www.CareMetric.ai', 'Example Holding Company 29', '1,234,567', '45.6', 'Data Sources']) {
+    for (const text of ['CareMetric Intel', 'caremetricintel.com', 'Example Holding Company 29', '1,234,567', '45.6', 'Data Sources']) {
       expect(output).toContain(text);
     }
-    expect(output.match(/CareMetric AI/g)?.length).toBeGreaterThanOrEqual(state.doc.getNumberOfPages());
+    expect(output.match(/CareMetric Intel/g)?.length).toBeGreaterThanOrEqual(state.doc.getNumberOfPages());
+    expect(output).not.toContain('CareMetric AI');
+    expect(output).not.toContain('CareMetric.ai');
     expect(output.match(/\(Owner\)/g)?.length).toBeGreaterThan(1);
     expect(state.doc.save).toHaveBeenCalledWith('CareMetric-Example-Hospital-2026-10-01.pdf');
   });
@@ -65,5 +67,46 @@ describe('comprehensive report PDF', () => {
     await downloadReportPdf(model);
     expect(state.doc.output()).toContain('No linked cost report metrics on file.');
     expect(state.doc.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders missing-data coverage once after all populated sections', async () => {
+    const model = buildReportModel({
+      quality: [{ facilityType: 'snf', name: 'Example', qualityRating: 4, dataYear: 2024 }],
+    }, ['quality', 'ownership', 'costReports'], { providerId: '010001' });
+    await downloadReportPdf(model);
+    expect(state.doc.output().match(/\(Data Availability\) Tj/g)).toHaveLength(1);
+  });
+
+  it('prints overview facts and preserves ungrouped years, ZIP codes and identifiers', async () => {
+    const model = buildReportModel({
+      facility: { name: 'Example Hospital', providerId: '010001', city: 'Boston', state: 'MA', zip: '02108', latestYear: 2024 },
+      facilityUtilization: [{ dataset: 'hospital', dataYear: 2024, metric: 'Discharges', value: 1200, format: 'integer' }],
+    }, ['profile', 'utilization'], { providerId: '010001' });
+    await downloadReportPdf(model);
+    const output = state.doc.output();
+    for (const value of ['Executive Overview', '010001', '02108', '2024', '1,200', 'Facility Utilization']) expect(output).toContain(value);
+    for (const value of ['2,024', '2,108', '10,001']) expect(output).not.toContain(value);
+  });
+
+  it('wraps long labels, values and table rows within the printable page area', async () => {
+    const model = buildReportModel({
+      facility: { name: 'Example Hospital', providerId: '010001', facilityTypes: Array(80).fill('home_health_agencies') },
+      additionalQuality: [{ dataset: 'snf_quality_reporting', metric: `START ${'Long measure description '.repeat(350)} END`, value: 90, dataYear: 2024 }],
+    }, ['profile', 'additionalQuality'], { providerId: '010001' });
+    await downloadReportPdf(model);
+    expect(state.doc.getNumberOfPages()).toBeGreaterThan(2);
+    expect(state.doc.output()).toContain('END');
+    const pageH = state.doc.internal.pageSize.getHeight();
+    // PDF text baseline coordinates are points measured from the bottom.
+    for (const page of state.doc.internal.pages.slice(1)) {
+      for (const command of page) {
+        const position = command.match(/[\d.]+ ([\d.]+) Td/);
+        if (position) {
+          const fromTop = pageH - Number(position[1]) / state.doc.internal.scaleFactor;
+          expect(fromTop).toBeGreaterThanOrEqual(0);
+          expect(fromTop).toBeLessThan(pageH - 4);
+        }
+      }
+    }
   });
 });

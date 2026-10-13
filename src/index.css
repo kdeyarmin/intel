@@ -116,11 +116,17 @@
 .cm-report-doc .cm-doc-kv dt { min-width: 110px; color: #475569; font-weight: 600; }
 .cm-report-doc .cm-doc-kv dd { margin: 0; color: #0f172a; word-break: break-word; }
 .cm-report-doc .cm-doc-emph { font-size: 14pt; font-weight: 700; }
-.cm-report-doc .cm-doc-metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; break-inside: avoid; }
+.cm-report-doc .cm-doc-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 12px; break-inside: avoid; }
 .cm-report-doc .cm-doc-metric { border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 8px; background: #f8fafc; }
 .cm-report-doc .cm-doc-metric-label { font-size: 7.5pt; color: #475569; }
 .cm-report-doc .cm-doc-metric-value { font-size: 13pt; font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums; }
 .cm-report-doc .cm-doc-note { font-size: 8.5pt; font-style: italic; color: #475569; margin: 2px 0 6px; }
+.cm-report-doc .cm-doc-highlights { margin: 12px 0; padding-left: 18px; font-size: 9pt; }
+.cm-report-doc .cm-doc-highlights li { margin-bottom: 6px; break-inside: avoid; }
+.cm-report-doc .cm-doc-availability { margin: 0; font-size: 8.5pt; }
+.cm-report-doc .cm-doc-availability > div { padding: 7px 0; border-bottom: 1px solid #e2e8f0; break-inside: avoid; }
+.cm-report-doc .cm-doc-availability dt { font-weight: 600; }
+.cm-report-doc .cm-doc-availability dd { margin: 3px 0 0; color: #475569; }
 .cm-report-doc .cm-doc-footer { margin-top: 18px; break-inside: avoid; }
 .cm-report-doc .cm-doc-sources { margin: 0 0 8px 16px; padding: 0; list-style: disc; font-size: 8.5pt; }
 .cm-report-doc .cm-doc-attrib { font-size: 7.5pt; color: #475569; margin: 4px 0 0; border-top: 1px solid #e2e8f0; padding-top: 4px; }

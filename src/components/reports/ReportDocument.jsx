@@ -1,5 +1,6 @@
 import React from 'react';
-import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_INTEL_NAME, CAREMETRIC_INTEL_WEBSITE } from '@/lib/branding';
+import { blockHasData } from './reportSections';
 
 
 function Block({ block }) {
@@ -56,15 +57,15 @@ export default function ReportDocument({ model }) {
     <article className="cm-report-doc" aria-label={`${model.subtitle}: ${model.title}`}>
       <header className="cm-doc-brand">
         <div className="cm-doc-brand-left">
-          <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="cm-doc-logo" />
+          <img src={CAREMETRIC_LOGO_URL} alt={CAREMETRIC_INTEL_NAME} className="cm-doc-logo" />
           <div>
-            <div className="cm-doc-brand-name">CareMetric AI</div>
+            <div className="cm-doc-brand-name">{CAREMETRIC_INTEL_NAME}</div>
             <div className="cm-doc-brand-tag">Healthcare Provider Intelligence</div>
           </div>
         </div>
         <div className="cm-doc-brand-right">
           <div>{model.subtitle}</div>
-          <div>www.CareMetric.ai</div>
+          <div>{CAREMETRIC_INTEL_WEBSITE}</div>
         </div>
       </header>
 
@@ -75,7 +76,7 @@ export default function ReportDocument({ model }) {
 
       {model.profile && (
         <section className="cm-doc-block">
-          <h2 className="cm-doc-h2">Profile &amp; Overview</h2>
+          <h2 className="cm-doc-h2">Executive Overview</h2>
           {model.profile.identifiers.length > 0 && (
             <dl className="cm-doc-kv">
               {model.profile.identifiers.map((it) => (
@@ -96,14 +97,30 @@ export default function ReportDocument({ model }) {
               ))}
             </div>
           )}
+          {model.profile.highlights?.length > 0 && (
+            <ul className="cm-doc-highlights">
+              {model.profile.highlights.map((fact) => <li key={fact}>{fact}</li>)}
+            </ul>
+          )}
         </section>
       )}
 
       {model.sections.map((section) => (
         <div key={section.key} className="cm-doc-section">
-          {section.blocks.map((block) => <Block key={block.key} block={block} />)}
+          {section.blocks.filter(blockHasData).map((block) => <Block key={block.key} block={block} />)}
         </div>
       ))}
+      {model.availability?.length > 0 && (
+        <section className="cm-doc-block">
+          <h2 className="cm-doc-h2">Data Availability</h2>
+          <p className="cm-doc-note">Not available means not linked, not loaded, or not publicly reported. It does not mean zero activity or poor performance.</p>
+          <dl className="cm-doc-availability">
+            {model.availability.map((item) => (
+              <div key={item.label}><dt>{item.label}</dt><dd>{item.message}</dd></div>
+            ))}
+          </dl>
+        </section>
+      )}
 
       <footer className="cm-doc-footer">
         {model.sources.length > 0 && (
@@ -115,7 +132,7 @@ export default function ReportDocument({ model }) {
           </>
         )}
         <p className="cm-doc-attrib">{model.attribution}</p>
-        <p className="cm-doc-attrib">Generated {model.generatedLabel} · CareMetric AI · www.CareMetric.ai · Confidential</p>
+        <p className="cm-doc-attrib">Generated {model.generatedLabel} · {CAREMETRIC_INTEL_NAME} · {CAREMETRIC_INTEL_WEBSITE} · Confidential</p>
       </footer>
     </article>
   );

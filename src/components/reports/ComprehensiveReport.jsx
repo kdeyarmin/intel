@@ -13,9 +13,9 @@ import {
   FileText, Printer, Download, ChevronDown, ChevronUp, SlidersHorizontal, Database, Loader2,
 } from 'lucide-react';
 import { countExport } from '@/components/exports/exportUtils';
-import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_INTEL_NAME, CAREMETRIC_INTEL_WEBSITE } from '@/lib/branding';
 import ReportDocument from './ReportDocument';
-import { availableSections, buildReportModel, orderedSelection } from './reportSections';
+import { availableSections, blockHasData, buildReportModel, orderedSelection } from './reportSections';
 
 const TONE = {
   amber: 'text-amber-400',
@@ -324,11 +324,11 @@ function ReportContent({ npi, providerId, facilityName }) {
       <div className="rounded-lg border border-slate-700/50 overflow-hidden">
         <div className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 border-b-2 border-cyan-500/60">
           <div className="flex items-center gap-2.5">
-            <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="w-32 h-10 object-contain bg-white rounded-md" />
+            <img src={CAREMETRIC_LOGO_URL} alt={CAREMETRIC_INTEL_NAME} className="w-32 h-10 object-contain bg-white rounded-md" />
             <div>
-              <p className="text-sm font-bold text-white leading-tight">CareMetric <span className="text-cyan-400">AI</span></p>
+              <p className="text-sm font-bold text-white leading-tight">{CAREMETRIC_INTEL_NAME}</p>
               <p className="text-[10px] text-slate-400">Healthcare Provider Intelligence</p>
-              <a href="https://www.CareMetric.ai" className="text-[10px] text-cyan-400 hover:underline">www.CareMetric.ai</a>
+              <a href={`https://${CAREMETRIC_INTEL_WEBSITE}`} className="text-[10px] text-cyan-400 hover:underline">{CAREMETRIC_INTEL_WEBSITE}</a>
             </div>
           </div>
           <div className="text-right">
@@ -338,6 +338,7 @@ function ReportContent({ npi, providerId, facilityName }) {
         </div>
         <div className="bg-slate-800/50 px-4 py-4 space-y-4">
           <h2 className="text-xl font-bold text-slate-100">{model.title}</h2>
+          {model.profile && <h3 className="text-sm font-semibold text-slate-200">Executive Overview</h3>}
           {model.profile && model.profile.identifiers.length > 0 && <KeyValues items={model.profile.identifiers} />}
           {model.profile && model.profile.metrics.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -349,14 +350,32 @@ function ReportContent({ npi, providerId, facilityName }) {
               ))}
             </div>
           )}
+          {model.profile?.highlights?.length > 0 && (
+            <ul className="list-disc pl-4 space-y-2 text-xs leading-relaxed text-slate-300">
+              {model.profile.highlights.map((fact) => <li key={fact}>{fact}</li>)}
+            </ul>
+          )}
         </div>
       </div>
 
-      {model.sections.flatMap((section) => section.blocks).map((block) => (
+      {model.sections.flatMap((section) => section.blocks).filter(blockHasData).map((block) => (
         <SectionCard key={block.key} title={block.title} count={block.kind === 'table' ? block.count : null}>
           <BlockBody block={block} />
         </SectionCard>
       ))}
+      {model.availability?.length > 0 && (
+        <SectionCard title="Data Availability">
+          <p className="mb-3 text-xs text-slate-400">Missing or suppressed data is not zero activity or poor performance.</p>
+          <dl className="space-y-3 text-xs">
+            {model.availability.map((item) => (
+              <div key={item.label}>
+                <dt className="font-medium text-slate-200">{item.label}</dt>
+                <dd className="mt-1 leading-relaxed text-slate-400">{item.message}</dd>
+              </div>
+            ))}
+          </dl>
+        </SectionCard>
+      )}
 
       <div className="flex items-start gap-1.5 text-[11px] leading-relaxed text-slate-400 border-t border-slate-700/50 pt-3">
         <Database className="w-3 h-3 mt-0.5 shrink-0" aria-hidden="true" />

@@ -1,5 +1,6 @@
 import { createPageUrl } from '@/utils';
 import { exportAttribution } from '@/components/exports/exportUtils';
+import { pickPrimaryLocation } from '@/lib/locations';
 
 /**
  * The parts of a comprehensive report a user can choose. Keys mirror
@@ -11,7 +12,7 @@ export const REPORT_SECTIONS = [
   { key: 'profile', label: 'Profile & overview', description: 'Identity, contact details and headline Medicare totals', needsNpi: false },
   { key: 'locations', label: 'Locations', description: 'Practice and mailing addresses (NPPES)', needsNpi: true },
   { key: 'taxonomies', label: 'Taxonomies', description: 'Specialties and licenses (NUCC codes)', needsNpi: true },
-  { key: 'utilization', label: 'Service utilization', description: 'Medicare services, beneficiaries and payments', needsNpi: true },
+  { key: 'utilization', label: 'Service utilization', description: 'Available Medicare services, facility activity, beneficiaries and payments', needsNpi: false },
   { key: 'referrals', label: 'Referrals (sent & received)', description: 'Shared-patient partners and ordering eligibility', needsNpi: true },
   { key: 'affiliations', label: 'Affiliations', description: 'Organizations this provider is affiliated with', needsNpi: true },
   { key: 'facilities', label: 'Linked facilities', description: 'Medicare facility records under this CCN or NPI', needsNpi: false },
@@ -19,6 +20,7 @@ export const REPORT_SECTIONS = [
   { key: 'ownership', label: 'Ownership details', description: 'Reported owners, ownership percentages, types and roles where linked by CCN, NPI or enrollment', needsNpi: false, source: 'CMS All Owners and Nursing Home Ownership files' },
   { key: 'costReports', label: 'Cost report summaries', description: 'Latest reported revenue, expenses, beds and visits; only available metrics are shown', needsNpi: false, source: 'CMS Hospital, Home Health Agency and SNF Cost Reports' },
   { key: 'additionalQuality', label: 'Additional quality measures', description: 'A curated snapshot of reported performance scores and quality measures beyond star ratings', needsNpi: false, source: 'CMS Value-Based Purchasing, SNF Quality Reporting, Home Health and Nursing Home quality files' },
+  { key: 'market', label: 'Market context', description: 'County Medicare demand, population and post-acute supply where geography and rollups are available', needsNpi: false, source: 'CMS and U.S. Census county market rollups' },
   { key: 'leadScore', label: 'Lead score', description: 'CareMetric lead score and its components', needsNpi: true },
   { key: 'enrichments', label: 'Enrichments', description: 'Contact and profile enrichment records', needsNpi: true },
 ];
@@ -74,13 +76,25 @@ export function fmtMoneyCompact(v) {
 }
 
 const text = (v) => (v == null || v === '' ? '—' : String(v));
+const identifier = (v) => text(v).replace(/,/g, '');
+const zip5 = (v) => v == null || v === '' ? null : identifier(v).slice(0, 5).padStart(5, '0');
+const fmtMetric = (v, format) => {
+  const n = num(v);
+  if (n == null) return '—';
+  if (format === 'money') return fmtMoney(n);
+  if (format === 'percent') return `${(n * 100).toFixed(1)}%`;
+  if (format === 'pct_units') return `${n.toFixed(1)}%`;
+  if (format === 'number' || format === 'decimal' || format === 'rate') return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  return fmtInt(n);
+};
+export const blockHasData = (block) => block.kind === 'table' ? block.rows.length > 0 : block.items.length > 0;
 const yesNo = (v) => {
   if (v == null || v === '') return '—';
   return v === true || /^(y|yes|true|1)$/i.test(String(v)) ? 'Yes' : 'No';
 };
 const ACRONYMS = /\b(snf|hha|irf|ltch|dme|hcahps|hhcahps|asc|hac|drg|ma|cbsa|npi|ccn)\b/gi;
 const humanize = (s) => {
-  const t = String(s || '').replace(/_/g, ' ').trim().replace(ACRONYMS, (m) => m.toUpperCase());
+  const t = String(s || '').replace(/^cms_pac_utilization:/, 'Post-acute utilization: ').replace(/_/g, ' ').trim().replace(ACRONYMS, (m) => m.toUpperCase());
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : '—';
 };
 const providerLink = (npi) => (npi ? createPageUrl('ProviderDetail') + `?npi=${encodeURIComponent(npi)}` : undefined);
@@ -96,7 +110,7 @@ function sectionBlocks(key, report) {
     case 'locations': {
       const rows = (report.locations || []).map((l) => ({
         address: { text: [l.address_1, l.address_2].filter(Boolean).join(', ') || '—' },
-        place: { text: [l.city, l.state, l.zip ? String(l.zip).slice(0, 5) : null].filter(Boolean).join(', ') || '—' },
+        place: { text: [l.city, l.state, zip5(l.zip)].filter(Boolean).join(', ') || '—' },
         type: { text: text(l.location_type) },
         phone: { text: text(l.phone) },
       }));
@@ -114,33 +128,49 @@ function sectionBlocks(key, report) {
     case 'utilization': {
       const rows = (report.utilization || []).map((u) => ({
         service: { text: u.serviceType || u.hcpcsDescription || '—' },
-        year: { text: text(u.dataYear) },
+        year: { text: identifier(u.dataYear) },
         services: { text: fmtInt(u.totalServices) },
         benes: { text: fmtInt(u.totalBeneficiaries) },
         payment: { text: fmtMoney(u.totalPayment) },
       }));
-      return [table('utilization', 'Service Utilization', [col('service', 'Service'), col('year', 'Year', 'right'), col('services', 'Services', 'right'), col('benes', 'Beneficiaries', 'right'), col('payment', 'Medicare paid', 'right')], rows, 'No Medicare utilization on file.')];
+      const facilityRows = (report.facilityUtilization || []).map((u) => ({
+        dataset: { text: humanize(u.dataset) },
+        year: { text: identifier(u.dataYear) },
+        metric: { text: text(u.metric) },
+        value: { text: fmtMetric(u.value, u.format) },
+      }));
+      const blocks = [];
+      if (facilityRows.length) blocks.push({
+        ...table('facilityUtilization', 'Facility Utilization', [col('dataset', 'Dataset'), col('year', 'Year', 'right'), col('metric', 'Measure'), col('value', 'Reported value', 'right')], facilityRows),
+        note: 'Latest available period per dataset. Facility totals and clinician services describe different populations and are not combined.',
+      });
+      if (report.provider || rows.length || !facilityRows.length) blocks.push({
+        ...table('utilization', 'Service Utilization', [col('service', 'Service'), col('year', 'Year', 'right'), col('services', 'Services', 'right'), col('benes', 'Beneficiaries', 'right'), col('payment', 'Medicare paid', 'right')], rows, 'No linked Medicare utilization is available for this report.'),
+        note: 'Up to 100 service records. Beneficiary counts across service codes can overlap and are not unique patients.',
+      });
+      return blocks;
     }
     case 'referrals': {
       const sent = (report.referralsFrom || []).map((r) => ({
         partner: { text: r.toName || r.toNpi || '—' },
-        npi: { text: text(r.toNpi), to: providerLink(r.toNpi) },
+        npi: { text: identifier(r.toNpi), to: providerLink(r.toNpi) },
         referrals: { text: fmtInt(r.totalReferrals) },
         benes: { text: fmtInt(r.totalBeneficiaries) },
-        year: { text: text(r.dataYear) },
+        year: { text: identifier(r.dataYear) },
       }));
       const received = (report.referralsTo || []).map((r) => ({
         partner: { text: r.fromName || r.fromNpi || '—' },
-        npi: { text: text(r.fromNpi), to: providerLink(r.fromNpi) },
+        npi: { text: identifier(r.fromNpi), to: providerLink(r.fromNpi) },
         referrals: { text: fmtInt(r.totalReferrals) },
         benes: { text: fmtInt(r.totalBeneficiaries) },
-        year: { text: text(r.dataYear) },
+        year: { text: identifier(r.dataYear) },
       }));
       const cols = [col('partner', 'Partner'), col('npi', 'NPI'), col('referrals', 'Shared patients', 'right'), col('benes', 'Beneficiaries', 'right'), col('year', 'Year', 'right')];
       const blocks = [
         table('referralsSent', 'Referrals Sent', cols, sent, 'No outbound shared-patient partners on file.'),
         table('referralsReceived', 'Referrals Received', cols, received, 'No inbound shared-patient partners on file.'),
       ];
+      blocks[0].note = blocks[1].note = 'Up to 50 partners per direction. Shared-patient patterns indicate relationships, not confirmed referral orders; counts can overlap.';
       const o = report.orderReferring;
       if (o) {
         blocks.push({
@@ -162,7 +192,7 @@ function sectionBlocks(key, report) {
     case 'affiliations': {
       const rows = (report.affiliations || []).map((a) => ({
         org: { text: a.organization_name || a.organization_npi || '—' },
-        npi: { text: text(a.organization_npi), to: providerLink(a.organization_npi) },
+        npi: { text: identifier(a.organization_npi), to: providerLink(a.organization_npi) },
         type: { text: text(a.affiliation_type) },
         place: { text: [a.city, a.state].filter(Boolean).join(', ') || '—' },
       }));
@@ -173,7 +203,7 @@ function sectionBlocks(key, report) {
         name: { text: f.name || '—', to: f.providerId ? createPageUrl('FacilityDetail') + `?id=${encodeURIComponent(f.providerId)}&group=${encodeURIComponent(f.facilityType || '')}` : undefined },
         dataset: { text: humanize(f.facilityType) },
         place: { text: [f.city, f.state].filter(Boolean).join(', ') || '—' },
-        year: { text: text(f.dataYear) },
+        year: { text: identifier(f.dataYear) },
         payments: { text: f.totalPayments == null ? '—' : fmtMoney(f.totalPayments) },
       }));
       return [table('facilities', 'Linked Facilities', [col('name', 'Facility'), col('dataset', 'Dataset'), col('place', 'Location'), col('year', 'Year', 'right'), col('payments', 'Payments', 'right')], rows, 'No Medicare facility records linked.')];
@@ -183,7 +213,7 @@ function sectionBlocks(key, report) {
         dataset: { text: humanize(q.facilityType) },
         facility: { text: text(q.name) },
         rating: { text: num(q.qualityRating) == null ? '—' : `${num(q.qualityRating)} / 5` },
-        year: { text: text(q.dataYear) },
+        year: { text: identifier(q.dataYear) },
       }));
       return [table('quality', 'Quality Measures', [col('dataset', 'Dataset'), col('facility', 'Facility'), col('rating', 'Star rating', 'right'), col('year', 'Year', 'right')], rows, 'No CMS quality ratings on file.')];
     }
@@ -193,7 +223,7 @@ function sectionBlocks(key, report) {
         percentage: { text: num(o.percentage) == null ? '—' : `${num(o.percentage)}%` },
         type: { text: [o.ownerType, o.role].filter(Boolean).join(' · ') || '—' },
         dataset: { text: humanize(o.dataset) },
-        year: { text: text(o.dataYear) },
+        year: { text: identifier(o.dataYear) },
       }));
       return [{
         ...table('ownership', 'Ownership Details', [col('owner', 'Owner'), col('percentage', 'Ownership', 'right'), col('type', 'Type / role'), col('dataset', 'Dataset'), col('year', 'Year', 'right')], rows, 'No linked ownership details on file.'),
@@ -203,7 +233,7 @@ function sectionBlocks(key, report) {
     case 'costReports': {
       const rows = (report.costReports || []).map((c) => ({
         dataset: { text: humanize(c.dataset) },
-        period: { text: c.period || text(c.dataYear) },
+        period: { text: c.period || identifier(c.dataYear) },
         metric: { text: text(c.metric) },
         value: { text: c.format === 'money' ? fmtMoney(c.value) : fmtInt(c.value) },
       }));
@@ -217,11 +247,24 @@ function sectionBlocks(key, report) {
         dataset: { text: humanize(q.dataset) },
         measure: { text: text(q.metric) },
         score: { text: text(q.value) },
-        year: { text: text(q.dataYear) },
+        year: { text: identifier(q.dataYear) },
       }));
       return [{
         ...table('additionalQuality', 'Additional Quality Measures', [col('dataset', 'Dataset'), col('measure', 'Measure'), col('score', 'Reported score', 'right'), col('year', 'Year', 'right')], rows, 'No additional linked quality measures on file.'),
         note: 'Up to five measures per record, 20 overall. CMS scores retain their source units; measures and reporting periods are not directly comparable. Suppressed or unavailable scores are omitted.',
+      }];
+    }
+    case 'market': {
+      const m = report.marketContext;
+      const rows = (m?.metrics || []).map((it) => ({
+        metric: { text: it.label },
+        value: { text: fmtMetric(it.value, it.format) },
+        year: { text: identifier(it.dataYear) },
+      }));
+      return [{
+        ...table('market', m ? `Market Context — ${m.countyName}, ${m.state}` : 'Market Context', [col('metric', 'County measure'), col('value', 'Reported value', 'right'), col('year', 'Source year', 'right')], rows,
+          'County market context is unavailable: a reliable county match or published market rollup was not available.'),
+        note: `County figures describe the surrounding market, not this facility's patients or referral volume. ZIP areas may cross county boundaries. Reporting periods vary by source.${m?.refreshedAt ? ` Rollup refreshed ${String(m.refreshedAt).slice(0, 10)}.` : ''}`,
       }];
     }
     case 'leadScore': {
@@ -261,35 +304,63 @@ function profileOf(report, { npi, providerId }) {
   const f = report.facility;
   const identifiers = [];
   if (f) {
-    identifiers.push({ label: 'CCN', value: text(f.providerId || providerId) });
-    if (f.city || f.state) identifiers.push({ label: 'Location', value: [f.city, f.state].filter(Boolean).join(', ') });
+    identifiers.push({ label: 'CCN', value: identifier(f.providerId || providerId) });
+    if (f.address) identifiers.push({ label: 'Address', value: f.address });
+    if (f.city || f.state || f.zip) identifiers.push({ label: 'Location', value: [f.city, f.state, zip5(f.zip)].filter(Boolean).join(', ') });
+    if (f.phone) identifiers.push({ label: 'Facility phone', value: f.phone });
+    if (f.ownershipType) identifiers.push({ label: 'Ownership type', value: f.ownershipType });
+    if (num(f.beds) != null) identifiers.push({ label: 'Reported beds', value: fmtInt(f.beds) });
     if (f.facilityTypes?.length) identifiers.push({ label: 'CMS datasets', value: f.facilityTypes.map(humanize).join(', ') });
-    if (f.latestYear) identifiers.push({ label: 'Latest data year', value: String(f.latestYear) });
+    if (f.latestYear) identifiers.push({ label: 'Latest data year', value: identifier(f.latestYear) });
   } else if (providerId) {
-    identifiers.push({ label: 'CCN', value: String(providerId) });
+    identifiers.push({ label: 'CCN', value: identifier(providerId) });
   }
   if (p) {
-    identifiers.push({ label: f ? 'Linked NPI' : 'NPI', value: text(p.npi) });
+    identifiers.push({ label: f ? 'Linked NPI' : 'NPI', value: identifier(p.npi) });
     identifiers.push({ label: 'Entity type', value: p.entityType === '2' || /organ/i.test(String(p.entityType || '')) ? 'Organization' : 'Individual' });
     if (p.credential) identifiers.push({ label: 'Credential', value: p.credential });
     if (p.status) identifiers.push({ label: 'NPI status', value: humanize(p.status) });
     if (p.phone) identifiers.push({ label: 'Phone', value: p.phone });
     if (p.email) identifiers.push({ label: 'Email', value: p.email });
   } else if (npi && !f) {
-    identifiers.push({ label: 'NPI', value: String(npi) });
+    identifiers.push({ label: 'NPI', value: identifier(npi) });
   }
+  const location = pickPrimaryLocation(report.locations || []);
+  if (!f && location) {
+    identifiers.push({ label: 'Practice address', value: [location.address_1, location.address_2, location.city, location.state, zip5(location.zip)].filter(Boolean).join(', ') });
+  }
+  const specialty = (report.taxonomies || []).find((t) => t.is_primary) || report.taxonomies?.[0];
+  if (specialty) identifiers.push({ label: 'Specialty', value: specialty.taxonomy_description || specialty.taxonomy_code });
 
   const s = report.summary || {};
   const year = s.utilizationYears?.[0];
   // Medicare totals describe the NPI; a facility without one shows none rather than zeros.
-  const metrics = p ? [
-    { label: year ? `Medicare paid (${year})` : 'Medicare paid', value: fmtMoneyCompact(s.totalPayments ?? 0), tone: 'amber' },
-    { label: 'Services', value: fmtInt(s.totalServices ?? 0), tone: 'cyan' },
-    { label: 'Beneficiaries', value: fmtInt(s.totalBeneficiaries ?? 0), tone: 'emerald' },
-    { label: 'Referrals out', value: fmtInt(s.totalReferralsOut ?? 0), tone: 'orange' },
-    { label: 'Referrals in', value: fmtInt(s.totalReferralsIn ?? 0), tone: 'violet' },
-  ] : [];
-  return { identifiers, metrics };
+  const facilityMetrics = (report.facilityUtilization || []).filter((m) => num(m.value) != null).slice(0, 4).map((m) => ({
+    label: `${m.metric} — ${humanize(m.dataset)}${m.dataYear ? ` (${identifier(m.dataYear)})` : ''}`,
+    value: fmtMetric(m.value, m.format), tone: 'cyan',
+  }));
+  const metrics = providerId ? facilityMetrics : p && year ? [
+    { label: `Medicare paid (${identifier(year)})`, raw: s.totalPayments, format: fmtMoneyCompact, tone: 'amber' },
+    { label: `Services (${identifier(year)})`, raw: s.totalServices, format: fmtInt, tone: 'cyan' },
+    { label: `Beneficiary counts (${identifier(year)})`, raw: s.totalBeneficiaries, format: fmtInt, tone: 'emerald' },
+  ].filter((m) => num(m.raw) != null).map((m) => ({ label: m.label, value: m.format(m.raw), tone: m.tone })) : [];
+  const highlights = [];
+  if (report.quality?.length) {
+    const q = report.quality[0];
+    highlights.push(`CMS star rating: ${q.qualityRating} of 5 (${humanize(q.facilityType)}, ${identifier(q.dataYear)}).`);
+  }
+  if (report.ownership?.length) {
+    const o = report.ownership[0];
+    highlights.push(`Reported ownership / management interest: ${o.ownerName}${num(o.percentage) != null ? ` (${num(o.percentage)}%)` : ''}. Verify the current decision-maker before outreach.`);
+  }
+  const revenue = (report.costReports || []).find((c) => c.metric === 'Total revenue');
+  if (revenue) highlights.push(`Reported total revenue: ${fmtMoney(revenue.value)} (${revenue.period || identifier(revenue.dataYear)}). Financial and utilization reporting periods may differ.`);
+  if (report.marketContext?.countyName) highlights.push(`Market area: ${report.marketContext.countyName}, ${report.marketContext.state}. County demand and supply figures are context, not facility performance.`);
+  const partner = report.referralsFrom?.[0];
+  if (partner) highlights.push(`Largest listed outbound shared-patient partner: ${partner.toName || identifier(partner.toNpi)} (${fmtInt(partner.totalReferrals)} shared-patient count, ${identifier(partner.dataYear)}). This is not a confirmed referral order count.`);
+  if (!metrics.length) highlights.push('Headline Medicare activity is not available for this report; missing data should not be interpreted as zero activity.');
+  if (!providerId && year) highlights.push('Medicare beneficiary counts are summed across service codes and may count a patient more than once.');
+  return { identifiers, metrics, highlights };
 }
 
 /**
@@ -312,7 +383,22 @@ export function buildReportModel(report, selected, { npi, providerId, facilityNa
     label: REPORT_SECTIONS.find((s) => s.key === key)?.label || key,
     blocks: sectionBlocks(key, r),
   }));
-  const sources = [...new Set(keys.map((k) => SECTION_SOURCES[k] || REPORT_SECTIONS.find((s) => s.key === k)?.source).filter(Boolean))];
+  const unavailable = new Set(r.unavailableSections || []);
+  const availability = sections.flatMap((section) => {
+    if (unavailable.has(section.key)) return [{ label: section.label, message: 'This source could not be retrieved when the report was generated. Retry the report to verify coverage; any displayed records may be incomplete.' }];
+    return section.blocks.filter((block) => !blockHasData(block)).map((block) => ({
+      label: block.title, message: block.emptyText || 'No linked records are available in the data currently loaded.',
+    }));
+  });
+  if (unavailable.has('profile')) availability.unshift({ label: 'Profile & overview', message: 'Some overview sources could not be retrieved. Available facts are shown; missing values are not zero.' });
+  if (isFacility && !npi && !r.provider?.npi && keys.includes('profile')) availability.push({
+    label: 'Provider referrals & contacts', message: 'No linked NPI was supplied. Clinician service lines, shared-patient partners and provider contact enrichment are not included.',
+  });
+  const sources = [...new Set(keys.map((k) => {
+    if (k === 'profile' && isFacility) return 'CMS facility profiles and post-acute utilization';
+    if (k === 'utilization' && isFacility) return 'CMS facility and Medicare post-acute utilization files';
+    return SECTION_SOURCES[k] || REPORT_SECTIONS.find((s) => s.key === k)?.source;
+  }).filter(Boolean))];
 
   return {
     title,
@@ -322,6 +408,7 @@ export function buildReportModel(report, selected, { npi, providerId, facilityNa
     selectedKeys: keys,
     profile,
     sections,
+    availability,
     sources,
     attribution: exportAttribution(generatedAt),
   };

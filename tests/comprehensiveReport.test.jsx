@@ -59,7 +59,7 @@ function wrap(ui) {
 describe('report sections', () => {
   it('offers every section for an NPI and only facility sections for a CCN without one', () => {
     expect(availableSections({ npi: '1234567893' }).map((s) => s.key)).toEqual(REPORT_SECTIONS.map((s) => s.key));
-    expect(availableSections({ providerId: '390111' }).map((s) => s.key)).toEqual(['profile', 'facilities', 'quality', 'ownership', 'costReports', 'additionalQuality']);
+    expect(availableSections({ providerId: '390111' }).map((s) => s.key)).toEqual(['profile', 'utilization', 'facilities', 'quality', 'ownership', 'costReports', 'additionalQuality', 'market']);
     expect(availableSections({})).toEqual([]);
   });
 
@@ -95,8 +95,8 @@ describe('report sections', () => {
     expect(model.sections[0].blocks[0].rows.map((r) => r.percentage.text)).toEqual(['80%', '—']);
     expect(model.sections[1].blocks[0].rows[0].value.text).toBe('$1,234,567');
     render(<ReportDocument model={model} />);
-    for (const value of ['Example Holdings', '80%', '$1,234,567', 'Discharge function score', '76.2', 'www.CareMetric.ai']) {
-      expect(screen.getByText(value)).toBeInTheDocument();
+    for (const value of ['Example Holdings', '80%', '$1,234,567', 'Discharge function score', '76.2', 'caremetricintel.com']) {
+      expect(screen.getAllByText(value).length).toBeGreaterThan(0);
     }
     expect(model.sources).toHaveLength(3);
     const empty = buildReportModel({}, ['ownership', 'costReports', 'additionalQuality'], { providerId: '390111' });
@@ -110,6 +110,43 @@ describe('report sections', () => {
     expect(model.profile.metrics).toEqual([]);
     expect(model.profile.identifiers[0]).toEqual({ label: 'CCN', value: '390111' });
     expect(reportFileName(model)).toBe('CareMetric-Erie-Manor-2026-10-01');
+  });
+
+  it('shows actual facility activity, identity and market measures with their own reporting years', () => {
+    const model = buildReportModel({
+      facility: { name: 'Example Facility', providerId: '010001', city: 'Boston', state: 'MA', zip: '02108', latestYear: 2024, ownershipType: 'Nonprofit', beds: 80 },
+      facilityUtilization: [
+        { dataset: 'snf', dataYear: 2023, metric: 'Medicare payments', value: 1500000, format: 'money' },
+        { dataset: 'snf', dataYear: 2023, metric: 'Discharges', value: 0, format: 'integer' },
+      ],
+      marketContext: { countyName: 'Suffolk', countyFips: '25025', state: 'MA', metrics: [
+        { label: 'Medicare Advantage share', value: 0.31, format: 'percent', dataYear: 2024 },
+        { label: 'Home health use (% of FFS)', value: 11.2, format: 'pct_units', dataYear: 2023 },
+      ] },
+    }, ['profile', 'utilization', 'market'], { providerId: '010001' });
+    expect(model.profile.metrics.map((m) => m.value)).toEqual(['$1,500,000', '0']);
+    expect(model.profile.identifiers).toContainEqual({ label: 'Location', value: 'Boston, MA, 02108' });
+    expect(model.profile.identifiers).toContainEqual({ label: 'Latest data year', value: '2024' });
+    expect(model.sections[1].blocks[0].rows.map((r) => r.value.text)).toEqual(['31.0%', '11.2%']);
+    render(<ReportDocument model={model} />);
+    expect(screen.getByText('Executive Overview')).toBeInTheDocument();
+    expect(screen.getByAltText('CareMetric Intel')).toHaveAttribute('src', expect.stringContaining('CareMetric.png'));
+    expect(screen.getByText('Market Context — Suffolk, MA')).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/2,024|2,023|2,108|CareMetric AI|CareMetric\.ai/);
+  });
+
+  it('consolidates missing sources instead of rendering empty tables or invented zeros', () => {
+    const model = buildReportModel({
+      provider: REPORT.provider,
+      summary: { utilizationYears: [], totalPayments: null, totalServices: null },
+      unavailableSections: ['ownership'],
+    }, ['profile', 'utilization', 'ownership', 'costReports'], { npi: REPORT.provider.npi });
+    expect(model.profile.metrics).toEqual([]);
+    expect(model.availability.find((a) => a.label === 'Ownership details')?.message).toMatch(/could not be retrieved/);
+    render(<ReportDocument model={model} />);
+    expect(screen.getByText('Data Availability')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.getByText(/missing data should not be interpreted as zero/)).toBeInTheDocument();
   });
 });
 
@@ -139,7 +176,7 @@ describe('ComprehensiveReport', () => {
   it('offers only facility sections for a facility without a linked NPI', () => {
     wrap(<ComprehensiveReport providerId="390111" facilityName="Erie Manor" />);
     expect(screen.getAllByRole('checkbox').map((b) => b.getAttribute('aria-labelledby') && document.getElementById(b.getAttribute('aria-labelledby')).textContent))
-      .toEqual(['Profile & overview', 'Linked facilities', 'Quality measures', 'Ownership details', 'Cost report summaries', 'Additional quality measures']);
+      .toEqual(['Profile & overview', 'Service utilization', 'Linked facilities', 'Quality measures', 'Ownership details', 'Cost report summaries', 'Additional quality measures', 'Market context']);
   });
 
   it.each([
@@ -180,7 +217,8 @@ describe('ComprehensiveReport', () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => {
       expect(document.body.classList.contains('cm-printing-report')).toBe(true);
       expect(document.querySelector('.cm-print-root .cm-report-doc')).not.toBeNull();
-      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric AI');
+      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric Intel');
+      expect(document.querySelector('.cm-print-root').textContent).not.toContain('CareMetric AI');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Data Sources');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Example Holdings');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Discharge function score');

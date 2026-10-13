@@ -23,6 +23,11 @@ vi.mock("../server/lib/entitlements", () => ({
   assertTerritory: (...args: any[]) => assertTerritory(...args),
   isUnrestricted: (user: any) => !user || user.role === "admin",
 }));
+vi.mock("../server/lib/geo", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../server/lib/geo")>(),
+  getGeoIndex: vi.fn(),
+}));
+import { buildGeoIndex, getGeoIndex } from "../server/lib/geo";
 
 import {
   facilityProfile,
@@ -40,6 +45,12 @@ beforeEach(() => {
   parameters.length = 0;
   rowsFor = () => [];
   assertTerritory.mockReset();
+  vi.mocked(getGeoIndex).mockReset();
+  vi.mocked(getGeoIndex).mockResolvedValue(buildGeoIndex({
+    counties: [{ fips: "42049", name: "Erie County", state: "PA", lat: 42, lng: -80 }],
+    zctas: [{ zcta: "16501", primary_county_fips: "42049", state: "PA", lat: 42, lng: -80 }],
+    zctaCounties: [],
+  }));
 });
 
 describe("normalizeReportSections", () => {
@@ -77,6 +88,193 @@ describe("facility helpers", () => {
 });
 
 describe("handleGetComprehensiveReport sections", () => {
+  it("returns facility fields and latest typed utilization without summing sources", async () => {
+    rowsFor = (sql) => sql.includes("FROM medicare_facilities f") ? [{
+      id: 1, provider_id: "390111", facility_type: "snf", facility_name: "Erie Manor", state: "PA",
+      address: "1 Main St", zip: "16501", total_payments: 99, total_charges: 120, total_discharges: 10,
+      total_days_of_care: 30, avg_length_of_stay: 3, data_year: "2024",
+      raw_data: { telephone_number: "1234567890", ownership_type: "Nonprofit", number_of_certified_beds: "12" },
+    }] : sql.includes("FROM cms_pac_utilization") ? [{
+      setting: "snf", ccn: "390111", provider_name: "Erie Manor", state: "PA", zip5: "16501",
+      data_year: "2024", bene_count: 25, stays: 30, medicare_payment: 500,
+    }] : [];
+    const report = await handleGetComprehensiveReport({ provider_id: "390111", sections: ["profile", "facilities", "utilization"] }, admin);
+    expect(report.facility).toMatchObject({
+      address: "1 Main St", zip: "16501", phone: "1234567890", ownershipType: "Nonprofit", beds: 12,
+    });
+    expect(report.facilities[0]).toMatchObject({
+      totalCharges: 120, totalDischarges: 10, totalDaysOfCare: 30, avgLengthOfStay: 3,
+    });
+    expect(report.facilityUtilization.map((m: any) => m.value)).toEqual([25, 30, 500]);
+    expect(report.unavailableSections).toEqual([]);
+    expect(ran("summary_level = 'provider'")).toBe(true);
+  });
+
+  it("reads facility facts for an NPI utilization-only report", async () => {
+    rowsFor = (sql) => sql.includes("FROM medicare_facilities f") ? [{
+      provider_id: "1234567893", facility_type: "medicare_inpatient_by_provider",
+      data_year: "2024", total_payments: 100, total_discharges: 2,
+    }] : [];
+    const report = await handleGetComprehensiveReport({ npi: "1234567893", sections: ["utilization"] }, admin);
+    expect(report.facilityUtilization).toEqual([
+      { dataset: "medicare_inpatient_by_provider", dataYear: "2024", metric: "Medicare payments", value: 100, format: "money" },
+      { dataset: "medicare_inpatient_by_provider", dataYear: "2024", metric: "Discharges", value: 2, format: "integer" },
+    ]);
+    expect(report.facilities).toEqual([]);
+    expect(report.facility).toBeNull();
+    expect(ran("cms_referrals")).toBe(false);
+  });
+
+  it("provides facility metrics for the profile summary even when the utilization section is off", async () => {
+    rowsFor = (sql) => sql.includes("FROM medicare_facilities f") ? [{
+      provider_id: "390111", facility_type: "medicare_inpatient_by_provider",
+      data_year: "2024", total_payments: 0, total_discharges: 3,
+    }] : [];
+    const report = await handleGetComprehensiveReport({ provider_id: "390111", sections: ["profile"] }, admin);
+    expect(report.facilityUtilization.map((m: any) => m.value)).toEqual([0, 3]);
+    expect(report.sections).toEqual(["profile"]);
+    expect(report.facilities).toEqual([]);
+    expect(report.utilization).toEqual([]);
+    expect(ran("provider_service_utilization")).toBe(false);
+  });
+
+  it("returns null provider headline metrics when no utilization rows exist, but preserves measured zero", async () => {
+    rowsFor = (sql) => sql.includes("SUM(")
+      ? [{ total_payments: null, total_services: null, total_benes: null }] : [];
+    const missing = await handleGetComprehensiveReport({ npi: "1234567893", sections: ["profile"] }, admin);
+    expect(missing.summary).toMatchObject({ totalPayments: null, totalServices: null, totalBeneficiaries: null });
+    rowsFor = (sql) => sql.includes("SUM(")
+      ? [{ total_payments: "0", total_services: "0", total_benes: "0" }] : [];
+    const zero = await handleGetComprehensiveReport({ npi: "1234567893", sections: ["profile"] }, admin);
+    expect(zero.summary).toMatchObject({ totalPayments: 0, totalServices: 0, totalBeneficiaries: 0 });
+    expect(zero.summary.beneficiaryNote).toContain("same person more than once");
+    expect(queries.find((q) => q.includes("SUM("))).not.toContain("COALESCE");
+    expect(queries.find((q) => q.includes("SUM("))).toContain("SELECT MAX(data_year)");
+  });
+
+  it("does not turn missing patient-sharing counts into a measured zero", async () => {
+    rowsFor = (sql) => sql.includes("FROM cms_referrals WHERE npi")
+      ? [{ total_referrals: null }] : [];
+    const missing = await handleGetComprehensiveReport({ npi: "1234567893", sections: ["profile"] }, admin);
+    expect(missing.summary.totalReferralsOut).toBeNull();
+    rowsFor = (sql) => sql.includes("FROM cms_referrals WHERE npi")
+      ? [{ total_referrals: 0 }] : [];
+    const zero = await handleGetComprehensiveReport({ npi: "1234567893", sections: ["profile"] }, admin);
+    expect(zero.summary.totalReferralsOut).toBe(0);
+  });
+
+  it("resolves a market-only facility report and authorizes its exact county before reading the rollup", async () => {
+    const owner = { id: 2, role: "user", orgRole: "owner" } as any;
+    rowsFor = (sql) => {
+      if (sql.includes("FROM medicare_facilities f")) return [{ provider_id: "390111", state: "PA", zip: "16501", data_year: "2024" }];
+      if (sql.includes("FROM rollup_county_market_profile")) {
+        expect(assertTerritory).toHaveBeenCalledWith(owner, { state: "PA", county_fips: "42049", county_name: "Erie County" });
+        return [{ benes: 100, as_of: { enrollment: "2024-12" } }];
+      }
+      return [];
+    };
+    const report = await handleGetComprehensiveReport({ provider_id: "390111", sections: ["market"] }, owner);
+    expect(report.marketContext).toEqual({
+      countyName: "Erie County", countyFips: "42049", state: "PA",
+      metrics: [{ label: "Medicare beneficiaries", value: 100, format: "integer", dataYear: "2024-12" }],
+    });
+    expect(report.facility).toBeNull();
+    expect(ran("provider_service_utilization")).toBe(false);
+    expect(parameters[queries.findIndex((q) => q.includes("FROM rollup_county_market_profile"))]).toEqual(["42049"]);
+  });
+
+  it("uses the provider practice ZIP for market-only reports without exposing unrequested locations", async () => {
+    rowsFor = (sql) => sql.includes("FROM provider_locations")
+      ? [{ location_type: "Practice", zip: "16501", state: "PA" }]
+      : sql.includes("FROM rollup_county_market_profile") ? [{ benes: 0 }] : [];
+    const report = await handleGetComprehensiveReport({ npi: "1234567893", sections: ["market"] }, admin);
+    expect(report.marketContext.countyFips).toBe("42049");
+    expect(report.marketContext.metrics[0].value).toBe(0);
+    expect(report.locations).toEqual([]);
+    expect(ran("provider_taxonomies")).toBe(false);
+  });
+
+  it("uses typed facility geography when no legacy facility rows are available", async () => {
+    rowsFor = (sql) => sql.includes("FROM cms_pac_utilization")
+      ? [{ setting: "hha", ccn: "390111", zip5: "16501", state: "PA", provider_name: "Agency", data_year: "2023" }]
+      : sql.includes("FROM rollup_county_market_profile") ? [{ hha_agencies: 2 }] : [];
+    const report = await handleGetComprehensiveReport({ provider_id: "390111", sections: ["market", "profile"] }, admin);
+    expect(report.marketContext.countyFips).toBe("42049");
+    expect(report.facility).toMatchObject({ name: "Agency", zip: "16501", latestYear: "2023" });
+  });
+
+  it("rejects a disallowed exact county before querying market or resolving owners", async () => {
+    const owner = { id: 2, role: "user", orgRole: "owner" } as any;
+    rowsFor = (sql) => sql.includes("FROM medicare_facilities f")
+      ? [{ provider_id: "390111", state: "PA", zip: "16501", facility_type: "hospital_enrollments", raw_data: { "ENROLLMENT ID": "O1" } }] : [];
+    assertTerritory.mockImplementation((_user, place) => {
+      if (place.county_fips) throw { status: 403 };
+    });
+    await expect(handleGetComprehensiveReport({ provider_id: "390111", sections: ["market", "ownership"] }, owner)).rejects.toMatchObject({ status: 403 });
+    expect(ran("rollup_county_market_profile")).toBe(false);
+    expect(ran("WHERE f.provider_id >=")).toBe(false);
+  });
+
+  it("omits unresolved market geography without failing a restricted provider report", async () => {
+    const owner = { id: 2, role: "user", orgRole: "owner" } as any;
+    const restricted = await handleGetComprehensiveReport({ provider_id: "390111", sections: ["market", "profile"] }, owner);
+    expect(restricted.marketContext).toBeNull();
+    expect(restricted.unavailableSections).toEqual(["market"]);
+    const report = await handleGetComprehensiveReport({ provider_id: "390111", sections: ["market"] }, admin);
+    expect(report.marketContext).toBeNull();
+    expect(report.unavailableSections).toEqual([]);
+    expect(ran("rollup_county_market_profile")).toBe(false);
+  });
+
+  it("retains available profile data when a restricted full report cannot resolve the county", async () => {
+    const member = { id: 2, role: "user", orgRole: "member" } as any;
+    rowsFor = (sql) => sql.includes("FROM providers WHERE npi") ? [{
+      npi: "1234567893", first_name: "Pat", last_name: "Lee", entity_type: "Individual",
+    }] : sql.includes("FROM provider_locations") ? [{ state: "PA", location_type: "Practice" }] : [];
+    const report = await handleGetComprehensiveReport({ npi: "1234567893" }, member);
+    expect(report.provider.displayName).toBe("Pat Lee");
+    expect(report.marketContext).toBeNull();
+    expect(report.unavailableSections).toEqual(["market"]);
+    expect(ran("rollup_county_market_profile")).toBe(false);
+  });
+
+  it("reports sanitized query failures separately from successful empty sections", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      rowsFor = (sql) => {
+        if (sql.includes("FROM provider_service_utilization")) throw new Error("private SQL connection details");
+        return [];
+      };
+      const report = await handleGetComprehensiveReport({ npi: "1234567893", sections: ["profile", "utilization", "quality"] }, admin);
+      expect(report.unavailableSections).toEqual(["profile", "utilization"]);
+      expect(report.summary.totalPayments).toBeNull();
+      expect(report.quality).toEqual([]);
+      expect(JSON.stringify(report)).not.toContain("private");
+    } finally {
+      errorLog.mockRestore();
+    }
+  });
+
+  it("marks failed market and ownership reads without claiming that no source records exist", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      rowsFor = (sql) => {
+        if (sql.includes("FROM rollup_county_market_profile") || sql.includes("WHERE f.provider_id >=")) throw new Error("internal");
+        if (sql.includes("FROM medicare_facilities f")) return [{
+          provider_id: "390111", zip: "16501", state: "PA", facility_type: "hospital_enrollments",
+          raw_data: { "ENROLLMENT ID": "O1" },
+        }];
+        return [];
+      };
+      const report = await handleGetComprehensiveReport({ provider_id: "390111", sections: ["market", "ownership"] }, admin);
+      expect(report.unavailableSections).toEqual(["ownership", "market"]);
+      expect(report.marketContext).toBeNull();
+      expect(report.ownership).toEqual([]);
+    } finally {
+      errorLog.mockRestore();
+    }
+  });
+
   it("runs every query when no sections are named (existing callers)", async () => {
     const report = await handleGetComprehensiveReport({ npi: "1234567893" }, admin);
     expect(report.sections).toEqual([...REPORT_SECTION_KEYS]);

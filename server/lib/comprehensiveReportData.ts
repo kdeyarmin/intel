@@ -41,6 +41,104 @@ function numeric(value: string | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Only reported values count; suppression and missing cells are not zeros. */
+export function reportedNumber(value: unknown): number | null {
+  return numeric(value == null ? null : String(value));
+}
+
+export function facilityDetails(rows: any[]) {
+  const sorted = [...rows].sort((a, b) => String(b.data_year || "").localeCompare(String(a.data_year || "")));
+  const text = (...keys: string[]) => sorted.map((r) => read(fields(r), ...keys)).find((v) => v != null) ?? null;
+  return {
+    address: sorted.find((r) => r.address)?.address || text("Address", "Provider Address", "Street Address"),
+    zip: sorted.find((r) => r.zip)?.zip || text("ZIP Code", "ZIP", "Provider Zip Code"),
+    phone: text("Telephone Number", "Phone Number", "Provider Phone Number", "Phone"),
+    ownershipType: text("Ownership Type", "Type of Ownership", "Hospital Ownership", "Ownership", "Proprietary Nonprofit"),
+    beds: sorted.map((r) => numeric(read(fields(r), "Number of Certified Beds", "Number of Beds", "Total Beds", "Bed Count")))
+      .find((v) => v != null) ?? null,
+  };
+}
+
+const FACILITY_METRICS = [
+  { column: "total_payments", metric: "Medicare payments", format: "money" },
+  { column: "total_charges", metric: "Submitted charges", format: "money" },
+  { column: "total_discharges", metric: "Discharges", format: "integer" },
+  { column: "total_days_of_care", metric: "Days of care", format: "integer" },
+  { column: "avg_length_of_stay", metric: "Average length of stay (days)", format: "decimal" },
+];
+
+/** Each source keeps its own newest period; typed post-acute rows take precedence. */
+export function summarizeFacilityUtilization(rows: any[], pacRows: any[] = []) {
+  const pac = latest(pacRows.map((r) => ({ ...r, facility_type: r.setting })), pacRows.map((r) => r.setting));
+  const typedSettings = new Set(pac.map((r) => r.setting));
+  const aliases: Record<string, string> = {
+    home_health: "hha", home_health_utilization: "hha", home_health_agencies: "hha",
+    skilled_nursing: "snf", skilled_nursing_utilization: "snf", nursing_homes: "snf",
+    hospice_utilization: "hospice", irf_utilization: "irf", ltch_utilization: "ltch",
+    medicare_hha_utilization: "hha", medicare_snf_utilization: "snf", medicare_hospice_utilization: "hospice",
+    medicare_irf_utilization: "irf", medicare_ltch_utilization: "ltch",
+  };
+  const legacy = latest(rows, [...new Set(rows.map((r) => r.facility_type))])
+    .filter((r) => !typedSettings.has(aliases[r.facility_type] || r.facility_type));
+  return [
+    ...pac.flatMap((r) => [
+      ["bene_count", "Medicare beneficiaries (within this setting)", "integer"],
+      ["stays", "Stays / episodes", "integer"],
+      ["service_days", "Service days", "integer"],
+      ["charges", "Submitted charges", "money"],
+      ["allowed", "Allowed amount", "money"],
+      ["medicare_payment", "Medicare payments", "money"],
+      ["standardized_payment", "Standardized Medicare payments", "money"],
+    ].flatMap(([column, metric, format]) => {
+      const value = reportedNumber(r[column]);
+      return value == null ? [] : [{ dataset: `cms_pac_utilization:${r.setting}`, dataYear: r.data_year, metric, value, format }];
+    })),
+    ...legacy.flatMap((r) => FACILITY_METRICS.flatMap((m) => {
+      const value = reportedNumber(r[m.column]);
+      return value == null ? [] : [{ dataset: r.facility_type, dataYear: r.data_year, metric: m.metric, value, format: m.format }];
+    })),
+  ];
+}
+
+export function summarizeMarketProfile(row: any) {
+  const metrics = [
+    ["benes", "Medicare beneficiaries", "integer", "enrollment"],
+    ["ma_penetration", "Medicare Advantage share", "percent", "enrollment"],
+    ["hha_agencies", "Home health agencies in county", "integer", "pac_utilization"],
+    ["hospice_agencies", "Hospices in county", "integer", "pac_utilization"],
+    ["snf_facilities", "Skilled nursing facilities in county", "integer", "pac_utilization"],
+    ["hha_providers", "Home health agencies billing for residents", "integer", "saturation"],
+    ["hospice_providers", "Hospices billing for residents", "integer", "saturation"],
+    ["snf_providers", "Skilled nursing facilities billing for residents", "integer", "saturation"],
+    ["hha_users_pct", "Home health use (% of FFS)", "pct_units", "saturation"],
+    ["hospice_users_pct", "Hospice use (% of FFS)", "pct_units", "saturation"],
+    ["snf_users_pct", "Skilled nursing use (% of FFS)", "pct_units", "saturation"],
+    ["std_per_capita_hha", "Home health spend per beneficiary", "money", "variation"],
+    ["std_per_capita_hospice", "Hospice spend per beneficiary", "money", "variation"],
+    ["std_per_capita_snf", "SNF spend per beneficiary", "money", "variation"],
+    ["pop_65_plus", "Population aged 65+", "integer", "acs"],
+    ["licensed_homes", "Licensed residential homes", "integer", "licensed"],
+    ["licensed_beds", "Licensed residential beds", "integer", "licensed"],
+  ];
+  const setting: Record<string, string> = { hha_agencies: "hha", hospice_agencies: "hospice", snf_facilities: "snf" };
+  const periods: Record<string, string> = {
+    enrollment: "enrollment_period", saturation: "saturation_period", variation: "variation_year", pac_utilization: "pac_year",
+  };
+  return metrics.flatMap(([column, label, format, vintage]) => {
+    const value = reportedNumber(row[column]);
+    const perSetting = setting[column] && row.as_of?.pac_utilization_by_setting;
+    const dataYear = (perSetting ? perSetting[setting[column]] : row.as_of?.[vintage])
+      ?? (!perSetting && periods[vintage] ? row[periods[vintage]] : null) ?? null;
+    // FILTER counts in a rollup can be zero even before that setting's
+    // source exists. Its own source vintage is what makes zero measurable.
+    if ((perSetting || row.as_of) && dataYear == null) return [];
+    return value == null ? [] : [{
+      label, value, format,
+      dataYear,
+    }];
+  });
+}
+
 /** Retain each dataset's own latest release, never combine financial years. */
 function latest(rows: any[], types: readonly string[]) {
   const candidates = rows.filter((r) => types.includes(r.facility_type));
