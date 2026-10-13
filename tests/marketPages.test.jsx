@@ -260,7 +260,7 @@ describe('MarketIntelligence', () => {
     expect(screen.queryByRole('button', { name: /Hospitals serving residents/ })).toBeNull();
   });
 
-  it('counts the facilities located in each county by default and names the billing counts as such', async () => {
+  it('counts the facilities located in each county by default and labels provider counts clearly', async () => {
     invoke.mockReset().mockResolvedValue({
       ...LAYER,
       counties: LAYER.counties.map((c, i) => ({ ...c, values: { ...c.values, snf_facilities: i ? 8 : 52 } })),
@@ -270,8 +270,8 @@ describe('MarketIntelligence', () => {
     // 52 facilities are located in the county; the 70 in the saturation file also bill for its residents.
     expect(screen.getByRole('button', { name: 'Skilled nursing facilities in county' })).toBeInTheDocument();
     expect(within(screen.getAllByRole('row')[1]).getByText('52')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Skilled nursing facilities billing' })).toBeNull();
-    expect(COUNTY_LAYER_METRICS.find((m) => m.key === 'snf_providers').label).toBe('Skilled nursing facilities billing');
+    expect(screen.queryByRole('button', { name: 'Skilled nursing facilities' })).toBeNull();
+    expect(COUNTY_LAYER_METRICS.find((m) => m.key === 'snf_providers').label).toBe('Skilled nursing facilities');
   });
 
   it('keeps "no metric columns" in the URL when the last column is removed, instead of bringing the defaults back', async () => {

@@ -114,9 +114,9 @@ export function growthFacts(rows) {
 
 /** Named reports. Each one answers one decision for one kind of provider. */
 export const REPORT_CATALOG = [
-  { id: 'expand-hha', purpose: 'Expansion', audience: 'Home health', title: 'Where to open or staff home health', needs: 'state', setting: 'hha', reason: 'Counties where home health use is large, or grew while the number of billing agencies did not.' },
-  { id: 'expand-hospice', purpose: 'Expansion', audience: 'Hospice', title: 'Where to open or staff hospice', needs: 'state', setting: 'hospice', reason: 'Counties where hospice use is large, or grew while the number of billing hospices did not.' },
-  { id: 'expand-snf', purpose: 'Expansion', audience: 'Nursing homes', title: 'Where skilled nursing demand is growing', needs: 'state', setting: 'snf', reason: 'Counties where skilled nursing use is large, or grew while the number of billing facilities did not.' },
+  { id: 'expand-hha', purpose: 'Expansion', audience: 'Home health', title: 'Where to open or staff home health', needs: 'state', setting: 'hha', reason: 'Counties where home health use is large, or grew while the number of agencies did not.' },
+  { id: 'expand-hospice', purpose: 'Expansion', audience: 'Hospice', title: 'Where to open or staff hospice', needs: 'state', setting: 'hospice', reason: 'Counties where hospice use is large, or grew while the number of hospices did not.' },
+  { id: 'expand-snf', purpose: 'Expansion', audience: 'Nursing homes', title: 'Where skilled nursing demand is growing', needs: 'state', setting: 'snf', reason: 'Counties where skilled nursing use is large, or grew while the number of facilities did not.' },
   { id: 'acquire-hha', purpose: 'Acquisition', audience: 'Home health', title: 'Largest home health agencies in the state', needs: 'state', setting: 'hha', reason: 'Agencies located in the state, ranked by the Medicare beneficiaries on their own claims.' },
   { id: 'acquire-hospice', purpose: 'Acquisition', audience: 'Hospice', title: 'Largest hospices in the state', needs: 'state', setting: 'hospice', reason: 'Hospices located in the state, ranked by the Medicare beneficiaries on their own claims.' },
   { id: 'acquire-snf', purpose: 'Acquisition', audience: 'Nursing homes', title: 'Largest nursing homes in the state', needs: 'state', setting: 'snf', reason: 'Nursing homes located in the state, with Medicare volume, census, and payer mix.' },

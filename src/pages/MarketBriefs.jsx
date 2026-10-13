@@ -57,19 +57,19 @@ function growthLead(state, setting, facts) {
   const top = facts.top;
   const detail = [
     top.usersPct != null ? `${fmtPct(top.usersPct)} of fee-for-service` : null,
-    top.billing != null ? `billed by ${fmtCount(top.billing)} ${setting.noun}` : null,
+    top.billing != null ? `${fmtCount(top.billing)} ${setting.noun} had claims for county residents` : null,
   ].filter(Boolean);
   const parts = [`${state} has ${setting.label.toLowerCase()} user counts for ${fmtCount(facts.countiesWithUsers)} counties. ${top.name} has the most: ${fmtCount(top.users)} users${detail.length ? ` (${detail.join(', ')})` : ''}.`];
   if (facts.busiest && facts.medianUsers != null) {
     const b = facts.busiest;
     const each = fmtCount(b.usersPerProvider);
-    if (b.fips === top.fips) parts.push(`It also has the most users per billing ${setting.one} among counties at or above the median user count (${fmtCount(facts.medianUsers)}): ${each}.`);
-    else parts.push(`Among counties with at least the median user count (${fmtCount(facts.medianUsers)}), ${b.name} has the most per billing ${setting.one}: ${each} across ${fmtCount(b.billing)} ${setting.noun}.`);
+    if (b.fips === top.fips) parts.push(`It also has the most users per ${setting.one} with claims for county residents among counties at or above the median user count (${fmtCount(facts.medianUsers)}): ${each}.`);
+    else parts.push(`Among counties with at least the median user count (${fmtCount(facts.medianUsers)}), ${b.name} has the most users per ${setting.one} with claims for county residents: ${each} across ${fmtCount(b.billing)} ${setting.noun}.`);
   }
   if (facts.rising.length) {
     const names = facts.rising.slice(0, 3).map((r) => r.name);
     const verb = facts.rising.length === 1 ? '1 county had' : `${fmtCount(facts.rising.length)} counties had`;
-    parts.push(`${verb} more users than the year before while the number of billing ${setting.noun} did not rise: ${names.join(', ')}${facts.rising.length > 3 ? ', and others' : ''}.`);
+    parts.push(`${verb} more users than the year before while the number of ${setting.noun} with claims for residents did not rise: ${names.join(', ')}${facts.rising.length > 3 ? ', and others' : ''}.`);
   }
   return parts.join(' ');
 }
@@ -264,15 +264,15 @@ export default function MarketBriefs() {
             {layer && <p className="text-sm text-slate-300 mt-2">{growthLead(url.state, settingDef, facts)}</p>}
           </header>
           {layer && facts.rising.length > 0 && (
-            <Section title={`Use rose; billing ${settingDef.noun} did not`}>
+            <Section title="Use rose; provider counts did not">
               <Table
-                headers={['County', 'Users', 'Vs last year', `Billing ${settingDef.noun}`, 'Their change']}
+                headers={['County', 'Users', 'Vs last year', 'Providers with claims', 'Their change']}
                 rows={facts.rising.slice(0, 8).map((r) => [
                   <button key={r.fips} type="button" className="text-cyan-400 hover:underline text-left" onClick={() => setUrl({ report: 'county', county: r.fips, from: spec.id })}>{r.name}</button>,
                   fmtCount(r.users), fmtPct(r.usersChange), fmtCount(r.billing), fmtPct(r.billingChange),
                 ])}
               />
-              <p className="text-[11px] text-slate-500">Change is versus the prior year in the market-saturation file. A billing {settingDef.one} in another county still counts.</p>
+              <p className="text-[11px] text-slate-500">Change is versus the prior year in the market-saturation file. Counts include providers located in other counties when they have claims for residents here.</p>
             </Section>
           )}
           {layer && (
@@ -285,7 +285,7 @@ export default function MarketBriefs() {
                 </Select>
               </div>
               <Table
-                headers={['County', 'Users', 'Share of FFS', 'Vs last year', `Billing ${settingDef.noun}`, 'Users each', 'Spend / beneficiary']}
+                headers={['County', 'Users', 'Share of FFS', 'Vs last year', 'Providers with claims', 'Users each', 'Spend / beneficiary']}
                 rows={ranked.map((r) => [
                   <button key={r.fips} type="button" className="text-cyan-400 hover:underline text-left" onClick={() => setUrl({ report: 'county', county: r.fips, from: spec.id })}>{r.name}</button>,
                   fmtCount(r.users), fmtPct(r.usersPct), fmtPct(r.usersChange), fmtCount(r.billing), fmtCount(r.usersPerProvider), fmtMoney(r.spend),
@@ -398,7 +398,7 @@ export default function MarketBriefs() {
           {market.profile?.available && (
             <Section title={`${settingDef.label} demand`}>
               <Table
-                headers={['Users', 'Share of FFS', 'Vs last year', 'Billing', 'Located here', 'Spend / beneficiary']}
+                headers={['Users', 'Share of FFS', 'Vs last year', 'Providers with claims', 'Located here', 'Spend / beneficiary']}
                 rows={[[
                   fmtCount(market.profile[settingKey === 'hospice' ? 'hospice_users' : settingKey === 'snf' ? 'snf_users' : 'hha_users']),
                   fmtPct(market.profile[settingKey === 'hospice' ? 'hospice_users_pct' : settingKey === 'snf' ? 'snf_users_pct' : 'hha_users_pct']),
@@ -408,7 +408,7 @@ export default function MarketBriefs() {
                   fmtMoney(market.profile[settingDef.spend]),
                 ]]}
               />
-              <p className="text-[11px] text-slate-500">Billing includes {settingDef.noun} in other counties. {fmtCount(market.profile.benes)} Medicare beneficiaries live here, {fmtShare(market.profile.ma_penetration)} in Medicare Advantage.</p>
+              <p className="text-[11px] text-slate-500">Provider counts include {settingDef.noun} in other counties with claims for residents here. {fmtCount(market.profile.benes)} Medicare beneficiaries live here, {fmtShare(market.profile.ma_penetration)} in Medicare Advantage.</p>
             </Section>
           )}
           <Section title="Hospitals discharging residents">

@@ -55,6 +55,11 @@ describe("named reports", () => {
     const ids = REPORT_CATALOG.map((r) => r.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(REPORT_CATALOG.filter((r) => r.purpose === "Expansion").map((r) => r.setting)).toEqual(["hha", "hospice", "snf"]);
+    expect(REPORT_CATALOG.filter((r) => r.purpose === "Expansion").map((r) => r.reason)).toEqual([
+      "Counties where home health use is large, or grew while the number of agencies did not.",
+      "Counties where hospice use is large, or grew while the number of hospices did not.",
+      "Counties where skilled nursing use is large, or grew while the number of facilities did not.",
+    ]);
     expect(REPORT_CATALOG.filter((r) => r.purpose === "Acquisition").map((r) => r.audience)).toEqual(["Home health", "Hospice", "Nursing homes"]);
     expect(REPORT_CATALOG.find((r) => r.id === "hospital-partners")!.needs).toBe("county");
     const facts = leaderFacts([{ share: 0.2, name: "A" }, { share: 0.1, name: "B" }, { share: null, name: "C" }]);
