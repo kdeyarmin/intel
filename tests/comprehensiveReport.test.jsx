@@ -109,7 +109,7 @@ describe('report sections', () => {
     expect(model.subtitle).toBe('Facility Intelligence Report');
     expect(model.profile.metrics).toEqual([]);
     expect(model.profile.identifiers[0]).toEqual({ label: 'CCN', value: '390111' });
-    expect(reportFileName(model)).toBe('CareMetric-Erie-Manor-2026-10-01');
+    expect(reportFileName(model)).toBe('CareMetric-Healthcare-Advisors-Erie-Manor-2026-10-01');
   });
 });
 
@@ -180,7 +180,7 @@ describe('ComprehensiveReport', () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => {
       expect(document.body.classList.contains('cm-printing-report')).toBe(true);
       expect(document.querySelector('.cm-print-root .cm-report-doc')).not.toBeNull();
-      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric AI');
+      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric Healthcare Advisors');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Data Sources');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Example Holdings');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Discharge function score');

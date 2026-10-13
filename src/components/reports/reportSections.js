@@ -19,7 +19,7 @@ export const REPORT_SECTIONS = [
   { key: 'ownership', label: 'Ownership details', description: 'Reported owners, ownership percentages, types and roles where linked by CCN, NPI or enrollment', needsNpi: false, source: 'CMS All Owners and Nursing Home Ownership files' },
   { key: 'costReports', label: 'Cost report summaries', description: 'Latest reported revenue, expenses, beds and visits; only available metrics are shown', needsNpi: false, source: 'CMS Hospital, Home Health Agency and SNF Cost Reports' },
   { key: 'additionalQuality', label: 'Additional quality measures', description: 'A curated snapshot of reported performance scores and quality measures beyond star ratings', needsNpi: false, source: 'CMS Value-Based Purchasing, SNF Quality Reporting, Home Health and Nursing Home quality files' },
-  { key: 'leadScore', label: 'Lead score', description: 'CareMetric lead score and its components', needsNpi: true },
+  { key: 'leadScore', label: 'Lead score', description: 'Provider fit score and its components', needsNpi: true },
   { key: 'enrichments', label: 'Enrichments', description: 'Contact and profile enrichment records', needsNpi: true },
 ];
 
@@ -32,8 +32,8 @@ const SECTION_SOURCES = {
   affiliations: 'CMS facility affiliations and NPPES',
   facilities: 'CMS Provider of Services and Care Compare facility files',
   quality: 'CMS Care Compare star ratings',
-  leadScore: 'CareMetric lead scoring',
-  enrichments: 'CareMetric enrichment records',
+  leadScore: 'Provider fit scoring',
+  enrichments: 'Provider enrichment records',
 };
 
 /** The sections that apply to a report about this NPI and/or CCN. */
@@ -330,5 +330,5 @@ export function buildReportModel(report, selected, { npi, providerId, facilityNa
 /** A safe file name for the report download. */
 export function reportFileName(model) {
   const base = String(model?.title || 'report').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'report';
-  return `CareMetric-${base}-${(model?.generatedAt || new Date()).toISOString().slice(0, 10)}`;
+  return `CareMetric-Healthcare-Advisors-${base}-${(model?.generatedAt || new Date()).toISOString().slice(0, 10)}`;
 }

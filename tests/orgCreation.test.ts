@@ -42,7 +42,7 @@ describe("createOrgWithOwner", () => {
 
   it("gives up with a plain error after eight taken slugs", async () => {
     const client = { query: vi.fn(async () => ({ rows: [] })) };
-    await expect(createOrgWithOwner(client, { name: "Sunny Hill", ownerUserId: 5 })).rejects.toThrow("Couldn't create the organization");
+    await expect(createOrgWithOwner(client, { name: "Sunny Hill", ownerUserId: 5 })).rejects.toThrow("Unable to create the organization");
     expect(client.query).toHaveBeenCalledTimes(8);
   });
 });

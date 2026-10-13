@@ -1,19 +1,17 @@
 import { jsPDF } from 'jspdf';
 import { base44 } from '@/api/base44Client';
-import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
-
-const CAREMETRIC_WEBSITE = 'www.CareMetric.ai';
+import { BRAND_NAME, BRAND_WEBSITE, CAREMETRIC_LOGO_URL } from '@/lib/branding';
 
 /** The source line every export carries (CMS asks that derived data not be presented as CMS data). */
 export function exportAttribution(date = new Date()) {
-  return `Source: CareMetric analytics derived from public CMS, NPPES and U.S. Census data, not CMS publications. Medicare figures are fee-for-service unless noted; counts under 11 are suppressed. Exported ${date.toISOString().slice(0, 10)}.`;
+  return `Source: Analysis by ${BRAND_NAME} based on public CMS, NPPES and U.S. Census Bureau data; not an official CMS publication. Medicare figures are fee-for-service unless noted; counts under 11 are suppressed. Exported ${date.toISOString().slice(0, 10)}.`;
 }
 
 /**
  * Counts one export against the organization's daily allowance before a file
  * is built. `ok: false` carries the message to show: the day's limit is used
  * up, or the count itself failed (offline, server error, a database that
- * couldn't record it). A file is built only after a confirmed count, so the
+ * unable to record it). A file is built only after a confirmed count, so the
  * allowance can't be dodged by blocking or breaking the request.
  *
  * This is the metering path for exports built from data the view already
@@ -35,7 +33,7 @@ export async function countExport() {
   }
 }
 
-const COUNT_FAILED = "Couldn't check your daily export allowance. Try again in a moment.";
+const COUNT_FAILED = "Unable to check your daily export allowance. Retry in a moment.";
 
 /**
  * Load image as base64 for embedding in PDF. Null when it can't be loaded:
@@ -83,14 +81,14 @@ function addPDFHeader(doc, title, logoBase64) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('CareMetric AI', logoBase64 ? 36 : 14, 14);
+  doc.text(BRAND_NAME, logoBase64 ? 36 : 14, 14);
   doc.setFontSize(7);
   doc.setFont(undefined, 'normal');
   doc.text('Provider Intel', logoBase64 ? 36 : 14, 20);
   
   // Website right-aligned
   doc.setFontSize(7);
-  doc.text(CAREMETRIC_WEBSITE, pageW - 14, 14, { align: 'right' });
+  doc.text(BRAND_WEBSITE, pageW - 14, 14, { align: 'right' });
   
   // Reset text color
   doc.setTextColor(0, 0, 0);
@@ -120,7 +118,7 @@ function addPDFFooter(doc, pageNum) {
   
   doc.setFontSize(6);
   doc.setTextColor(150);
-  doc.text(`CareMetric AI  •  ${CAREMETRIC_WEBSITE}  •  Confidential`, 14, pageH - 10);
+  doc.text(`${BRAND_NAME}  •  ${BRAND_WEBSITE}  •  Confidential`, 14, pageH - 10);
   doc.text(exportAttribution(), 14, pageH - 6, { maxWidth: pageW - 50 });
   doc.text(`Page ${pageNum}`, pageW - 14, pageH - 10, { align: 'right' });
   doc.setTextColor(0);

@@ -183,7 +183,7 @@ export default function Locations() {
                    </TableRow>
                   ))
                 ) : isError ? (
-                  <TableRow><TableCell colSpan={8} className="py-6"><QueryErrorState title="Couldn't load locations" error={loadError} onRetry={refetch} /></TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="py-6"><QueryErrorState title="Unable to load locations" error={loadError} onRetry={refetch} /></TableCell></TableRow>
                 ) : filtered.length === 0 ? (
                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-slate-400">
                    {result?.needsState ? result.message : searching ? `No locations found for ${result?.label || 'this search'}.` : 'No locations match the current filters.'}

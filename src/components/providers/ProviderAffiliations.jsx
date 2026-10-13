@@ -144,7 +144,7 @@ Only return affiliations you can verify. Be specific with names.`,
     queryClient.invalidateQueries({ queryKey: ['providerAffiliations', npi] });
     } catch (err) {
       console.error('AI affiliation suggestion failed:', err);
-      toast.error('Suggestion failed. Please try again.');
+      toast.error('Suggestion failed. Please retry.');
     } finally {
       setSuggesting(false);
     }

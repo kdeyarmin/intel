@@ -169,7 +169,7 @@ Only return information you find with reasonable confidence from public sources.
     toast.success(`Found enrichment data for ${enriched.length} of ${batch.length} providers`);
     } catch (err) {
       console.error('Profile augmentation failed:', err);
-      toast.error('Augmentation failed. Please try again.');
+      toast.error('Augmentation failed. Please retry.');
     } finally {
       setLoading(false);
     }
@@ -223,7 +223,7 @@ Only return information you find with reasonable confidence from public sources.
       if (onComplete) onComplete();
     } catch (err) {
       console.error(`Failed to save enrichment for ${profile.npi}:`, err);
-      toast.error('Failed to save enrichment. Please try again.');
+      toast.error('Failed to save enrichment. Please retry.');
     } finally {
       setApplying(prev => { const n = new Set(prev); n.delete(profile.npi); return n; });
     }

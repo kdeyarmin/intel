@@ -173,7 +173,7 @@ function AutoRetryBanner({ batch, onUpdated }) {
       onUpdated?.();
     } catch (error) {
       console.error('Failed to update auto-retry setting for import batch', error);
-      toast.error('Unable to update the auto-retry setting right now. Please try again.');
+      toast.error('Unable to update the auto-retry setting right now. Please retry.');
     } finally {
       setBusy(false);
     }

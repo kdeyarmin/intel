@@ -160,7 +160,7 @@ Provide data-driven predictions with confidence levels.`,
     setAnalysis(res);
     } catch (err) {
       console.error('AI predictive network analysis failed:', err);
-      toast.error('Operation failed. Please try again.');
+      toast.error('Operation failed. Please retry.');
     } finally {
       setLoading(false);
     }

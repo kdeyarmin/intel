@@ -162,7 +162,7 @@ describe("checkout when Stripe can't say whether the organization's subscription
       s.retrieveFailure = failure;
       const r = await checkout("owner@riverbend.org", "state");
       expect(r.status).toBe(502);
-      expect(r.body.message).toMatch(/Couldn't start checkout/);
+      expect(r.body.message).toMatch(/Unable to start checkout/);
     }
     // Nothing was changed or opened for any of them.
     expect(s.sessions).toHaveLength(0);
@@ -217,11 +217,11 @@ describe("counting an export", () => {
     expect(await count("owner@riverbend.org")).toEqual({ status: 200, body: { ok: true, counted: true } });
   });
 
-  it("fails when it couldn't be counted: the browser builds the file only after a confirmed count", async () => {
+  it("fails when it unable to be counted: the browser builds the file only after a confirmed count", async () => {
     s.countFailure = new Error("connection terminated");
     const r = await count("owner@riverbend.org");
     expect(r.status).toBe(503);
-    expect(r.body).toMatchObject({ counted: false, message: expect.stringMatching(/Couldn't count this export/) });
+    expect(r.body).toMatchObject({ counted: false, message: expect.stringMatching(/Unable to count this export/) });
   });
 
   it("stops an organization that has used up its day with a 429", async () => {

@@ -32,11 +32,17 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 import InteractiveProviderMap from '../components/territory/InteractiveProviderMap';
 import { pickPrimaryLocation } from '@/lib/locations';
 import { US_STATES } from '@/lib/usStates';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort } from '@/lib/tableSorting';
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
   { value: 'npi', label: 'NPI' },
   { value: 'credential', label: 'Credential' },
+  { value: 'specialty', label: 'Specialty' },
+  { value: 'state', label: 'State' },
+  { value: 'status', label: 'Status' },
+  { value: 'email', label: 'Email' },
   { value: 'score', label: 'Score' },
   { value: 'created', label: 'Date Added' },
   { value: 'updated', label: 'Last Updated' },
@@ -497,6 +503,14 @@ export default function Providers() {
           return dir * va.localeCompare(vb);
         case 'npi':
           return dir * (a.npi || '').localeCompare(b.npi || '');
+        case 'specialty':
+          return dir * ((taxonomyByNpi[a.npi] || [])[0]?.taxonomy_description || '').localeCompare((taxonomyByNpi[b.npi] || [])[0]?.taxonomy_description || '');
+        case 'state':
+          return dir * (pickPrimaryLocation(locationByNpi[a.npi])?.state || '').localeCompare(pickPrimaryLocation(locationByNpi[b.npi])?.state || '');
+        case 'status':
+          return dir * (a.status || '').localeCompare(b.status || '');
+        case 'email':
+          return dir * (a.email || '').localeCompare(b.email || '');
         case 'credential':
           return dir * (a.credential || '').localeCompare(b.credential || '');
         case 'score':
@@ -510,7 +524,12 @@ export default function Providers() {
       }
     });
     return sorted;
-  }, [filteredProviders, sortField, sortDir, scores]);
+  }, [filteredProviders, sortField, sortDir, scores, taxonomyByNpi, locationByNpi]);
+
+  const setHeaderSort = (key) => {
+    const next = nextSort({ key: sortField, direction: sortDir }, key, key === 'score' ? 'desc' : 'asc');
+    setUrl({ sort: next.key, dir: next.direction });
+  };
 
   const selectedProviders = providers.filter(p => selectedNpis.has(p.npi));
 
@@ -864,13 +883,13 @@ export default function Providers() {
                       className="rounded border-slate-600 bg-slate-800"
                     />
                   </TableHead>
-                  <TableHead>NPI</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="hidden md:table-cell">Specialty</TableHead>
-                  <TableHead className="hidden lg:table-cell">State</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden sm:table-cell">Email</TableHead>
-                  <TableHead>Score</TableHead>
+                  <SortableTableHead label="NPI" column="npi" sort={sortField === 'default' ? null : { key: sortField, direction: sortDir }} onSort={setHeaderSort} />
+                  <SortableTableHead label="Name" column="name" sort={sortField === 'default' ? null : { key: sortField, direction: sortDir }} onSort={setHeaderSort} />
+                  <SortableTableHead label="Specialty" column="specialty" sort={sortField === 'default' ? null : { key: sortField, direction: sortDir }} onSort={setHeaderSort} className="hidden md:table-cell" />
+                  <SortableTableHead label="State" column="state" sort={sortField === 'default' ? null : { key: sortField, direction: sortDir }} onSort={setHeaderSort} className="hidden lg:table-cell" />
+                  <SortableTableHead label="Status" column="status" sort={sortField === 'default' ? null : { key: sortField, direction: sortDir }} onSort={setHeaderSort} />
+                  <SortableTableHead label="Email" column="email" sort={sortField === 'default' ? null : { key: sortField, direction: sortDir }} onSort={setHeaderSort} className="hidden sm:table-cell" />
+                  <SortableTableHead label="Score" column="score" sort={sortField === 'default' ? null : { key: sortField, direction: sortDir }} onSort={setHeaderSort} />
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -893,7 +912,7 @@ export default function Providers() {
                   <TableRow>
                     <TableCell colSpan={9} className="py-6">
                       <QueryErrorState
-                        title="Couldn't load providers"
+                        title="Unable to load providers"
                         error={providersError}
                         onRetry={refetchProviders}
                       />

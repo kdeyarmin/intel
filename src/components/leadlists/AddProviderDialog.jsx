@@ -38,7 +38,7 @@ export default function AddProviderDialog({ listId, existingNpis = [], onAdded }
       setResults(providers);
     } catch (err) {
       console.error('Provider search failed:', err);
-      toast.error('Search failed. Please try again.');
+      toast.error('Search failed. Please retry.');
       setResults([]);
     } finally {
       setSearching(false);
@@ -56,7 +56,7 @@ export default function AddProviderDialog({ listId, existingNpis = [], onAdded }
       await onAdded?.();
     } catch (err) {
       console.error('Failed to add provider:', err);
-      toast.error('Failed to add provider. Please try again.');
+      toast.error('Failed to add provider. Please retry.');
     } finally {
       setAdding(null);
     }

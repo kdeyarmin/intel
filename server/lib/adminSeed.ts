@@ -34,7 +34,7 @@ export async function seedAdmin(
     const created = await repo.create({
       email,
       password_hash: await opts.hashPassword(password),
-      full_name: env.ADMIN_FULL_NAME || "CareMetric Admin",
+      full_name: env.ADMIN_FULL_NAME || "CareMetric Healthcare Advisors Admin",
       role: "admin",
       is_platform_admin: true,
       status: "active",

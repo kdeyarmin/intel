@@ -42,7 +42,7 @@ export default function CampaignPerformanceMetrics({ campaign_id, status }) {
     return <Card className="bg-[#141d30] border-slate-700/50"><CardContent className="py-8 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin inline mr-2" />Loading metrics…</CardContent></Card>;
   }
   if (isError) {
-    return <QueryErrorState title="Couldn't load campaign metrics" error={error} onRetry={refetch} />;
+    return <QueryErrorState title="Unable to load campaign metrics" error={error} onRetry={refetch} />;
   }
 
   const metrics = data.metrics;

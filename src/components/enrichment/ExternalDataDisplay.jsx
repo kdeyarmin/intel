@@ -58,7 +58,7 @@ export default function ExternalDataDisplay({ npi, provider, onEnrichmentComplet
       setTab('npi');
       onEnrichmentComplete?.();
     } catch (error) {
-      toastFunctionError(error, "Couldn't check the NPI Registry");
+      toastFunctionError(error, "Unable to check the NPI Registry");
     } finally {
       setChecking(false);
     }

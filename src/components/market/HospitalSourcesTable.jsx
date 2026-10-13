@@ -1,14 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Hospital } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { fmtCount, fmtPct, fmtShare } from '@/lib/marketFormat';
 import MarketFreshness from './MarketFreshness';
+import SortableTableHead from '../shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 /** The hospitals whose Medicare inpatients live in a county, with each one's post-discharge mix. */
 export default function HospitalSourcesTable({ sources, rollups, countyName }) {
   const rows = sources?.rows || [];
+  const [sort, setSort] = useState({ key: 'cases', direction: 'desc' });
+  const sortedRows = sortRows(rows, sort, (row, key) => key === 'name' ? row.name : key === 'share' ? row.share : key === 'cases' ? row.cases : row.discharge_mix?.[key]);
+  const changeSort = (key) => setSort((current) => nextSort(current, key, key === 'name' ? 'asc' : 'desc'));
   const max = Math.max(1, ...rows.map((r) => r.share ?? 0));
   return (
     <Card className="bg-slate-800/50 border-slate-700/50">
@@ -22,7 +27,7 @@ export default function HospitalSourcesTable({ sources, rollups, countyName }) {
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <p className="text-sm text-slate-400">No Hospital Service Area data for this county yet.</p>
+          <p className="text-sm text-slate-400">Hospital Service Area data is not available for this county.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -30,18 +35,18 @@ export default function HospitalSourcesTable({ sources, rollups, countyName }) {
               <thead>
                 <tr className="text-left text-slate-400 border-b border-slate-700/60">
                   <th scope="col" className="py-1.5 pr-2">#</th>
-                  <th scope="col" className="py-1.5 pr-2">Hospital</th>
-                  <th scope="col" className="py-1.5 pr-2 text-right">Cases</th>
-                  <th scope="col" className="py-1.5 pr-2">Share of county</th>
-                  <th scope="col" className="py-1.5 pr-2 text-right">SNF</th>
-                  <th scope="col" className="py-1.5 pr-2 text-right">Home health</th>
-                  <th scope="col" className="py-1.5 text-right">Hospice</th>
+                  <SortableTableHead label="Hospital" column="name" sort={sort} onSort={changeSort} className="py-1.5 pr-2" />
+                  <SortableTableHead label="Cases" column="cases" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                  <SortableTableHead label="Share of county" column="share" sort={sort} onSort={changeSort} className="py-1.5 pr-2" />
+                  <SortableTableHead label="SNF" column="pct_snf" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                  <SortableTableHead label="Home health" column="pct_hha" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                  <SortableTableHead label="Hospice" column="pct_hospice" sort={sort} onSort={changeSort} className="py-1.5 text-right" />
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {sortedRows.map((r, index) => (
                   <tr key={r.ccn} className="border-b border-slate-800/60">
-                    <td className="py-1.5 pr-2 text-slate-400">{r.rank}</td>
+                    <td className="py-1.5 pr-2 text-slate-400">{index + 1}</td>
                     <td className="py-1.5 pr-2">
                       <Link to={createPageUrl(`FacilityDetail?id=${encodeURIComponent(r.ccn)}&group=hospital`)} className="text-cyan-400 hover:underline">{r.name || r.ccn}</Link>
                       <span className="block text-[10px] text-slate-400">{[r.city, r.state].filter(Boolean).join(', ') || `CCN ${r.ccn}`}</span>

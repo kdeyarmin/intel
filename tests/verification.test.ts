@@ -218,7 +218,7 @@ describe("email verification", () => {
       .toMatchObject({ nullMx: true });
   });
 
-  it("says 'couldn't check' when the resolver can't answer MX queries at all", async () => {
+  it("says 'unable to check' when the resolver can't answer MX queries at all", async () => {
     clearEmailDnsCache();
     const broken = resolver({ resolve4: async () => ["93.184.216.34"] }); // even gmail.com has no MX here
     const check = await checkDomainCached("clinic.org", broken);

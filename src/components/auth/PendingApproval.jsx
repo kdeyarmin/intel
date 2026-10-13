@@ -32,7 +32,7 @@ export default function PendingApproval() {
         <div className="space-y-3">
           <p>
             Thanks for signing up{user.full_name ? `, ${user.full_name}` : ''}. An administrator needs to approve{' '}
-            <span className="text-white">{user.email}</span> before you can use CareMetric AI.
+            <span className="text-white">{user.email}</span> before you can use CareMetric Healthcare Advisors.
           </p>
           <p className="text-slate-400">
             This page checks every 30 seconds and opens the app as soon as you're approved. You can also close it and

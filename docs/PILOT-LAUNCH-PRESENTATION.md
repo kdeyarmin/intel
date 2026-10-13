@@ -1,4 +1,4 @@
-# CareMetric Intel — Employee Pilot Launch
+# CareMetric Healthcare Advisors — Employee Pilot Launch
 
 **Engaging Presentation Deck with Speaker Scripts**  
 *(Estimated total time: 12–15 minutes)*  
@@ -8,20 +8,21 @@ Copy each slide section into your slides. Speaker notes are below each slide.
 
 ## Slide 1: Title
 
-**CareMetric Intel**  
+**CareMetric Healthcare Advisors**
+
 Employee Pilot Launch
 
 *Find. Understand. Engage.*  
 Real CMS + NPPES intelligence for our team.
 
 **Speaker Script (~1 min):**  
-“Thanks for joining. Today we’re launching the employee pilot for CareMetric Intel — the platform that helps us find, understand, and engage healthcare providers using real public data from CMS and NPPES. Over the next 12 to 15 minutes I’ll show you what it is, why we need your help, the six specific workflows we want you to try, and exactly what feedback will make the biggest difference. Let’s get started.”
+“Thanks for joining. Today we’re launching the employee pilot for CareMetric Healthcare Advisors — the platform that helps us find, understand, and engage healthcare providers using real public data from CMS and NPPES. Over the next 12 to 15 minutes I’ll show you what it is, why we need your help, the six specific workflows we want you to try, and exactly what feedback will make the biggest difference. Let’s get started.”
 
 ---
 
 ## Slide 2: Agenda
 
-1. What is CareMetric Intel? (the “why it exists”)
+1. What is CareMetric Healthcare Advisors? (the “why it exists”)
 2. Why an employee pilot right now
 3. What you can do today
 4. **The six workflows** we want you to try (deep dive)
@@ -34,7 +35,7 @@ Real CMS + NPPES intelligence for our team.
 
 ---
 
-## Slide 3: What is CareMetric Intel?
+## Slide 3: What is CareMetric Healthcare Advisors?
 
 A healthcare provider intelligence + CRM + analytics platform.
 
@@ -48,7 +49,7 @@ A healthcare provider intelligence + CRM + analytics platform.
 **In one sentence:** Better targeting and execution for our sales and business-development teams.
 
 **Speaker Script (~1.5 min):**  
-“Imagine you need to find the right physicians or facilities in a specific market, understand their Medicare volume and quality scores, see who they refer to, and then reach out with a relevant message — all without bouncing between a dozen spreadsheets and government websites. That’s CareMetric Intel. It pulls in the official CMS datasets and the NPPES registry, cleans and organizes them, and gives you searchable profiles, scores, networks, and tools to act. The goal is simple: spend less time hunting for data and more time having the right conversations.”
+“Imagine you need to find the right physicians or facilities in a specific market, understand their Medicare volume and quality scores, see who they refer to, and then reach out with a relevant message — all without bouncing between a dozen spreadsheets and government websites. That’s CareMetric Healthcare Advisors. It pulls in the official CMS datasets and the NPPES registry, cleans and organizes them, and gives you searchable profiles, scores, networks, and tools to act. The goal is simple: spend less time hunting for data and more time having the right conversations.”
 
 ---
 
@@ -203,7 +204,7 @@ After the pilot we will decide whether to expand access or address specific gaps
 
 **Questions?**
 
-Thank you for helping us make CareMetric Intel better.
+Thank you for helping us make CareMetric Healthcare Advisors better.
 
 **Speaker Script (~1 min):**  
 “That’s the plan. Accounts go out this week along with the URL and the feedback channel. Jump in as soon as you can, and we’ll check in partway through and again at the end. What questions do you have right now?”

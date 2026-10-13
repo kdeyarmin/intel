@@ -64,7 +64,7 @@ export default function Marketing() {
   const account = (data?.accounts || []).find((a) => String(a.id) === String(url.account)) || null;
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['crm'] });
-  const fail = (e) => toast.error(e?.message || 'Could not save that.');
+  const fail = (e) => toast.error(e?.message || 'Unable to save that.');
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1000px] mx-auto space-y-4">
@@ -94,7 +94,7 @@ export default function Marketing() {
         )}
       </div>
 
-      {isError && <p className="text-sm text-red-400" role="alert">{error?.message || 'Could not load your book.'}</p>}
+      {isError && <p className="text-sm text-red-400" role="alert">{error?.message || 'Unable to load your book.'}</p>}
       {data?.truncated && <p className="text-sm text-amber-300" role="status">The book is larger than this page can load, so the month-end totals are incomplete.</p>}
       {isLoading && <p className="text-sm text-slate-400">Loading your book…</p>}
 

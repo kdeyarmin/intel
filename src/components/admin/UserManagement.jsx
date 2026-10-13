@@ -58,7 +58,7 @@ function LinkDialog({ result, onClose }) {
       await navigator.clipboard.writeText(result.link);
       setCopied(true);
     } catch {
-      toast.error("Couldn't copy. Select the link and copy it manually.");
+      toast.error("Unable to copy. Select the link and copy it manually.");
     }
   };
   return (
@@ -321,7 +321,7 @@ export default function UserManagement() {
           {isLoading ? (
             <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-slate-400" aria-label="Loading users" /></div>
           ) : error ? (
-            <p className="text-sm text-red-400" role="alert">Couldn't load users: {error.message}</p>
+            <p className="text-sm text-red-400" role="alert">Unable to load users: {error.message}</p>
           ) : (
             <div className="relative border border-slate-700/50 rounded-lg overflow-x-auto">
               <table className="w-full text-sm text-left">

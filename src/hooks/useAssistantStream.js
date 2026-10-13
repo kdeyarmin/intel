@@ -100,7 +100,7 @@ export function useAssistantStream({ onSettled } = {}) {
           setDraft((d) => (d ? { ...d, status: 'interrupted', error: null } : d));
         } else {
           failed = true;
-          setDraft((d) => (d ? { ...d, status: 'failed', error: e?.message || 'The assistant could not answer.' } : d));
+          setDraft((d) => (d ? { ...d, status: 'failed', error: e?.message || 'The assistant unable to answer.' } : d));
         }
       }
     } finally {

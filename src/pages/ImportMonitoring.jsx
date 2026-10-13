@@ -566,7 +566,7 @@ export default function ImportMonitoring() {
                           });
                           refreshBatches();
                         } catch (err) {
-                          toast.error(`Could not cancel the job: ${err.message}`);
+                          toast.error(`Unable to cancel the job: ${err.message}`);
                         }
                       }}
                     >
@@ -584,7 +584,7 @@ export default function ImportMonitoring() {
                           });
                           refreshBatches();
                         } catch (err) {
-                          toast.error(`Could not mark the job as failed: ${err.message}`);
+                          toast.error(`Unable to mark the job as failed: ${err.message}`);
                         }
                       }}
                     >

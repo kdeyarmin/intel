@@ -22,10 +22,10 @@ beforeEach(() => me.mockReset());
 
 describe('AuthContext session check', () => {
   it('reports an outage instead of signing out on startup', async () => {
-    me.mockRejectedValueOnce(apiError(503, { detail: "Couldn't check your session." }));
+    me.mockRejectedValueOnce(apiError(503, { detail: "Unable to check your session." }));
     render(<AuthProvider><Probe /></AuthProvider>);
     await waitFor(() => expect(screen.getByText('out:unavailable')).toBeTruthy());
-    expect(auth.authError.message).toBe("Couldn't check your session.");
+    expect(auth.authError.message).toBe("Unable to check your session.");
   });
 
   it('keeps a loaded session when a later check hits an outage', async () => {
@@ -46,7 +46,7 @@ describe('AuthContext session check', () => {
 
 describe('PendingApproval during an outage', () => {
   it('offers a retry instead of sending a pending user to sign in', async () => {
-    me.mockRejectedValueOnce(apiError(503, { detail: "Couldn't check your session." }));
+    me.mockRejectedValueOnce(apiError(503, { detail: "Unable to check your session." }));
     render(
       <AuthProvider>
         <MemoryRouter initialEntries={['/pending']}>
@@ -57,8 +57,8 @@ describe('PendingApproval during an outage', () => {
         </MemoryRouter>
       </AuthProvider>,
     );
-    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't check your session.");
+    expect(await screen.findByRole('alert')).toHaveTextContent("Unable to check your session.");
     expect(screen.queryByText('login screen')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
   });
 });

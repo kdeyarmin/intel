@@ -15,7 +15,7 @@ function getSuggestedResolution(error) {
   if (msg.includes('date') || msg.includes('format')) return 'Date format doesn\'t match expected pattern. Ensure dates use MM/DD/YYYY or YYYY-MM-DD format.';
   if (msg.includes('stall') || msg.includes('inactivity')) return 'The import job stalled. Retry the import — this is usually a transient issue.';
   if (msg.includes('bulk create') || msg.includes('chunk')) return 'A batch of rows failed to insert. Check for data type mismatches or constraint violations.';
-  if (msg.includes('map') || msg.includes('mapping')) return 'Row could not be mapped to the target schema. Check column names match expected format.';
+  if (msg.includes('map') || msg.includes('mapping')) return 'Row unable to be mapped to the target schema. Check column names match expected format.';
   return null;
 }
 

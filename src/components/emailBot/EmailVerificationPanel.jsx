@@ -34,7 +34,7 @@ export default function EmailVerificationPanel({ providers, onRefresh }) {
       setProgress({ processed: data.batch_processed, total: data.total_candidates, status: 'done' });
       const s = data.summary || {};
       const parts = [`${s.valid || 0} valid`, `${s.risky || 0} risky`, `${s.invalid || 0} invalid`];
-      if (s.unknown) parts.push(`${s.unknown} couldn't be checked`);
+      if (s.unknown) parts.push(`${s.unknown} unable to be checked`);
       if (data.batch_processed === 0) toast.info('Nothing to verify in this group.');
       else toast.success(`Checked ${data.batch_processed} emails: ${parts.join(', ')}. ${data.remaining.toLocaleString()} left.`);
       onRefresh?.();

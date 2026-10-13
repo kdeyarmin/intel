@@ -86,13 +86,13 @@ describe("runOperationsAlerts", () => {
     expect(h.inserts[0]).toMatchObject({ event_type: "operations_alert", details: { emailed: 2 } });
   });
 
-  it("records nothing when the digest couldn't be emailed to anyone, so the next tick tries again", async () => {
+  it("records nothing when the digest unable to be emailed to anyone, so the next tick tries again", async () => {
     h.sendMail.mockRejectedValue(new Error("SMTP down"));
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const r = await runOperationsAlerts();
     warn.mockRestore();
     expect(r.ok).toBe(false);
-    expect(r.error).toMatch(/couldn't be emailed to anyone: SMTP down/);
+    expect(r.error).toMatch(/unable to be emailed to anyone: SMTP down/);
     expect(h.inserts).toHaveLength(0);
   });
 

@@ -97,7 +97,7 @@ REQUIREMENTS:
     toast.success('AI draft generated');
     } catch (err) {
       console.error('AI campaign drafter failed:', err);
-      toast.error('Operation failed. Please try again.');
+      toast.error('Operation failed. Please retry.');
     } finally {
       setGenerating(false);
     }

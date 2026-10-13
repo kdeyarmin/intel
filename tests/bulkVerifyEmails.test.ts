@@ -1,7 +1,7 @@
 /**
  * bulkVerifyEmails: which providers each mode picks (the same "checked" marker
  * the email panels count with) and how many are left afterwards. A result that
- * couldn't be checked isn't saved, so that provider still matches its mode.
+ * unable to be checked isn't saved, so that provider still matches its mode.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -69,7 +69,7 @@ describe("bulkVerifyEmails", () => {
     }
   });
 
-  it("still counts risky providers it couldn't check as remaining", async () => {
+  it("still counts risky providers it unable to check as remaining", async () => {
     state.total = 5;
     state.candidates = [provider(1, "a@down.example"), provider(2, "b@down.example")];
     const r = await handleBulkVerifyEmails({ mode: "risky", batch_size: 2 });

@@ -14,7 +14,7 @@ const PRODUCTION_INPUT = {
   hostname: 'caremetricintel.com',
 };
 
-describe('CareMetric Intel central support integration', () => {
+describe('CareMetric Healthcare Advisors central support integration', () => {
   it('builds a permanent first-party URL with only static, non-identifying context', () => {
     const url = new URL(buildCareMetricIntelSupportUrl());
 

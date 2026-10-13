@@ -16,7 +16,7 @@ export default function ForgotPassword() {
     try {
       setResult(await base44.auth.forgotPassword(email));
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.');
+      setError(err.message || 'Something went wrong. Please retry.');
     } finally {
       setLoading(false);
     }

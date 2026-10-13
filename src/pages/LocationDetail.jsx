@@ -124,7 +124,7 @@ export default function LocationDetail() {
   if (locError) {
     return (
       <div className="p-8 max-w-xl mx-auto">
-        <QueryErrorState title="Couldn't load this location" error={locLoadError} onRetry={refetchLoc} />
+        <QueryErrorState title="Unable to load this location" error={locLoadError} onRetry={refetchLoc} />
       </div>
     );
   }

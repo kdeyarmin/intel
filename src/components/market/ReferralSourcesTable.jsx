@@ -13,6 +13,8 @@ import { SPECIALTY_GROUPS } from '@/lib/specialtyGroups';
 import { fmtCount, fmtRate, fmtShare, referralListNote } from '@/lib/marketFormat';
 import AddToLeadListDialog from '../leadlists/AddToLeadListDialog';
 import MarketFreshness from './MarketFreshness';
+import SortableTableHead from '../shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 const SETTINGS = [
   { value: 'all', label: 'Any' },
@@ -36,6 +38,7 @@ export default function ReferralSourcesTable({ state, countyFips, countyName, in
   const [group, setGroup] = useState('all');
   const [limit, setLimit] = useState(25);
   const [listNpis, setListNpis] = useState(null);
+  const [sort, setSort] = useState({ key: 'index', direction: 'desc' });
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['referralSources', state, countyFips, setting, group, limit],
@@ -47,6 +50,23 @@ export default function ReferralSourcesTable({ state, countyFips, countyName, in
     staleTime: 5 * 60 * 1000,
   });
   const rows = data?.rows || [];
+  const sortedRows = sortRows(rows, sort, (row, key) => {
+    const values = {
+      name: row.name,
+      index: setting === 'hospice' ? row.hospice_index : row.referral_index,
+      beneficiaries: row.benes,
+      homeHealth: row.hh_cert_benes,
+      hospiceOversight: row.hospice_oversight_benes,
+      risk: row.avg_risk_score,
+      alzheimers: row.chronic?.alzheimer,
+      heartFailure: row.chronic?.chf,
+      eligibility: Number(!!row.eligible?.hha) + Number(!!row.eligible?.hospice) + Number(!!row.eligible?.dme),
+      hospitals: row.affiliations == null ? null : row.hospital_ccns?.length || 0,
+      score: row.lead_score,
+    };
+    return values[key];
+  });
+  const changeSort = (key) => setSort((current) => nextSort(current, key, key === 'name' ? 'asc' : 'desc'));
   const listNote = referralListNote({ rowCount: rows.length, truncated: !!data?.truncated, searched: data?.searched, specialty: group !== 'all' });
 
   return (
@@ -92,7 +112,7 @@ export default function ReferralSourcesTable({ state, countyFips, countyName, in
       </CardHeader>
       <CardContent>
         {isLoading ? <p className="text-sm text-slate-400">Loading…</p>
-          : isError ? <p className="text-sm text-red-400" role="alert">Couldn't load referral sources: {error?.message}</p>
+          : isError ? <p className="text-sm text-red-400" role="alert">Unable to load referral sources: {error?.message}</p>
           : rows.length === 0 && listNote ? <p className="text-sm text-slate-400">{listNote}</p>
           : rows.length === 0 ? <p className="text-sm text-slate-400">No clinicians match. The Physician &amp; Other Practitioners by Provider file and the market rollups must be loaded first.</p>
           : (
@@ -102,23 +122,23 @@ export default function ReferralSourcesTable({ state, countyFips, countyName, in
                 <thead>
                   <tr className="text-left text-slate-400 border-b border-slate-700/60">
                     <th scope="col" className="py-1.5 pr-2">#</th>
-                    <th scope="col" className="py-1.5 pr-2">Clinician</th>
-                    <th scope="col" className="py-1.5 pr-2 text-right">{setting === 'hospice' ? 'Hospice index' : 'Index'}</th>
-                    <th scope="col" className="py-1.5 pr-2 text-right">Medicare patients</th>
-                    <th scope="col" className="py-1.5 pr-2 text-right">Home health certified</th>
-                    {setting === 'hospice' ? <th scope="col" className="py-1.5 pr-2 text-right">Hospice oversight</th> : null}
-                    <th scope="col" className="py-1.5 pr-2 text-right">Risk</th>
-                    <th scope="col" className="py-1.5 pr-2 text-right">Alzheimer's</th>
-                    <th scope="col" className="py-1.5 pr-2 text-right">Heart failure</th>
-                    <th scope="col" className="py-1.5 pr-2">Can order</th>
-                    <th scope="col" className="py-1.5 pr-2 text-right">Hospitals</th>
-                    <th scope="col" className="py-1.5 text-right">Score</th>
+                    <SortableTableHead label="Clinician" column="name" sort={sort} onSort={changeSort} className="py-1.5 pr-2" />
+                    <SortableTableHead label={setting === 'hospice' ? 'Hospice index' : 'Index'} column="index" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                    <SortableTableHead label="Medicare patients" column="beneficiaries" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                    <SortableTableHead label="Home health certified" column="homeHealth" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                    {setting === 'hospice' ? <SortableTableHead label="Hospice oversight" column="hospiceOversight" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" /> : null}
+                    <SortableTableHead label="Risk" column="risk" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                    <SortableTableHead label="Alzheimer's" column="alzheimers" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                    <SortableTableHead label="Heart failure" column="heartFailure" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                    <SortableTableHead label="Can order" column="eligibility" sort={sort} onSort={changeSort} className="py-1.5 pr-2" />
+                    <SortableTableHead label="Hospitals" column="hospitals" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                    <SortableTableHead label="Score" column="score" sort={sort} onSort={changeSort} className="py-1.5 text-right" />
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r, i) => (
+                  {sortedRows.map((r, i) => (
                     <tr key={r.npi} className="border-b border-slate-800/60">
-                      <td className="py-1.5 pr-2 text-slate-400">{countyFips ? (setting === 'hospice' ? r.hospice_rank_in_county : r.rank_in_county) ?? i + 1 : i + 1}</td>
+                      <td className="py-1.5 pr-2 text-slate-400">{i + 1}</td>
                       <td className="py-1.5 pr-2">
                         <Link to={createPageUrl(`ProviderDetail?npi=${r.npi}`)} className="text-cyan-400 hover:underline">{r.name}</Link>
                         <span className="block text-[10px] text-slate-400">{r.specialty || r.specialty_group_label}{!countyFips && r.county_name ? ` · ${r.county_name}` : ''}</span>

@@ -116,13 +116,13 @@ export default function MarketIntelligence() {
       {isError ? (
         <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-6 text-center space-y-3" role="alert">
           <AlertTriangle className="w-8 h-8 text-red-400 mx-auto" aria-hidden="true" />
-          <p className="text-red-400 text-sm">Couldn't load the county table: {error?.message}</p>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="border-red-500/30 text-red-400">Try again</Button>
+          <p className="text-red-400 text-sm">Unable to load the county table: {error?.message}</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="border-red-500/30 text-red-400">Retry</Button>
         </div>
       ) : isLoading ? (
         <div className="space-y-2" aria-label="Loading counties">{Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-8" />)}</div>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-slate-400">No county profiles for {url.state} yet. They need the Medicare enrollment, saturation and variation files imported and the market rollups computed.</p>
+        <p className="text-sm text-slate-400">County profiles are not available for {url.state}. Import the Medicare enrollment, saturation, and variation datasets, then refresh market analytics.</p>
       ) : (
         <Card className="bg-slate-800/50 border-slate-700/50">
           <CardContent className="pt-4">

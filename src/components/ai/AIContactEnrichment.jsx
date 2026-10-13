@@ -59,7 +59,7 @@ Also find any social profiles (LinkedIn, Doximity, Healthgrades).`,
 
       setResults(res);
     } catch (err) {
-      toast.error('Enrichment failed. Please try again.');
+      toast.error('Enrichment failed. Please retry.');
     } finally {
       setLoading(false);
     }

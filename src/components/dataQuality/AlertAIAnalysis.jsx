@@ -60,7 +60,7 @@ Provide:
     queryClient.invalidateQueries({ queryKey: ['dqAlerts'] });
     } catch (err) {
       console.error('AI analysis failed:', err);
-      toast.error('AI analysis failed. Please try again.');
+      toast.error('AI analysis failed. Please retry.');
     } finally {
       setLoading(false);
     }

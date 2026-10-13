@@ -75,7 +75,7 @@ export default function AddToLeadListDialog({ open, onOpenChange, npis, defaultN
       onSaved?.(result);
       onOpenChange(false);
     } catch (err) {
-      toast.error(err.message || 'Could not save the lead list.');
+      toast.error(err.message || 'Unable to save the lead list.');
     } finally {
       setSaving(false);
     }

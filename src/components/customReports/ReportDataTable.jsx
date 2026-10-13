@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { Download } from 'lucide-react';
 import { DATASET_CONFIG } from './reportConfig';
 import { toast } from 'sonner';
 import { countExport, exportCSV, exportExcel, exportPDF } from '../exports/exportUtils';
+import SortableTableHead from '../shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 function fmt(n) {
   if (n === null || n === undefined) return '—';
@@ -17,10 +19,13 @@ function fmt(n) {
 }
 
 export default function ReportDataTable({ chartData, config }) {
+  const [sort, setSort] = useState({ key: 'group', direction: 'asc' });
   const dsConfig = DATASET_CONFIG[config.dataset];
   const metrics = config.metrics || [];
   const metricLabels = {};
   (dsConfig?.metrics || []).forEach(m => { metricLabels[m.key] = m.label; });
+  const sortedData = sortRows(chartData, sort);
+  const changeSort = (key) => setSort((current) => nextSort(current, key, key === 'group' ? 'asc' : 'desc'));
 
   if (!chartData.length) return null;
 
@@ -49,7 +54,7 @@ export default function ReportDataTable({ chartData, config }) {
   return (
     <Card>
       <CardHeader className="pb-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <CardTitle className="text-sm font-semibold text-slate-300">Data Table</CardTitle>
+        <CardTitle className="text-sm font-semibold text-slate-300">Report data</CardTitle>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1.5 h-7 text-xs">
             <Download className="w-3 h-3" /> CSV
@@ -67,14 +72,14 @@ export default function ReportDataTable({ chartData, config }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs font-semibold">{config.group_by || 'Group'}</TableHead>
+                <SortableTableHead label={config.group_by || 'Group'} column="group" sort={sort} onSort={changeSort} className="text-xs font-semibold" />
                 {metrics.map(m => (
-                  <TableHead key={m} className="text-xs font-semibold text-right">{metricLabels[m] || m}</TableHead>
+                  <SortableTableHead key={m} label={metricLabels[m] || m} column={m} sort={sort} onSort={changeSort} className="text-xs font-semibold text-right" />
                 ))}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {chartData.map((row, i) => (
+              {sortedData.map((row, i) => (
                 <TableRow key={i}>
                   <TableCell className="text-xs font-medium">{row.group}</TableCell>
                   {metrics.map(m => (

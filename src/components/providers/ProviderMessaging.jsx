@@ -11,7 +11,7 @@ import { pickPrimaryLocation } from '@/lib/locations';
 import { usePageAccess } from '@/hooks/usePageAccess';
 
 export default function ProviderMessaging({ provider, locations = [] }) {
-  // Sending email from CareMetric is for an organization's owners; everyone
+  // Sending email from CareMetric Healthcare Advisors is for an organization's owners; everyone
   // else drafts here and sends from their own mail client.
   const { isOwner: canSendFromApp } = usePageAccess();
   const [activeTab, setActiveTab] = useState('messages');
@@ -53,7 +53,7 @@ export default function ProviderMessaging({ provider, locations = [] }) {
     try {
       await base44.integrations.Core.SendEmail({
         to: providerEmail,
-        subject: `Message from CareMetric regarding ${providerName}`,
+        subject: `Message from CareMetric Healthcare Advisors regarding ${providerName}`,
         body: newMessage,
       });
       setNewMessage('');
@@ -83,10 +83,10 @@ Do NOT include subject line, just the body.`,
       else if (res && typeof res.text === 'string') draft = res.text;
       else if (res && typeof res.body === 'string') draft = res.body;
       setNewMessage(draft);
-      if (!draft) toast.warning('Draft was empty — try again.');
+      if (!draft) toast.warning('Draft was empty — retry.');
     } catch (err) {
       console.error('Draft generation failed:', err);
-      toast.error('Failed to generate draft. Please try again.');
+      toast.error('Failed to generate draft. Please retry.');
     } finally {
       setGeneratingDraft(false);
     }

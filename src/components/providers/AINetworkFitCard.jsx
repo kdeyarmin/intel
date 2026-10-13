@@ -28,7 +28,7 @@ NPI: ${provider.npi}
 Type: ${provider.entity_type}
 Specialty: ${primaryTax?.taxonomy_description || 'Unknown'}
 Location: ${primaryLoc ? `${primaryLoc.city || ''}, ${primaryLoc.state || ''}` : 'Unknown'}
-CareMetric Score: ${score?.score || 'N/A'}
+Provider fit score: ${score?.score ?? 'Unscored'}
 
 UTILIZATION: ${utilization ? `${utilization.total_medicare_beneficiaries || 0} beneficiaries, ${utilization.total_services || 0} services, $${utilization.total_medicare_payment?.toLocaleString() || 0} payment` : 'No data'}
 

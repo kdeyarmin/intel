@@ -137,9 +137,9 @@ export default function ReferralNetworkIntelligence() {
     body = (
       <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-6 text-center space-y-3" role="alert">
         <AlertTriangle className="w-8 h-8 text-red-400 mx-auto" aria-hidden="true" />
-        <p className="text-red-400 text-sm">Couldn't load the referral network: {error?.message || 'unknown error'}</p>
+        <p className="text-red-400 text-sm">Unable to load the referral network: {error?.message || 'unknown error'}</p>
         <button type="button" onClick={() => refetch()} className="px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded-md text-xs">
-          Try again
+          Retry
         </button>
       </div>
     );

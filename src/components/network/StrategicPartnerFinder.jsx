@@ -118,7 +118,7 @@ Be very specific about locations, specialties, and organizational types.`,
     setPartners(res);
     } catch (err) {
       console.error('AI strategic partner finder failed:', err);
-      toast.error('Operation failed. Please try again.');
+      toast.error('Operation failed. Please retry.');
     } finally {
       setLoading(false);
     }

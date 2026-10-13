@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { invokeOrThrow } from '@/api/functionResult';
@@ -18,6 +18,8 @@ import { countExport } from '@/components/exports/exportUtils';
 import { toast } from 'sonner';
 import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer';
 import MarketFreshness from '../components/market/MarketFreshness';
+import SortableTableHead from '../components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 const URL_DEFAULTS = { report: '', state: 'PA', county: '', from: '', setting: 'hha', sort: 'users' };
 
@@ -95,17 +97,30 @@ function Section({ title, children }) {
 }
 
 function Table({ headers, rows }) {
+  const [sort, setSort] = useState({ key: '0', direction: 'asc' });
   if (!rows.length) return <p className="text-xs text-slate-500">None on file.</p>;
+  const valueForCell = (cell) => {
+    if (Array.isArray(cell)) return cell.map(valueForCell).join(' ');
+    if (React.isValidElement(cell)) return valueForCell(cell.props.children);
+    if (cell == null) return null;
+    if (typeof cell === 'number') return cell;
+    const text = String(cell).trim();
+    if (!text || text === '—' || text === '-') return null;
+    const numeric = text.replace(/[$,%\s,]/g, '');
+    return numeric && Number.isFinite(Number(numeric)) ? Number(numeric) : text;
+  };
+  const sortedRows = sortRows(rows, sort, (row, key) => valueForCell(row[Number(key)]));
+  const changeSort = (key) => setSort((current) => nextSort(current, key, key === '0' ? 'asc' : 'desc'));
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
           <tr className="text-left text-slate-500">
-            {headers.map((h) => <th key={h} className="py-1 pr-3 font-medium">{h}</th>)}
+            {headers.map((h, index) => <SortableTableHead key={`${h}-${index}`} label={h} column={String(index)} sort={sort} onSort={changeSort} className="py-1 pr-3 font-medium" />)}
           </tr>
         </thead>
         <tbody>
-          {rows.map((cells, i) => (
+          {sortedRows.map((cells, i) => (
             <tr key={i} className="border-t border-slate-800 text-slate-200">
               {cells.map((c, j) => <td key={j} className="py-1.5 pr-3 align-top">{c}</td>)}
             </tr>
@@ -260,7 +275,7 @@ export default function MarketBriefs() {
             <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
             <p className="text-xs text-slate-400 mt-1">{spec.reason}</p>
             {layerLoading && <p className="text-sm text-slate-400 mt-2">Building the ranking…</p>}
-            {layerError && <p className="text-sm text-red-400 mt-2">{layerErr?.message || 'Could not rank counties.'}</p>}
+            {layerError && <p className="text-sm text-red-400 mt-2">{layerErr?.message || 'Unable to rank counties.'}</p>}
             {layer && <p className="text-sm text-slate-300 mt-2">{growthLead(url.state, settingDef, facts)}</p>}
           </header>
           {layer && facts.rising.length > 0 && (
@@ -304,7 +319,7 @@ export default function MarketBriefs() {
             <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
             <p className="text-xs text-slate-400 mt-1">{spec.reason} Share is of providers located in the state, not of every resident who used the service.</p>
             {leadersLoading && <p className="text-sm text-slate-400 mt-2">Building the list…</p>}
-            {leadersError && <p className="text-sm text-red-400 mt-2">{leadersErr?.message || 'Could not list providers.'}</p>}
+            {leadersError && <p className="text-sm text-red-400 mt-2">{leadersErr?.message || 'Unable to list providers.'}</p>}
             {leaders && <p className="text-sm text-slate-300 mt-2">{acquireLead(url.state, spec, leaders)}</p>}
           </header>
           {leaders && (
@@ -329,9 +344,9 @@ export default function MarketBriefs() {
         </article>
       )}
 
-      {spec && spec.needs === 'county' && !ready && <p className="text-sm text-slate-400">Pick a county to open this report.</p>}
+      {spec && spec.needs === 'county' && !ready && <p className="text-sm text-slate-400">Select a county to generate this report.</p>}
       {spec && spec.needs === 'county' && isLoading && <p className="text-sm text-slate-400">Building the report…</p>}
-      {spec && spec.needs === 'county' && isError && <p className="text-sm text-red-400">{error?.message || 'Could not build this report.'}</p>}
+      {spec && spec.needs === 'county' && isError && <p className="text-sm text-red-400">{error?.message || 'Unable to generate this report.'}</p>}
 
       {spec?.id === 'hospital-partners' && ready && market && !market.needsCounty && (
         <article className="space-y-6" id="market-brief">

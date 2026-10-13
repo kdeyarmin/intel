@@ -28,10 +28,15 @@ import { useUrlState } from '@/hooks/useUrlState';
 import { US_STATES } from '@/lib/usStates';
 import { pickPrimaryLocation } from '@/lib/locations';
 import { SPECIALTY_GROUPS, specialtyGroupFor } from '@/lib/specialtyGroups';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort } from '@/lib/tableSorting';
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
   { value: 'npi', label: 'NPI' },
+  { value: 'state', label: 'State' },
+  { value: 'status', label: 'Status' },
+  { value: 'email', label: 'Email' },
   { value: 'score', label: 'Score' },
   { value: 'created', label: 'Date Added' },
   { value: 'updated', label: 'Last Updated' },
@@ -300,6 +305,12 @@ export default function Organizations() {
           return dir * va.localeCompare(vb);
         case 'npi':
           return dir * (a.npi || '').localeCompare(b.npi || '');
+        case 'state':
+          return dir * (pickPrimaryLocation(locationByNpi[a.npi])?.state || '').localeCompare(pickPrimaryLocation(locationByNpi[b.npi])?.state || '');
+        case 'status':
+          return dir * (a.status || '').localeCompare(b.status || '');
+        case 'email':
+          return dir * (a.email || '').localeCompare(b.email || '');
         case 'score':
           return dir * ((getScore(a.npi) || 0) - (getScore(b.npi) || 0));
         case 'created':
@@ -311,7 +322,12 @@ export default function Organizations() {
       }
     });
     return sorted;
-  }, [filteredProviders, sortField, sortDir, scores]);
+  }, [filteredProviders, sortField, sortDir, scores, locationByNpi]);
+
+  const setHeaderSort = (key) => {
+    const next = nextSort({ key: sortField, direction: sortDir }, key, key === 'score' ? 'desc' : 'asc');
+    setUrl({ sort: next.key, dir: next.direction });
+  };
 
   const selectedProviders = providers.filter(p => selectedNpis.has(p.npi));
 
@@ -506,12 +522,12 @@ export default function Organizations() {
                           className="rounded border-slate-600 bg-slate-800"
                         />
                       </TableHead>
-                      <TableHead>NPI</TableHead>
-                      <TableHead>Organization Name</TableHead>
-                      <TableHead className="hidden lg:table-cell">State</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="hidden sm:table-cell">Email</TableHead>
-                      <TableHead>Score</TableHead>
+                      <SortableTableHead label="NPI" column="npi" sort={sortField === 'default' ? null : { key: sortField, direction: sortDir }} onSort={setHeaderSort} />
+                      <SortableTableHead label="Organization name" column="name" sort={sortField === 'default' ? null : { key: sortField, direction: sortDir }} onSort={setHeaderSort} />
+                      <SortableTableHead label="State" column="state" sort={sortField === 'default' ? null : { key: sortField, direction: sortDir }} onSort={setHeaderSort} className="hidden lg:table-cell" />
+                      <SortableTableHead label="Status" column="status" sort={sortField === 'default' ? null : { key: sortField, direction: sortDir }} onSort={setHeaderSort} />
+                      <SortableTableHead label="Email" column="email" sort={sortField === 'default' ? null : { key: sortField, direction: sortDir }} onSort={setHeaderSort} className="hidden sm:table-cell" />
+                      <SortableTableHead label="Score" column="score" sort={sortField === 'default' ? null : { key: sortField, direction: sortDir }} onSort={setHeaderSort} />
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -532,7 +548,7 @@ export default function Organizations() {
                     ) : isError ? (
                       <TableRow>
                         <TableCell colSpan={8} className="py-6">
-                          <QueryErrorState title="Couldn't load organizations" error={loadError} onRetry={refetch} />
+                          <QueryErrorState title="Unable to load organizations" error={loadError} onRetry={refetch} />
                         </TableCell>
                       </TableRow>
                     ) : sortedProviders.length === 0 ? (

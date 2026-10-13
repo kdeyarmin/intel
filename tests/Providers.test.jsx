@@ -164,8 +164,8 @@ describe('Providers page – removed "Org" button for organizations', () => {
       return { data: [], isLoading: false };
     });
     renderProviders();
-    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load providers");
-    screen.getByRole('button', { name: /try again/i }).click();
+    expect(screen.getByRole('alert')).toHaveTextContent("Unable to load providers");
+    screen.getByRole('button', { name: /retry/i }).click();
     expect(refetch).toHaveBeenCalled();
   });
 

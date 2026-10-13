@@ -24,8 +24,8 @@ export default function MarketPositionCard({ ccn, setting }) {
   if (isError) {
     return (
       <div className="flex flex-wrap items-center gap-3 text-sm text-red-400" role="alert">
-        <span>Couldn't load this provider's market position: {error?.message || 'try again'}</span>
-        <Button variant="outline" size="sm" onClick={() => refetch()} className="border-red-500/30 text-red-400">Try again</Button>
+        <span>Unable to load this provider's market position: {error?.message || 'retry'}</span>
+        <Button variant="outline" size="sm" onClick={() => refetch()} className="border-red-500/30 text-red-400">Retry</Button>
       </div>
     );
   }

@@ -24,7 +24,7 @@ export default function CountyMarketProfile({ profile, vintages, rollups, county
   if (!profile?.available) {
     return (
       <div className="space-y-2">
-        <p className="text-sm text-slate-400">No market profile for {countyName || 'this county'} yet. It needs the Medicare enrollment, market saturation and geographic variation files imported and the market rollups computed.</p>
+        <p className="text-sm text-slate-400">Market data is not available for {countyName || 'this county'}. Import the Medicare enrollment, market saturation, and geographic variation datasets, then refresh market analytics.</p>
         <MarketFreshness rollups={rollups} jobs={['county_market_profile']} />
       </div>
     );

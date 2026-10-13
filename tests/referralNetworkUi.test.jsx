@@ -173,7 +173,7 @@ describe('ReferralNetworkIntelligence', () => {
     // The page retries once before showing the error.
     expect(await screen.findByRole('alert', {}, { timeout: 4000 })).toHaveTextContent('took too long');
     invoke.mockResolvedValue(NETWORK);
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByText('Providers practicing in PA')).toBeInTheDocument();
   });
 });

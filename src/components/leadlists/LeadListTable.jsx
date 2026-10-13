@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ArrowUpDown, Edit, Eye, UserMinus } from 'lucide-react';
+import { Edit, Eye, UserMinus } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import { useConfirm } from '@/components/shared/ConfirmDialog';
+import SortableTableHead from '@/components/shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 // What screen readers hear for this row's controls: the provider's name, else the NPI.
 export function leadName(provider) {
@@ -32,59 +34,40 @@ export default function LeadListTable({ leads, onUpdateStatus, onUpdateNotes, on
   const [editingNotes, setEditingNotes] = useState(null);
 
   const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDir('desc');
-    }
+    const next = nextSort({ key: sortField, direction: sortDir }, field, field === 'name' ? 'asc' : 'desc');
+    setSortField(next.key);
+    setSortDir(next.direction);
   };
 
-  const sortedLeads = [...leads].sort((a, b) => {
-    let aVal = a[sortField];
-    let bVal = b[sortField];
-    
-    if (sortField === 'score') {
-      aVal = a.score?.score || 0;
-      bVal = b.score?.score || 0;
-    } else if (sortField === 'name') {
-      aVal = a.provider?.last_name || a.provider?.organization_name || '';
-      bVal = b.provider?.last_name || b.provider?.organization_name || '';
-    } else if (sortField === 'beneficiaries') {
-      aVal = a.utilization?.total_medicare_beneficiaries || 0;
-      bVal = b.utilization?.total_medicare_beneficiaries || 0;
-    } else if (sortField === 'referrals') {
-      aVal = a.referrals?.total_referrals || 0;
-      bVal = b.referrals?.total_referrals || 0;
-    }
-
-    if (sortDir === 'asc') {
-      return aVal > bVal ? 1 : -1;
-    } else {
-      return aVal < bVal ? 1 : -1;
-    }
+  const sort = { key: sortField, direction: sortDir };
+  const sortedLeads = sortRows(leads, sort, (lead, key) => {
+    const provider = lead.provider || {};
+    const values = {
+      score: lead.score?.score,
+      name: leadName(provider),
+      specialty: lead.taxonomy?.taxonomy_description,
+      location: [lead.location?.city, lead.location?.state].filter(Boolean).join(', '),
+      phone: lead.location?.phone,
+      beneficiaries: lead.utilization?.total_medicare_beneficiaries,
+      referrals: lead.referrals?.total_referrals,
+      status: lead.member.status || 'New',
+    };
+    return values[key];
   });
-
-  const SortButton = ({ field, children }) => (
-    <button onClick={() => handleSort(field)} className="flex items-center gap-1 hover:text-teal-400">
-      {children}
-      <ArrowUpDown className="w-3 h-3" />
-    </button>
-  );
 
   return (
     <div className="overflow-x-auto">
       <Table>
       <TableHeader>
         <TableRow>
-          <TableHead><SortButton field="score">Score</SortButton></TableHead>
-          <TableHead><SortButton field="name">Name</SortButton></TableHead>
-          <TableHead>Specialty</TableHead>
-          <TableHead>Location</TableHead>
-          <TableHead>Phone</TableHead>
-          <TableHead><SortButton field="beneficiaries">Beneficiaries</SortButton></TableHead>
-          <TableHead><SortButton field="referrals">Referrals</SortButton></TableHead>
-          <TableHead>Status</TableHead>
+          <SortableTableHead label="Score" column="score" sort={sort} onSort={handleSort} />
+          <SortableTableHead label="Name" column="name" sort={sort} onSort={handleSort} />
+          <SortableTableHead label="Specialty" column="specialty" sort={sort} onSort={handleSort} />
+          <SortableTableHead label="Location" column="location" sort={sort} onSort={handleSort} />
+          <SortableTableHead label="Phone" column="phone" sort={sort} onSort={handleSort} />
+          <SortableTableHead label="Beneficiaries" column="beneficiaries" sort={sort} onSort={handleSort} />
+          <SortableTableHead label="Referrals" column="referrals" sort={sort} onSort={handleSort} />
+          <SortableTableHead label="Status" column="status" sort={sort} onSort={handleSort} />
           <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>

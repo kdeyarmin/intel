@@ -48,14 +48,14 @@ describe('ResetPassword', () => {
     auth.tokenInfo.mockRejectedValueOnce(new TypeError('Failed to fetch'));
     auth.tokenInfo.mockResolvedValueOnce({ valid: true, purpose: 'reset', email: 'rep@example.com' });
     at(`/reset-password?token=${TOKEN}`, <ResetPassword />);
-    expect(await screen.findByRole('alert')).toHaveTextContent("couldn't check this link");
+    expect(await screen.findByRole('alert')).toHaveTextContent("Unable to verify this link");
     expect(screen.queryByText("This link doesn't work")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent("couldn't check this link");
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent("Unable to verify this link");
     expect(auth.tokenInfo).toHaveBeenCalledTimes(2);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByText('Choose a new password')).toBeInTheDocument();
     expect(auth.tokenInfo).toHaveBeenCalledTimes(3);
   });

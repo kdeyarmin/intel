@@ -188,7 +188,7 @@ export default function ProviderDetail() {
   if (providerError) {
     return (
       <div className="p-8 max-w-xl mx-auto">
-        <QueryErrorState title="Couldn't load this provider" error={providerLoadError} onRetry={refetchProvider} />
+        <QueryErrorState title="Unable to load this provider" error={providerLoadError} onRetry={refetchProvider} />
       </div>
     );
   }
@@ -232,10 +232,10 @@ export default function ProviderDetail() {
           <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
           <div className="flex-1">
             <p className="text-sm text-amber-200">
-              Couldn't load {secondaryFailures.map((f) => f.label).join(', ')} — the affected sections are hidden.
+              Unable to load {secondaryFailures.map((f) => f.label).join(', ')} — the affected sections are hidden.
             </p>
             <Button variant="ghost" size="sm" onClick={retrySecondary} className="mt-1 h-6 px-0 text-xs text-amber-300 hover:text-amber-200 hover:bg-transparent">
-              <RefreshCw className="w-3 h-3 mr-1" /> Try again
+              <RefreshCw className="w-3 h-3 mr-1" /> Retry
             </Button>
           </div>
         </div>

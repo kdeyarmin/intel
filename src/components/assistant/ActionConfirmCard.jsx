@@ -42,7 +42,7 @@ export default function ActionConfirmCard({ action: initial, conversationId }) {
       queryClient.invalidateQueries({ queryKey: ['assistantConversation', conversationId] });
     } catch (e) {
       if (e?.data?.action) setAction(e.data.action);
-      toast.error(e?.message || 'That didn’t work. Try again.');
+      toast.error(e?.message || 'That didn’t work. Retry.');
     } finally {
       setPending(null);
     }

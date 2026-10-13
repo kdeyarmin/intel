@@ -34,7 +34,7 @@ export default function BulkEnrichmentRunner({ totalProviders = 0 }) {
         const res = await base44.functions.invoke('getEnrichmentCandidateCount');
         setCandidateStats(res.data);
       } catch (e2) {
-        console.warn('Could not fetch candidate count:', e2.message);
+        console.warn('Unable to fetch candidate count:', e2.message);
       }
     }
     setLoadingStats(false);
@@ -54,7 +54,7 @@ export default function BulkEnrichmentRunner({ totalProviders = 0 }) {
         }
       }
     } catch (e) {
-      console.warn('Could not fetch job status:', e.message);
+      console.warn('Unable to fetch job status:', e.message);
     }
   };
 

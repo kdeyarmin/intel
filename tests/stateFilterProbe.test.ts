@@ -70,7 +70,7 @@ describe("a state_filter on a dataset that names no state", () => {
     expect(last()).toMatchObject({ status: "failed" });
   });
 
-  it("is not something auto-retry would try again", () => {
+  it("is not something auto-retry would retry", () => {
     expect(isRetryableErrorMessage(stateFilterUnsupportedMessage("cms_order_referring", "PA"))).toBe(false);
   });
 

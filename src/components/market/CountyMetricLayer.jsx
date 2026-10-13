@@ -30,13 +30,13 @@ export default function CountyMetricLayer({ layer, state, loading = false, error
         {error ? (
           <div className="rounded-lg border border-red-500/30 bg-red-900/30 p-4 text-center space-y-2" role="alert">
             <AlertTriangle className="mx-auto h-6 w-6 text-red-400" aria-hidden="true" />
-            <p className="text-sm text-red-400">Couldn't load this county layer: {error?.message || 'try again'}</p>
-            {onRetry && <Button variant="outline" size="sm" onClick={onRetry} className="border-red-500/30 text-red-400">Try again</Button>}
+            <p className="text-sm text-red-400">Unable to load this county layer: {error?.message || 'retry'}</p>
+            {onRetry && <Button variant="outline" size="sm" onClick={onRetry} className="border-red-500/30 text-red-400">Retry</Button>}
           </div>
         ) : loading ? (
           <div className="space-y-2" aria-label="Loading counties">{Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-8" />)}</div>
         ) : counties.length === 0 ? (
-          <p className="text-sm text-slate-400 py-6 text-center">No county profiles for {state || 'this state'} yet. They need the Medicare enrollment, saturation and variation files imported and the market rollups computed.</p>
+          <p className="text-sm text-slate-400 py-6 text-center">County profiles are not available for {state || 'this state'}. Import the Medicare enrollment, saturation, and variation datasets, then refresh market analytics.</p>
         ) : (
           <>
             <ul className="space-y-2">

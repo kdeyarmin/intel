@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Tests for CareMetric Intel marketing landing page (src/pages/Landing.jsx).
+ * Tests for CareMetric Healthcare Advisors marketing landing page (src/pages/Landing.jsx).
  *
  * Validates:
  * - Core messaging & value proposition
@@ -84,7 +84,7 @@ describe('Landing Page', () => {
   it('renders the "How It Works" 4-step workflow', () => {
     renderLanding();
 
-    expect(screen.getByRole('heading', { name: /How CareMetric Intel turns raw healthcare datasets into growth/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /How CareMetric Healthcare Advisors turns raw healthcare datasets into growth/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Ingest Fresh Data/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Score & Prioritize/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Build Target Lists/i })).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe('Landing Page', () => {
     fireEvent.click(demoButtons[0]);
 
     // Modal dialog is displayed
-    const dialog = screen.getByRole('dialog', { name: /Request a CareMetric Intel Demo/i });
+    const dialog = screen.getByRole('dialog', { name: /Request a CareMetric Healthcare Advisors Demo/i });
     expect(dialog).toBeInTheDocument();
 
     // Form inputs exist with accessible labels
@@ -201,7 +201,7 @@ describe('Landing Page', () => {
 
     expect(screen.getByText(/support@caremetric\.ai/i)).toBeInTheDocument();
     expect(screen.getByText(/sales@caremetric\.ai/i)).toBeInTheDocument();
-    expect(screen.getByText(/Data & Compliance Disclaimer:/i)).toBeInTheDocument();
-    expect(screen.getByText(/CareMetric Intel aggregates and synthesizes public data releases/i)).toBeInTheDocument();
+    expect(screen.getByText(/Research and insights are based on aggregate public data/i)).toBeInTheDocument();
+    expect(screen.getByText(/not official CMS publications/i)).toBeInTheDocument();
   });
 });

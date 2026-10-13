@@ -49,7 +49,7 @@ export default function Dashboard() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6 w-full overflow-hidden">
       <PageHeader
         title="Dashboard"
-        subtitle={profile ? profile.label : 'CareMetric Provider Intelligence — all your data at a glance'}
+        subtitle={profile ? profile.label : 'Provider intelligence, market insight, and workflow activity'}
         icon={LayoutDashboard}
         breadcrumbs={[{ label: 'Dashboard' }]}
       />
@@ -89,7 +89,7 @@ export default function Dashboard() {
             <div>
               <div className="font-medium text-amber-200">Some dashboard data failed to load</div>
               <div className="text-xs text-amber-300/80 mt-0.5">
-                {statsError?.message || eventsError?.message || 'Please try again in a moment.'}
+                {statsError?.message || eventsError?.message || 'Please retry in a moment.'}
               </div>
             </div>
           </div>

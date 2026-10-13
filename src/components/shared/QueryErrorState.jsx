@@ -3,11 +3,11 @@ import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**
- * Inline "this failed to load" state with a retry button. Use it instead of
+ * Inline load-failure state with a retry button. Use it instead of
  * letting a failed query fall back to `[]`, which renders as "No results" and
  * hides the failure.
  */
-export default function QueryErrorState({ title = "Couldn't load this data", error, onRetry, className = '' }) {
+export default function QueryErrorState({ title = 'Unable to load this data', error, onRetry, className = '' }) {
   const detail = error?.message && error.message !== title ? error.message : null;
   return (
     <div
@@ -26,7 +26,7 @@ export default function QueryErrorState({ title = "Couldn't load this data", err
           onClick={() => onRetry()}
           className="border-red-500/30 bg-transparent text-red-300 hover:bg-red-900/30"
         >
-          <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Try again
+          <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Retry
         </Button>
       )}
     </div>

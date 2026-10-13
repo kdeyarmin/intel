@@ -25,7 +25,7 @@ export default function ProblematicEmailsPanel({ providers, onRefresh }) {
     setVerifyingId(providerId);
     try {
       const data = await invokeOrThrow('verifyProviderEmail', { provider_id: providerId });
-      if (data.status === 'unknown') toast.info(data.reasons?.[0] || "Couldn't check the domain right now. Try again later.");
+      if (data.status === 'unknown') toast.info(data.reasons?.[0] || "Unable to check the domain right now. Retry later.");
       else toast.success(`Re-checked: ${data.status}${data.score != null ? ` (score ${data.score})` : ''}.`);
       onRefresh?.();
     } catch (e) {

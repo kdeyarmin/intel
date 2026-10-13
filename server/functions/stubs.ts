@@ -327,7 +327,7 @@ export async function handleRunDataQualityScan(payload: any) {
       const anthropic = new Anthropic();
       const resp = await anthropic.messages.create({
         model: CLAUDE_MODELS.SONNET, max_tokens: 800,
-        messages: [{ role: "user", content: `You are CareMetric's AI Data Quality Assistant. Context: Overall quality score ${latestSummary?.scores?.overall || "N/A"}%, ${totalAlerts} total alerts (${openCount} open). Latest scan: ${latestSummary?.summary || "no scans yet"}. User question: ${question}. Respond helpfully and concisely.` }],
+        messages: [{ role: "user", content: `You are the CareMetric Healthcare Advisors data quality assistant. Context: Overall quality score ${latestSummary?.scores?.overall || "N/A"}%, ${totalAlerts} total alerts (${openCount} open). Latest scan: ${latestSummary?.summary || "no scans yet"}. User question: ${question}. Respond helpfully and concisely.` }],
       });
       const answer = resp.content[0]?.type === "text" ? resp.content[0].text : "Unable to process query.";
       return { success: true, response: { answer, suggested_actions: [], related_stats: { open_alerts: openCount, overall_score: latestSummary?.scores?.overall || 0 } } };
@@ -905,4 +905,3 @@ export async function handleCleanProviderData(_payload: any) {
 export async function handleGenerateHyperPersonalizedMessages(_payload: any) {
   return notConfigured("Personalized message generation isn't available yet.");
 }
-

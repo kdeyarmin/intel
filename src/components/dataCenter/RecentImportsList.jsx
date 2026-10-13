@@ -39,7 +39,7 @@ Provide a brief actionable recommendation about data quality.`,
       });
       setInsight(res);
     } catch {
-      toast.error('Could not analyze import');
+      toast.error('Unable to analyze import');
     } finally {
       setLoading(false);
     }

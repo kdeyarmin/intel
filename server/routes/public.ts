@@ -21,7 +21,7 @@ async function unsubscribe(req: Request, res: Response) {
     if (!email) {
       return res.status(400).type("html").send(page("Link not recognised", "This unsubscribe link is invalid or incomplete."));
     }
-    return res.type("html").send(page("You're unsubscribed", `${email} won't receive any more outreach emails from CareMetric.`));
+    return res.type("html").send(page("You're unsubscribed", `${email} will no longer receive outreach emails from CareMetric Healthcare Advisors.`));
   } catch (e: any) {
     console.error("[unsubscribe] failed:", e?.message);
     return res.status(500).type("html").send(page("Something went wrong", "Please try the link again in a few minutes."));

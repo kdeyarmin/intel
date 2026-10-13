@@ -207,9 +207,9 @@ export async function loadOperationsSnapshot(pool: { query(sql: string, params?:
 /** The emailed digest: one line per alert, worst first, with a link to the Health tab. */
 export function formatAlertDigest(alerts: OperationsAlert[], baseUrl: string | null): { subject: string; text: string } {
   const critical = alerts.filter((a) => a.severity === "critical").length;
-  const subject = `CareMetric operations: ${alerts.length} item${alerts.length === 1 ? "" : "s"} need attention${critical ? ` (${critical} critical)` : ""}`;
+  const subject = `CareMetric Healthcare Advisors operations: ${alerts.length} item${alerts.length === 1 ? "" : "s"} need attention${critical ? ` (${critical} critical)` : ""}`;
   const lines = [
-    "These are open on the CareMetric data pipeline:",
+    "These items are open on the CareMetric Healthcare Advisors data pipeline:",
     "",
     ...alerts.map((a) => `- [${a.severity}] ${a.subject}: ${a.message}`),
     "",

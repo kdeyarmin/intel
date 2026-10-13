@@ -51,7 +51,7 @@ describe('BillingStatusWidget', () => {
     expect(await screen.findByRole('link', { name: /County Pack/ })).toHaveAttribute('href', '/Billing');
   });
 
-  it('shows a member the plan without a link they could not open', async () => {
+  it('shows a member the plan without a link they unable to open', async () => {
     h.status.mockResolvedValue(STATUS());
     renderWidget(MEMBER);
     expect(await screen.findByText('County Pack')).toBeInTheDocument();

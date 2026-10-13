@@ -8,7 +8,7 @@
     },
     "score": {
       "type": "number",
-      "description": "CareMetric Fit Score (0-100)"
+      "description": "Provider fit score (0–100)"
     },
     "score_date": {
       "type": "string",

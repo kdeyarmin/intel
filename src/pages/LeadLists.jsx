@@ -99,9 +99,9 @@ export default function LeadLists() {
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-16" />)}
             </div>
           ) : isError ? (
-            <QueryErrorState title="Couldn't load lead lists" error={loadError} onRetry={refetch} />
+            <QueryErrorState title="Unable to load lead lists" error={loadError} onRetry={refetch} />
           ) : lists.length === 0 ? (
-            <p className="text-slate-400 text-center py-8">No lead lists yet. Create one to get started!</p>
+            <p className="text-slate-400 text-center py-8">No lead lists have been created. Create a list to organize providers for outreach.</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -248,7 +248,7 @@ function ViewListDialog({ listId, listName }) {
         l.member.id === memberId ? { ...l, member: { ...l.member, status } } : l
       ));
     } catch (err) {
-      toast.error(`Couldn't update status: ${err.message}`);
+      toast.error(`Unable to update status: ${err.message}`);
     }
   };
 
@@ -259,7 +259,7 @@ function ViewListDialog({ listId, listName }) {
         l.member.id === memberId ? { ...l, member: { ...l.member, notes } } : l
       ));
     } catch (err) {
-      toast.error(`Couldn't save notes: ${err.message}`);
+      toast.error(`Unable to save notes: ${err.message}`);
     }
   };
 
@@ -272,7 +272,7 @@ function ViewListDialog({ listId, listName }) {
       const remaining = await listMembers(listId);
       await base44.entities.LeadList.update(listId, { member_count: remaining.length });
     } catch (err) {
-      toast.error(`Couldn't remove provider: ${err.message}`);
+      toast.error(`Unable to remove provider: ${err.message}`);
     }
   };
 
@@ -285,7 +285,7 @@ function ViewListDialog({ listId, listName }) {
   }
 
   if (loadError) {
-    return <QueryErrorState title="Couldn't load this list" error={loadError} onRetry={loadLeads} />;
+    return <QueryErrorState title="Unable to load this list" error={loadError} onRetry={loadLeads} />;
   }
 
   return (

@@ -9,6 +9,8 @@ import { fmtCount, fmtPct, fmtRate, fmtShare, fmtMoney } from '@/lib/marketForma
 import MarketShareTrendChart from './MarketShareTrendChart';
 import MarketFreshness from './MarketFreshness';
 import { useBusinessLine } from '@/lib/BusinessLineContext';
+import SortableTableHead from '../shared/SortableTableHead';
+import { nextSort, sortRows } from '@/lib/tableSorting';
 
 const ORDER = ['snf', 'hha', 'hospice', 'irf', 'ltch', 'licensed'];
 const LICENSE_LABELS = { personal_care_home: 'Personal care home', assisted_living: 'Assisted living', memory_care: 'Memory care', nursing_home: 'Nursing home', adult_day: 'Adult day', domiciliary_care: 'Domiciliary care' };
@@ -18,7 +20,10 @@ const licensedHomeCount = (licensed) => (licensed?.totals || []).reduce((sum, t)
 
 /** State-licensed homes (personal care, assisted living): not in CMS files, so no Medicare share, just who is there and how big. */
 function LicensedHomes({ licensed, countyName }) {
+  const [sort, setSort] = useState({ key: 'capacity', direction: 'desc' });
   const rows = licensed?.rows || [];
+  const sortedRows = sortRows(rows, sort, (row, key) => key === 'name' ? row.name : row[key]);
+  const changeSort = (key) => setSort((current) => nextSort(current, key, key === 'name' || key === 'type' ? 'asc' : 'desc'));
   const totals = licensed?.totals || [];
   if (rows.length === 0) {
     return <p className="text-sm text-slate-400">No state-licensed homes loaded for {countyName || 'this county'}. Import a state licensing export (Data Center › State-Licensed Homes) to see personal care homes and assisted living residences here.</p>;
@@ -38,15 +43,15 @@ function LicensedHomes({ licensed, countyName }) {
           <caption className="sr-only">State-licensed homes by capacity</caption>
           <thead>
             <tr className="text-left text-slate-400 border-b border-slate-700/60">
-              <th scope="col" className="py-1.5 pr-2">Home</th>
-              <th scope="col" className="py-1.5 pr-2">Type</th>
-              <th scope="col" className="py-1.5 pr-2">Capacity</th>
-              <th scope="col" className="py-1.5 pr-2">Status</th>
-              <th scope="col" className="py-1.5">Licensee</th>
+              <SortableTableHead label="Home" column="name" sort={sort} onSort={changeSort} className="py-1.5 pr-2" />
+              <SortableTableHead label="Type" column="license_type" sort={sort} onSort={changeSort} className="py-1.5 pr-2" />
+              <SortableTableHead label="Capacity" column="capacity" sort={sort} onSort={changeSort} className="py-1.5 pr-2" />
+              <SortableTableHead label="Status" column="status" sort={sort} onSort={changeSort} className="py-1.5 pr-2" />
+              <SortableTableHead label="Licensee" column="licensee" sort={sort} onSort={changeSort} className="py-1.5" />
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {sortedRows.map((r) => (
               <tr key={`${r.license_type}:${r.license_number || r.name}`} className="border-b border-slate-800/60">
                 <td className="py-1.5 pr-2">
                   <span className="text-slate-200">{r.name}</span>
@@ -76,12 +81,15 @@ export default function PacCompetitorsTable({ competitors = {}, trends = {}, cov
   const { profile } = useBusinessLine();
   const [showAll, setShowAll] = useState(false);
   const [setting, setSetting] = useState(null);
+  const [sort, setSort] = useState({ key: 'benes', direction: 'desc' });
   const order = (!showAll && profile?.competitorSettings?.length) ? profile.competitorSettings : ORDER;
   const active = order.includes(setting) ? setting : (order.find((s) => (s === 'licensed' ? licensed?.rows?.length : competitors[s]?.rows?.length)) || order[0]);
   const allLabels = { ...labels, licensed: 'Personal care / assisted living' };
   const showCensus = active === 'snf' && (competitors.snf?.rows || []).some((r) => r.census);
   const current = competitors[active] || { data_year: null, rows: [] };
   const rows = current.rows || [];
+  const sortedRows = sortRows(rows, sort, (row, key) => key === 'name' ? row.name : key === 'census' ? row.census?.total_residents : row[key]);
+  const changeSort = (key) => setSort((currentSort) => nextSort(currentSort, key, key === 'name' ? 'asc' : 'desc'));
   const max = Math.max(1, ...rows.map((r) => r.share ?? 0));
   const cover = coverage[active] || [];
   return (
@@ -124,20 +132,20 @@ export default function PacCompetitorsTable({ competitors = {}, trends = {}, cov
               <thead>
                 <tr className="text-left text-slate-400 border-b border-slate-700/60">
                   <th scope="col" className="py-1.5 pr-2">#</th>
-                  <th scope="col" className="py-1.5 pr-2">Provider</th>
-                  <th scope="col" className="py-1.5 pr-2 text-right">Beneficiaries</th>
-                  <th scope="col" className="py-1.5 pr-2 text-right">Stays</th>
-                  <th scope="col" className="py-1.5 pr-2">Share</th>
-                  <th scope="col" className="py-1.5 pr-2 text-right">Payment</th>
-                  <th scope="col" className="py-1.5 pr-2 text-right">Dual %</th>
-                  <th scope="col" className="py-1.5 pr-2 text-right">Risk</th>
-                  {showCensus ? <th scope="col" className="py-1.5 text-right">Residents (Medicare / Medicaid)</th> : null}
+                  <SortableTableHead label="Provider" column="name" sort={sort} onSort={changeSort} className="py-1.5 pr-2" />
+                  <SortableTableHead label="Beneficiaries" column="benes" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                  <SortableTableHead label="Stays" column="stays" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                  <SortableTableHead label="Share" column="share" sort={sort} onSort={changeSort} className="py-1.5 pr-2" />
+                  <SortableTableHead label="Payment" column="payment" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                  <SortableTableHead label="Dual %" column="dual_pct" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                  <SortableTableHead label="Risk" column="risk_score" sort={sort} onSort={changeSort} className="py-1.5 pr-2 text-right" />
+                  {showCensus ? <SortableTableHead label="Residents (Medicare / Medicaid)" column="census" sort={sort} onSort={changeSort} className="py-1.5 text-right" /> : null}
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {sortedRows.map((r, index) => (
                   <tr key={r.ccn} className="border-b border-slate-800/60">
-                    <td className="py-1.5 pr-2 text-slate-400">{r.rank}</td>
+                    <td className="py-1.5 pr-2 text-slate-400">{index + 1}</td>
                     <td className="py-1.5 pr-2">
                       <Link to={createPageUrl(`FacilityDetail?id=${encodeURIComponent(r.ccn)}&group=${r.facility_group || 'snf'}`)} className="text-cyan-400 hover:underline">{r.name || r.ccn}</Link>
                       <span className="block text-[10px] text-slate-400">{[r.city, r.state].filter(Boolean).join(', ') || `CCN ${r.ccn}`}</span>

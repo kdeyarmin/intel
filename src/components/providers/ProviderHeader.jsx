@@ -30,7 +30,7 @@ export default function ProviderHeader({ provider, specialty, location }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      toast.error("Couldn't copy to the clipboard");
+      toast.error("Unable to copy to the clipboard");
     }
   };
 

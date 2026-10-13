@@ -56,7 +56,7 @@ export default function ScoringRules() {
       queryClient.invalidateQueries({ queryKey: ['leadScoringStatus'] });
       setEditingRule(null);
     },
-    onError: (error) => toast.error('Could not save the rule: ' + error.message),
+    onError: (error) => toast.error('Unable to save the rule: ' + error.message),
   });
 
   const startEdit = (rule) => {
@@ -136,7 +136,7 @@ export default function ScoringRules() {
       <PageTabs current="ScoringRules" />
       <PageHeader
         title="Scoring Configuration"
-        subtitle="CareMetric Referral Propensity Score (0-100) — configure weights for each factor"
+        subtitle="Referral propensity score (0–100) · Configure the weight of each factor"
         icon={Calculator}
         breadcrumbs={[{ label: 'Admin', page: 'DataCenter' }, { label: 'Scoring Rules' }]}
       />

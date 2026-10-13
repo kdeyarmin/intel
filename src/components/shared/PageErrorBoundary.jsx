@@ -51,7 +51,7 @@ export default class PageErrorBoundary extends Component {
           <div className="flex justify-center gap-2">
             {!stale && (
               <Button variant="outline" onClick={() => this.setState({ error: null })} className="border-slate-600 bg-transparent text-slate-200 hover:bg-slate-800">
-                Try again
+                Retry
               </Button>
             )}
             <Button onClick={() => window.location.reload()} className="bg-cyan-600 hover:bg-cyan-700">

@@ -313,7 +313,7 @@ describe('MarketIntelligence', () => {
   it('says when a state has no profiles yet', async () => {
     invoke.mockReset().mockResolvedValue({ ...LAYER, state: 'OH', counties: [] });
     renderAt('/MarketIntelligence?state=OH', MarketIntelligence, '/MarketIntelligence');
-    expect(await screen.findByText(/No county profiles for OH yet/)).toBeInTheDocument();
+    expect(await screen.findByText(/County profiles are not available for OH/)).toBeInTheDocument();
   });
 });
 
@@ -369,9 +369,9 @@ describe('CountyMetricLayer', () => {
   it('shows the error and a retry, not an empty state, when the layer fails', () => {
     const retry = vi.fn();
     render(<MemoryRouter><CountyMetricLayer layer={undefined} state="PA" error={new Error('timeout')} onRetry={retry} /></MemoryRouter>);
-    expect(screen.getByRole('alert')).toHaveTextContent(/Couldn't load this county layer: timeout/);
+    expect(screen.getByRole('alert')).toHaveTextContent(/Unable to load this county layer: timeout/);
     expect(screen.queryByText(/No county profiles/)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(retry).toHaveBeenCalled();
   });
 
@@ -387,7 +387,7 @@ describe('CountyMetricLayer', () => {
   it('carries the market disclaimer: the layer is a market view', () => {
     render(<MemoryRouter><CountyMetricLayer layer={layer(5)} state="PA" /></MemoryRouter>);
     expect(screen.getByRole('note')).toHaveTextContent(/Hospital sources show where/);
-    expect(screen.getByRole('note')).toHaveTextContent(/not confirmed referrals/);
+    expect(screen.getByRole('note')).toHaveTextContent(/patterns do not confirm referrals/);
   });
 
   it('has no "show all" control when every county already fits', () => {
@@ -431,7 +431,7 @@ describe('market cards on a facility page', () => {
     wrap(<MarketPositionCard ccn="395001" setting="snf" />);
     expect(await screen.findByText('county share')).toBeInTheDocument();
     expect(screen.getByText('of 70 in county')).toBeInTheDocument();
-    expect(screen.getByRole('note')).toHaveTextContent(/not confirmed referrals/);
+    expect(screen.getByRole('note')).toHaveTextContent(/patterns do not confirm referrals/);
     expect(screen.getByRole('note')).toHaveTextContent(/discharge mix/);
   });
 
@@ -463,8 +463,8 @@ describe('market cards on a facility page', () => {
       ccn: '390001', data_year: '2025', total_cases: 1000, counties: [{ county_fips: '42003', name: 'Allegheny County', state: 'PA', cases: 900, share: 0.9 }], zips: [], discharge_mix: null, rollups: ROLLUPS,
     });
     wrap(<HospitalCatchmentCard ccn="390001" />);
-    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load where this hospital's patients live: statement timeout");
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent("Unable to load where this hospital's patients live: statement timeout");
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByText(/Where this hospital's patients live/)).toBeInTheDocument();
     expect(screen.queryByRole('alert')).toBeNull();
   });
@@ -519,8 +519,8 @@ describe('market cards on a facility page', () => {
       market: [], trend: [], coverage: [], rollups: ROLLUPS,
     });
     wrap(<MarketPositionCard ccn="395001" setting="snf" />);
-    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load this provider's market position: connection terminated");
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent("Unable to load this provider's market position: connection terminated");
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByText('county share')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).toBeNull();
   });
@@ -596,7 +596,7 @@ describe('cards', () => {
     const potential = { data_year: '2024', referral_index: 96, rank_in_county: 1, county_name: 'Allegheny County', benes: 620, hospital_ccns: [], affiliations: 0 };
     const rollups = { referral_sources: { status: 'success', refreshed_at: '2026-10-10T03:00:00Z', error: null } };
     render(<ReferralPotentialCard potential={potential} rollups={rollups} />);
-    expect(screen.getByRole('note')).toHaveTextContent(/not confirmed referrals/);
+    expect(screen.getByRole('note')).toHaveTextContent(/patterns do not confirm referrals/);
     expect(screen.getByRole('note')).toHaveTextContent(/discharge mix/);
     expect(screen.getByText(/Computed /)).toBeInTheDocument();
   });
@@ -609,7 +609,7 @@ describe('cards', () => {
 
   it('renders the compliance note', () => {
     render(<ComplianceDisclaimer />);
-    expect(screen.getByRole('note')).toHaveTextContent(/not confirmed referrals/);
+    expect(screen.getByRole('note')).toHaveTextContent(/patterns do not confirm referrals/);
     expect(screen.getByRole('note')).not.toHaveTextContent(/discharge mix/);
   });
 });

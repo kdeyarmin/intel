@@ -30,6 +30,7 @@ describe("county growth rows", () => {
     expect(rows.find((r) => r.fips === "42019")).toMatchObject({
       users: 2000, billing: 4, usersPerProvider: 500, demandOutpacedSupply: true,
     });
+
     expect(rows.find((r) => r.fips === "42003")!.demandOutpacedSupply).toBe(false);
     expect(rows.find((r) => r.fips === "42001")!.usersPerProvider).toBe(40);
     expect(rows.find((r) => r.fips === "42005")!.users).toBeNull();
@@ -61,5 +62,14 @@ describe("named reports", () => {
     expect(facts.top!.name).toBe("A");
     expect(facts.listedShare).toBeCloseTo(0.3);
     expect(facts.listed).toBe(3);
+  });
+
+  describe("report catalog copy", () => {
+    it("uses concise, audience-appropriate report titles and descriptions", () => {
+      expect(REPORT_CATALOG.every((report) => report.title.trim() && report.reason.trim())).toBe(true);
+      expect(REPORT_CATALOG.find((report) => report.id === "calls-hha")?.title).toBe("Home health outreach prospects");
+      expect(REPORT_CATALOG.find((report) => report.id === "calls-hospice")?.title).toBe("Hospice outreach prospects");
+      expect(REPORT_CATALOG.some((report) => /to call/i.test(report.title))).toBe(false);
+    });
   });
 });

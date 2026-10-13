@@ -90,7 +90,7 @@ export default function TeamMarketing() {
   }), [data, roster, month]);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['team-crm'] });
-  const fail = (e) => toast.error(e?.message || 'Could not save that.');
+  const fail = (e) => toast.error(e?.message || 'Unable to save that.');
 
   const assign = async (account, userId) => {
     try {
@@ -123,7 +123,7 @@ export default function TeamMarketing() {
         </div>
       </div>
 
-      {isError && <p className="text-sm text-red-400" role="alert">{error?.message || 'Could not load the team book.'}</p>}
+      {isError && <p className="text-sm text-red-400" role="alert">{error?.message || 'Unable to load the team book.'}</p>}
       {data?.truncated && <p className="text-sm text-amber-300" role="status">The data is larger than this page can load, so the totals are incomplete.</p>}
       {isLoading && <p className="text-sm text-slate-400">Loading the team book…</p>}
 

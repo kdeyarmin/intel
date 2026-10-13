@@ -122,7 +122,7 @@ export default function CallSheets() {
       await queryClient.invalidateQueries({ queryKey: ['callSheets'] });
       toast.success(added ? `Added ${fmtCount(added)}.` : 'Those accounts are already on the sheet.');
     } catch (e) {
-      toast.error(e?.message || 'Could not add those accounts.');
+      toast.error(e?.message || 'Unable to add those accounts.');
     } finally {
       setAdding('');
     }
@@ -133,7 +133,7 @@ export default function CallSheets() {
       await base44.entities.CallSheetAccount.update(row.id, patch);
       queryClient.setQueryData(['callSheetAccounts', url.sheet], (current = []) => current.map((a) => (a.id === row.id ? { ...a, ...patch } : a)));
     } catch (e) {
-      toast.error(e?.message || 'Could not save that.');
+      toast.error(e?.message || 'Unable to save that.');
     }
   }
 
@@ -145,7 +145,7 @@ export default function CallSheets() {
       await base44.entities.CallSheet.update(sheet.id, { account_count: next.length });
       queryClient.invalidateQueries({ queryKey: ['callSheets'] });
     } catch (e) {
-      toast.error(e?.message || 'Could not remove that account.');
+      toast.error(e?.message || 'Unable to remove that account.');
     }
   }
 

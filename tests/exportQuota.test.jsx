@@ -73,14 +73,14 @@ describe('countExport', () => {
 
   it('stops the export when the count itself failed (offline, server error): a file is built only after a confirmed count', async () => {
     h.countExport.mockRejectedValue(Object.assign(new Error('Service unavailable'), { status: 503 }));
-    await expect(countExport()).resolves.toEqual({ ok: false, message: "Couldn't check your daily export allowance. Try again in a moment." });
+    await expect(countExport()).resolves.toEqual({ ok: false, message: "Unable to check your daily export allowance. Retry in a moment." });
     h.countExport.mockRejectedValue(new TypeError('Failed to fetch'));
     await expect(countExport()).resolves.toMatchObject({ ok: false });
   });
 
   it('stops it when the server answers that it did not count the export', async () => {
     h.countExport.mockResolvedValue({ ok: true, counted: false });
-    await expect(countExport()).resolves.toMatchObject({ ok: false, message: expect.stringMatching(/Couldn't check/) });
+    await expect(countExport()).resolves.toMatchObject({ ok: false, message: expect.stringMatching(/Unable to check/) });
   });
 
   it('lets it go ahead on a confirmed count', async () => {
@@ -100,7 +100,7 @@ describe('exportCSV', () => {
     expect(lines[2]).toBe('Data: Medicare enrollment 2026-06.');
     // The attribution has commas, so it is quoted and stays one cell.
     expect(lines.at(-1)).toBe(`"${exportAttribution()}"`);
-    expect(lines.at(-1)).toContain('not CMS publications');
+    expect(lines.at(-1)).toContain('not an official CMS publication');
     expect(lines.at(-1)).toContain('counts under 11 are suppressed');
   });
 });
@@ -156,7 +156,7 @@ describe('Lead List Builder export', () => {
     expect(h.countExport).toHaveBeenCalledTimes(1);
     const text = await readBlob(blobs[0]);
     expect(text).toContain('NPI,Name,Specialty,City,State,ZIP,Phone,Score,Patient Fingerprint');
-    expect(text).toContain('not CMS publications');
+    expect(text).toContain('not an official CMS publication');
   });
 
   it("builds no file once the day's export limit is used up, and says why", async () => {
@@ -190,7 +190,7 @@ describe('Market Intelligence download', () => {
     const text = await readBlob(blobs[0]);
     expect(text).toContain('Allegheny County');
     expect(text).toContain('Data: Medicare enrollment 2026-06.');
-    expect(text).toContain('not CMS publications');
+    expect(text).toContain('not an official CMS publication');
   });
 
   it("doesn't build the file when the day's export limit is used up", async () => {
@@ -215,7 +215,7 @@ describe('the other export buttons', () => {
     fireEvent.click(screen.getByRole('button', { name: /Export/ }));
     await waitFor(() => expect(blobs).toHaveLength(1));
     expect(h.countExport).toHaveBeenCalledTimes(1);
-    expect(await readBlob(blobs[0])).toContain('not CMS publications');
+    expect(await readBlob(blobs[0])).toContain('not an official CMS publication');
     cleanup();
 
     blobs.length = 0;

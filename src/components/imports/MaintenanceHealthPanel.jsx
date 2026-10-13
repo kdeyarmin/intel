@@ -101,7 +101,7 @@ function NeedsAttention({ enabled }) {
       </p>
       {failure ? (
         <p className="text-[11px] text-red-400" role="alert">
-          Couldn't load the operations alerts ({failure}), so nothing is checking the pipeline from here. It will try again in a few minutes.
+          Unable to load the operations alerts ({failure}), so nothing is checking the pipeline from here. It will retry in a few minutes.
         </p>
       ) : alerts.length === 0 ? (
         <p className="text-[11px] text-emerald-400">Nothing open: datasets are current, schedules and rollups are running.</p>
@@ -212,7 +212,7 @@ export default function MaintenanceHealthPanel() {
       <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 flex items-start gap-3">
         <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
         <div className="flex-1 text-xs text-red-200">
-          <p className="font-semibold">Couldn't load maintenance status</p>
+          <p className="font-semibold">Unable to load maintenance status</p>
           <p className="text-red-300/80 mt-0.5">{error}</p>
         </div>
       </div>

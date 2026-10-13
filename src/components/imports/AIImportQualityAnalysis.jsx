@@ -212,7 +212,7 @@ Return a structured analysis with specific NPIs and actionable recommendations.`
     setResults(res);
     } catch (err) {
       console.error('AI import quality analysis failed:', err);
-      toast.error('Operation failed. Please try again.');
+      toast.error('Operation failed. Please retry.');
     } finally {
       setAnalyzing(false);
     }

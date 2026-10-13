@@ -107,7 +107,7 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
           {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 bg-slate-800" />)}
         </div>
       ) : isError ? (
-        <QueryErrorState title={`Couldn't load ${title.toLowerCase()}`} error={error} onRetry={refetch} />
+        <QueryErrorState title={`Unable to load ${title.toLowerCase()}`} error={error} onRetry={refetch} />
       ) : facilities.length === 0 ? (
         <Card className="bg-slate-800/50 border-slate-700/50">
           <CardContent className="py-12 text-center">

@@ -53,7 +53,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/landing" className="inline-block hover:opacity-90 transition-opacity">
-            <h1 className="text-3xl font-bold text-white mb-2">CareMetric AI</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">CareMetric Healthcare Advisors</h1>
           </Link>
           <p className="text-slate-400">Healthcare Provider Intelligence Platform</p>
           <div className="mt-2">

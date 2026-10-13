@@ -24,7 +24,7 @@ export default function UrlCheckButton({ url }) {
       const data = await invokeOrThrow('testCMSUrl', { url: trimmed });
       setResult({ url: trimmed, check: data.check });
     } catch (err) {
-      toastFunctionError(err, "Couldn't check the URL");
+      toastFunctionError(err, "Unable to check the URL");
     } finally {
       setChecking(false);
     }

@@ -130,7 +130,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
       setAnalysis(res);
     } catch (err) {
       console.error('AI analysis failed:', err);
-      setAnalysis({ error: true, root_cause: 'AI analysis could not complete. Please review error samples manually.' });
+      setAnalysis({ error: true, root_cause: 'AI analysis unable to complete. Please review error samples manually.' });
     } finally {
       setLoading(false);
     }
@@ -368,7 +368,7 @@ Be specific and actionable. Reference actual error details from the samples.`,
             <div className="text-xs text-slate-400 p-3 bg-slate-800/30 rounded-lg">
               {analysis.root_cause}
               <Button variant="ghost" size="sm" onClick={runAnalysis} className="h-6 text-[10px] text-cyan-500 hover:text-cyan-400 px-2 mt-2">
-                <RefreshCw className="w-3 h-3 mr-1" /> Try Again
+                <RefreshCw className="w-3 h-3 mr-1" /> Retry
               </Button>
             </div>
           )}

@@ -65,7 +65,7 @@ export default function Landing() {
     e.preventDefault();
     setDemoSubmitted(true);
   };
-  const demoEmail = `mailto:sales@caremetric.ai?subject=${encodeURIComponent('CareMetric Intel demo request')}&body=${encodeURIComponent(
+  const demoEmail = `mailto:sales@caremetric.ai?subject=${encodeURIComponent('CareMetric Healthcare Advisors demo request')}&body=${encodeURIComponent(
     `Name: ${demoForm.fullName}\nEmail: ${demoForm.workEmail}\nOrganization: ${demoForm.organization}\nCare setting: ${demoForm.businessLine}\nTerritory: ${demoForm.territory}\nNotes: ${demoForm.notes}`,
   )}`;
 
@@ -113,8 +113,8 @@ export default function Landing() {
               className="w-28 sm:w-36 h-12 rounded-lg object-contain bg-white shadow-md group-hover:scale-105 transition-transform"
             />
             <div className="hidden md:flex flex-col">
-              <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1">
-                CareMetric <span className="text-cyan-400">Intel</span>
+              <span className="text-sm font-semibold tracking-tight text-white">
+                CareMetric Healthcare Advisors
               </span>
               <span className="text-[10px] tracking-widest text-slate-400 uppercase font-semibold">
                 Provider Intelligence
@@ -258,7 +258,7 @@ export default function Landing() {
 
           {/* Subheadline */}
           <p className="mt-6 text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
-            CareMetric Intel arms home health, hospice, and post-acute business development teams with deep Medicare claims data, physician certification tracking, and automated AI outreach angles.
+            CareMetric Healthcare Advisors equips home health, hospice, and post-acute business development teams with public Medicare utilization data, physician certification signals, and practical outreach context.
           </p>
 
           {/* Dual CTAs */}
@@ -311,7 +311,7 @@ export default function Landing() {
                 <span className="w-3 h-3 rounded-full bg-red-500/80" />
                 <span className="w-3 h-3 rounded-full bg-amber-500/80" />
                 <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
-                <span className="text-xs text-slate-400 ml-2 font-mono">CareMetric Intel • Provider Intelligence & Lead Scoring</span>
+                <span className="text-xs text-slate-400 ml-2 font-mono">CareMetric Healthcare Advisors • Provider Intelligence & Lead Scoring</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-medium bg-emerald-950/70 border border-emerald-500/30 text-emerald-300">
@@ -471,7 +471,7 @@ export default function Landing() {
             Designed for healthcare growth & business development leaders
           </h2>
           <p className="mt-4 text-slate-300 text-base sm:text-lg">
-            Generic B2B contact lists fail in healthcare. CareMetric Intel provides clinical claims context, cert tracking, and referral pathways tailored to your specific care setting.
+            Generic B2B contact lists fail in healthcare. CareMetric Healthcare Advisors provides clinical claims context, cert tracking, and referral pathways tailored to your specific care setting.
           </p>
         </div>
 
@@ -592,7 +592,7 @@ export default function Landing() {
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">End-to-End Workflow</span>
             <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white">
-              How CareMetric Intel turns raw healthcare datasets into growth
+              How CareMetric Healthcare Advisors turns raw healthcare datasets into growth
             </h2>
             <p className="mt-4 text-slate-300 text-base sm:text-lg">
               From continuous CMS data ingestion to closed referral partnerships in four simple steps.
@@ -655,7 +655,7 @@ export default function Landing() {
             Everything your business development team needs to dominate your market
           </h2>
           <p className="mt-4 text-slate-300 text-base sm:text-lg">
-            CareMetric Intel combines deep healthcare registry files, interactive network graphs, and intelligent sales tooling in one unified workspace.
+            CareMetric Healthcare Advisors combines deep healthcare registry files, interactive network graphs, and intelligent sales tooling in one unified workspace.
           </p>
         </div>
 
@@ -755,7 +755,7 @@ export default function Landing() {
               Why healthcare teams switch from legacy vendors
             </h2>
             <p className="mt-4 text-slate-300 text-base sm:text-lg">
-              Enterprise platforms charge tens of thousands for rigid contracts and generic data. CareMetric Intel delivers modern, specialized healthcare intelligence at fair, transparent pricing.
+              Enterprise platforms charge tens of thousands for rigid contracts and generic data. CareMetric Healthcare Advisors delivers modern, specialized healthcare intelligence at fair, transparent pricing.
             </p>
           </div>
 
@@ -766,7 +766,7 @@ export default function Landing() {
                 <tr className="border-b border-slate-800 bg-[#131d31]">
                   <th scope="col" className="p-4 sm:p-5 text-sm font-semibold text-slate-300">Feature / Capability</th>
                   <th scope="col" className="p-4 sm:p-5 text-sm font-bold text-cyan-400 bg-cyan-950/30 border-x border-cyan-500/20">
-                    CareMetric Intel
+                    CareMetric Healthcare Advisors
                   </th>
                   <th scope="col" className="p-4 sm:p-5 text-sm font-medium text-slate-400">Definitive Healthcare</th>
                   <th scope="col" className="p-4 sm:p-5 text-sm font-medium text-slate-400">ZoomInfo</th>
@@ -1069,7 +1069,7 @@ export default function Landing() {
               Trusted by healthcare business development leaders
             </h2>
             <p className="mt-4 text-slate-300 text-base sm:text-lg">
-              Here is what operators in home health, hospice, and skilled nursing say about CareMetric Intel.
+              Here is what operators in home health, hospice, and skilled nursing say about CareMetric Healthcare Advisors.
             </p>
           </div>
 
@@ -1077,7 +1077,7 @@ export default function Landing() {
             {/* Review 1 */}
             <div className="bg-[#0f172a] rounded-2xl p-7 border border-slate-800 flex flex-col justify-between">
               <p className="text-sm text-slate-300 leading-relaxed italic mb-6">
-                "Before CareMetric, our liaisons wasted half their time knocking on offices of doctors who hadn't certified a home health patient in years. Now we know the exact G0180 cert volume before setting foot in the clinic. Our conversion rate jumped 40% in quarter one."
+                "Before using CareMetric Healthcare Advisors, our liaisons spent too much time contacting physicians who had not certified a home health patient in years. Now we review G0180 certification volume before planning outreach."
               </p>
               <div className="flex items-center gap-3 pt-4 border-t border-slate-800">
                 <div className="w-10 h-10 rounded-full bg-cyan-900/60 border border-cyan-500/30 flex items-center justify-center text-cyan-300 font-bold text-sm">
@@ -1093,7 +1093,7 @@ export default function Landing() {
             {/* Review 2 */}
             <div className="bg-[#0f172a] rounded-2xl p-7 border border-slate-800 flex flex-col justify-between">
               <p className="text-sm text-slate-300 leading-relaxed italic mb-6">
-                "We were paying $38,000 annually for Definitive Healthcare and barely using 10% of it. CareMetric gave our 6-person BD team everything we actually need—especially the hospital discharge destination mapping—at a fraction of the cost."
+                "We were paying $38,000 annually for Definitive Healthcare and barely using 10% of it. CareMetric Healthcare Advisors gave our six-person business development team the market context we needed, including hospital discharge patterns."
               </p>
               <div className="flex items-center gap-3 pt-4 border-t border-slate-800">
                 <div className="w-10 h-10 rounded-full bg-teal-900/60 border border-teal-500/30 flex items-center justify-center text-teal-300 font-bold text-sm">
@@ -1138,20 +1138,20 @@ export default function Landing() {
         <div className="space-y-4">
           {[
             {
-              q: 'Where does CareMetric Intel get its healthcare provider data?',
-              a: 'CareMetric Intel synthesizes official, publicly reported healthcare datasets including the National Plan and Provider Enumeration System (NPPES), Centers for Medicare & Medicaid Services (CMS) Provider of Services, Medicare Physician & Other Practitioners Utilization files, Order & Referring catalogs, and U.S. Census Bureau ACS demographic tables.',
+              q: 'Where does CareMetric Healthcare Advisors get its healthcare provider data?',
+              a: 'CareMetric Healthcare Advisors synthesizes official, publicly reported healthcare datasets including the National Plan and Provider Enumeration System (NPPES), Centers for Medicare & Medicaid Services (CMS) Provider of Services, Medicare Physician & Other Practitioners Utilization files, Order & Referring catalogs, and U.S. Census Bureau ACS demographic tables.',
             },
             {
               q: 'How frequently is the database updated?',
               a: 'NPPES files are updated weekly and monthly to capture newly registered clinicians and practice location changes. CMS physician certification and post-acute utilization datasets are continuously synchronized against the latest CMS catalog releases.',
             },
             {
-              q: 'Does CareMetric store or process any Protected Health Information (PHI)?',
-              a: 'No. CareMetric Intel strictly processes aggregate public provider records, facility profiles, and de-identified Medicare billing summaries. We never handle patient-level clinical records, EHR data, or Protected Health Information (PHI). The platform is 100% compliant with HIPAA public intelligence standards.',
+              q: 'Does CareMetric Healthcare Advisors process protected health information (PHI)?',
+              a: 'No. The platform uses aggregate public provider records, facility profiles, and Medicare utilization summaries. It does not use patient-level clinical records, EHR data, or Protected Health Information (PHI).',
             },
             {
-              q: 'How does CareMetric differ from Definitive Healthcare or ZoomInfo?',
-              a: 'Definitive Healthcare charges upwards of $30,000 to $50,000+ per year on strict multi-year contracts with heavy enterprise bloat. ZoomInfo is a horizontal sales tool with no concept of physician Medicare certs (G0180) or post-acute referral leakage. CareMetric Intel is built specifically for post-acute BD teams with transparent, accessible pricing starting at $199/mo.',
+              q: 'How does CareMetric Healthcare Advisors differ from other data providers?',
+              a: 'CareMetric Healthcare Advisors focuses on post-acute business development, combining public Medicare utilization context, physician certification signals, and market-level referral patterns in one workflow.',
             },
             {
               q: 'What is included in the 14-day free trial?',
@@ -1228,8 +1228,8 @@ export default function Landing() {
                   alt="CareMetric Healthcare Advisors"
                   className="w-36 h-12 rounded-lg object-contain bg-white"
                 />
-                <span className="text-xl font-bold text-white tracking-tight">
-                  CareMetric <span className="text-cyan-400">Intel</span>
+                <span className="text-sm font-semibold text-white tracking-tight">
+                CareMetric Healthcare Advisors
                 </span>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
@@ -1278,13 +1278,12 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Compliance Disclaimer & Copyright */}
-          <div className="pt-8 text-xs text-slate-400 leading-relaxed space-y-3">
+          <div className="pt-8 text-xs text-slate-400 leading-relaxed">
             <p className="max-w-4xl">
-              <strong>Data & Compliance Disclaimer:</strong> CareMetric Intel aggregates and synthesizes public data releases published by the Centers for Medicare & Medicaid Services (CMS), the National Plan and Provider Enumeration System (NPPES), and the U.S. Census Bureau under public record provisions and the Freedom of Information Act (FOIA). CareMetric does not store or process Protected Health Information (PHI). All data points represent public provider practice summaries, enrollment statuses, and historical utilization benchmarks.
+              Research and insights are based on aggregate public data from CMS, NPPES, and the U.S. Census Bureau. Figures are independently produced and are not official CMS publications.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 text-[11px] text-slate-400">
-              <p>© {new Date().getFullYear()} CareMetric Intel. All rights reserved.</p>
+              <p>© {new Date().getFullYear()} CareMetric Healthcare Advisors. All rights reserved.</p>
               <div className="flex items-center gap-4">
                 <Link to="/terms" className="hover:underline">Terms</Link>
                 <Link to="/privacy" className="hover:underline">Privacy</Link>
@@ -1343,7 +1342,7 @@ export default function Landing() {
                     <span>Personalized 15-Minute Territory Walkthrough</span>
                   </div>
                   <h3 id="demo-modal-title" className="text-2xl font-bold text-white">
-                    Request a CareMetric Intel Demo
+                    Request a CareMetric Healthcare Advisors Demo
                   </h3>
                   <p className="text-xs text-slate-300 mt-1">
                     See live physician certification volumes, referral pathways, and lead scores for your target county.

@@ -53,7 +53,7 @@ describe("refreshRollups heartbeat", () => {
     });
   });
 
-  it("records a refresh that couldn't be queued, and still fails the request", async () => {
+  it("records a refresh that unable to be queued, and still fails the request", async () => {
     h.runsFail = true;
     await expect(handleRefreshRollups({}, { email: "admin@example.com" })).rejects.toMatchObject({ status: 500, message: expect.stringMatching(/db down/) });
     expect(h.heartbeats).toHaveLength(1);

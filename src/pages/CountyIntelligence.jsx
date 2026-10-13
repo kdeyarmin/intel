@@ -160,8 +160,8 @@ export default function CountyIntelligence() {
       ) : isError ? (
         <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-6 text-center space-y-3" role="alert">
           <AlertTriangle className="w-8 h-8 text-red-400 mx-auto" aria-hidden="true" />
-          <p className="text-red-400 text-sm">Couldn't load this county: {error?.message}</p>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="border-red-500/30 text-red-400">Try again</Button>
+          <p className="text-red-400 text-sm">Unable to load this county: {error?.message}</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="border-red-500/30 text-red-400">Retry</Button>
         </div>
       ) : isLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-label="Loading county">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
@@ -378,7 +378,7 @@ export default function CountyIntelligence() {
                 {tab === 'referrals' ? (
                   <ReferralSourcesTable key={`${everyLine ? 'all' : (profile?.referralSetting || 'all')}:${url.county}`} state={url.state} countyFips={data.county.fips} countyName={data.county.name} initialSetting={everyLine ? 'all' : (profile?.referralSetting || 'all')} />
                 ) : marketError ? (
-                  <p className="text-sm text-red-400" role="alert">Couldn't load the market data: {marketErr?.message}</p>
+                  <p className="text-sm text-red-400" role="alert">Unable to load the market data: {marketErr?.message}</p>
                 ) : loadingMarket || !market ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-label="Loading market">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
                 ) : tab === 'market' ? (

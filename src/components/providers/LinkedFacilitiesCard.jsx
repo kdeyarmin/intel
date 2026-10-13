@@ -60,7 +60,7 @@ export default function LinkedFacilitiesCard({ linkedFacilities }) {
           // a dead click.
           const canOpen = !!(group && f.provider_id && f.resolved_ccn);
           const disabledReason = !f.resolved_ccn
-            ? 'This facility could not be matched to a CMS facility record, so there is no detail page to open.'
+            ? 'This facility unable to be matched to a CMS facility record, so there is no detail page to open.'
             : !group
               ? `Unknown facility type "${f.facility_type}" — no detail view is available.`
               : 'This entry has no facility identifier.';

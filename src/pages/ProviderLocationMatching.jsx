@@ -67,7 +67,7 @@ export default function ProviderLocationMatching() {
       await base44.entities.ProviderLocationMatch.update(id, updateData);
       queryClient.invalidateQueries({ queryKey: ['providerLocationMatches'] });
     } catch (err) {
-      toast.error(`Couldn't update the match: ${err.message}`);
+      toast.error(`Unable to update the match: ${err.message}`);
     }
   };
 

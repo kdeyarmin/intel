@@ -182,7 +182,7 @@ Return suggestions for filling missing data AND potential corrections. Be thorou
         completeness: res.data_completeness_score,
       });
     } catch (err) {
-      toast.error('Enrichment analysis failed. Please try again.');
+      toast.error('Enrichment analysis failed. Please retry.');
     } finally {
       setLoading(false);
     }

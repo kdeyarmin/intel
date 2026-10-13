@@ -2,7 +2,7 @@
 // appBaseUrl in ./accounts), never the request's Host header.
 import type { MailMessage } from "./mailer";
 
-const PRODUCT = "CareMetric AI";
+const PRODUCT = "CareMetric Healthcare Advisors";
 
 function lines(...parts: Array<string | false | null | undefined>): string {
   return parts.filter((p) => p !== false && p != null).join("\n");

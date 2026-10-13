@@ -91,7 +91,7 @@ describe("POST /api/webhooks/stripe and a second live subscription", () => {
     h.notify.mockRejectedValue(new Error("mail provider down"));
     const res = await post();
     expect(res.status).toBe(200);
-    await vi.waitFor(() => expect(warn).toHaveBeenCalledWith(expect.stringMatching(/couldn't notify the admins/), "mail provider down"));
+    await vi.waitFor(() => expect(warn).toHaveBeenCalledWith(expect.stringMatching(/unable to notify the admins/), "mail provider down"));
     warn.mockRestore();
   });
 

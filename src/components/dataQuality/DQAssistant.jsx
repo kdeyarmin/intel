@@ -55,11 +55,11 @@ export default function DQAssistant() {
           stats: data.response.related_stats,
         });
       } else {
-        addMessage('assistant', data.error || 'Sorry, I could not process that request.');
+        addMessage('assistant', data.error || 'Sorry, I unable to process that request.');
       }
     } catch (err) {
       console.error('DQ assistant query failed:', err);
-      addMessage('assistant', 'An error occurred. Please try again.');
+      addMessage('assistant', 'An error occurred. Please retry.');
     } finally {
       setLoading(false);
     }
@@ -82,7 +82,7 @@ export default function DQAssistant() {
       });
     } catch (err) {
       console.error('Auto-fix failed:', err);
-      addMessage('assistant', 'Auto-fix failed. Please try again.');
+      addMessage('assistant', 'Auto-fix failed. Please retry.');
     } finally {
       setLoading(false);
     }
@@ -105,11 +105,11 @@ export default function DQAssistant() {
           patterns: data.analysis,
         });
       } else {
-        addMessage('assistant', 'Pattern analysis failed. Please try again.');
+        addMessage('assistant', 'Pattern analysis failed. Please retry.');
       }
     } catch (err) {
       console.error('Pattern analysis failed:', err);
-      addMessage('assistant', 'Pattern analysis encountered an error. Please try again.');
+      addMessage('assistant', 'Pattern analysis encountered an error. Please retry.');
     } finally {
       setLoading(false);
     }

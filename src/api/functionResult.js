@@ -24,7 +24,7 @@ export async function invokeOrThrow(functionName, payload = {}) {
 }
 
 /** Toast an error from invokeOrThrow: info for not-configured features, error otherwise. */
-export function toastFunctionError(err, fallback = 'Something went wrong. Please try again.') {
+export function toastFunctionError(err, fallback = 'Something went wrong. Please retry.') {
   if (err?.notConfigured) toast.info(err.message);
   else toast.error(err?.message || fallback);
 }

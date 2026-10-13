@@ -29,7 +29,7 @@ export default function ScheduledReportPreviewDialog({ report, onClose }) {
           <DialogDescription className="text-slate-400">Preview only: nothing is sent.</DialogDescription>
         </DialogHeader>
         {isLoading && <p className="flex items-center gap-2 text-sm text-slate-400"><Loader2 className="w-4 h-4 animate-spin" />Building the report…</p>}
-        {isError && <QueryErrorState title="Couldn't build the report" error={error} onRetry={refetch} />}
+        {isError && <QueryErrorState title="Unable to build the report" error={error} onRetry={refetch} />}
         {p && (
           <div className="space-y-3 text-sm">
             {p.summary && <p className="text-slate-300">{p.summary}</p>}

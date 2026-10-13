@@ -135,7 +135,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
       return;
     }
     if (!selectedList) {
-      toast.error(listsLoading ? 'The lead list is still loading.' : "Couldn't load the selected lead list. Reload the page and try again.");
+      toast.error(listsLoading ? 'The lead list is still loading.' : "Unable to load the selected lead list. Reload the page and retry.");
       return;
     }
     const count = selectedList.member_count || 0;
@@ -297,7 +297,7 @@ export default function CampaignBuilder({ onCampaignCreated, initialCampaign = n
             <CardContent className="space-y-4">
               <div className="p-4 bg-slate-800/60 border border-slate-700 rounded space-y-1 text-sm text-slate-300">
                 <p>Campaign: <strong className="text-slate-100">{campaign.name || '—'}</strong></p>
-                <p>Lead list: <strong className="text-slate-100">{selectedList ? `${selectedList.name} (${(selectedList.member_count || 0).toLocaleString()} providers)` : listPending ? (listsLoading ? 'Loading…' : "Couldn't load this list") : 'None selected'}</strong></p>
+                <p>Lead list: <strong className="text-slate-100">{selectedList ? `${selectedList.name} (${(selectedList.member_count || 0).toLocaleString()} providers)` : listPending ? (listsLoading ? 'Loading…' : "Unable to load this list") : 'None selected'}</strong></p>
               </div>
               <div className="flex items-start gap-2 rounded border border-blue-500/30 bg-blue-900/20 p-3 text-xs text-blue-300">
                 <Info className="w-4 h-4 shrink-0" />

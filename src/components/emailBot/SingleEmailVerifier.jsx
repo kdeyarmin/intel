@@ -9,7 +9,7 @@ const statusConfig = {
   valid: { icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-900/10', label: 'Valid' },
   risky: { icon: ShieldAlert, color: 'text-amber-400', bg: 'bg-amber-900/10', label: 'Risky' },
   invalid: { icon: ShieldX, color: 'text-red-400', bg: 'bg-red-900/10', label: 'Invalid' },
-  unknown: { icon: ShieldAlert, color: 'text-slate-400', bg: 'bg-slate-500/10', label: "Couldn't check" },
+  unknown: { icon: ShieldAlert, color: 'text-slate-400', bg: 'bg-slate-500/10', label: "Unable to check" },
 };
 
 const FLAG_LABELS = {
@@ -37,7 +37,7 @@ export default function SingleEmailVerifier({ provider, onVerified }) {
         provider_id: provider.id,
       });
       setResult(data);
-      if (data.status === 'unknown') toast.info(data.reasons?.[0] || "Couldn't check the domain right now. Try again later.");
+      if (data.status === 'unknown') toast.info(data.reasons?.[0] || "Unable to check the domain right now. Retry later.");
       else toast.success(`Email ${data.status}${data.score != null ? ` (score ${data.score})` : ''}`);
       onVerified?.(data);
     } catch (err) {

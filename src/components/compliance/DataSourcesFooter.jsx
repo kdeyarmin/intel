@@ -19,8 +19,8 @@ export default function DataSourcesFooter() {
     <p className="mt-6 flex items-start gap-1.5 text-[11px] leading-relaxed text-slate-400">
       <Database className="w-3 h-3 mt-0.5 shrink-0" aria-hidden="true" />
       <span>
-        {sentence} Figures are CareMetric analytics derived from public data, not CMS publications; CMS suppresses counts under 11, and shared-patient patterns are not confirmed referrals.{' '}
-        <Link to="/Help" className="text-cyan-400 hover:underline">What data is this and how fresh is it?</Link>
+        {sentence}{' '}
+        <Link to="/Help" className="text-cyan-400 hover:underline">Data sources and methodology</Link>
       </span>
     </p>
   );

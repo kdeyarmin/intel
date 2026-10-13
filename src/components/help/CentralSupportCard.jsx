@@ -13,10 +13,10 @@ export default function CentralSupportCard({ hubUrl }) {
       <CardContent className="p-5 sm:p-6">
         <div className="flex flex-col lg:flex-row lg:items-center gap-5">
           <div className="flex-1 space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">CareMetric centralized support</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-cyan-400">CareMetric Healthcare Advisors support</p>
             <h2 className="text-xl font-semibold text-slate-100">Help, courses, tutorials, and software support</h2>
             <p className="text-sm text-slate-400">
-              Open the shared CareMetric Help Center or use the central support contacts below. Do not include patient information or other protected health information.
+              Visit the CareMetric Healthcare Advisors Help Center or contact support below. Do not include patient or other protected health information.
             </p>
             <div className="flex flex-wrap gap-x-5 gap-y-2 pt-1 text-sm">
               <a href={`tel:${CENTRAL_SUPPORT_PHONE}`} className="inline-flex items-center gap-2 text-slate-300 hover:text-cyan-300">
@@ -32,7 +32,7 @@ export default function CentralSupportCard({ hubUrl }) {
           {hubUrl && (
             <Button asChild className="bg-cyan-600 hover:bg-cyan-700 gap-2 min-h-11 shrink-0">
               <a href={hubUrl} target="_blank" rel="noopener noreferrer">
-                Open CareMetric Help Center
+                Open Help Center
                 <ExternalLink className="w-4 h-4" aria-hidden="true" />
               </a>
             </Button>

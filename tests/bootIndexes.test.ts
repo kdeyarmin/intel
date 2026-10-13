@@ -45,7 +45,7 @@ describe("runBootIndexes", () => {
         if (sql.includes("pg_try_advisory_lock")) return { rows: [{ locked: !lockTaken }] };
         if (sql.includes("pg_index")) return { rows: [{ indexname: "uq_psu_natural" }] };
         if (sql.includes("relkind = 'i'")) return { rows: [{ indexname: "uq_cms_referrals_npi_year" }] };
-        if (failOn && sql.includes(failOn)) throw new Error("could not create unique index");
+        if (failOn && sql.includes(failOn)) throw new Error("unable to create unique index");
         return { rows: [] };
       }),
       release: vi.fn(),
