@@ -1,11 +1,16 @@
-// Plain-text emails about accounts. Links always use PUBLIC_APP_URL (see
+// Plain-text emails about accounts. Account links always use PUBLIC_APP_URL (see
 // appBaseUrl in ./accounts), never the request's Host header.
 import type { MailMessage } from "./mailer";
 
 const PRODUCT = "CareMetric Intel";
 
 function lines(...parts: Array<string | false | null | undefined>): string {
-  return parts.filter((p) => p !== false && p != null).join("\n");
+  return [
+    ...parts.filter((p) => p !== false && p != null),
+    "",
+    "CareMetric Healthcare Advisors",
+    "https://caremetricintel.com/",
+  ].join("\n");
 }
 
 export function signupPendingEmail(to: string, newUser: { email: string; full_name: string | null; organization?: string | null }, base: string): MailMessage {

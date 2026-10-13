@@ -47,7 +47,12 @@ describe('CareMetric Intel branding', () => {
       inviteEmail('new@example.com', link, null),
       duplicateSubscriptionEmail('admin@example.com', { id: 1, name: 'Example Org' }, { kept: 'sub_new', previous: 'sub_old' }),
     ];
-    for (const message of messages) expect(message.subject).toContain(CAREMETRIC_PRODUCT);
+    for (const message of messages) {
+      expect(message.subject).toContain(CAREMETRIC_PRODUCT);
+      expect(message.text.endsWith(`\n\n${CAREMETRIC_COMPANY}\n${CAREMETRIC_WEBSITE}`)).toBe(true);
+      expect(message.text.match(/CareMetric Healthcare Advisors/g)).toHaveLength(1);
+      expect(message.text.match(/https:\/\/caremetricintel\.com\//g)).toHaveLength(1);
+    }
     expect(messages[0].text).toContain(`${base}/AdminSettings`);
     expect(messages[1].text).toContain(`${base}/login`);
     expect(messages[2].text).toContain(link);
