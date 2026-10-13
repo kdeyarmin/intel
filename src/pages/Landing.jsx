@@ -837,12 +837,12 @@ export default function Landing() {
       {/* Pricing Section */}
       <section id="pricing" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="text-center max-w-3xl mx-auto mb-14">
-          <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">Transparent & Fair Pricing</span>
+          <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">Proposed Packages & Pricing</span>
           <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white">
             High-yield healthcare intelligence without enterprise extortion
           </h2>
           <p className="mt-4 text-slate-300 text-base sm:text-lg">
-            No 5-figure annual minimums. No surprise onboarding fees. Choose the right plan for your agency and scale as you grow.
+            Explore the proposed packages below for your agency. These packages and annual discounts are not available through self-service checkout yet. Contact sales to confirm pricing; current subscription options appear in Billing after signup.
           </p>
 
           {/* Billing Interval Toggle */}

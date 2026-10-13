@@ -105,6 +105,7 @@ describe('Landing Page', () => {
   it('renders fair market pricing tiers with monthly and annual toggle', () => {
     renderLanding();
 
+    expect(screen.getByText(/These packages and annual discounts are not available through self-service checkout yet/)).toBeInTheDocument();
     // Check pricing tier cards
     expect(screen.getByRole('heading', { name: 'Starter' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Professional' })).toBeInTheDocument();
