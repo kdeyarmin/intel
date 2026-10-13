@@ -1,4 +1,4 @@
-# CareMetric AI Intelligence
+# CareMetric Intel
 
 A healthcare provider intelligence, CRM, and analytics platform. CareMetric
 ingests Medicare/CMS datasets and the NPPES registry, then surfaces provider

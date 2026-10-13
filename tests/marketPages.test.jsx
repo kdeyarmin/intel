@@ -87,6 +87,14 @@ function countyAnswers(fn, payload) {
 }
 
 describe('CountyIntelligence market tabs', () => {
+  it('handles a county response without county details', async () => {
+    invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(
+      fn === 'getCountyIntelligence' ? {} : countyAnswers(fn, payload),
+    ));
+    renderAt('/CountyIntelligence?state=PA&county=42003', CountyIntelligence, '/CountyIntelligence');
+    expect(await screen.findByText('That county wasn’t found. Pick one from the list.')).toBeInTheDocument();
+  });
+
   it('opens the hospital sources tab from the URL and lists hospitals with their discharge mix', async () => {
     invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(countyAnswers(fn, payload)));
     renderAt('/CountyIntelligence?state=PA&county=42003&tab=hospitals', CountyIntelligence, '/CountyIntelligence');

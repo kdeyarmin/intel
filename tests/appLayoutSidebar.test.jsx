@@ -74,5 +74,9 @@ describe('sidebar footer', () => {
     expect(aside).toHaveTextContent('rep@example.com');
     expect(aside).toHaveTextContent('Member');
     expect(aside).not.toHaveTextContent(/\buser\b/);
+    expect(document.body).toHaveTextContent('CareMetric Intel');
+    expect(document.body).not.toHaveTextContent('CareMetric AI');
+    expect(screen.getByRole('link', { name: 'https://caremetricintel.com/' })).toHaveAttribute('href', 'https://caremetricintel.com/');
+    expect(screen.queryByRole('link', { name: 'Plan and billing' })).toBeNull();
   });
 });

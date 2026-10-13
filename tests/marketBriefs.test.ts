@@ -57,6 +57,9 @@ describe("named reports", () => {
     expect(REPORT_CATALOG.filter((r) => r.purpose === "Expansion").map((r) => r.setting)).toEqual(["hha", "hospice", "snf"]);
     expect(REPORT_CATALOG.filter((r) => r.purpose === "Acquisition").map((r) => r.audience)).toEqual(["Home health", "Hospice", "Nursing homes"]);
     expect(REPORT_CATALOG.find((r) => r.id === "hospital-partners")!.needs).toBe("county");
+    expect(REPORT_CATALOG.find((r) => r.id === "expand-hospice")!.title).toBe("Hospice expansion opportunities");
+    expect(REPORT_CATALOG.find((r) => r.id === "calls-hospice")!.title).toBe("Hospice referral sources");
+    expect(REPORT_CATALOG.filter((r) => r.purpose === "Expansion").every((r) => !/billing/i.test(r.reason))).toBe(true);
     const facts = leaderFacts([{ share: 0.2, name: "A" }, { share: 0.1, name: "B" }, { share: null, name: "C" }]);
     expect(facts.top!.name).toBe("A");
     expect(facts.listedShare).toBeCloseTo(0.3);
