@@ -52,10 +52,17 @@ describe('comprehensive report PDF', () => {
     const output = state.doc.output();
     expect(output).toMatch(/^%PDF-/);
     expect(state.doc.getNumberOfPages()).toBeGreaterThan(1);
-    for (const text of ['CareMetric AI', 'www.CareMetric.ai', 'Example Holding Company 29', '1,234,567', '45.6', 'Data Sources']) {
+    for (const text of ['CareMetric Intel', 'CareMetric Healthcare Advisors', 'https://caremetricintel.com/', 'Example Holding Company 29', '1,234,567', '45.6', 'Data Sources']) {
       expect(output).toContain(text);
     }
-    expect(output.match(/CareMetric AI/g)?.length).toBeGreaterThanOrEqual(state.doc.getNumberOfPages());
+    expect(output).not.toMatch(/CareMetric AI|Healthcare Provider Intelligence|www\.CareMetric\.ai/i);
+    for (let page = 1; page <= state.doc.getNumberOfPages(); page++) {
+      const content = state.doc.internal.pages[page].join('\n');
+      expect(content.match(/CareMetric Intel/g)).toHaveLength(2);
+      expect(content).toContain('CareMetric Healthcare Advisors');
+      expect(content).toContain('https://caremetricintel.com/');
+      expect(content).toContain(`Page ${page} of ${state.doc.getNumberOfPages()}`);
+    }
     expect(output.match(/\(Owner\)/g)?.length).toBeGreaterThan(1);
     expect(state.doc.save).toHaveBeenCalledWith('CareMetric-Example-Hospital-2026-10-01.pdf');
   });

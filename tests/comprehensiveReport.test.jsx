@@ -21,6 +21,7 @@ vi.mock('../src/components/reports/reportPdf', () => ({ downloadReportPdf: (m) =
 
 import ComprehensiveReport from '../src/components/reports/ComprehensiveReport';
 import ReportDocument from '../src/components/reports/ReportDocument';
+import { CAREMETRIC_LOGO_URL } from '../src/lib/branding';
 import { availableSections, buildReportModel, REPORT_SECTIONS, reportFileName } from '../src/components/reports/reportSections';
 
 afterEach(cleanup);
@@ -95,9 +96,12 @@ describe('report sections', () => {
     expect(model.sections[0].blocks[0].rows.map((r) => r.percentage.text)).toEqual(['80%', '—']);
     expect(model.sections[1].blocks[0].rows[0].value.text).toBe('$1,234,567');
     render(<ReportDocument model={model} />);
-    for (const value of ['Example Holdings', '80%', '$1,234,567', 'Discharge function score', '76.2', 'www.CareMetric.ai']) {
+    for (const value of ['Example Holdings', '80%', '$1,234,567', 'Discharge function score', '76.2', 'CareMetric Intel', 'CareMetric Healthcare Advisors', 'https://caremetricintel.com/']) {
       expect(screen.getByText(value)).toBeInTheDocument();
     }
+    expect(screen.getByRole('img', { name: 'CareMetric Healthcare Advisors' })).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+    expect(document.querySelector('.cm-doc-footer').textContent).toContain('CareMetric Intel · CareMetric Healthcare Advisors · https://caremetricintel.com/');
+    expect(document.querySelector('.cm-report-doc').textContent).not.toMatch(/CareMetric AI|Healthcare Provider Intelligence|www\.CareMetric\.ai/i);
     expect(model.sources).toHaveLength(3);
     const empty = buildReportModel({}, ['ownership', 'costReports', 'additionalQuality'], { providerId: '390111' });
     empty.sections.forEach((s) => expect(s.blocks[0].emptyText).toMatch(/No .*linked/));
@@ -128,6 +132,11 @@ describe('ComprehensiveReport', () => {
     fireEvent.click(screen.getByRole('button', { name: /Generate Report \(2 sections\)/ }));
 
     await screen.findByRole('button', { name: /^Locations/ });
+    expect(screen.getByRole('link', { name: 'https://caremetricintel.com/' })).toHaveAttribute('href', 'https://caremetricintel.com/');
+    expect(screen.getByRole('img', { name: 'CareMetric Healthcare Advisors' })).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+    expect(screen.getByText('CareMetric Healthcare Advisors')).toBeInTheDocument();
+    expect(screen.getByText('Intel').parentElement.textContent).toBe('CareMetric Intel');
+    expect(document.body.textContent).not.toMatch(/CareMetric AI|Healthcare Provider Intelligence|www\.CareMetric\.ai/i);
     expect(api.invoke).toHaveBeenCalledWith('getComprehensiveReport', { npi: '1234567893', provider_id: undefined, sections: ['locations', 'quality'] });
     expect(screen.getByText('1 Main St')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Quality Measures/ })).toBeInTheDocument();
@@ -180,7 +189,8 @@ describe('ComprehensiveReport', () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => {
       expect(document.body.classList.contains('cm-printing-report')).toBe(true);
       expect(document.querySelector('.cm-print-root .cm-report-doc')).not.toBeNull();
-      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric AI');
+      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric Intel');
+      expect(document.querySelector('.cm-print-root').textContent).not.toMatch(/CareMetric AI|Healthcare Provider Intelligence|www\.CareMetric\.ai/i);
       expect(document.querySelector('.cm-print-root').textContent).toContain('Data Sources');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Example Holdings');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Discharge function score');
