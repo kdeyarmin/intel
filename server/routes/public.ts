@@ -8,7 +8,8 @@ const router = Router();
 
 function page(title: string, message: string) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escapeHtml(title)}</title>
+<title>${escapeHtml(title)} | CareMetric Healthcare Advisors</title>
+<link rel="icon" type="image/png" sizes="256x256" href="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png">
 <style>body{font-family:system-ui,sans-serif;background:#0f1729;color:#e2e8f0;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:16px}
 main{max-width:420px;background:#141d30;border:1px solid #334155;border-radius:12px;padding:32px;text-align:center}h1{font-size:20px;margin:0 0 12px}p{color:#94a3b8;line-height:1.5;margin:0}</style>
 </head><body><main><h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p></main></body></html>`;

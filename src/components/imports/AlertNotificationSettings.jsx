@@ -9,6 +9,7 @@ import {
   Bell, BellOff, CheckCircle2, XCircle, Clock, Save, Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CAREMETRIC_FAVICON_URL } from '@/lib/branding';
 
 const STORAGE_KEY = 'import_alert_settings';
 
@@ -44,7 +45,7 @@ export function checkAndNotify(batch, previousStatus) {
     if (settings.showBrowserNotifications && Notification.permission === 'granted') {
       new Notification(`Import Complete: ${label}`, {
         body: `${(batch.imported_rows || 0).toLocaleString()} rows imported`,
-        icon: '/favicon.ico',
+        icon: CAREMETRIC_FAVICON_URL,
       });
     }
   }
@@ -59,7 +60,7 @@ export function checkAndNotify(batch, previousStatus) {
     if (settings.showBrowserNotifications && Notification.permission === 'granted') {
       new Notification(`Import Failed: ${label}`, {
         body: errorCount > 0 ? `${errorCount} errors found` : 'Check the error log',
-        icon: '/favicon.ico',
+        icon: CAREMETRIC_FAVICON_URL,
       });
     }
   }
