@@ -97,6 +97,20 @@ const COUNTY = {
 };
 
 describe('CountyIntelligence', () => {
+  it.each([
+    ['a missing response', null],
+    ['an empty response', {}],
+    ['a missing county', { ...COUNTY, county: undefined }],
+    ['a null county', { ...COUNTY, county: null }],
+  ])('shows a friendly fallback for %s', async (_label, data) => {
+    invoke.mockReset().mockImplementation((fn) => Promise.resolve(fn === 'getGeoCounties' ? { counties: [] } : data));
+    renderAt('/CountyIntelligence?state=PA&county=42003', CountyIntelligence, '/CountyIntelligence');
+    expect(await screen.findByText('That county wasn’t found. Pick one from the list.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'County Intelligence' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Allegheny County, PA' })).toBeNull();
+  });
+
   it('asks for a county after a state is picked', async () => {
     invoke.mockReset().mockImplementation((fn) => Promise.resolve(fn === 'getGeoCounties' ? { counties: [{ fips: '42003', name: 'Allegheny County' }] } : COUNTY));
     renderAt('/CountyIntelligence?state=PA', CountyIntelligence, '/CountyIntelligence');
