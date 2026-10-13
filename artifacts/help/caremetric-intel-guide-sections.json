@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "279f05fac144520fc30fe7a54cae1802fe4c4757",
+    "ref": "9e3925df47703d31be50cfde57c02e8cbeaf7b95",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 37,
-    "text_character_count": 22038,
-    "canonical_sha256": "eacac1b7db567e180a6bb8298b5175da83ebdc641dab15def4d4d0aa7919a402"
+    "text_character_count": 22139,
+    "canonical_sha256": "fd75e5f232fb512b272226c0cd4578004344d2849cbdec6de5652ba27bf9cf60"
   },
   "sections": [
     {
@@ -37,9 +37,9 @@
       "title": "Getting Started",
       "topics": [
         {
-          "heading": "Welcome to CareMetric AI",
-          "text": "CareMetric AI is a provider intelligence app for home health, hospice and post-acute teams. It brings together public CMS data — the NPPES provider registry, Medicare utilization and payments, Medicare shared-patient patterns and Medicare facility datasets — with your own lead scores, lead lists and outreach.\n\nStart on the **Dashboard** for record counts, data health and recent activity.",
-          "sha256": "d8830abf371e339be10c1273a8db528f2bb4fdcb081659b2658d285ad496464d"
+          "heading": "Welcome to CareMetric Intel",
+          "text": "CareMetric Intel by CareMetric Healthcare Advisors is a provider intelligence app for home health, hospice and post-acute teams. Visit **https://caremetricintel.com/** for product information. It brings together public CMS data — the NPPES provider registry, Medicare utilization and payments, Medicare shared-patient patterns and Medicare facility datasets — with your own lead scores, lead lists and outreach.\n\nStart on the **Dashboard** for record counts, data health and recent activity.",
+          "sha256": "5dacbdb806d9634f4776da69e7cf866b97ea0871e1354c28230a03645e5b7410"
         },
         {
           "heading": "Your account",
