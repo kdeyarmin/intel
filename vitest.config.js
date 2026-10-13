@@ -19,5 +19,20 @@ export default defineConfig({
   },
   test: {
     setupFiles: ['./tests/setup.js'],
+    include: [
+      'tests/dataFreshnessSummary.test.js',
+      'tests/datasetRegistryDryRun.test.ts',
+      'tests/dmeReport.test.ts',
+      'tests/drizzleMigrations.test.ts',
+      'tests/dualWriteFacilityRows.test.ts',
+      'tests/emailCheckPanels.test.jsx',
+      'tests/emailValidation.test.ts',
+      'tests/entitiesBuildOrderBy.test.ts',
+      'tests/entityAcl.test.ts',
+      'tests/entityFields.test.ts',
+      'tests/entityWriteAccess.test.ts',
+      'tests/errorCategories.test.ts',
+      'tests/exportQuota.test.jsx'
+    ],
   },
 });
