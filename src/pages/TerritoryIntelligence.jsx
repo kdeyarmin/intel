@@ -68,7 +68,7 @@ export default function TerritoryIntelligence() {
     retry: 1,
   });
 
-  const items = useMemo(() => (data?.providers || []).map(toItem), [data]);
+  const items = useMemo(() => (data?.providers || []).filter(Boolean).map(toItem), [data]);
 
   // County density tab: provider density (from the territory data) or one
   // market metric for every county (rollup_county_market_profile).

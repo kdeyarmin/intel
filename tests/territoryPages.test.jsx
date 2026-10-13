@@ -45,6 +45,17 @@ const TERRITORY = {
 };
 
 describe('TerritoryIntelligence', () => {
+  it('ignores missing provider records and accepts providers without a county', async () => {
+    invoke.mockReset().mockResolvedValue({
+      ...TERRITORY,
+      providers: [null, undefined, { ...TERRITORY.providers[0], county: undefined, countyFips: undefined }],
+    });
+    renderAt('/TerritoryIntelligence', TerritoryIntelligence, '/TerritoryIntelligence');
+    expect(await screen.findByTestId('map')).toHaveTextContent('1 on map');
+    expect(screen.getAllByText('Ann Chen, MD').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('loads the state from the URL, keeps unscored providers unscored, and clusters by real data', async () => {
     invoke.mockReset().mockResolvedValue(TERRITORY);
     renderAt('/TerritoryIntelligence', TerritoryIntelligence, '/TerritoryIntelligence');

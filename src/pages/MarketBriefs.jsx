@@ -180,6 +180,7 @@ export default function MarketBriefs() {
   const countyList = counties?.counties || [];
   const countyName = countyList.find((c) => c.fips === url.county)?.name || market?.county?.name || 'This county';
   const place = `${countyName}${url.state ? `, ${url.state}` : ''}`;
+  const marketReady = ready && !!market?.county && !market.needsCounty && !market.notLoaded;
 
   // Printing exports the full brief, so it counts against the organization's
   // daily export allowance like every other export.
@@ -332,8 +333,11 @@ export default function MarketBriefs() {
       {spec && spec.needs === 'county' && !ready && <p className="text-sm text-slate-400">Pick a county to open this report.</p>}
       {spec && spec.needs === 'county' && isLoading && <p className="text-sm text-slate-400">Building the report…</p>}
       {spec && spec.needs === 'county' && isError && <p className="text-sm text-red-400">{error?.message || 'Could not build this report.'}</p>}
+      {spec && spec.needs === 'county' && ready && !isLoading && !isError && !marketReady && (
+        <p className="text-sm text-slate-400">{market?.message || 'That county wasn’t found. Pick one from the list.'}</p>
+      )}
 
-      {spec?.id === 'hospital-partners' && ready && market && !market.needsCounty && (
+      {spec?.id === 'hospital-partners' && marketReady && (
         <article className="space-y-6" id="market-brief">
           <header>
             <p className="text-[11px] uppercase tracking-wide text-slate-500">{spec.purpose} · {spec.audience}</p>
@@ -363,7 +367,7 @@ export default function MarketBriefs() {
         </article>
       )}
 
-      {spec?.id?.startsWith('calls') && ready && market && !market.needsCounty && (
+      {spec?.id?.startsWith('calls') && marketReady && (
         <article className="space-y-6" id="market-brief">
           <header>
             <p className="text-[11px] uppercase tracking-wide text-slate-500">{spec.purpose} · {spec.audience}</p>
@@ -388,7 +392,7 @@ export default function MarketBriefs() {
         </article>
       )}
 
-      {spec?.id === 'county' && ready && market && !market.needsCounty && (
+      {spec?.id === 'county' && marketReady && (
         <article className="space-y-6" id="market-brief">
           <header>
             <p className="text-[11px] uppercase tracking-wide text-slate-500">{spec.audience} · {place}</p>
@@ -448,7 +452,7 @@ export default function MarketBriefs() {
         </article>
       )}
 
-      {spec && (spec.id.startsWith('expand') ? layer : spec.id.startsWith('acquire') ? leaders : ready && market && !market.needsCounty) && (
+      {spec && (spec.id.startsWith('expand') ? layer : spec.id.startsWith('acquire') ? leaders : marketReady) && (
         <Card className="bg-slate-900/40 border-slate-800 print:border-0 print:shadow-none">
           <CardContent className="p-3 space-y-2">
             <ComplianceDisclaimer variant="market" />

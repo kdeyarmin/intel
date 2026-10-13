@@ -379,8 +379,10 @@ export default function CountyIntelligence() {
                   <ReferralSourcesTable key={`${everyLine ? 'all' : (profile?.referralSetting || 'all')}:${url.county}`} state={url.state} countyFips={data.county.fips} countyName={data.county.name} initialSetting={everyLine ? 'all' : (profile?.referralSetting || 'all')} />
                 ) : marketError ? (
                   <p className="text-sm text-red-400" role="alert">Couldn't load the market data: {marketErr?.message}</p>
-                ) : loadingMarket || !market ? (
+                ) : loadingMarket ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4" aria-label="Loading market">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
+                ) : market?.needsCounty || market?.notLoaded || !market?.county ? (
+                  <p className="text-sm text-slate-400">{market?.message || 'Market data is unavailable for this county. Pick another county from the list.'}</p>
                 ) : tab === 'market' ? (
                   <>
                     <CountyMarketProfile profile={market.profile} vintages={market.vintages} rollups={market.rollups} countyName={data.county.name} line={everyLine ? null : profile} />

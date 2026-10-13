@@ -22,6 +22,7 @@ vi.mock('recharts', () => ({
 }));
 
 import CountyIntelligence from '../src/pages/CountyIntelligence';
+import MarketBriefs from '../src/pages/MarketBriefs';
 import MarketIntelligence from '../src/pages/MarketIntelligence';
 import TerritoryIntelligence from '../src/pages/TerritoryIntelligence';
 import CountyMarketProfile from '../src/components/market/CountyMarketProfile';
@@ -31,6 +32,7 @@ import CountyMetricLayer from '../src/components/market/CountyMetricLayer';
 import PacCompetitorsTable from '../src/components/market/PacCompetitorsTable';
 import MarketPositionCard from '../src/components/market/MarketPositionCard';
 import HospitalCatchmentCard from '../src/components/market/HospitalCatchmentCard';
+import ProviderTerritoryIntelligence from '../src/components/providers/TerritoryIntelligence';
 import ComplianceDisclaimer from '../src/components/compliance/ComplianceDisclaimer';
 import { COUNTY_LAYER_METRICS } from '../src/lib/marketLayers';
 
@@ -87,6 +89,26 @@ function countyAnswers(fn, payload) {
 }
 
 describe('CountyIntelligence market tabs', () => {
+  it.each(['market', 'hospitals', 'competitors', 'referrals'])('keeps the %s tab safe without county intelligence', async (tab) => {
+    invoke.mockReset().mockImplementation((fn) => Promise.resolve(fn === 'getCountyIntelligence' ? {} : countyAnswers(fn)));
+    renderAt(`/CountyIntelligence?state=PA&county=42003&tab=${tab}`, CountyIntelligence, '/CountyIntelligence');
+    expect(await screen.findByText('That county wasn’t found. Pick one from the list.')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it.each([
+    ['a null response', null],
+    ['an empty response', {}],
+    ['a missing county', { ...MARKET, county: undefined }],
+    ['a null county', { ...MARKET, county: null }],
+  ])('shows unavailable market data for %s', async (_label, market) => {
+    invoke.mockReset().mockImplementation((fn) => Promise.resolve(fn === 'getCountyMarket' ? market : countyAnswers(fn)));
+    renderAt('/CountyIntelligence?state=PA&county=42003&tab=market', CountyIntelligence, '/CountyIntelligence');
+    expect(await screen.findByText('Market data is unavailable for this county. Pick another county from the list.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Loading market')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('opens the hospital sources tab from the URL and lists hospitals with their discharge mix', async () => {
     invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(countyAnswers(fn, payload)));
     renderAt('/CountyIntelligence?state=PA&county=42003&tab=hospitals', CountyIntelligence, '/CountyIntelligence');
@@ -103,6 +125,36 @@ describe('CountyIntelligence market tabs', () => {
     expect(screen.getByText(/Computed /)).toBeInTheDocument();
     // The table holds the top two of the county's 23 hospitals, and says so: their shares can't add up to 100%.
     expect(screen.getByText(/Showing the top 2 of 23 hospitals/)).toBeInTheDocument();
+  });
+
+  describe('MarketBriefs missing county data', () => {
+    it.each(['hospital-partners', 'calls-hha', 'county'])('shows a fallback for the %s report', async (report) => {
+      invoke.mockReset().mockImplementation((fn) => Promise.resolve(fn === 'getCountyMarket' ? null : countyAnswers(fn)));
+      renderAt(`/MarketBriefs?state=PA&county=42003&report=${report}`, MarketBriefs, '/MarketBriefs');
+      expect(await screen.findByText('That county wasn’t found. Pick one from the list.')).toBeInTheDocument();
+      expect(document.getElementById('market-brief')).toBeNull();
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it.each([
+      {},
+      { ...MARKET, county: undefined },
+      { ...MARKET, county: null },
+      { needsCounty: true, message: 'Choose a county to see market data.' },
+      { notLoaded: true, message: 'County geography is not loaded yet.' },
+    ])('handles incomplete county response %j', async (market) => {
+      invoke.mockReset().mockImplementation((fn) => Promise.resolve(fn === 'getCountyMarket' ? market : countyAnswers(fn)));
+      renderAt('/MarketBriefs?state=PA&county=42003&report=county', MarketBriefs, '/MarketBriefs');
+      expect(await screen.findByText(market.message || 'That county wasn’t found. Pick one from the list.')).toBeInTheDocument();
+      expect(document.getElementById('market-brief')).toBeNull();
+    });
+
+    it('still renders a report when county data is available', async () => {
+      invoke.mockReset().mockImplementation((fn) => Promise.resolve(countyAnswers(fn)));
+      renderAt('/MarketBriefs?state=PA&county=42003&report=hospital-partners', MarketBriefs, '/MarketBriefs');
+      expect(await screen.findByRole('heading', { name: 'Allegheny County, PA' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'UPMC PRESBYTERIAN' })).toBeInTheDocument();
+    });
   });
 
   it('switches to the market profile through the tab strip, keeping the tab in the URL', async () => {
@@ -421,6 +473,24 @@ describe('market cards on a facility page', () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(<QueryClientProvider client={client}><MemoryRouter>{ui}</MemoryRouter></QueryClientProvider>);
   }
+
+  it.each([undefined, null])('shows state position when the provider has no county (%s)', async (county) => {
+    invoke.mockReset().mockResolvedValue({
+      found: true, label: 'Skilled nursing', data_year: '2024', county,
+      position: { state_rank: 15, state_providers: 680, state_share: 0.011 },
+    });
+    wrap(<MarketPositionCard ccn="395001" setting="snf" />);
+    expect(await screen.findByText(/This provider has no county/)).toBeInTheDocument();
+    expect(screen.getByText('state share')).toBeInTheDocument();
+    expect(screen.queryByText('county share')).toBeNull();
+    expect(screen.queryByRole('link', { name: /County Intel/ })).toBeNull();
+  });
+
+  it.each(['', '15213'])('shows an unknown county for missing geography at ZIP "%s"', async (zip) => {
+    wrap(<ProviderTerritoryIntelligence location={{ city: 'Pittsburgh', state: 'PA', zip }} />);
+    expect(await screen.findByText('County unknown for this ZIP.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /County Intel/ })).toBeNull();
+  });
 
   it('MarketPositionCard shows county tiles only when the provider has a county, and carries the market disclaimer', async () => {
     invoke.mockReset().mockResolvedValue({
