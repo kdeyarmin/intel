@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { pagesConfig } from '@/pages.config.js';
 import { LogOut, Search, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_WEBSITE, CAREMETRIC_WEBSITE_URL } from '@/lib/branding';
 import NotificationBell from '../shared/NotificationBell';
 import AccountDialog from '../auth/AccountDialog';
 import BillingStatusWidget from './BillingStatusWidget';
@@ -288,24 +289,22 @@ export default function AppLayout({ children, currentPageName }) {
         <div className="flex-1">
           {children}
         </div>
-        <div className="px-4 sm:px-8 py-2.5 border-t border-slate-800/60 bg-[#0b1120]/80 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        <footer className="px-4 sm:px-8 py-4 sm:py-5 border-t border-slate-800/60 bg-[#0b1120]/80 backdrop-blur-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
               <img
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
-                alt=""
-                className="w-4 h-4 rounded"
-                style={{ background: 'transparent', mixBlendMode: 'screen' }}
+                src={CAREMETRIC_LOGO_URL}
+                alt="CareMetric Healthcare Advisors"
+                className="h-10 w-32 rounded-md bg-white object-contain px-1.5 py-1"
               />
-              <span className="text-[11px] text-slate-400 font-medium">CareMetric AI</span>
-              <span className="text-[11px] text-slate-400">•</span>
-              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline">www.CareMetric.ai</a>
+              <p className="text-xs font-medium text-slate-300">Healthcare provider intelligence</p>
             </div>
+            <a href={CAREMETRIC_WEBSITE_URL} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-cyan-300 transition-colors hover:text-cyan-200 hover:underline">{CAREMETRIC_WEBSITE}</a>
           </div>
-          <p className="text-[9px] text-slate-400 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
-            Data Sources: All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files; county and ZIP geography from the U.S. Census Bureau (2020 Gazetteer and ZCTA relationship files). Insights are estimates based on public data patterns and do not represent confirmed referral relationships.
+          <p className="mt-4 border-t border-slate-800/60 pt-3 text-xs leading-relaxed text-slate-400">
+            Data: Public CMS, NPPES and U.S. Census Bureau sources. Analytics are estimates; shared-patient patterns do not confirm referral relationships.
           </p>
-        </div>
+        </footer>
       </main>
     </div>
   );

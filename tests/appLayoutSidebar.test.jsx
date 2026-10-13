@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_WEBSITE_URL } from '../src/lib/branding';
 
 afterEach(cleanup);
 
@@ -74,5 +75,20 @@ describe('sidebar footer', () => {
     expect(aside).toHaveTextContent('rep@example.com');
     expect(aside).toHaveTextContent('Member');
     expect(aside).not.toHaveTextContent(/\buser\b/);
+  });
+});
+
+describe('app footer', () => {
+  it('uses the advisors brand and a concise public data attribution', () => {
+    setWidth(1280);
+    renderLayout();
+    const footer = screen.getByRole('contentinfo');
+    expect(screen.getByRole('img', { name: 'CareMetric Healthcare Advisors' })).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+    expect(footer).toHaveTextContent('Healthcare provider intelligence');
+    expect(screen.getByRole('link', { name: 'caremetricadvisors.com' })).toHaveAttribute('href', CAREMETRIC_WEBSITE_URL);
+    expect(footer).toHaveTextContent('Data: Public CMS, NPPES and U.S. Census Bureau sources.');
+    expect(footer).toHaveTextContent('shared-patient patterns do not confirm referral relationships.');
+    expect(footer).not.toHaveTextContent('CareMetric AI');
+    expect(footer).not.toHaveTextContent('CareMetric.ai');
   });
 });

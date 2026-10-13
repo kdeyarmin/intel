@@ -1,8 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { base44 } from '@/api/base44Client';
-import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
-
-const CAREMETRIC_WEBSITE = 'www.CareMetric.ai';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_WEBSITE } from '@/lib/branding';
 
 /** The source line every export carries (CMS asks that derived data not be presented as CMS data). */
 export function exportAttribution(date = new Date()) {
@@ -83,10 +81,10 @@ function addPDFHeader(doc, title, logoBase64) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('CareMetric AI', logoBase64 ? 36 : 14, 14);
+  doc.text('CareMetric Healthcare Advisors', logoBase64 ? 36 : 14, 14);
   doc.setFontSize(7);
   doc.setFont(undefined, 'normal');
-  doc.text('Provider Intel', logoBase64 ? 36 : 14, 20);
+  doc.text('Healthcare Provider Intelligence', logoBase64 ? 36 : 14, 20);
   
   // Website right-aligned
   doc.setFontSize(7);
@@ -120,7 +118,7 @@ function addPDFFooter(doc, pageNum) {
   
   doc.setFontSize(6);
   doc.setTextColor(150);
-  doc.text(`CareMetric AI  •  ${CAREMETRIC_WEBSITE}  •  Confidential`, 14, pageH - 10);
+  doc.text(`CareMetric Healthcare Advisors  •  ${CAREMETRIC_WEBSITE}  •  Confidential`, 14, pageH - 10);
   doc.text(exportAttribution(), 14, pageH - 6, { maxWidth: pageW - 50 });
   doc.text(`Page ${pageNum}`, pageW - 14, pageH - 10, { align: 'right' });
   doc.setTextColor(0);

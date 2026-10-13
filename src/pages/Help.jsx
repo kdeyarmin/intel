@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { CAREMETRIC_WEBSITE } from '@/lib/branding';
 import { Input } from '@/components/ui/input';
 import {
   HelpCircle, Download, Search, Zap, Brain, MapPin, BarChart3, Target, Upload, Database, Shield,
@@ -187,8 +188,8 @@ export default function Help() {
       doc.setFillColor(15, 23, 41);
       doc.rect(0, 0, 210, 297, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(28);
-      doc.text('CareMetric AI', margin, 60);
+      doc.setFontSize(22);
+      doc.text('CareMetric Healthcare Advisors', margin, 60);
       doc.setFontSize(16);
       doc.setTextColor(0, 188, 212);
       doc.text('User Guide', margin, 72);
@@ -246,7 +247,7 @@ export default function Help() {
       // Footer on last page
       doc.setTextColor(148, 163, 184);
       doc.setFontSize(8);
-      doc.text('CareMetric AI — www.CareMetric.ai', margin, 285);
+      doc.text(`CareMetric Healthcare Advisors — ${CAREMETRIC_WEBSITE}`, margin, 285);
       doc.text('Data sources: CMS Medicare and NPPES provider files; U.S. Census Bureau geography', margin, 290);
 
       doc.save('CareMetric_AI_User_Guide.pdf');
