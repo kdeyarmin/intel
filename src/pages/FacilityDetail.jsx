@@ -15,6 +15,7 @@ import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import HospitalCatchmentCard from '../components/market/HospitalCatchmentCard';
 import MarketPositionCard from '../components/market/MarketPositionCard';
 import { DmeFacilityCard, DrgCard } from '../components/market/MarketReferenceCards';
+import { isIdentifierField } from '@/lib/identifierFields';
 
 // Facility groups with a post-acute market view (getFacilityMarket setting).
 const MARKET_SETTING = { snf: 'snf', home_health: 'hha', hospice: 'hospice', irf: 'irf', ltch: 'ltch' };
@@ -148,6 +149,7 @@ function isCurrencyField(key) {
 
 function formatCellValue(key, val) {
   if (val == null || val === '') return '—';
+  if (isIdentifierField(key)) return String(val);
   if (isCurrencyField(key) && isNumericish(val)) return formatCurrency(val);
   if (isNumericish(val) && !String(val).includes('-') && String(val).length < 15) {
     const num = Number(String(val).replace(/[$,%]/g, ''));
@@ -156,7 +158,7 @@ function formatCellValue(key, val) {
   return String(val);
 }
 
-function RawDataTable({ rows, facilityType }) {
+export function RawDataTable({ rows, facilityType }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [expanded, setExpanded] = useState(false);
 
@@ -261,7 +263,7 @@ function RawDataTable({ rows, facilityType }) {
                   <td key={col.key} className={`${col.align === 'left' ? 'text-left' : 'text-right'} py-2 px-3 text-slate-300 whitespace-nowrap`}>
                     {col.key.includes('payment') || col.key.includes('charge')
                       ? formatCurrency(row[col.key])
-                      : row[col.key] != null ? formatNumber(row[col.key]) : '—'}
+                      : row[col.key] != null ? (isIdentifierField(col.key) ? String(row[col.key]) : formatNumber(row[col.key])) : '—'}
                   </td>
                 ))}
                 {displayRawKeys.map(k => (

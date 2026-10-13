@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Database, ChevronDown, ChevronUp, Pill, DollarSign, Stethoscope, Package, Network, Building2, Video } from 'lucide-react';
+import { isIdentifierField } from '@/lib/identifierFields';
 
 const TYPE_CONFIG = {
   clinician_national_file: { label: 'Clinician Profile', icon: Stethoscope, iconCls: 'text-blue-400', badgeCls: 'bg-blue-900/30 text-blue-400 border-blue-500/30' },
@@ -24,8 +25,9 @@ const TYPE_CONFIG = {
 
 const DEFAULT_TYPE = { label: '', icon: Database, iconCls: 'text-slate-400', badgeCls: 'bg-slate-900/30 text-slate-400 border-slate-500/30' };
 
-function formatValue(val) {
+function formatValue(key, val) {
   if (val == null || val === '') return '—';
+  if (isIdentifierField(key)) return String(val);
   if (typeof val === 'number') return val.toLocaleString();
   if (typeof val === 'string' && !isNaN(Number(val)) && val.length < 15) {
     const num = Number(val);
@@ -77,7 +79,7 @@ function DataTypeSection({ typeName, rows }) {
                     {key.replace(/_/g, ' ')}
                   </p>
                   <p className="text-xs text-slate-300 truncate mt-0.5" title={String(raw[key])}>
-                    {formatValue(raw[key])}
+                    {formatValue(key, raw[key])}
                   </p>
                 </div>
               ))}
