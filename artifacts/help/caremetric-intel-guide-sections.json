@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "5b6fe3fae9560af87a9cfe7293a72bee3adebdee",
+    "ref": "e532e04130ef36df8055d58d219277e0dc605d3e",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 37,
-    "text_character_count": 20801,
-    "canonical_sha256": "5a9c8ec424467bd9f061231adb56f1a486001b2e3bfbf36e46eaefc243b9d7f4"
+    "text_character_count": 21406,
+    "canonical_sha256": "1b392bd458cd3fc9273183529d7151a700e657f0aaa8edc7b8b9279630a21e0b"
   },
   "sections": [
     {
@@ -69,8 +69,8 @@
         },
         {
           "heading": "Providers and organizations",
-          "text": "**All Providers** lists individuals and organizations with state, type and specialty filters. **Organizations** lists organization NPIs. Opening any provider shows its profile: identity and specialties, practice locations, Medicare utilization, shared-patient partners, lead score, linked facilities, outreach history and a printable report. Organizations also show affiliated providers.",
-          "sha256": "096d6a662961f7feeb6c54f772aad12fc32777425ecb1bc0b4e5bc447ecdb162"
+          "text": "**All Providers** lists individuals and organizations with state, type and specialty filters. **Organizations** lists organization NPIs. Opening any provider shows its profile: identity and specialties, practice locations, Medicare utilization, shared-patient partners, lead score, linked facilities and outreach history. Organizations also show affiliated providers.\n\nThe **Report** tab builds a report from the sections you tick (all are ticked to start): profile, locations, specialties, Medicare utilization, referrals sent and received, affiliations, linked facilities, quality ratings, lead score and enrichments. **Print** gives a clean, branded layout (choose Save as PDF in the print dialog), and **Download PDF** saves a branded PDF directly; each counts as one export against your organization's daily allowance.",
+          "sha256": "302dd709da2661cab19f4ec336cc0c5219e09a330a8c9e23f0c21e80b13c0066"
         },
         {
           "heading": "Locations",
@@ -79,8 +79,8 @@
         },
         {
           "heading": "Facilities",
-          "text": "One page lists Medicare facilities by type — hospitals, home health agencies, hospices, nursing homes, inpatient rehab, long-term care hospitals, DME suppliers and community health centers. Pick the type at the top, then search by name or filter by state. A facility's page summarizes its imported CMS records (up to 500 per facility, with the first 50 rows of each dataset listed) and links to the matching provider when there is one.\n\nThe **DME report** tab exports DME suppliers to CSV or Excel; finding supplier emails is admin-only.",
-          "sha256": "333a8bf031d4a0353c3f9a62ed32cd40e1df77f1b8141f796bb5709ce95b4675"
+          "text": "One page lists Medicare facilities by type — hospitals, home health agencies, hospices, nursing homes, inpatient rehab, long-term care hospitals, DME suppliers and community health centers. Pick the type at the top, then search by name or filter by state. A facility's page summarizes its imported CMS records (up to 500 per facility, with the first 50 rows of each dataset listed) and links to the matching provider when there is one. Its **Report** tab builds the same printable report for the facility: profile, CMS records, quality ratings and, when it has a linked NPI, that provider's sections too.\n\nThe **DME report** tab exports DME suppliers to CSV or Excel; finding supplier emails is admin-only.",
+          "sha256": "666df4f5340e6f441658e8f155ceb38bb0c560221b74a954ca49d17d5504e591"
         }
       ]
     },

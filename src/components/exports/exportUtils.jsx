@@ -59,7 +59,7 @@ async function loadImageAsBase64(url) {
 // The logo is fetched the first time a PDF is built, not when this module loads:
 // pages that only export CSV (or never export) shouldn't call a third-party host.
 let _logoPromise = null;
-function pdfLogo() {
+export function pdfLogo() {
   _logoPromise ??= loadImageAsBase64(CAREMETRIC_LOGO_URL);
   return _logoPromise;
 }

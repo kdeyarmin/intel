@@ -1,0 +1,122 @@
+import React from 'react';
+
+const LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png';
+
+function Block({ block }) {
+  const empty = block.kind === 'table' ? block.rows.length === 0 : block.items.length === 0;
+  return (
+    <section className="cm-doc-block">
+      <h3 className="cm-doc-h3">
+        <span>{block.title}</span>
+        {block.kind === 'table' && <span className="cm-doc-count">{block.count} record{block.count === 1 ? '' : 's'}</span>}
+      </h3>
+      {empty ? (
+        <p className="cm-doc-note">{block.emptyText || 'No data on file.'}</p>
+      ) : block.kind === 'table' ? (
+        <table className="cm-doc-table">
+          <thead>
+            <tr>
+              {block.columns.map((c) => (
+                <th key={c.key} scope="col" className={c.align === 'right' ? 'cm-right' : undefined}>{c.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {block.rows.map((row, i) => (
+              <tr key={i}>
+                {block.columns.map((c) => (
+                  <td key={c.key} className={c.align === 'right' ? 'cm-right' : undefined}>{row[c.key]?.text ?? ''}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <dl className="cm-doc-kv">
+          {block.items.map((it) => (
+            <div key={it.label}>
+              <dt>{it.label}</dt>
+              <dd className={it.emphasis ? 'cm-doc-emph' : undefined}>{it.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {block.note && <p className="cm-doc-note">{block.note}</p>}
+    </section>
+  );
+}
+
+/**
+ * The printed report: a light, high-contrast document with a branded header,
+ * the chosen sections and a footer naming the data sources and when it was
+ * generated. Rendered only while printing (see ComprehensiveReport).
+ */
+export default function ReportDocument({ model }) {
+  return (
+    <article className="cm-report-doc" aria-label={`${model.subtitle}: ${model.title}`}>
+      <header className="cm-doc-brand">
+        <div className="cm-doc-brand-left">
+          <img src={LOGO_URL} alt="" className="cm-doc-logo" />
+          <div>
+            <div className="cm-doc-brand-name">CareMetric AI</div>
+            <div className="cm-doc-brand-tag">Healthcare Provider Intelligence</div>
+          </div>
+        </div>
+        <div className="cm-doc-brand-right">
+          <div>{model.subtitle}</div>
+          <div>www.CareMetric.ai</div>
+        </div>
+      </header>
+
+      <div className="cm-doc-titleblock">
+        <h1 className="cm-doc-title">{model.title}</h1>
+        <p className="cm-doc-meta">{model.subtitle} · Generated {model.generatedLabel}</p>
+      </div>
+
+      {model.profile && (
+        <section className="cm-doc-block">
+          <h2 className="cm-doc-h2">Profile &amp; Overview</h2>
+          {model.profile.identifiers.length > 0 && (
+            <dl className="cm-doc-kv">
+              {model.profile.identifiers.map((it) => (
+                <div key={it.label}>
+                  <dt>{it.label}</dt>
+                  <dd>{it.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {model.profile.metrics.length > 0 && (
+            <div className="cm-doc-metrics">
+              {model.profile.metrics.map((m) => (
+                <div key={m.label} className="cm-doc-metric">
+                  <div className="cm-doc-metric-label">{m.label}</div>
+                  <div className="cm-doc-metric-value">{m.value}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {model.sections.map((section) => (
+        <div key={section.key} className="cm-doc-section">
+          {section.blocks.map((block) => <Block key={block.key} block={block} />)}
+        </div>
+      ))}
+
+      <footer className="cm-doc-footer">
+        {model.sources.length > 0 && (
+          <>
+            <h2 className="cm-doc-h2">Data Sources</h2>
+            <ul className="cm-doc-sources">
+              {model.sources.map((s) => <li key={s}>{s}</li>)}
+            </ul>
+          </>
+        )}
+        <p className="cm-doc-attrib">{model.attribution}</p>
+        <p className="cm-doc-attrib">Generated {model.generatedLabel} · CareMetric AI · www.CareMetric.ai · Confidential</p>
+      </footer>
+    </article>
+  );
+}
