@@ -64,6 +64,7 @@ export function summarizeOwnership(rows: any[]) {
     const type = read(raw, "TYPE - OWNER", "Owner Type", "Ownership Type");
     return {
       dataset: r.facility_type, dataYear: r.data_year,
+      associateId: read(raw, "ASSOCIATE ID - OWNER", "Associate ID - Owner", "ASSOCIATE ID", "Associate ID"),
       ownerName: read(raw, "ORGANIZATION NAME - OWNER", "Owner Name", "Owner Organization Name")
         || [read(raw, "FIRST NAME - OWNER", "Owner First Name"), read(raw, "LAST NAME - OWNER", "Owner Last Name")].filter(Boolean).join(" ")
         || "Name not disclosed",

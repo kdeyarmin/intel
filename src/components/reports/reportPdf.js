@@ -277,7 +277,7 @@ export async function downloadReportPdf(model) {
     section.blocks.forEach((block) => {
       heading(block.title, block.kind === 'table' ? block.count : null);
       const empty = block.kind === 'table' ? block.rows.length === 0 : block.items.length === 0;
-      if (empty) note(block.emptyText || 'No data on file.');
+      if (empty) note(block.emptyText || 'No matching records were returned from the available data sources. The source may have no linked record or may not publish a reportable value.');
       else if (block.kind === 'table') drawTable(block);
       else drawKv(block);
       if (block.note) note(block.note);

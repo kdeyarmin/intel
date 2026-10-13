@@ -13,7 +13,7 @@ describe("comprehensive report CMS summaries", () => {
     const owners = summarizeOwnership([row("hospital_all_owners", keyRows.hospital_all_owners[0])]);
     expect(owners[0]).toMatchObject({
       ownerName: "LIFEPOINT HOLDINGS 2 LLC", percentage: 80, ownerType: "Organization",
-      role: "5% OR GREATER INDIRECT OWNERSHIP INTEREST",
+      role: "5% OR GREATER INDIRECT OWNERSHIP INTEREST", associateId: "0244144871",
     });
     expect(owners[0]).not.toHaveProperty("npi");
   });

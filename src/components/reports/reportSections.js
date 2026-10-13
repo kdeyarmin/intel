@@ -86,7 +86,7 @@ const humanize = (s) => {
   const t = String(s || '').replace(/_/g, ' ').trim().replace(ACRONYMS, (m) => m.toUpperCase());
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : '—';
 };
-const providerLink = (npi) => (npi ? createPageUrl('ProviderDetail') + `?npi=${encodeURIComponent(npi)}` : undefined);
+const providerLink = (npi) => (npi ? createPageUrl('ProviderDetail') + `?npi=${encodeURIComponent(formatIdentifier(npi))}` : undefined);
 
 const col = (key, label, align = 'left') => ({ key, label, align });
 
@@ -173,7 +173,7 @@ function sectionBlocks(key, report) {
     }
     case 'facilities': {
       const rows = (report.facilities || []).map((f) => ({
-        name: { text: f.name || '—', to: f.providerId ? createPageUrl('FacilityDetail') + `?id=${encodeURIComponent(f.providerId)}&group=${encodeURIComponent(f.facilityType || '')}` : undefined },
+        name: { text: f.name || '—', to: f.providerId ? createPageUrl('FacilityDetail') + `?id=${encodeURIComponent(formatIdentifier(f.providerId))}&group=${encodeURIComponent(f.facilityType || '')}` : undefined },
         dataset: { text: humanize(f.facilityType) },
         place: { text: [f.city, f.state].filter(Boolean).join(', ') || '—' },
         year: { text: formatIdentifier(f.dataYear) },
@@ -193,20 +193,21 @@ function sectionBlocks(key, report) {
     case 'ownership': {
       const rows = (report.ownership || []).map((o) => ({
         owner: { text: text(o.ownerName) },
+        associateId: { text: formatIdentifier(o.associateId) },
         percentage: { text: num(o.percentage) == null ? '—' : `${num(o.percentage)}%` },
         type: { text: [o.ownerType, o.role].filter(Boolean).join(' · ') || '—' },
         dataset: { text: humanize(o.dataset) },
         year: { text: formatIdentifier(o.dataYear) },
       }));
       return [{
-        ...table('ownership', 'Ownership Details', [col('owner', 'Owner or manager'), col('percentage', 'Ownership interest', 'right'), col('type', 'Interest type / role'), col('dataset', 'CMS dataset'), col('year', 'Data year', 'right')], rows, 'No ownership or management interests are linked to this facility in the available CMS records.'),
+        ...table('ownership', 'Ownership Details', [col('owner', 'Owner or manager'), col('associateId', 'CMS associate ID'), col('percentage', 'Ownership interest', 'right'), col('type', 'Interest type / role'), col('dataset', 'CMS dataset'), col('year', 'Data year', 'right')], rows, 'No ownership or management interests are linked to this facility in the available CMS records.'),
         note: 'Up to 30 reported ownership or management interests. Missing percentages are not zero; interests may overlap and are not summed.',
       }];
     }
     case 'costReports': {
       const rows = (report.costReports || []).map((c) => ({
         dataset: { text: humanize(c.dataset) },
-        period: { text: c.period || text(c.dataYear) },
+        period: { text: formatIdentifier(c.period || c.dataYear) },
         metric: { text: text(c.metric) },
         value: { text: c.format === 'money' ? fmtMoney(c.value) : fmtInt(c.value) },
       }));
@@ -305,7 +306,7 @@ export function buildReportModel(report, selected, { npi, providerId, facilityNa
   const keys = orderedSelection(selected, availableSections({ npi: npi || r.provider?.npi, providerId }));
   const isFacility = !!providerId;
   const title = isFacility
-    ? (r.facility?.name || facilityName || `CCN ${providerId}`)
+    ? (r.facility?.name || facilityName || `CCN ${formatIdentifier(providerId)}`)
     : (r.provider?.displayName || (npi ? `NPI ${formatIdentifier(npi)}` : 'Report'));
   const generatedAt = r.generatedAt ? new Date(r.generatedAt) : new Date();
 

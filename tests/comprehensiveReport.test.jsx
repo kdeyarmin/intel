@@ -42,7 +42,7 @@ const REPORT = {
   orderReferring: { partb: true, dme: 'Y', hha: false, pmd: null, hospice: 'N' },
   leadScore: null,
   quality: [{ facilityType: 'snf', name: 'Erie Manor', qualityRating: 4, dataYear: '2024' }],
-  ownership: [{ dataset: 'snf_all_owners', ownerName: 'Example Holdings', percentage: 80, ownerType: 'Organization', role: 'Direct ownership', dataYear: '2024' }],
+  ownership: [{ dataset: 'snf_all_owners', ownerName: 'Example Holdings', associateId: '5,193,632,180', percentage: 80, ownerType: 'Organization', role: 'Direct ownership', dataYear: '2024' }],
   costReports: [{ dataset: 'snf_cost_report', metric: 'Total revenue', value: 1234567, format: 'money', dataYear: '2024' }],
   additionalQuality: [{ dataset: 'snf_quality_reporting', metric: 'Discharge function score', value: '76.2', dataYear: '2024' }],
 };
@@ -95,7 +95,7 @@ describe('report sections', () => {
     expect(model.sections[0].blocks[0].rows.map((r) => r.percentage.text)).toEqual(['80%', '—']);
     expect(model.sections[1].blocks[0].rows[0].value.text).toBe('$1,234,567');
     render(<ReportDocument model={model} />);
-    for (const value of ['Example Holdings', '80%', '$1,234,567', 'Discharge function score', '76.2', 'CareMetric Intel', 'caremetricintel.com', 'Executive Summary']) {
+    for (const value of ['Example Holdings', '5193632180', '80%', '$1,234,567', 'Discharge function score', '76.2', 'CareMetric Intel', 'caremetricintel.com', 'Executive Summary']) {
       expect(screen.getByText(value)).toBeInTheDocument();
     }
     expect(model.sources).toHaveLength(3);
@@ -110,14 +110,19 @@ describe('report sections', () => {
       summary: { ...REPORT.summary, utilizationYears: ['2,023'] },
       locations: [{ ...REPORT.locations[0], zip: '16,5011234' }],
       utilization: [{ serviceType: 'Office visit', dataYear: '2,023', totalServices: 5, totalBeneficiaries: 4, totalPayment: 100 }],
+      costReports: [{ dataset: 'snf_cost_report', metric: 'Total revenue', value: 1000, format: 'money', dataYear: '2,024' }],
     };
-    const model = buildReportModel(report, ['profile', 'locations', 'utilization'], { npi: '123,456,7893' });
+    const model = buildReportModel(report, ['profile', 'locations', 'utilization', 'costReports'], { npi: '123,456,7893' });
     expect(formatIdentifier('5,193,632,180')).toBe('5193632180');
     expect(model.profile.identifiers.find((item) => item.label === 'NPI').value).toBe('1234567893');
     expect(model.sections[0].blocks[0].rows[0].place.text).toBe('Erie, PA, 16501');
     expect(model.sections[1].blocks[0].rows[0].year.text).toBe('2023');
+    expect(model.sections[2].blocks[0].rows[0].period.text).toBe('2024');
     expect(model.executiveSummary.join(' ')).toContain('Published 2023 Medicare totals');
     expect(model.executiveSummary.join(' ')).toMatch(/returned records/);
+    const facility = buildReportModel({}, ['profile'], { providerId: '390,111' });
+    expect(facility.title).toBe('CCN 390111');
+    expect(facility.profile.identifiers[0].value).toBe('390111');
   });
 
   it("titles a facility report with the facility, and shows no Medicare totals without an NPI", () => {
