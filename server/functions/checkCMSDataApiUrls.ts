@@ -1,11 +1,20 @@
 // Port of base44/functions/checkCMSDataApiUrls/entry.ts —
 // periodic health check for CMS data-api / DKAN URLs.
 //
-// triggerImport keeps the canonical IMPORT_TYPE_URLS map; this function probes
-// every known URL (the hardcoded defaults below + any per-schedule api_url
-// overrides) with a small size=1 / limit=1 query and records the outcome on the
-// matching import_schedule_configs row so the admin UI can flag broken
-// endpoints before the next scheduled run silently fails.
+// This function probes the URL an import would actually use. Resolution
+// mirrors triggerImport's scheduled-import path exactly: a schedule's own
+// api_url first, then the dataset_versions registry's current endpoint
+// (resolveImportVersion), then the canonical IMPORT_TYPE_URLS map, with the
+// small HARDCODED_URLS map below kept only as a last resort for checker-only
+// types (opt_out_physicians) that have no importer URL. Each probe is a small
+// size=1 / limit=1 query; the outcome is recorded on the matching
+// import_schedule_configs row so the admin UI can flag broken endpoints
+// before the next scheduled run silently fails.
+//
+// Types that resolve to no URL but are known catalog datasets are imported
+// from files (NPPES files, uploads) or retired by CMS — they are reported as
+// skipped, not broken. Only a type unknown to the catalog with no URL at all
+// is flagged "No URL configured".
 //
 // Storage note: the Base44 ImportScheduleConfig entity was schemaless and
 // carried a free-form `url_health` object. The Postgres schema
@@ -18,14 +27,15 @@
 import { db } from "../db";
 import { importScheduleConfigs } from "../db/schema";
 import { eq } from "drizzle-orm";
-// Mirror the alias map from triggerImport so a schedule using `cms_utilization`
-// (without an api_url override) still resolves to the canonical default URL.
-import { IMPORT_TYPE_ALIASES } from "./triggerImport";
+import { resolveImportVersion } from "../lib/datasetRegistry";
+// The alias map and the canonical URL map come from triggerImport so a
+// schedule using `cms_utilization` (without an api_url override) still
+// resolves to the canonical default URL, exactly as an import would.
+import { IMPORT_TYPE_ALIASES, IMPORT_TYPE_URLS, getCMSDatasetCatalog } from "./triggerImport";
 
-// Kept deliberately as the original's subset (not the full IMPORT_TYPE_URLS
-// from triggerImport): these are the endpoints this health check owns. If a
-// type is added to IMPORT_TYPE_URLS it is only probed here once it is added
-// to this map too.
+// Last-resort URLs for types this health check owns that have no entry in
+// IMPORT_TYPE_URLS (currently only opt_out_physicians). Everything else
+// resolves through the importer's own chain (see resolveProbeUrl).
 const HARDCODED_URLS: Record<string, string> = {
   provider_service_utilization: "https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data",
   cms_order_referring: "https://data.cms.gov/data-api/v1/dataset/c99b5865-1119-4436-bb80-c5af2773ea1f/data",
@@ -41,6 +51,43 @@ const HARDCODED_URLS: Record<string, string> = {
   nursing_home_deficiencies: "https://data.cms.gov/provider-data/api/1/datastore/query/tbry-pc2d/0",
   home_health_national_measures: "https://data.cms.gov/provider-data/api/1/datastore/query/97z8-de96/0",
 };
+
+/**
+ * The URL a scheduled import of this type would use, in the same precedence
+ * triggerImport applies: the schedule's api_url (passed as file_url) beats
+ * the dataset registry's current endpoint, which beats the pinned
+ * IMPORT_TYPE_URLS entry. HARDCODED_URLS is the final fallback for
+ * checker-only types. Pure — exported for tests.
+ */
+export function resolveProbeUrl(args: {
+  apiUrl?: string | null;
+  registryUrl?: string | null;
+  importType: string;
+  resolvedType: string;
+}): string | null {
+  return (
+    args.apiUrl ||
+    args.registryUrl ||
+    IMPORT_TYPE_URLS[args.resolvedType] ||
+    HARDCODED_URLS[args.resolvedType] ||
+    HARDCODED_URLS[args.importType] ||
+    null
+  );
+}
+
+const CATALOG_TYPE_IDS: ReadonlySet<string> = new Set(
+  getCMSDatasetCatalog().datasets.map((d) => d.id),
+);
+
+/**
+ * A type with no resolvable URL is not necessarily broken: catalog datasets
+ * with no CMS endpoint are imported from files (NPPES files, CSV uploads) or
+ * were retired by CMS. Those are skipped, not flagged. Pure — exported for
+ * tests.
+ */
+export function isKnownCatalogType(importType: string, resolvedType: string): boolean {
+  return CATALOG_TYPE_IDS.has(importType) || CATALOG_TYPE_IDS.has(resolvedType);
+}
 
 const FETCH_TIMEOUT_MS = 10_000;
 
@@ -105,22 +152,39 @@ export async function handleCheckCmsDataApiUrls(payload: any, user?: any): Promi
 
   const importTypes = new Set<string>([
     ...Object.keys(HARDCODED_URLS),
+    ...Object.keys(IMPORT_TYPE_URLS),
     ...configs
       .map((c) => c.import_type)
-      .filter((t): t is string => !!t && !t.startsWith("medicare_") && t !== "nppes_registry"),
+      .filter((t): t is string => !!t && t !== "nppes_registry"),
   ]);
 
   const results: any[] = [];
+  const skipped: string[] = [];
   const checkedAt = new Date().toISOString();
 
   for (const importType of importTypes) {
     const config = configByType.get(importType);
-    // Resolve aliases (e.g. cms_utilization → provider_service_utilization) so a
-    // schedule using a legacy import_type without an api_url override still
-    // probes the canonical hardcoded default.
+    // Resolve aliases (e.g. cms_utilization → provider_service_utilization) so
+    // a schedule using a legacy import_type still probes the canonical URL.
     const resolvedType = IMPORT_TYPE_ALIASES[importType] || importType;
-    const url = config?.api_url || HARDCODED_URLS[resolvedType] || HARDCODED_URLS[importType];
+    // Mirror triggerImport: the registry is only consulted when the schedule
+    // carries no api_url of its own (there it arrives as file_url).
+    const registryUrl = config?.api_url
+      ? null
+      : await resolveImportVersion(resolvedType)
+          .then((v) => v?.dataUrl ?? null)
+          .catch(() => null);
+    const url = resolveProbeUrl({
+      apiUrl: config?.api_url,
+      registryUrl,
+      importType,
+      resolvedType,
+    });
     if (!url) {
+      if (isKnownCatalogType(importType, resolvedType)) {
+        skipped.push(importType);
+        continue;
+      }
       results.push({ import_type: importType, healthy: false, error: "No URL configured" });
       continue;
     }
@@ -161,6 +225,8 @@ export async function handleCheckCmsDataApiUrls(payload: any, user?: any): Promi
     total_checked: results.length,
     healthy: results.length - broken.length,
     broken: broken.length,
+    skipped: skipped.length,
+    skipped_types: skipped,
     results,
   };
 }
