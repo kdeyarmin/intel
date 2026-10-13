@@ -4,6 +4,7 @@ import {
 } from "../server/lib/comprehensiveReportData";
 import { mapMedicareFacilityRow } from "../server/functions/triggerImportRows";
 import keyRows from "./fixtures/liveCmsKeyRows.json";
+import homeHealthRows from "./fixtures/cms/facility_rows/home_health_agencies.json";
 
 const row = (facility_type: string, raw_data: any, data_year = "2024") => ({ facility_type, raw_data, data_year });
 
@@ -59,5 +60,14 @@ describe("comprehensive report CMS summaries", () => {
   it("supports the imported nursing-home ownership field layout", () => {
     const mapped = mapMedicareFacilityRow({ federal_provider_number: "390111", owner_name: "Example Owner", owner_type: "Corporation" }, "nursing_home_ownership", 1, "2024");
     expect(summarizeOwnership([mapped])[0]).toMatchObject({ ownerName: "Example Owner", ownerType: "Corporation" });
+  });
+
+  it("reads the actual Care Compare home-health measure keys, including CMS truncated aliases", () => {
+    const mapped = mapMedicareFacilityRow(homeHealthRows[0], "home_health_agencies", 1, "2024");
+    expect(summarizeAdditionalQuality([mapped])).toEqual(expect.arrayContaining([
+      expect.objectContaining({ metric: "Timely initiation of care", value: "98.48" }),
+      expect.objectContaining({ metric: "Improvement in walking", value: "83.82" }),
+      expect.objectContaining({ metric: "Improvement in bed transfers", value: "88.68" }),
+    ]));
   });
 });

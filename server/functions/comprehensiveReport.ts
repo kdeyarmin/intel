@@ -1,5 +1,5 @@
 import { pool } from "../db";
-import { assertTerritory, type EntitledUser } from "../lib/entitlements";
+import { assertTerritory, isUnrestricted, type EntitledUser } from "../lib/entitlements";
 import { isOrgAdmin } from "../lib/roles";
 import {
   ENROLLMENT_DATASETS, REPORT_DATASETS, enrollmentIds,
@@ -244,7 +244,9 @@ export async function handleGetComprehensiveReport(payload: any, user?: Entitled
       .filter((key) => want(key)).flatMap((key) => [...REPORT_DATASETS[key]]);
     let extraRows: any[] = [];
     if (extraTypes.length) {
-      const ids = [...new Set([provider_id, npi].filter(Boolean))];
+      // Statistical composite keys identify owner/measure rows, not facilities.
+      const ids = [...new Set([provider_id, npi].filter((id) =>
+        typeof id === "string" && /^(?:[a-z0-9]{6}|\d{10})$/i.test(id)))];
       extraRows = await safeQuery(client, `
         SELECT f.facility_type, f.provider_id, f.state, f.data_year,
           COALESCE(r.raw_data, f.raw_data) AS raw_data
@@ -264,6 +266,19 @@ export async function handleGetComprehensiveReport(payload: any, user?: Entitled
         ?? facRows.find((f: any) => validState(f.state))
         ?? extraRows.find((f: any) => validState(f.state));
       if (place) assertTerritory(user, { state: validState(place.state) });
+      else if (extraRows.length && !isUnrestricted(user)) {
+        throw { status: 403, message: "Cannot verify the territory for these report datasets." };
+      }
+      // A caller can supply both identifiers: the NPI's permitted address
+      // must not authorize an unrelated facility outside its territory.
+      if (npi && provider_id && npi !== provider_id) {
+        const facilityRows = [...facRows, ...extraRows].filter((f: any) => f.provider_id === provider_id);
+        const facilityPlace = facilityRows.find((f: any) => validState(f.state));
+        if (facilityPlace) assertTerritory(user, { state: validState(facilityPlace.state) });
+        else if (facilityRows.length && !isUnrestricted(user)) {
+          throw { status: 403, message: "Cannot verify the facility's territory." };
+        }
+      }
     }
 
     if (want("ownership")) {

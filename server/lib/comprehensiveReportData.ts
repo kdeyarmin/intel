@@ -102,7 +102,7 @@ const QUALITY_METRICS = [
   { label: "Safety score", keys: ["Safety Domain Score"] },
   { label: "Patient experience score", keys: ["Person and Community Engagement Domain Score", "Patient and Caregiver Centered Experience of Care Care Coordination Domain Score"] },
   { label: "Efficiency score", keys: ["Efficiency and Cost Reduction Domain Score"] },
-  { label: "Timely initiation of care", keys: ["How often the home health team began their patients care in a timely manner", "Timely Initiation of Care"] },
+  { label: "Timely initiation of care", keys: ["How often the home health team began their patients care in a timely manner", "how_often_the_home_health_team_began_their_patients_care_in_d440", "Timely Initiation of Care"] },
   { label: "Improvement in walking", keys: ["How often patients got better at walking or moving around", "Improvement in Ambulation Locomotion"] },
   { label: "Improvement in bed transfers", keys: ["How often patients got better at getting in and out of bed", "Improvement in Bed Transferring"] },
   { label: "Hospital admission", keys: ["How often home health patients had to be admitted to the hospital", "Acute Care Hospitalization"] },

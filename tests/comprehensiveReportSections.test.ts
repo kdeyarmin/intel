@@ -19,7 +19,10 @@ vi.mock("../server/db", () => ({
 }));
 
 const assertTerritory = vi.fn();
-vi.mock("../server/lib/entitlements", () => ({ assertTerritory: (...args: any[]) => assertTerritory(...args) }));
+vi.mock("../server/lib/entitlements", () => ({
+  assertTerritory: (...args: any[]) => assertTerritory(...args),
+  isUnrestricted: (user: any) => !user || user.role === "admin",
+}));
 
 import {
   facilityProfile,
@@ -158,6 +161,37 @@ describe("handleGetComprehensiveReport sections", () => {
     assertTerritory.mockImplementation(() => { throw { status: 403 }; });
     await expect(handleGetComprehensiveReport({ provider_id: "390111", sections: ["ownership", "costReports", "additionalQuality"] }, member)).rejects.toMatchObject({ status: 403 });
     expect(assertTerritory).toHaveBeenCalledWith(member, { state: "OH" });
+    expect(ran("WHERE f.provider_id >=")).toBe(false);
+  });
+
+  it("does not use an in-territory NPI to authorize an unrelated facility", async () => {
+    const member = { id: 2, role: "user", orgRole: "member" } as any;
+    rowsFor = (sql) => sql.includes("FROM provider_locations")
+      ? [{ location_type: "Practice", state: "PA" }]
+      : sql.includes("WHERE f.provider_id = ANY")
+        ? [{ provider_id: "390111", facility_type: "hospital_cost_report", state: "OH", raw_data: { Total_Revenue: "500" } }] : [];
+    assertTerritory.mockImplementation((_user, place) => {
+      if (place.state === "OH") throw { status: 403 };
+    });
+    await expect(handleGetComprehensiveReport({ npi: "1234567893", provider_id: "390111", sections: ["costReports"] }, member)).rejects.toMatchObject({ status: 403 });
+    expect(assertTerritory).toHaveBeenCalledWith(member, { state: "PA" });
+    expect(assertTerritory).toHaveBeenCalledWith(member, { state: "OH" });
+  });
+
+  it("fails closed for restricted members when new dataset territory cannot be resolved", async () => {
+    const member = { id: 2, role: "user", orgRole: "member" } as any;
+    rowsFor = (sql) => sql.includes("WHERE f.provider_id = ANY")
+      ? [{ provider_id: "390111", facility_type: "hospital_cost_report", state: null, raw_data: { Total_Revenue: "500" } }] : [];
+    await expect(handleGetComprehensiveReport({ provider_id: "390111", sections: ["costReports"] }, member)).rejects.toMatchObject({ status: 403 });
+    // Missing optional data remains an empty section, not an authorization failure.
+    rowsFor = () => [];
+    expect((await handleGetComprehensiveReport({ provider_id: "390111", sections: ["costReports"] }, member)).costReports).toEqual([]);
+  });
+
+  it("does not retrieve additional datasets by arbitrary statistical composite keys", async () => {
+    await handleGetComprehensiveReport({ provider_id: "O20020812000015_0244144871_35", sections: ["ownership"] }, admin);
+    const i = queries.findIndex((q) => q.includes("WHERE f.provider_id = ANY"));
+    expect(parameters[i][0]).toEqual([]);
     expect(ran("WHERE f.provider_id >=")).toBe(false);
   });
 });
