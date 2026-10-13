@@ -32,6 +32,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 import InteractiveProviderMap from '../components/territory/InteractiveProviderMap';
 import { pickPrimaryLocation } from '@/lib/locations';
 import { US_STATES } from '@/lib/usStates';
+import RadiusFilter from '@/components/filters/RadiusFilter';
 
 const SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -63,6 +64,8 @@ const URL_DEFAULTS = {
   from: '',
   to: '',
   tf: '',
+  zip: '',
+  miles: '25',
 };
 
 function parseTextFilters(raw) {
@@ -161,10 +164,19 @@ export default function Providers() {
   // The backend honors entity_type (normalizeEntityFilter), so the type filter
   // applies server-side across the whole table instead of client-side over the
   // capped result set.
-  const entityTypeForSearch = debouncedSearch.length >= 2 && filters.entityTypeFilter !== 'all' ? filters.entityTypeFilter : null;
+  const entityTypeForSearch = (debouncedSearch.length >= 2 || url.zip) && filters.entityTypeFilter !== 'all' ? filters.entityTypeFilter : null;
   const { data: providerResult, isLoading, isError, error: providersError, refetch: refetchProviders, isPlaceholderData } = useQuery({
-    queryKey: ['providersPage', debouncedSearch, searchState, stateOnlyFilter, entityTypeForSearch],
+    queryKey: ['providersPage', debouncedSearch, searchState, stateOnlyFilter, entityTypeForSearch, url.zip, url.miles],
     queryFn: async () => {
+      if (url.zip) {
+        const state = filters.stateFilter !== 'all' ? filters.stateFilter : null;
+        const res = await base44.functions.invoke('searchProviders', {
+          q: debouncedSearch, limit: SEARCH_LIMIT, state,
+          entity_type: entityTypeForSearch,
+          radius_zip: url.zip, radius_miles: Number(url.miles),
+        });
+        return { providers: res.data?.providers || [], truncated: !!res.data?.truncated, degraded: !!res.data?.degraded, stateServer: state };
+      }
       if (debouncedSearch.length >= 2) {
         const res = await base44.functions.invoke('searchProviders', {
           q: debouncedSearch, limit: SEARCH_LIMIT, ...(searchState ? { state: searchState } : {}),
@@ -263,6 +275,7 @@ export default function Providers() {
 
   const applyFilter = (f) => {
     setSearchTerm(f.searchTerm || '');
+    setUrl({ zip: f.radiusZip || '', miles: f.radiusMiles || '25' });
     setFilters({
       entityTypeFilter: f.entityTypeFilter || 'all',
       statusFilter: f.statusFilter || 'all',
@@ -276,7 +289,7 @@ export default function Providers() {
 
   const resetFilters = () => {
     setSearchTerm('');
-    setUrl({ ...urlFromFilters({}), sort: 'default', dir: 'asc', tf: '', range: 'all', from: '', to: '' });
+    setUrl({ ...urlFromFilters({}), sort: 'default', dir: 'asc', tf: '', range: 'all', from: '', to: '', zip: '', miles: '25' });
     setActivePresetId(null);
   };
 
@@ -296,7 +309,7 @@ export default function Providers() {
     }
   };
 
-  const currentFilters = { searchTerm, ...filters };
+  const currentFilters = { searchTerm, ...filters, radiusZip: url.zip, radiusMiles: url.miles };
 
   // O(1) score lookup. scores are sorted -created_date, so the first row seen per
   // NPI is the most recent — keep that one (matches the previous find() semantics).
@@ -320,9 +333,9 @@ export default function Providers() {
   // across the whole table, so offer every state, not just those among the
   // (capped) loaded locations.
   const stateOptions = useMemo(() => {
-    const states = (debouncedSearch.length >= 2 || stateOnlyFilter) ? US_STATES : [...new Set(locations.map(l => l.state).filter(Boolean))].sort();
+    const states = (debouncedSearch.length >= 2 || stateOnlyFilter || url.zip) ? US_STATES : [...new Set(locations.map(l => l.state).filter(Boolean))].sort();
     return states.map(st => ({ value: st, label: st }));
-  }, [locations, debouncedSearch, stateOnlyFilter]);
+  }, [locations, debouncedSearch, stateOnlyFilter, url.zip]);
 
   const specialtyOptions = useMemo(() => {
     const s = new Set(taxonomies.map(t => t.taxonomy_description).filter(Boolean));
@@ -533,7 +546,7 @@ export default function Providers() {
   const stateData = useMemo(() => {
     const counts = {};
     sortedProviders.forEach(p => {
-      const loc = pickPrimaryLocation(locationByNpi[p.npi]);
+      const loc = p.radius_location || pickPrimaryLocation(locationByNpi[p.npi]);
       const st = loc?.state || 'Unknown';
       counts[st] = (counts[st] || 0) + 1;
     });
@@ -550,7 +563,7 @@ export default function Providers() {
 
   const mapProviders = useMemo(() => {
     return sortedProviders.map(p => {
-      const loc = pickPrimaryLocation(locationByNpi[p.npi]);
+      const loc = p.radius_location || pickPrimaryLocation(locationByNpi[p.npi]);
       const tax = (taxonomyByNpi[p.npi] || []).find(t => t.is_primary) || (taxonomyByNpi[p.npi] || [])[0];
       return {
         provider: p,
@@ -578,6 +591,8 @@ export default function Providers() {
         subtitle={
           isPlaceholderData
             ? 'Searching…'
+            : url.zip
+            ? `${providers.length.toLocaleString()}${providerResult?.truncated ? '+' : ''} providers within ${url.miles} miles of ${url.zip}${providerResult?.truncated ? ' (results capped — narrow the radius or add a name or NPI)' : ''}`
             : debouncedSearch.length >= 2
             ? `${providers.length.toLocaleString()}${providerResult?.truncated ? '+' : ''} match${providers.length === 1 ? '' : 'es'} for "${debouncedSearch}"${searchState ? ` in ${searchState}` : ''}${providerResult?.degraded ? ' (search indexes are still being built, so this may be slow or incomplete)' : ''}`
             : stateOnlyFilter
@@ -590,7 +605,7 @@ export default function Providers() {
           <div className="flex flex-wrap gap-2">
           <ExportDialog
             data={sortedProviders.map(p => {
-              const loc = pickPrimaryLocation(locationByNpi[p.npi]);
+              const loc = p.radius_location || pickPrimaryLocation(locationByNpi[p.npi]);
               const tax = (taxonomyByNpi[p.npi] || []).find(t => t.is_primary) || (taxonomyByNpi[p.npi] || [])[0];
               return {
                 npi: p.npi,
@@ -799,6 +814,8 @@ export default function Providers() {
             className="flex-1"
           />
 
+          <RadiusFilter zip={url.zip} miles={url.miles} onApply={setUrl} />
+
           {/* Quick Filter Presets */}
           <FilterPresets onApplyPreset={handleApplyPreset} activePresetId={activePresetId} />
 
@@ -911,7 +928,7 @@ export default function Providers() {
                   sortedProviders.map(provider => {
                     const score = getScore(provider.npi);
                     const provTax = (taxonomyByNpi[provider.npi] || []).find(t => t.is_primary) || (taxonomyByNpi[provider.npi] || [])[0];
-                    const provLoc = pickPrimaryLocation(locationByNpi[provider.npi]);
+                    const provLoc = provider.radius_location || pickPrimaryLocation(locationByNpi[provider.npi]);
                     return (
                       <TableRow key={provider.id} className={selectedNpis.has(provider.npi) ? 'bg-cyan-900/5' : ''}>
                         <TableCell>
@@ -934,6 +951,9 @@ export default function Providers() {
                               <p className="font-medium text-slate-200">{provider.organization_name}</p>
                             )}
                           </Link>
+                          {provider.distance_miles != null ? (
+                            <p className="text-xs text-cyan-400">≈ {Number(provider.distance_miles).toFixed(1)} miles · ZIP {provLoc?.zip}</p>
+                          ) : null}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <span className="text-xs text-slate-400 truncate max-w-[150px] block">

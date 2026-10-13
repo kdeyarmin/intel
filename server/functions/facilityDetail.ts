@@ -2,6 +2,7 @@ import { db, pool } from "../db";
 import { medicareFacilities, medicareFacilitiesRaw, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals, leadScores, cmsOrderReferring, rollupReferralSources } from "../db/schema";
 import { eq, sql, and, ilike, inArray, desc, asc } from "drizzle-orm";
 import { providerReference, facilityDme, facilityDrgs } from "./marketReference";
+import { resolveZipRadius, zipDistance, type ZipRadius } from "../lib/radiusSearch";
 
 const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
   hospital: [
@@ -485,7 +486,7 @@ async function paramQuery(sqlText: string, values: any[], timeoutMs: number = 30
 }
 
 /** State-licensed homes (licensed_facilities), listed like the Medicare facilities but without a detail page. */
-async function listLicensedFacilities(params: any) {
+async function listLicensedFacilities(params: any, radius: ZipRadius | null) {
   const { state, search, page = 1, limit = 50 } = params;
   const safeLimit = Math.max(1, Math.min(Number(limit) || 50, 200));
   const safePage = Math.max(1, Number(page) || 1);
@@ -494,6 +495,7 @@ async function listLicensedFacilities(params: any) {
   const values: any[] = [];
   if (state) { values.push(String(state).toUpperCase()); where.push(`state = $${values.length}`); }
   if (search) { values.push(`%${search}%`); where.push(`(name ILIKE $${values.length} OR city ILIKE $${values.length})`); }
+  if (radius) { values.push([...radius.distances.keys()]); where.push(`zip5 = ANY($${values.length})`); }
   const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
   const [rows, counts, states] = await Promise.all([
     paramQuery(`SELECT facility_key, license_type, license_number, name AS facility_name, address, city, state, zip5 AS zip, county_fips, capacity, status, licensee, phone, as_of::text AS as_of
@@ -503,7 +505,7 @@ async function listLicensedFacilities(params: any) {
   ]);
   return {
     facility_group: "licensed",
-    facilities: rows.map((r: any) => ({ ...r, provider_id: null, quality_rating: null, total_discharges: null, total_payments: null })),
+    facilities: rows.map((r: any) => ({ ...r, ...(radius ? { distance_miles: zipDistance(radius, r.zip) } : {}), provider_id: null, quality_rating: null, total_discharges: null, total_payments: null })),
     total: Number(counts[0]?.count || 0),
     page: safePage,
     limit: safeLimit,
@@ -514,7 +516,8 @@ async function listLicensedFacilities(params: any) {
 export async function handleListFacilities(params: any) {
   const { facility_group, state, search, page = 1, limit = 50 } = params;
   if (!facility_group) return { error: "facility_group is required" };
-  if (facility_group === "licensed") return listLicensedFacilities(params);
+  const radius = await resolveZipRadius(pool, params);
+  if (facility_group === "licensed") return listLicensedFacilities(params, radius);
 
   const groupTypes = FACILITY_TYPE_GROUPS[facility_group];
   if (!groupTypes) return { error: `Unknown facility_group: ${facility_group}` };
@@ -540,6 +543,10 @@ export async function handleListFacilities(params: any) {
     whereClauses.push(`m.facility_name ILIKE $${paramIdx}`);
     queryValues.push(`%${search}%`);
     paramIdx++;
+  }
+  if (radius) {
+    whereClauses.push(`left(m.zip, 5) = ANY($${paramIdx++})`);
+    queryValues.push([...radius.distances.keys()]);
   }
   const whereSQL = whereClauses.join(" AND ");
   // Care Compare hospital rows don't carry discharges or Medicare payment. Those live on the
@@ -610,7 +617,7 @@ export async function handleListFacilities(params: any) {
   }
 
   let totalCount = seen.size < safeLimit ? offset + seen.size : offset + safeLimit + 1;
-  const totalCacheKey = `total_${facility_group}_${state || 'all'}_${search || ''}`;
+  const totalCacheKey = JSON.stringify([facility_group, state || 'all', search || '', radius?.zip, radius?.miles]);
   if (listingCache[totalCacheKey] && Date.now() - listingCache[totalCacheKey].timestamp < LISTING_CACHE_TTL) {
     totalCount = listingCache[totalCacheKey].data;
   } else {
@@ -620,14 +627,14 @@ export async function handleListFacilities(params: any) {
         queryValues,
         30000
       );
-      totalCount = Number(countRows[0]?.count || totalCount);
+      totalCount = Number(countRows[0]?.count ?? totalCount);
       listingCache[totalCacheKey] = { data: totalCount, timestamp: Date.now() };
     } catch (e) {
     }
   }
 
   return {
-    facilities: Array.from(seen.values()),
+    facilities: Array.from(seen.values()).map((r) => ({ ...r, ...(radius ? { distance_miles: zipDistance(radius, r.zip) } : {}) })),
     total: totalCount,
     page: safePage,
     limit: safeLimit,

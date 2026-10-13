@@ -11,6 +11,7 @@ import {
 } from "../lib/providerSearch";
 import { buildLocationSearchPlan, clampLocationLimit, parseCityState, rankLocations } from "../lib/locationSearch";
 import { US_STATE_CODES } from "../lib/usStates";
+import { resolveZipRadius, runRadiusProviderSearch } from "../lib/radiusSearch";
 import { assertTerritory, isUnrestricted, TerritoryError, type EntitledUser } from "../lib/entitlements";
 
 class HttpError extends Error {
@@ -58,6 +59,14 @@ export async function handleSearchProviders(payload: any, user?: EntitledUser | 
   const caps = await getSearchCapabilities(pool);
   const q = String(payload?.q ?? "");
   const state = normalizeStateFilter(payload?.state);
+  const radius = await resolveZipRadius(pool, payload);
+  if (radius) {
+    const radiusState = state || (!isUnrestricted(user) ? radius.state : null);
+    assertSearchTerritory(user, radiusState || radius.state);
+    return guarded((client) => runRadiusProviderSearch(client, q, {
+      limit: payload?.limit, entityType: payload?.entity_type, state: radiusState,
+    }, caps, radius));
+  }
   assertSearchTerritory(user, state);
   if (q.trim().length < 2 && payload?.specialty_group) {
     const result = await guarded((client) => searchBySpecialty(client, { group: payload.specialty_group, state, entityType: normalizeEntityFilter(payload?.entity_type), limit: payload?.limit }));

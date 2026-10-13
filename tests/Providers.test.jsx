@@ -54,6 +54,7 @@ vi.mock('../src/components/territory/InteractiveProviderMap', () => ({ default: 
 import { useQuery } from '@tanstack/react-query';
 import Providers from '../src/pages/Providers';
 import { US_STATES } from '../src/lib/usStates';
+import { base44 } from '@/api/base44Client';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -202,6 +203,33 @@ describe('Providers page – removed "Org" button for organizations', () => {
 });
 
 describe('Providers page – filters kept in the URL', () => {
+  it('restores radius and applies it server-side together with name, state and entity type', async () => {
+    setupMocks({ stateServer: 'MA', providers: [{ ...makeIndividual('2222222222', 'Jane', 'Doe'), distance_miles: 0, radius_location: { zip: '01001' } }] });
+    renderProviders('/Providers?zip=01001&miles=10&q=Doe&state=MA&type=Individual');
+    expect(screen.getByRole('textbox', { name: 'Radius ZIP code' })).toHaveValue('01001');
+    expect(screen.getByText('≈ 0.0 miles · ZIP 01001')).toBeInTheDocument();
+    const query = useQuery.mock.calls.filter(([options]) => options.queryKey[0] === 'providersPage').at(-1)[0];
+    await query.queryFn();
+    expect(base44.functions.invoke).toHaveBeenCalledWith('searchProviders', {
+      q: 'Doe', limit: 300, state: 'MA', entity_type: 'Individual', radius_zip: '01001', radius_miles: 10,
+    });
+  });
+
+  it('searches by radius without requiring a name or state', async () => {
+    setupMocks();
+    renderProviders('/Providers?zip=01001');
+    const query = useQuery.mock.calls.filter(([options]) => options.queryKey[0] === 'providersPage').at(-1)[0];
+    await query.queryFn();
+    expect(base44.functions.invoke).toHaveBeenCalledWith('searchProviders', expect.objectContaining({ q: '', state: null, radius_zip: '01001', radius_miles: 25 }));
+  });
+
+  it('restores radius from a saved default filter', () => {
+    setupMocks({ savedFilters: [{ is_default: true, filters: { radiusZip: '01001', radiusMiles: '5' } }] });
+    renderProviders();
+    expect(screen.getByRole('textbox', { name: 'Radius ZIP code' })).toHaveValue('01001');
+    expect(screen.getByRole('combobox', { name: 'Radius distance in miles' })).toHaveTextContent('5 miles');
+  });
+
   it('restores text-match and date filters from the URL so Back and shared links keep them', () => {
     setupMocks({ providers: [makeOrg('1111111111', 'Downtown Clinic')] });
     const textFilter = { id: 'f1', column: 'organization_name', mode: 'contains', term: 'Downtown' };

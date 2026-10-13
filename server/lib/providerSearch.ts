@@ -18,6 +18,7 @@ export interface ProviderSearchOptions {
   entityType?: EntityFilter;
   /** Two-letter state; applied after matching, to a bounded candidate set. */
   state?: string | null;
+  npis?: string[];
 }
 
 export interface SearchQuery extends SqlQuery {
@@ -91,8 +92,9 @@ export function buildProviderSearchPlan(rawQuery: string, options: ProviderSearc
   const queries: SearchQuery[] = [];
   // The entity filter applies to every query, so a cap isn't spent on the
   // other kind (nothing guarantees an organization row has no last name).
-  const entityWhere = (n: number) => (entity ? ` AND entity_type = $${n}` : "");
-  const entityValue = entity ? [entity] : [];
+  const entityWhere = (n: number) => (entity ? ` AND entity_type = $${n}` : "")
+    + (options.npis ? ` AND npi = ANY($${n + (entity ? 1 : 0)})` : "");
+  const entityValue: unknown[] = [...(entity ? [entity] : []), ...(options.npis ? [options.npis] : [])];
 
   const compact = q.replace(/[\s-]/g, "");
   if (/^\d{2,10}$/.test(compact)) {
@@ -101,8 +103,8 @@ export function buildProviderSearchPlan(rawQuery: string, options: ProviderSearc
     } else {
       const { low, high } = npiPrefixRange(compact);
       queries.push(high
-        ? { kind: "npi", cap, text: `SELECT ${COLUMNS} FROM providers WHERE npi >= $1 AND npi < $2${entityWhere(3)} ORDER BY npi LIMIT $${entity ? 4 : 3}`, values: [low, high, ...entityValue, cap] }
-        : { kind: "npi", cap, text: `SELECT ${COLUMNS} FROM providers WHERE npi >= $1${entityWhere(2)} ORDER BY npi LIMIT $${entity ? 3 : 2}`, values: [low, ...entityValue, cap] });
+        ? { kind: "npi", cap, text: `SELECT ${COLUMNS} FROM providers WHERE npi >= $1 AND npi < $2${entityWhere(3)} ORDER BY npi LIMIT $${entityValue.length + 3}`, values: [low, high, ...entityValue, cap] }
+        : { kind: "npi", cap, text: `SELECT ${COLUMNS} FROM providers WHERE npi >= $1${entityWhere(2)} ORDER BY npi LIMIT $${entityValue.length + 2}`, values: [low, ...entityValue, cap] });
     }
     return { queries, mode: "npi", degraded: false, term: compact };
   }

@@ -6,8 +6,8 @@
  */
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Building2 } from 'lucide-react';
 
@@ -18,12 +18,18 @@ vi.mock('@/api/base44Client', () => ({ base44: { functions: { invoke: (...a) => 
 
 import FacilityListPage from '../src/components/facilities/FacilityListPage';
 
-function renderList(facilityGroup, facilities) {
+function UrlProbe() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  return <><span data-testid="url">{location.search}</span><button onClick={() => navigate('?type=snf&zip=16501&miles=50')}>Open radius link</button></>;
+}
+
+function renderList(facilityGroup, facilities, path = '/Facilities') {
   invoke.mockReset().mockResolvedValue({ data: { facilities, total: facilities.length, available_states: ['PA'] } });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter><FacilityListPage facilityGroup={facilityGroup} title="Facilities" icon={Building2} /></MemoryRouter>
+      <MemoryRouter initialEntries={[path]}><FacilityListPage facilityGroup={facilityGroup} title="Facilities" icon={Building2} /><UrlProbe /></MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -47,5 +53,39 @@ describe('FacilityListPage columns', () => {
     expect(screen.getByText('Payments')).toBeInTheDocument();
     expect(screen.queryByText('Capacity')).toBeNull();
     expect(screen.getByText('$20.0M')).toBeInTheDocument();
+  });
+
+  it('restores radius with other URL filters and shows zero distance', async () => {
+    renderList('snf', [{ provider_id: '395001', facility_name: 'Nearby Home', distance_miles: 0 }], '/Facilities?type=snf&q=Nearby&state=PA&zip=15213&miles=10&page=2');
+    expect(await screen.findByText('≈ 0.0 miles from 15213')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Radius ZIP code' })).toHaveValue('15213');
+    expect(invoke).toHaveBeenCalledWith('listFacilities', expect.objectContaining({
+      facility_group: 'snf', search: 'Nearby', state: 'PA', radius_zip: '15213', radius_miles: 10, page: 2,
+    }));
+  });
+
+  it('applies and clears radius without losing type, state or search, resetting pagination', async () => {
+    renderList('snf', [], '/Facilities?type=snf&state=PA&q=Kane&page=3');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Radius ZIP code' }), { target: { value: '15213' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply radius' }));
+    await waitFor(() => expect(invoke).toHaveBeenLastCalledWith('listFacilities', expect.objectContaining({
+      state: 'PA', search: 'Kane', page: 1, radius_zip: '15213', radius_miles: 25,
+    })));
+    expect(screen.getByTestId('url')).toHaveTextContent('type=snf');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear radius' }));
+    await waitFor(() => {
+      const payload = invoke.mock.calls.at(-1)[1];
+      expect(payload.radius_zip).toBeUndefined();
+      expect(payload.state).toBe('PA');
+      expect(payload.search).toBe('Kane');
+    });
+  });
+
+  it('updates controls and requests when navigating to another radius URL', async () => {
+    renderList('snf', [], '/Facilities?type=snf&zip=15213&miles=5');
+    fireEvent.click(screen.getByRole('button', { name: 'Open radius link' }));
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Radius ZIP code' })).toHaveValue('16501'));
+    expect(screen.getByRole('combobox', { name: 'Radius distance in miles' })).toHaveTextContent('50 miles');
+    await waitFor(() => expect(invoke).toHaveBeenLastCalledWith('listFacilities', expect.objectContaining({ radius_zip: '16501', radius_miles: 50 })));
   });
 });

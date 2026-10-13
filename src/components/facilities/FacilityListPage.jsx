@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import RadiusFilter from '@/components/filters/RadiusFilter';
 
 function formatCurrency(val) {
   if (!val) return '—';
@@ -23,7 +24,7 @@ function formatCurrency(val) {
 }
 
 // Search, state and page live in the URL so Back from a facility restores them.
-const URL_DEFAULTS = { q: '', state: '', page: 1 };
+const URL_DEFAULTS = { q: '', state: '', page: 1, zip: '', miles: '25' };
 
 export default function FacilityListPage({ facilityGroup, title, icon: Icon, color, iconCls, detailPage = 'FacilityDetail' }) {
   const resolvedIconCls = iconCls || "text-cyan-400";
@@ -42,13 +43,14 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
   React.useEffect(() => { setSearch((cur) => (cur === debouncedSearch ? cur : debouncedSearch)); }, [debouncedSearch]);
 
   const { data, isLoading, isFetching, isPlaceholderData, isError, error, refetch } = useQuery({
-    queryKey: ['facilityList', facilityGroup, selectedState, debouncedSearch, page],
+    queryKey: ['facilityList', facilityGroup, selectedState, debouncedSearch, page, url.zip, url.miles],
     queryFn: () => base44.functions.invoke('listFacilities', {
       facility_group: facilityGroup,
       state: selectedState || undefined,
       search: debouncedSearch || undefined,
       page,
       limit: 50,
+      ...(url.zip ? { radius_zip: url.zip, radius_miles: Number(url.miles) } : {}),
     }),
     select: (res) => res.data || res,
     placeholderData: keepPreviousData,
@@ -76,6 +78,8 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
           )}
         </div>
       </div>
+
+      <RadiusFilter zip={url.zip} miles={url.miles} onApply={(radius) => setUrl({ ...radius, page: 1 })} />
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -141,6 +145,7 @@ export default function FacilityListPage({ facilityGroup, title, icon: Icon, col
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-200 truncate">{f.facility_name || f.provider_id}</p>
                   <p className="text-[10px] text-slate-400 md:hidden">{f.city}, {f.state} {f.zip}</p>
+                  {f.distance_miles != null ? <p className="text-xs text-cyan-400">≈ {Number(f.distance_miles).toFixed(1)} miles from {url.zip}</p> : null}
                   {f.license_type ? <p className="text-[10px] text-slate-400">{String(f.license_type).replace(/_/g, ' ')}{f.license_number ? ` · license ${f.license_number}` : ''}{f.status ? ` · ${f.status}` : ''}</p> : null}
                 </div>
               </div>
