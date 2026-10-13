@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { csvHeader, csvValue, describeVintages, fmtCount, fmtMoney, fmtPct, fmtShare, formatMetric, ordinal, referralListNote, sortRows, toCsv } from '../src/lib/marketFormat.js';
+import { csvHeader, csvValue, describeVintages, fmtCount, fmtMoney, fmtPct, fmtShare, fmtYear, formatMetric, ordinal, referralListNote, sortRows, toCsv } from '../src/lib/marketFormat.js';
 
 describe('market formatting', () => {
+  it('formats years without separators while preserving count formatting', () => {
+    for (const year of [1999, 2000, 2026, 2100, 2101, '2026']) {
+      expect(fmtYear(year)).toBe(String(year));
+      expect(formatMetric(year, 'year')).toBe(String(year));
+    }
+    for (const value of [null, undefined, '', 'unknown', NaN, Infinity]) {
+      expect(fmtYear(value)).toBe('—');
+    }
+    expect(fmtCount(2026)).toBe('2,026');
+    expect(formatMetric(2026, 'count')).toBe('2,026');
+  });
+
   it('formats counts, fractions, percent units, money and rates, with a dash for nothing', () => {
     expect(fmtCount(310412.4)).toBe('310,412');
     expect(fmtShare(0.6213)).toBe('62%');

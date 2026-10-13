@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import PageHeader from '../components/shared/PageHeader';
 import { RefreshRollupsButton, RollupFreshness } from '../components/analytics/RollupFreshness';
+import { fmtYear } from '@/lib/marketFormat';
 
 const COLORS = ['#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#f97316', '#14b8a6', '#a855f7', '#6366f1', '#84cc16', '#e879f9', '#22d3ee', '#fbbf24'];
 
@@ -96,7 +97,7 @@ function AggregateDatasetSection({ datasets }) {
                   )}
                   {ds.latest_year && (
                     <div className="border-l border-slate-700/50 pl-3">
-                      <p className="text-sm font-semibold text-slate-200">{ds.latest_year}</p>
+                      <p className="text-sm font-semibold text-slate-200">{fmtYear(ds.latest_year)}</p>
                       <p className="text-[10px] text-slate-400">latest</p>
                     </div>
                   )}
@@ -187,7 +188,7 @@ export default function CMSAnalytics() {
                 </CardTitle>
                 <CardDescription>
                   Provider service utilization across {formatNumber(summary.unique_providers || 0)} providers
-                  {utilization.data_year ? ` (${utilization.data_year} data)` : ''}
+                  {utilization.data_year ? ` (${fmtYear(utilization.data_year)} data)` : ''}
                 </CardDescription>
                 <RollupFreshness rollup={utilization.rollup} />
               </CardHeader>
@@ -286,7 +287,7 @@ export default function CMSAnalytics() {
                   Top Referred-To Providers
                 </CardTitle>
                 <CardDescription>
-                  Providers others share the most patients with{referrals.data_year ? ` in ${referrals.data_year}` : ''} ({formatNumber(referrals.totalRecords || 0)} referral records in all)
+                  Providers others share the most patients with{referrals.data_year ? ` in ${fmtYear(referrals.data_year)}` : ''} ({formatNumber(referrals.totalRecords || 0)} referral records in all)
                 </CardDescription>
                 <RollupFreshness rollup={referrals.rollup} />
               </CardHeader>

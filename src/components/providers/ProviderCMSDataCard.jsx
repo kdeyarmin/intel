@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { fmtYear } from '@/lib/marketFormat';
 import { Database, ChevronDown, ChevronUp, Pill, DollarSign, Stethoscope, Package, Network, Building2, Video } from 'lucide-react';
 
 const TYPE_CONFIG = {
@@ -24,8 +25,9 @@ const TYPE_CONFIG = {
 
 const DEFAULT_TYPE = { label: '', icon: Database, iconCls: 'text-slate-400', badgeCls: 'bg-slate-900/30 text-slate-400 border-slate-500/30' };
 
-function formatValue(val) {
+function formatValue(val, key) {
   if (val == null || val === '') return '—';
+  if (/(^|[_\s])(year|yr)($|[_\s])/i.test(key)) return fmtYear(val);
   if (typeof val === 'number') return val.toLocaleString();
   if (typeof val === 'string' && !isNaN(Number(val)) && val.length < 15) {
     const num = Number(val);
@@ -61,7 +63,7 @@ function DataTypeSection({ typeName, rows }) {
             {rows.length} record{rows.length !== 1 ? 's' : ''}
           </Badge>
           {latestRow?.data_year && (
-            <span className="text-[10px] text-slate-400">{latestRow.data_year}</span>
+            <span className="text-[10px] text-slate-400">{fmtYear(latestRow.data_year)}</span>
           )}
         </div>
         {expanded ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />}
@@ -77,7 +79,7 @@ function DataTypeSection({ typeName, rows }) {
                     {key.replace(/_/g, ' ')}
                   </p>
                   <p className="text-xs text-slate-300 truncate mt-0.5" title={String(raw[key])}>
-                    {formatValue(raw[key])}
+                    {formatValue(raw[key], key)}
                   </p>
                 </div>
               ))}

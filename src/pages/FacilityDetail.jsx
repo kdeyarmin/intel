@@ -15,6 +15,7 @@ import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import HospitalCatchmentCard from '../components/market/HospitalCatchmentCard';
 import MarketPositionCard from '../components/market/MarketPositionCard';
 import { DmeFacilityCard, DrgCard } from '../components/market/MarketReferenceCards';
+import { fmtYear } from '@/lib/marketFormat';
 
 // Facility groups with a post-acute market view (getFacilityMarket setting).
 const MARKET_SETTING = { snf: 'snf', home_health: 'hha', hospice: 'hospice', irf: 'irf', ltch: 'ltch' };
@@ -148,6 +149,7 @@ function isCurrencyField(key) {
 
 function formatCellValue(key, val) {
   if (val == null || val === '') return '—';
+  if (/(^|[_\s])(year|yr)($|[_\s])/i.test(key)) return fmtYear(val);
   if (isCurrencyField(key) && isNumericish(val)) return formatCurrency(val);
   if (isNumericish(val) && !String(val).includes('-') && String(val).length < 15) {
     const num = Number(String(val).replace(/[$,%]/g, ''));
@@ -156,7 +158,7 @@ function formatCellValue(key, val) {
   return String(val);
 }
 
-function RawDataTable({ rows, facilityType }) {
+export function RawDataTable({ rows, facilityType }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [expanded, setExpanded] = useState(false);
 
@@ -198,7 +200,7 @@ function RawDataTable({ rows, facilityType }) {
       {latestRow && summaryCols.length > 0 && (
         <div>
           <p className="text-[10px] uppercase tracking-wide text-slate-400 mb-1.5">
-            Summary{latestRow.data_year ? ` — latest reporting year ${latestRow.data_year}` : ''}
+            Summary{latestRow.data_year ? ` — latest reporting year ${fmtYear(latestRow.data_year)}` : ''}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             {summaryCols.map(col => (
@@ -259,7 +261,7 @@ function RawDataTable({ rows, facilityType }) {
               <tr key={i} className="border-t border-slate-800/50 hover:bg-slate-800/30 transition-colors">
                 {activeCols.map(col => (
                   <td key={col.key} className={`${col.align === 'left' ? 'text-left' : 'text-right'} py-2 px-3 text-slate-300 whitespace-nowrap`}>
-                    {col.key.includes('payment') || col.key.includes('charge')
+                    {col.key === 'data_year' ? fmtYear(row[col.key]) : col.key.includes('payment') || col.key.includes('charge')
                       ? formatCurrency(row[col.key])
                       : row[col.key] != null ? formatNumber(row[col.key]) : '—'}
                   </td>

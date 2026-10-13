@@ -4,6 +4,8 @@
 
 export const fmtCount = (v) => (v == null || v === '' || Number.isNaN(Number(v)) ? '—' : Math.round(Number(v)).toLocaleString());
 
+export const fmtYear = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? '—' : String(Number(v)));
+
 /** A fraction (0.31) as a percentage ("31%"). */
 export const fmtShare = (v, digits = 0) => (v == null || Number.isNaN(Number(v)) ? '—' : `${(Number(v) * 100).toFixed(digits)}%`);
 
@@ -22,9 +24,10 @@ export function fmtMoney(v) {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
-/** Formats a value by the server's format name (count, percent = fraction, pct_units, money, rate). */
+/** Formats a value by the server's format name (count, year, percent = fraction, pct_units, money, rate). */
 export function formatMetric(value, format) {
   switch (format) {
+    case 'year': return fmtYear(value);
     case 'percent': return fmtShare(value, 1);
     case 'pct_units': return fmtPct(value, 1);
     case 'money': return fmtMoney(value);

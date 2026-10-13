@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileBarChart2, Printer } from 'lucide-react';
 import { US_STATES } from '@/lib/usStates';
-import { fmtCount, fmtMoney, fmtPct, fmtShare } from '@/lib/marketFormat';
+import { fmtCount, fmtMoney, fmtPct, fmtShare, fmtYear } from '@/lib/marketFormat';
 import { GROWTH_SETTINGS, REPORT_CATALOG, countyGrowthRows, growthFacts, leaderFacts } from '@/lib/marketBriefs';
 import { useBusinessLine } from '@/lib/BusinessLineContext';
 import { countExport } from '@/components/exports/exportUtils';
@@ -80,7 +80,7 @@ function acquireLead(state, spec, data) {
   const top = facts.top;
   const place = [top.city, top.state].filter(Boolean).join(', ');
   const parts = [`${top.name || top.ccn}${place ? ` (${place})` : ''} has the most Medicare beneficiaries among ${spec.audience.toLowerCase()} located in ${state}: ${fmtCount(top.benes)} (${fmtShare(top.share)} of beneficiaries served by providers located in the state).`];
-  if (data.providers_in_market != null) parts.push(`${fmtCount(data.providers_in_market)} providers are ranked${data.data_year ? ` for ${data.data_year}` : ''}.`);
+  if (data.providers_in_market != null) parts.push(`${fmtCount(data.providers_in_market)} providers are ranked${data.data_year ? ` for ${fmtYear(data.data_year)}` : ''}.`);
   if (facts.listedShare != null) parts.push(`The ${fmtCount(facts.listed)} listed here account for ${fmtShare(facts.listedShare)} of beneficiaries served by providers located in the state.`);
   return parts.join(' ');
 }
@@ -323,7 +323,7 @@ export default function MarketBriefs() {
                   fmtCount(r.benes), fmtShare(r.share), fmtMoney(r.payment), fmtPct(r.dual_pct, 0), r.counties_served == null ? '—' : fmtCount(r.counties_served),
                 ])}
               />
-              <p className="text-[11px] text-slate-500">{settingKey === 'snf' ? 'Residents and payer mix are the latest nursing-home census, not the Medicare year.' : 'Counties served is the ZIP service area, not the counties where the beneficiaries live.'}{leaders.data_year ? ` Medicare year ${leaders.data_year}.` : ''}</p>
+              <p className="text-[11px] text-slate-500">{settingKey === 'snf' ? 'Residents and payer mix are the latest nursing-home census, not the Medicare year.' : 'Counties served is the ZIP service area, not the counties where the beneficiaries live.'}{leaders.data_year ? ` Medicare year ${fmtYear(leaders.data_year)}.` : ''}</p>
             </Section>
           )}
         </article>
@@ -340,7 +340,7 @@ export default function MarketBriefs() {
             <h2 className="text-xl font-semibold text-slate-100">{place}</h2>
             <p className="text-sm text-slate-300 mt-2">
               {market.hospital_sources?.total ? `${fmtCount(market.hospital_sources.total)} hospitals discharged residents of ${place}` : `No hospital origins are on file for ${place}`}
-              {market.hospital_sources?.data_year ? ` (${market.hospital_sources.data_year})` : ''}.
+              {market.hospital_sources?.data_year ? ` (${fmtYear(market.hospital_sources.data_year)})` : ''}.
               {' '}The post-acute columns are that hospital’s Medicare episode spend, set next to the state figure.
             </p>
           </header>
@@ -383,7 +383,7 @@ export default function MarketBriefs() {
                 fmtShare(r.chronic?.chf, 0), fmtShare(r.chronic?.copd, 0), fmtShare(r.chronic?.alzheimer, 0),
               ])}
             />
-            <p className="text-[11px] text-slate-500">{sources?.index_note || 'Ranked from the physician file.'}{sources?.data_year ? ` Physician year ${sources.data_year}.` : ''}{sources?.certifications_year ? ` Certifications ${sources.certifications_year}.` : ''} Chronic columns are the share of that clinician’s Medicare patients.</p>
+            <p className="text-[11px] text-slate-500">{sources?.index_note || 'Ranked from the physician file.'}{sources?.data_year ? ` Physician year ${fmtYear(sources.data_year)}.` : ''}{sources?.certifications_year ? ` Certifications ${fmtYear(sources.certifications_year)}.` : ''} Chronic columns are the share of that clinician’s Medicare patients.</p>
           </Section>
         </article>
       )}
@@ -420,7 +420,7 @@ export default function MarketBriefs() {
                 r.discharge_mix ? fmtPct(r.discharge_mix[settingKey === 'hospice' ? 'pct_hospice' : settingKey === 'snf' ? 'pct_snf' : 'pct_hha']) : '—',
               ])}
             />
-            <p className="text-[11px] text-slate-500">{market.hospital_sources?.data_year ? `Origins ${market.hospital_sources.data_year}. ` : ''}The last column is the share of that hospital’s Medicare episode spend, not a referral order.</p>
+            <p className="text-[11px] text-slate-500">{market.hospital_sources?.data_year ? `Origins ${fmtYear(market.hospital_sources.data_year)}. ` : ''}The last column is the share of that hospital’s Medicare episode spend, not a referral order.</p>
           </Section>
           {(market.competitors?.[settingKey]?.rows || []).length > 0 && (
             <Section title={`Who already serves ${settingDef.label.toLowerCase()}`}>
@@ -428,7 +428,7 @@ export default function MarketBriefs() {
                 headers={['Provider', 'Beneficiaries', 'Share', 'Payment']}
                 rows={market.competitors[settingKey].rows.slice(0, 8).map((r) => [facilityLink(r.ccn, r.facility_group, r.name), fmtCount(r.benes), fmtShare(r.share), fmtMoney(r.payment)])}
               />
-              {market.competitors[settingKey].data_year && <p className="text-[11px] text-slate-500">Share of beneficiaries served in this county, {market.competitors[settingKey].data_year}.</p>}
+              {market.competitors[settingKey].data_year && <p className="text-[11px] text-slate-500">Share of beneficiaries served in this county, {fmtYear(market.competitors[settingKey].data_year)}.</p>}
             </Section>
           )}
           {settingKey !== 'snf' && (
