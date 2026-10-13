@@ -1,4 +1,4 @@
-# CareMetric AI Intelligence
+# CareMetric Intel
 
 A healthcare provider intelligence, CRM, and analytics platform. CareMetric
 ingests Medicare/CMS datasets and the NPPES registry, then surfaces provider
@@ -183,7 +183,7 @@ disables only the external launcher; the central phone and email remain visible
 on the verified production Help page during a Hub outage.
 
 Central software support is `(877) 521-2890` (`+18775212890`) and
-`support@caremetric.ai`. Support requests must not include patient information
+`support@caremetricintel.com`. Support requests must not include patient information
 or other protected health information.
 
 Regenerate the static guide inventory only from a committed guide revision:

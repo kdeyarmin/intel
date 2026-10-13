@@ -33,13 +33,13 @@ function drawPageHeader(doc, model, logo) {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text('CareMetric AI', x, 10);
+  doc.text('CareMetric Intel', x, 10);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.text('Healthcare Provider Intelligence', x, 15);
+  doc.text('CareMetric Healthcare Advisors', x, 15);
   doc.setFontSize(8);
   doc.text(model.subtitle, w - MARGIN, 10, { align: 'right' });
-  doc.text('www.CareMetric.ai', w - MARGIN, 15, { align: 'right' });
+  doc.text('caremetricintel.com', w - MARGIN, 15, { align: 'right' });
 }
 
 function drawPageFooter(doc, model, page, pages) {
@@ -51,10 +51,8 @@ function drawPageFooter(doc, model, page, pages) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(...MUTED);
-  doc.text(`CareMetric AI  •  ${model.title}  •  Generated ${model.generatedLabel}  •  Confidential`, MARGIN, h - FOOTER_H + 7, { maxWidth: w - MARGIN * 2 - 25 });
+  doc.text('CareMetric Intel  ·  caremetricintel.com', MARGIN, h - FOOTER_H + 7, { maxWidth: w - MARGIN * 2 - 25 });
   doc.text(`Page ${page} of ${pages}`, w - MARGIN, h - FOOTER_H + 7, { align: 'right' });
-  doc.setFontSize(6);
-  doc.text(doc.splitTextToSize(model.attribution, w - MARGIN * 2), MARGIN, h - FOOTER_H + 11);
 }
 
 /** Lays out the report model as a branded, paginated PDF and downloads it. */
@@ -258,7 +256,7 @@ export async function downloadReportPdf(model) {
     section.blocks.forEach((block) => {
       heading(block.title, block.kind === 'table' ? block.count : null);
       const empty = block.kind === 'table' ? block.rows.length === 0 : block.items.length === 0;
-      if (empty) note(block.emptyText || 'No data on file.');
+      if (empty) note(block.emptyText || 'No data on file for this section. This section draws on public CMS and NPPES records; nothing was returned for this provider.');
       else if (block.kind === 'table') drawTable(block);
       else drawKv(block);
       if (block.note) note(block.note);

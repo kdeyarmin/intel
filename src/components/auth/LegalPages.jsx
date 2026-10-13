@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-const PRODUCT = 'CareMetric AI Intelligence';
+const PRODUCT = 'CareMetric Intel';
 const EFFECTIVE = 'October 2026';
 
 /** Shared frame for the public legal pages (reachable without signing in). */
@@ -9,7 +9,7 @@ function LegalShell({ title, children }) {
     <div className="min-h-screen bg-slate-900 text-slate-300">
       <header className="border-b border-slate-800">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/login" className="text-white font-bold">CareMetric AI</Link>
+          <Link to="/login" className="text-white font-bold">CareMetric Intel</Link>
           <nav aria-label="Legal pages" className="flex gap-4 text-sm">
             <Link to="/terms" className="text-cyan-400 hover:text-cyan-300">Terms</Link>
             <Link to="/privacy" className="text-cyan-400 hover:text-cyan-300">Privacy</Link>
