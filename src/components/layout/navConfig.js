@@ -69,7 +69,7 @@ export const PAGE_GROUPS = {
   reports: {
     label: 'Report views',
     pages: [
-      { page: 'MarketBriefs', label: 'Briefs' },
+      { page: 'MarketBriefs', label: 'Reports' },
       { page: 'CustomReports', label: 'Builder' },
     ],
   },

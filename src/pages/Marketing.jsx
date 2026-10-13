@@ -263,7 +263,7 @@ function MonthEnd({ report, onOpen, onSchedule }) {
       <section>
         <h2 className="text-sm font-medium text-slate-200 mb-2">Put on next month’s schedule</h2>
         <p className="text-xs text-slate-500 mb-2">Accounts that referred less, that referred last month and were not visited, or that referred and have nothing scheduled.</p>
-        {report.schedule.length === 0 ? <p className="text-sm text-slate-400">Nothing to add. The book is keeping up with the accounts that refer.</p> : (
+        {report.schedule.length === 0 ? <p className="text-sm text-slate-400">No additional accounts need to be scheduled at this time.</p> : (
           <ul className="space-y-1">
             {report.schedule.map((a) => (
               <li key={a.id} className="flex items-center justify-between gap-2 rounded border border-slate-800 px-3 py-2">

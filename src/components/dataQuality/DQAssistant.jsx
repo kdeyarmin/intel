@@ -55,7 +55,7 @@ export default function DQAssistant() {
           stats: data.response.related_stats,
         });
       } else {
-        addMessage('assistant', data.error || 'Sorry, I could not process that request.');
+        addMessage('assistant', data.error || 'Unable to process this request. Please try again.');
       }
     } catch (err) {
       console.error('DQ assistant query failed:', err);

@@ -297,13 +297,13 @@ export default function AppLayout({ children, currentPageName }) {
                 className="w-4 h-4 rounded"
                 style={{ background: 'transparent', mixBlendMode: 'screen' }}
               />
-              <span className="text-[11px] text-slate-400 font-medium">CareMetric AI</span>
+              <span className="text-[11px] text-slate-400 font-medium">CareMetric Intel</span>
               <span className="text-[11px] text-slate-400">•</span>
-              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline">www.CareMetric.ai</a>
+              <a href="https://caremetricintel.com/" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline">caremetricintel.com</a>
             </div>
           </div>
           <p className="text-[9px] text-slate-400 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
-            Data Sources: All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files; county and ZIP geography from the U.S. Census Bureau (2020 Gazetteer and ZCTA relationship files). Insights are estimates based on public data patterns and do not represent confirmed referral relationships.
+            Public CMS Medicare and NPPES data; county and ZIP geography from 2020 U.S. Census Bureau files. CareMetric Intel is a product of <a href="https://caremetricadvisors.com/" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">CareMetric Healthcare Advisors</a>.
           </p>
         </div>
       </main>

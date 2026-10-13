@@ -32,13 +32,13 @@ export default function ImportAgentChat() {
                 message: userMsg,
                 history: newMessages.slice(-10)
             });
-            const reply = response?.data?.reply || response?.data?.message || 'Sorry, I could not process that request.';
+            const reply = response?.data?.reply || response?.data?.message || 'Unable to process this request. Please try again.';
             setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
         } catch (e) {
             console.error('Import agent chat error:', e);
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: 'Sorry, something went wrong. Please try again.'
+                content: 'An error occurred while processing your request. Please try again.'
             }]);
         }
         setLoading(false);

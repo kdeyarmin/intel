@@ -2,11 +2,11 @@ import { jsPDF } from 'jspdf';
 import { base44 } from '@/api/base44Client';
 import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
 
-const CAREMETRIC_WEBSITE = 'www.CareMetric.ai';
+const CAREMETRIC_WEBSITE = 'caremetricintel.com';
 
 /** The source line every export carries (CMS asks that derived data not be presented as CMS data). */
 export function exportAttribution(date = new Date()) {
-  return `Source: CareMetric analytics derived from public CMS, NPPES and U.S. Census data, not CMS publications. Medicare figures are fee-for-service unless noted; counts under 11 are suppressed. Exported ${date.toISOString().slice(0, 10)}.`;
+  return `Source: CareMetric Intel analytics derived from public CMS, NPPES and U.S. Census data, not CMS publications. Medicare figures are fee-for-service unless noted; counts under 11 are suppressed. Exported ${date.toISOString().slice(0, 10)}.`;
 }
 
 /**
@@ -83,7 +83,7 @@ function addPDFHeader(doc, title, logoBase64) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('CareMetric AI', logoBase64 ? 36 : 14, 14);
+  doc.text('CareMetric Intel', logoBase64 ? 36 : 14, 14);
   doc.setFontSize(7);
   doc.setFont(undefined, 'normal');
   doc.text('Provider Intel', logoBase64 ? 36 : 14, 20);
@@ -120,7 +120,7 @@ function addPDFFooter(doc, pageNum) {
   
   doc.setFontSize(6);
   doc.setTextColor(150);
-  doc.text(`CareMetric AI  •  ${CAREMETRIC_WEBSITE}  •  Confidential`, 14, pageH - 10);
+  doc.text(`CareMetric Intel  •  ${CAREMETRIC_WEBSITE}  •  Confidential`, 14, pageH - 10);
   doc.text(exportAttribution(), 14, pageH - 6, { maxWidth: pageW - 50 });
   doc.text(`Page ${pageNum}`, pageW - 14, pageH - 10, { align: 'right' });
   doc.setTextColor(0);

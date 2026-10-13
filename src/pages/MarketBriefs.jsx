@@ -22,10 +22,10 @@ import MarketFreshness from '../components/market/MarketFreshness';
 const URL_DEFAULTS = { report: '', state: 'PA', county: '', from: '', setting: 'hha', sort: 'users' };
 
 const SORTS = [
-  { id: 'users', label: 'Users' },
-  { id: 'usersPerProvider', label: 'Users per provider' },
-  { id: 'usersPct', label: 'Share of fee-for-service' },
-  { id: 'usersChange', label: 'Change vs last year' },
+  { id: 'users', label: 'Medicare patients' },
+  { id: 'usersPerProvider', label: 'Medicare patients per provider' },
+  { id: 'usersPct', label: 'Share of fee-for-service beneficiaries' },
+  { id: 'usersChange', label: 'Year-over-year change' },
   { id: 'spend', label: 'Spend per beneficiary' },
 ];
 
@@ -53,23 +53,23 @@ function resolveReport(url) {
 }
 
 function growthLead(state, setting, facts) {
-  if (!facts.top) return `${state} does not have ${setting.label.toLowerCase()} user counts on the county profiles yet.`;
+  if (!facts.top) return `Medicare ${setting.label.toLowerCase()} utilization data is not yet available for counties in ${state}.`;
   const top = facts.top;
   const detail = [
-    top.usersPct != null ? `${fmtPct(top.usersPct)} of fee-for-service` : null,
-    top.billing != null ? `billed by ${fmtCount(top.billing)} ${setting.noun}` : null,
+    top.usersPct != null ? `${fmtPct(top.usersPct)} of fee-for-service beneficiaries` : null,
+    top.billing != null ? `${fmtCount(top.billing)} ${setting.noun} with Medicare claims` : null,
   ].filter(Boolean);
-  const parts = [`${state} has ${setting.label.toLowerCase()} user counts for ${fmtCount(facts.countiesWithUsers)} counties. ${top.name} has the most: ${fmtCount(top.users)} users${detail.length ? ` (${detail.join(', ')})` : ''}.`];
+  const parts = [`${state} has ${setting.label.toLowerCase()} utilization data for ${fmtCount(facts.countiesWithUsers)} counties. ${top.name} has the highest Medicare patient count: ${fmtCount(top.users)}${detail.length ? ` (${detail.join(', ')})` : ''}.`];
   if (facts.busiest && facts.medianUsers != null) {
     const b = facts.busiest;
     const each = fmtCount(b.usersPerProvider);
-    if (b.fips === top.fips) parts.push(`It also has the most users per billing ${setting.one} among counties at or above the median user count (${fmtCount(facts.medianUsers)}): ${each}.`);
-    else parts.push(`Among counties with at least the median user count (${fmtCount(facts.medianUsers)}), ${b.name} has the most per billing ${setting.one}: ${each} across ${fmtCount(b.billing)} ${setting.noun}.`);
+    if (b.fips === top.fips) parts.push(`It also has the highest Medicare patient count per ${setting.one} with Medicare claims among counties at or above the median county volume (${fmtCount(facts.medianUsers)}): ${each}.`);
+    else parts.push(`Among counties with at least the median patient count (${fmtCount(facts.medianUsers)}), ${b.name} has the highest Medicare patient count per ${setting.one} with Medicare claims: ${each} across ${fmtCount(b.billing)} ${setting.noun}.`);
   }
   if (facts.rising.length) {
     const names = facts.rising.slice(0, 3).map((r) => r.name);
     const verb = facts.rising.length === 1 ? '1 county had' : `${fmtCount(facts.rising.length)} counties had`;
-    parts.push(`${verb} more users than the year before while the number of billing ${setting.noun} did not rise: ${names.join(', ')}${facts.rising.length > 3 ? ', and others' : ''}.`);
+    parts.push(`${verb} higher Medicare patient counts than the prior year while the number of ${setting.noun} with Medicare claims did not increase: ${names.join(', ')}${facts.rising.length > 3 ? ', and others' : ''}.`);
   }
   return parts.join(' ');
 }
@@ -95,7 +95,7 @@ function Section({ title, children }) {
 }
 
 function Table({ headers, rows }) {
-  if (!rows.length) return <p className="text-xs text-slate-500">None on file.</p>;
+  if (!rows.length) return <p className="text-xs text-slate-400">No records are available for this selection.</p>;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
@@ -260,23 +260,23 @@ export default function MarketBriefs() {
             <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
             <p className="text-xs text-slate-400 mt-1">{spec.reason}</p>
             {layerLoading && <p className="text-sm text-slate-400 mt-2">Building the ranking…</p>}
-            {layerError && <p className="text-sm text-red-400 mt-2">{layerErr?.message || 'Could not rank counties.'}</p>}
+            {layerError && <p className="text-sm text-red-400 mt-2">{layerErr?.message || 'Unable to rank counties. Please try again.'}</p>}
             {layer && <p className="text-sm text-slate-300 mt-2">{growthLead(url.state, settingDef, facts)}</p>}
           </header>
           {layer && facts.rising.length > 0 && (
-            <Section title={`Use rose; billing ${settingDef.noun} did not`}>
+            <Section title={`Medicare patient counts increased; the number of ${settingDef.noun} with Medicare claims did not`}>
               <Table
-                headers={['County', 'Users', 'Vs last year', `Billing ${settingDef.noun}`, 'Their change']}
+                headers={['County', 'Medicare patients', 'Year-over-year change', `${settingDef.noun} with Medicare claims`, 'Provider count change']}
                 rows={facts.rising.slice(0, 8).map((r) => [
                   <button key={r.fips} type="button" className="text-cyan-400 hover:underline text-left" onClick={() => setUrl({ report: 'county', county: r.fips, from: spec.id })}>{r.name}</button>,
                   fmtCount(r.users), fmtPct(r.usersChange), fmtCount(r.billing), fmtPct(r.billingChange),
                 ])}
               />
-              <p className="text-[11px] text-slate-500">Change is versus the prior year in the market-saturation file. A billing {settingDef.one} in another county still counts.</p>
+              <p className="text-[11px] text-slate-500">Change is versus the prior year in the market-saturation file. Providers with Medicare claims located in other counties are included.</p>
             </Section>
           )}
           {layer && (
-            <Section title="Largest counties">
+            <Section title="Counties by Medicare patient volume">
               <div className="print:hidden">
                 <Label htmlFor="brief-sort">Sort</Label>
                 <Select value={SORTS.some((s) => s.id === url.sort) ? url.sort : 'users'} onValueChange={(sort) => setUrl({ sort })}>
@@ -285,13 +285,13 @@ export default function MarketBriefs() {
                 </Select>
               </div>
               <Table
-                headers={['County', 'Users', 'Share of FFS', 'Vs last year', `Billing ${settingDef.noun}`, 'Users each', 'Spend / beneficiary']}
+                headers={['County', 'Medicare patients', 'Share of FFS beneficiaries', 'Year-over-year change', `${settingDef.noun} with Medicare claims`, 'Patients per provider', 'Spend per beneficiary']}
                 rows={ranked.map((r) => [
                   <button key={r.fips} type="button" className="text-cyan-400 hover:underline text-left" onClick={() => setUrl({ report: 'county', county: r.fips, from: spec.id })}>{r.name}</button>,
                   fmtCount(r.users), fmtPct(r.usersPct), fmtPct(r.usersChange), fmtCount(r.billing), fmtCount(r.usersPerProvider), fmtMoney(r.spend),
                 ])}
               />
-              <p className="text-[11px] text-slate-500">Top 15. Users are Original Medicare residents, not the agency’s own claim count. Open a county for the hospitals and the providers already there.</p>
+              <p className="text-[11px] text-slate-500">Top 15 counties by Medicare patient count. Counts reflect Original Medicare residents, not an agency’s own claim volume. Select a county to review its hospitals and providers.</p>
             </Section>
           )}
         </article>
@@ -304,11 +304,11 @@ export default function MarketBriefs() {
             <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
             <p className="text-xs text-slate-400 mt-1">{spec.reason} Share is of providers located in the state, not of every resident who used the service.</p>
             {leadersLoading && <p className="text-sm text-slate-400 mt-2">Building the list…</p>}
-            {leadersError && <p className="text-sm text-red-400 mt-2">{leadersErr?.message || 'Could not list providers.'}</p>}
+            {leadersError && <p className="text-sm text-red-400 mt-2">{leadersErr?.message || 'Unable to load the provider rankings. Please try again.'}</p>}
             {leaders && <p className="text-sm text-slate-300 mt-2">{acquireLead(url.state, spec, leaders)}</p>}
           </header>
           {leaders && (
-            <Section title="Largest by Medicare beneficiaries">
+            <Section title="Providers by Medicare patient volume">
               <Table
                 headers={settingKey === 'snf'
                   ? ['Provider', 'Beneficiaries', 'Share', 'Payment', 'Residents', 'Medicare / Medicaid']
@@ -331,7 +331,7 @@ export default function MarketBriefs() {
 
       {spec && spec.needs === 'county' && !ready && <p className="text-sm text-slate-400">Pick a county to open this report.</p>}
       {spec && spec.needs === 'county' && isLoading && <p className="text-sm text-slate-400">Building the report…</p>}
-      {spec && spec.needs === 'county' && isError && <p className="text-sm text-red-400">{error?.message || 'Could not build this report.'}</p>}
+      {spec && spec.needs === 'county' && isError && <p className="text-sm text-red-400">{error?.message || 'Unable to load this report. Please try again.'}</p>}
 
       {spec?.id === 'hospital-partners' && ready && market && !market.needsCounty && (
         <article className="space-y-6" id="market-brief">
@@ -339,12 +339,12 @@ export default function MarketBriefs() {
             <p className="text-[11px] uppercase tracking-wide text-slate-500">{spec.purpose} · {spec.audience}</p>
             <h2 className="text-xl font-semibold text-slate-100">{place}</h2>
             <p className="text-sm text-slate-300 mt-2">
-              {market.hospital_sources?.total ? `${fmtCount(market.hospital_sources.total)} hospitals discharged residents of ${place}` : `No hospital origins are on file for ${place}`}
+              {market.hospital_sources?.total ? `${fmtCount(market.hospital_sources.total)} hospitals discharged residents of ${place}` : `No hospital discharge origins are available for ${place}`}
               {market.hospital_sources?.data_year ? ` (${market.hospital_sources.data_year})` : ''}.
               {' '}The post-acute columns are that hospital’s Medicare episode spend, set next to the state figure.
             </p>
           </header>
-          <Section title="Where to build a hospital relationship">
+          <Section title="Hospital discharge and post-acute spending patterns">
             <Table
               headers={['Hospital', 'Cases', 'Share of county', 'Home health', 'State', 'Hospice', 'State', 'SNF', 'State']}
               rows={(market.hospital_sources?.rows || []).slice(0, 10).map((r) => {
@@ -370,7 +370,7 @@ export default function MarketBriefs() {
             <h2 className="text-xl font-semibold text-slate-100">{spec.title}</h2>
             <p className="text-sm text-slate-300 mt-2">Clinicians in {place}. {spec.reason}</p>
           </header>
-          <Section title="Call list">
+          <Section title="Clinicians with relevant Medicare activity">
             <Table
               headers={sourceSetting === 'hospice'
                 ? ['Clinician', 'Specialty', 'Medicare patients', 'Hospice oversight', 'Heart failure', 'COPD', 'Alzheimer']
@@ -398,7 +398,7 @@ export default function MarketBriefs() {
           {market.profile?.available && (
             <Section title={`${settingDef.label} demand`}>
               <Table
-                headers={['Users', 'Share of FFS', 'Vs last year', 'Billing', 'Located here', 'Spend / beneficiary']}
+                headers={['Medicare patients', 'Share of FFS beneficiaries', 'Year-over-year change', 'Providers with Medicare claims', 'Providers located here', 'Spend per beneficiary']}
                 rows={[[
                   fmtCount(market.profile[settingKey === 'hospice' ? 'hospice_users' : settingKey === 'snf' ? 'snf_users' : 'hha_users']),
                   fmtPct(market.profile[settingKey === 'hospice' ? 'hospice_users_pct' : settingKey === 'snf' ? 'snf_users_pct' : 'hha_users_pct']),
@@ -408,7 +408,7 @@ export default function MarketBriefs() {
                   fmtMoney(market.profile[settingDef.spend]),
                 ]]}
               />
-              <p className="text-[11px] text-slate-500">Billing includes {settingDef.noun} in other counties. {fmtCount(market.profile.benes)} Medicare beneficiaries live here, {fmtShare(market.profile.ma_penetration)} in Medicare Advantage.</p>
+              <p className="text-[11px] text-slate-500">Counts include {settingDef.noun} with Medicare claims in other counties. {fmtCount(market.profile.benes)} Medicare beneficiaries live here; {fmtShare(market.profile.ma_penetration)} are enrolled in Medicare Advantage.</p>
             </Section>
           )}
           <Section title="Hospitals discharging residents">
@@ -432,7 +432,7 @@ export default function MarketBriefs() {
             </Section>
           )}
           {settingKey !== 'snf' && (
-            <Section title="Clinicians to call">
+            <Section title="Clinicians with relevant Medicare activity">
               <Table
                 headers={['Clinician', 'Specialty', 'Medicare patients']}
                 rows={(sources?.rows || []).slice(0, 8).map((r) => [
@@ -441,7 +441,7 @@ export default function MarketBriefs() {
                 ])}
               />
               <p className="text-[11px] text-slate-500 print:hidden">
-                <button type="button" className="text-cyan-400 hover:underline" onClick={() => setUrl({ report: settingKey === 'hospice' ? 'calls-hospice' : 'calls-hha', county: url.county })}>Open the full call list.</button>
+                <button type="button" className="text-cyan-400 hover:underline" onClick={() => setUrl({ report: settingKey === 'hospice' ? 'calls-hospice' : 'calls-hha', county: url.county })}>View the full clinician report.</button>
               </p>
             </Section>
           )}
