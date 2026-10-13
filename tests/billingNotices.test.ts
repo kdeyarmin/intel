@@ -43,6 +43,8 @@ describe("duplicateSubscriptionEmail", () => {
     const mail = duplicateSubscriptionEmail("ops@example.test", { id: 3, name: `Acme\r\nBcc: someone@example.test ${"x".repeat(200)}` }, duplicate);
     expect(mail.subject).not.toMatch(/[\r\n]/);
     expect(mail.subject.length).toBeLessThan(140);
+    expect(mail.subject).toMatch(/^CareMetric Healthcare Advisors: /);
+    expect(mail.subject).toMatch(/ is paying for two subscriptions$/);
   });
 });
 

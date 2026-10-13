@@ -198,9 +198,9 @@ export default function MarketBriefs() {
   const ranked = useMemo(() => sortGrowth(facts.ranked, SORTS.some((s) => s.id === url.sort) ? url.sort : 'users').filter((r) => r.users != null).slice(0, 15), [facts, url.sort]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 print:bg-white print:text-slate-900 print:max-w-none print:p-0 print:[&_p]:text-slate-700 print:[&_h2]:text-slate-900 print:[&_a]:text-slate-900 print:[&_button]:text-slate-900 print:[&_th]:text-slate-900 print:[&_td]:text-slate-900 print:[&_tr]:border-slate-300">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6 print:bg-white print:text-slate-900 print:max-w-none print:p-0 print:[&_nav]:hidden print:[&_p]:text-slate-700 print:[&_h2]:text-slate-900 print:[&_a]:text-slate-900 print:[&_button]:text-slate-900 print:[&_th]:text-slate-900 print:[&_td]:text-slate-900 print:[&_tr]:border-slate-300">
+      <PageTabs current="MarketBriefs" />
       <div className="print:hidden">
-        <PageTabs current="MarketBriefs" />
         <PageHeader
           title="Reports"
           subtitle={profile ? profile.blurb : 'Decision-focused market briefs based on published counts and transparent comparisons—not proprietary opportunity scores.'}

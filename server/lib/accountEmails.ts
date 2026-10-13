@@ -28,9 +28,12 @@ export function signupPendingEmail(to: string, newUser: { email: string; full_na
 export function duplicateSubscriptionEmail(to: string, org: { id: number; name: string }, subscriptions: { kept: string; previous: string }): MailMessage {
   // The name is whatever the customer typed at signup: one line, of a length a subject can carry.
   const name = org.name.replace(/\s+/g, " ").trim().slice(0, 80) || `organization #${org.id}`;
+  const prefix = `${PRODUCT}: `;
+  const suffix = " is paying for two subscriptions";
+  const subjectName = name.slice(0, 139 - prefix.length - suffix.length);
   return {
     to,
-    subject: `${PRODUCT}: ${name} is paying for two subscriptions`,
+    subject: `${prefix}${subjectName}${suffix}`,
     text: lines(
       `${name} (organization #${org.id}) completed a second Stripe checkout while its first subscription was still active, so both are billing.`,
       "",
