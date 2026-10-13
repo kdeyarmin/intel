@@ -31,11 +31,11 @@ export default function PendingApproval() {
         <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
         <div className="space-y-3">
           <p>
-            Thanks for signing up{user.full_name ? `, ${user.full_name}` : ''}. An administrator needs to approve{' '}
-            <span className="text-white">{user.email}</span> before you can use CareMetric AI.
+            Thank you for registering{user.full_name ? `, ${user.full_name}` : ''}. An administrator must approve{' '}
+            <span className="text-white">{user.email}</span> before you can access CareMetric Healthcare Advisors.
           </p>
           <p className="text-slate-400">
-            This page checks every 30 seconds and opens the app as soon as you're approved. You can also close it and
+            This page checks your approval status every 30 seconds and opens the platform once approved. You can also close it and
             sign in later.
           </p>
         </div>

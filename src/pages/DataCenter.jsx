@@ -39,7 +39,7 @@ export default function DataCenter() {
       <PageTabs current="DataCenter" />
       <PageHeader
         title="Data Center"
-        subtitle="One place to import all your data — pick a category, upload, and go"
+        subtitle="Import supported datasets from public sources or eligible file uploads"
         icon={Database}
         breadcrumbs={[{ label: 'Admin', page: 'Dashboard' }, { label: 'Data Center' }]}
       />

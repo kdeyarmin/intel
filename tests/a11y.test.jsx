@@ -62,6 +62,7 @@ import ImportOverviewKPIs from '../src/components/imports/ImportOverviewKPIs';
 import ProviderAdvancedFilters from '../src/components/filters/ProviderAdvancedFilters';
 import ComprehensiveReport from '../src/components/reports/ComprehensiveReport';
 import PageHeader from '../src/components/shared/PageHeader';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_NAME } from '../src/lib/branding';
 
 function wrap(ui, path = '/Dashboard') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -108,6 +109,15 @@ describe('axe in jsdom', () => {
 });
 
 describe('app shell', () => {
+  it('uses the company wordmark in both navigation states without a billing widget', () => {
+    wrap(<AppLayout currentPageName="Dashboard"><h1>Dashboard</h1></AppLayout>);
+    expect(screen.getByRole('img', { name: CAREMETRIC_NAME })).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+    expect(screen.getByText(CAREMETRIC_NAME)).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/CareMetric AI|CareMetric Intel|AI requests today|CareMetric \(legacy\)/);
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    expect(screen.getAllByRole('img', { name: CAREMETRIC_NAME }).at(-1)).toHaveAttribute('src', CAREMETRIC_LOGO_URL);
+  });
+
   it('has no axe violations, landmarks and a working skip link', async () => {
     wrap(<AppLayout currentPageName="Dashboard"><h1>Dashboard</h1></AppLayout>);
     expect(await violations()).toEqual([]);

@@ -276,7 +276,7 @@ export default function ReferralNetworkIntelligence() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-5">
       <PageHeader
         title="Referral Network Analysis"
-        subtitle="Who shares patients with whom: hubs, flows, geography and specialty coverage"
+        subtitle="Analyze Medicare shared-patient patterns by provider, geography, and specialty—not confirmed referrals"
         icon={Network}
         breadcrumbs={[{ label: 'Analytics', page: 'AdvancedAnalytics' }, { label: 'Network' }]}
       />

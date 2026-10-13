@@ -164,7 +164,7 @@ export default function NPPESCrawler() {
       <PageTabs current="NPPESCrawler" />
       <PageHeader
         title="NPPES Crawler Control Panel"
-        subtitle="Manage the robust, queue-based crawler system"
+        subtitle="Manage NPPES provider backfills, monitor progress, and review failed requests"
         icon={Bot}
         breadcrumbs={[{ label: 'Admin' }, { label: 'NPPES Crawler' }]}
       />

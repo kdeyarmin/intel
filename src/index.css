@@ -3,25 +3,25 @@
 
 @layer base {
   :root {
-    --background: 216 40% 7%;
+    --background: 222 47% 9%;
     --foreground: 210 20% 95%;
     --card: 217 35% 11%;
     --card-foreground: 210 20% 95%;
     --popover: 217 35% 13%;
     --popover-foreground: 210 20% 95%;
-    --primary: 187 72% 50%;
-    --primary-foreground: 216 40% 7%;
+    --primary: 217 72% 42%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 217 30% 18%;
     --secondary-foreground: 210 20% 90%;
     --muted: 217 30% 18%;
-    --muted-foreground: 215 15% 60%;
+    --muted-foreground: 215 20% 68%;
     --accent: 217 30% 18%;
     --accent-foreground: 210 20% 95%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 215 25% 20%;
     --input: 215 25% 20%;
-    --ring: 187 72% 50%;
+    --ring: 213 94% 68%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -30,7 +30,7 @@
     --radius: 0.5rem;
     --sidebar-background: 216 40% 7%;
     --sidebar-foreground: 210 20% 90%;
-    --sidebar-primary: 187 72% 50%;
+    --sidebar-primary: 217 72% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 217 30% 15%;
     --sidebar-accent-foreground: 210 20% 90%;
@@ -48,6 +48,23 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: "Avenir Next", "Segoe UI", sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+
+  input, textarea, select {
+    font: inherit;
+  }
+
+  ::selection {
+    background: #1e40af;
+    color: #fff;
   }
 
   /* Tailwind v4 preflight no longer sets a pointer cursor on buttons. */
@@ -80,12 +97,13 @@
 }
 .cm-report-doc .cm-doc-brand {
   display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
   background: #0f172a; color: #fff; padding: 10px 14px;
   border-bottom: 3px solid #0891b2;
 }
-.cm-report-doc .cm-doc-brand-left { display: flex; align-items: center; gap: 10px; }
-.cm-report-doc .cm-doc-logo { width: 128px; height: 40px; object-fit: contain; background: white; border-radius: 6px; }
-.cm-report-doc .cm-doc-brand-name { font-size: 14pt; font-weight: 700; letter-spacing: -0.01em; }
+.cm-report-doc .cm-doc-brand-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cm-report-doc .cm-doc-logo { width: 128px; height: 40px; object-fit: contain; background: white; border-radius: 6px; flex-shrink: 0; color: #0f172a; }
+.cm-report-doc .cm-doc-brand-name { font-size: 11pt; font-weight: 700; letter-spacing: -0.01em; }
 .cm-report-doc .cm-doc-brand-tag { font-size: 8pt; color: #cbd5e1; }
 .cm-report-doc .cm-doc-brand-right { text-align: right; font-size: 8.5pt; color: #e2e8f0; }
 .cm-report-doc .cm-doc-titleblock { padding: 14px 0 6px; border-bottom: 1px solid #cbd5e1; margin-bottom: 10px; }

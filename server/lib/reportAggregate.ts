@@ -285,14 +285,17 @@ export interface ReportEmailInput {
   manageUrl?: string | null;
 }
 
+const REPORT_BRAND = "CareMetric Healthcare Advisors";
+const REPORT_ATTRIBUTION = "Source: CareMetric Healthcare Advisors analytics from public CMS/NPPES data and organization records, as applicable; not CMS publications. Medicare figures are fee-for-service unless noted; CMS suppresses counts under 11. Shared-patient patterns are not confirmed referrals. For research and planning, not medical, legal or financial advice.";
+
 export function buildReportCsv(input: Pick<ReportEmailInput, "groupLabel" | "metrics" | "rows">): string {
   const header = [input.groupLabel, ...input.metrics.map((m) => m.label)].map(csvCell).join(",");
   const lines = input.rows.map((r) => [r.group, ...input.metrics.map((m) => r[m.key] ?? 0)].map(csvCell).join(","));
-  return [header, ...lines].join("\r\n") + "\r\n";
+  return [header, ...lines, csvCell(REPORT_ATTRIBUTION)].join("\r\n") + "\r\n";
 }
 
 export function buildReportEmail(input: ReportEmailInput): { subject: string; html: string; text: string } {
-  const subject = `${input.name}: ${input.datasetLabel} report`;
+  const subject = `${REPORT_BRAND} | ${input.name}: ${input.datasetLabel} report`;
   const basis = `Based on the latest ${input.sourceRowCount.toLocaleString("en-US")} ${input.datasetLabel} records.`;
   const head = `<tr><th style="text-align:left;padding:6px 10px;border-bottom:2px solid #ccc">${esc(input.groupLabel)}</th>${input.metrics
     .map((m) => `<th style="text-align:right;padding:6px 10px;border-bottom:2px solid #ccc">${esc(m.label)}</th>`).join("")}</tr>`;
@@ -301,16 +304,19 @@ export function buildReportEmail(input: ReportEmailInput): { subject: string; ht
   const table = input.rows.length
     ? `<table style="border-collapse:collapse;font-size:14px">${head}${body}</table>`
     : `<p>No records matched this report's filters.</p>`;
-  const html = `<div style="font-family:system-ui,sans-serif;color:#1f2937">
+  const html = `<div style="font-family:system-ui,sans-serif;color:#1f2937;max-width:720px;margin:auto">
+<div style="background:#0f172a;color:#fff;border-bottom:3px solid #0891b2;padding:20px;margin-bottom:20px"><strong style="font-size:18px">${REPORT_BRAND}</strong><br><span style="font-size:12px;color:#cbd5e1">Healthcare Provider Intelligence · Scheduled Report</span></div>
 <h2 style="margin:0 0 4px">${esc(input.name)}</h2>
 ${input.description ? `<p style="margin:0 0 12px;color:#4b5563">${esc(input.description)}</p>` : ""}
 ${input.summary ? `<p style="margin:0 0 12px">${esc(input.summary)}</p>` : ""}
 ${table}
 <p style="font-size:12px;color:#6b7280;margin-top:16px">${esc(basis)}${input.manageUrl ? ` Manage this schedule: <a href="${esc(input.manageUrl)}">${esc(input.manageUrl)}</a>` : ""}</p>
+<div style="border-top:1px solid #cbd5e1;margin-top:20px;padding-top:12px;font-size:12px;color:#475569"><p>${esc(REPORT_ATTRIBUTION)}</p><p>Prepared by ${REPORT_BRAND} · www.CareMetric.ai · Confidential</p></div>
 </div>`;
   const textRows = input.rows.map((r) => `${r.group}: ${input.metrics.map((m) => `${m.label} ${formatNumber(r[m.key])}`).join(", ")}`);
-  const text = [input.name, input.description, input.summary, "", ...(textRows.length ? textRows : ["No records matched this report's filters."]), "", basis,
-    input.manageUrl ? `Manage this schedule: ${input.manageUrl}` : ""].filter((l) => l !== undefined && l !== null).join("\n").trim();
+  const text = [REPORT_BRAND, "Healthcare Provider Intelligence · Scheduled Report", "", input.name, input.description, input.summary, "", ...(textRows.length ? textRows : ["No records matched this report's filters."]), "", basis,
+    input.manageUrl ? `Manage this schedule: ${input.manageUrl}` : "", "", REPORT_ATTRIBUTION,
+    `Prepared by ${REPORT_BRAND} · www.CareMetric.ai · Confidential`].filter((l) => l !== undefined && l !== null).join("\n").trim();
   return { subject, html, text };
 }
 

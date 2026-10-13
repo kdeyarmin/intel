@@ -108,7 +108,7 @@ export default function TeamMarketing() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Team Marketing</h1>
-          <p className="text-sm text-slate-400 mt-1">Each marketer's book of business, whether their sales calls are getting logged, the team calendar, and referrals on their way to becoming admissions.</p>
+          <p className="text-sm text-slate-400 mt-1">Review team account portfolios, logged outreach activity, scheduled visits, and recorded referrals through admission.</p>
         </div>
       </div>
 

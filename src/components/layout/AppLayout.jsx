@@ -7,7 +7,7 @@ import { LogOut, Search, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpe
 import { Button } from '@/components/ui/button';
 import NotificationBell from '../shared/NotificationBell';
 import AccountDialog from '../auth/AccountDialog';
-import BillingStatusWidget from './BillingStatusWidget';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_NAME } from '@/lib/branding';
 import BusinessLineSelect from '@/components/shared/BusinessLineSelect';
 import { getNavPageFor, getVisibleNavSections, roleLabel } from './navConfig';
 
@@ -113,7 +113,7 @@ export default function AppLayout({ children, currentPageName }) {
   }, [openSearch]);
 
   return (
-    <div className="flex h-screen bg-[#0f1729]">
+    <div className="flex h-dvh bg-background">
       <a
         href="#main-content"
         onClick={skipToMain}
@@ -135,21 +135,16 @@ export default function AppLayout({ children, currentPageName }) {
       )}
 
       {/* Sidebar */}
-      <aside ref={asideRef} aria-label="Sidebar" className={`${sidebarOpen ? 'w-56 fixed lg:relative z-40' : 'w-0 overflow-hidden'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 flex flex-col h-full flex-shrink-0`}>
+      <aside ref={asideRef} aria-label="Sidebar" className={`${sidebarOpen ? 'w-64 fixed lg:relative z-40' : 'w-0 overflow-hidden'} bg-[#0b1120] text-slate-400 border-r border-slate-800/60 transition-all duration-300 motion-reduce:transition-none flex flex-col h-full flex-shrink-0`}>
         {/* Logo */}
-        <div className="p-4 flex items-center justify-between border-b border-slate-800/60 min-w-[14rem]">
-          <div className="flex items-center gap-3">
+        <div className="px-4 py-5 flex items-center justify-between gap-3 border-b border-slate-800/60 min-w-[16rem]">
+          <Link to={createPageUrl('Dashboard')} onClick={handleMobileNavClick} className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <img
-              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
-              alt=""
-              className="w-10 h-10 rounded-xl flex-shrink-0"
-              style={{ background: 'transparent', mixBlendMode: 'screen' }}
+              src={CAREMETRIC_LOGO_URL}
+              alt={CAREMETRIC_NAME}
+              className="w-44 h-14 rounded-md object-contain bg-white text-slate-900 p-1.5"
             />
-            <div>
-              <p className="text-sm font-bold text-white leading-tight tracking-tight">CareMetric <span className="text-cyan-400">AI</span></p>
-              <p className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Intelligence</p>
-            </div>
-          </div>
+          </Link>
           <Button
             ref={closeButtonRef}
             variant="ghost"
@@ -166,22 +161,22 @@ export default function AppLayout({ children, currentPageName }) {
         <BusinessLineSelect compact />
 
         {/* Search Button */}
-        <div className="px-2 py-2 min-w-[14rem]">
+        <div className="px-3 py-2 min-w-[16rem]">
           <button
             type="button"
             onClick={openSearch}
             onMouseEnter={loadGlobalSearchDialog}
             onFocus={loadGlobalSearchDialog}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-cyan-400 hover:bg-slate-800/50 transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg border border-slate-700/60 bg-slate-900 text-sm text-slate-300 hover:text-white hover:border-slate-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Search className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span className="flex-1 text-left">Search...</span>
+            <span className="flex-1 text-left">Search providers</span>
             <kbd className="text-[10px] text-slate-400 border border-slate-700 rounded px-1 py-0.5" aria-hidden="true">⌘K</kbd>
           </button>
         </div>
 
         {/* Nav */}
-        <nav aria-label="Main" className="flex-1 overflow-y-auto py-3 px-2 space-y-1 scrollbar-dark min-w-[14rem]">
+        <nav aria-label="Main" className="flex-1 overflow-y-auto py-3 px-3 space-y-2 scrollbar-dark min-w-[16rem]">
           {visibleNavSections.map((section) => {
             const isCollapsed = collapsedSections[section.label];
             const listId = `nav-section-${section.label.replace(/\W+/g, '-').toLowerCase()}`;
@@ -211,13 +206,13 @@ export default function AppLayout({ children, currentPageName }) {
                       onMouseEnter={() => preloadRoute(item.page)}
                       onFocus={() => preloadRoute(item.page)}
                       aria-current={isActive ? 'page' : undefined}
-                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-[13px] transition-all duration-150 ${
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                         isActive
-                          ? 'bg-cyan-900/10 text-cyan-400 font-medium border-l-2 border-cyan-400 ml-0.5'
+                          ? 'bg-blue-900/30 text-blue-300 font-semibold ring-1 ring-inset ring-blue-500/30'
                           : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                       }`}
                     >
-                      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-cyan-400' : ''}`} aria-hidden="true" />
+                      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-400' : ''}`} aria-hidden="true" />
                       <span className="truncate">{item.name}</span>
                     </Link>
                   );
@@ -228,10 +223,8 @@ export default function AppLayout({ children, currentPageName }) {
           })}
         </nav>
 
-        <BillingStatusWidget sidebarOpen={sidebarOpen} />
-
         {/* User footer */}
-        <div className="p-3 border-t border-slate-800/60 min-w-[14rem]">
+        <div className="p-3 border-t border-slate-800/60 min-w-[16rem]">
           <div className="mb-2 px-2 flex items-center justify-between">
             <div>
               {user && <p className="text-xs font-medium text-slate-300 truncate">{user.full_name || user.email}</p>}
@@ -274,8 +267,9 @@ export default function AppLayout({ children, currentPageName }) {
           <Button ref={openButtonRef} variant="ghost" size="icon" onClick={toggleSidebar} aria-label="Open sidebar" aria-expanded="false" className="text-slate-400 hover:text-white hover:bg-slate-800/60 h-8 w-8">
             <PanelLeftOpen className="w-5 h-5" aria-hidden="true" />
           </Button>
-          <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png" alt="" className="w-7 h-7 rounded-lg" style={{ background: 'transparent', mixBlendMode: 'screen' }} />
-          <p className="text-sm font-bold text-white flex-1">CareMetric <span className="text-cyan-400">AI</span></p>
+          <Link to={createPageUrl('Dashboard')} className="mr-auto rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <img src={CAREMETRIC_LOGO_URL} alt={CAREMETRIC_NAME} className="w-36 h-10 rounded object-contain bg-white text-slate-900 p-1" />
+          </Link>
           <button type="button" onClick={openSearch} onMouseEnter={loadGlobalSearchDialog} onFocus={loadGlobalSearchDialog} aria-label="Search" className="text-slate-400 hover:text-cyan-400 transition-colors p-1.5">
             <Search className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -284,25 +278,16 @@ export default function AppLayout({ children, currentPageName }) {
       )}
 
       {/* Main content */}
-      <main id="main-content" tabIndex={-1} ref={mainRef} className={`flex-1 focus:outline-none overflow-x-hidden overflow-y-auto bg-[#0f1729] flex flex-col w-full ${!sidebarOpen ? 'pt-12' : ''}`}>
+      <main id="main-content" tabIndex={-1} ref={mainRef} className={`flex-1 min-w-0 focus:outline-none overflow-x-hidden overflow-y-auto bg-background flex flex-col w-full ${!sidebarOpen ? 'pt-16' : ''}`}>
         <div className="flex-1">
           {children}
         </div>
         <div className="px-4 sm:px-8 py-2.5 border-t border-slate-800/60 bg-[#0b1120]/80 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <img
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/553986bd4_CareMetric_favicon_256x256.png"
-                alt=""
-                className="w-4 h-4 rounded"
-                style={{ background: 'transparent', mixBlendMode: 'screen' }}
-              />
-              <span className="text-[11px] text-slate-400 font-medium">CareMetric AI</span>
-              <span className="text-[11px] text-slate-400">•</span>
-              <a href="https://www.CareMetric.ai" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 hover:text-cyan-300 hover:underline">www.CareMetric.ai</a>
-            </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+            <span className="font-medium">{CAREMETRIC_NAME}</span>
+            <a href="https://www.caremetric.ai" target="_blank" rel="noopener noreferrer" className="hover:text-blue-300 hover:underline">caremetric.ai</a>
           </div>
-          <p className="text-[9px] text-slate-400 text-center mt-1 leading-relaxed max-w-4xl mx-auto">
+          <p className="text-[11px] text-slate-400 mt-2 leading-relaxed max-w-4xl">
             Data Sources: All data is derived from publicly available CMS Medicare datasets and NPPES National Provider files; county and ZIP geography from the U.S. Census Bureau (2020 Gazetteer and ZCTA relationship files). Insights are estimates based on public data patterns and do not represent confirmed referral relationships.
           </p>
         </div>

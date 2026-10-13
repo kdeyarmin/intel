@@ -39,7 +39,7 @@ describe('ResetPassword', () => {
   it('explains a dead link instead of showing a form', async () => {
     auth.tokenInfo.mockResolvedValue({ valid: false });
     at(`/reset-password?token=${TOKEN}`, <ResetPassword />);
-    expect(await screen.findByText("This link doesn't work")).toBeInTheDocument();
+    expect(await screen.findByText('Link invalid or expired')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Request a new reset link/ })).toHaveAttribute('href', '/forgot-password');
   });
 
@@ -49,7 +49,7 @@ describe('ResetPassword', () => {
     auth.tokenInfo.mockResolvedValueOnce({ valid: true, purpose: 'reset', email: 'rep@example.com' });
     at(`/reset-password?token=${TOKEN}`, <ResetPassword />);
     expect(await screen.findByRole('alert')).toHaveTextContent("couldn't check this link");
-    expect(screen.queryByText("This link doesn't work")).not.toBeInTheDocument();
+    expect(screen.queryByText('Link invalid or expired')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('alert')).toHaveTextContent("couldn't check this link");

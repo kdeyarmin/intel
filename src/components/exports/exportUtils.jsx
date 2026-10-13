@@ -1,12 +1,12 @@
 import { jsPDF } from 'jspdf';
 import { base44 } from '@/api/base44Client';
-import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_NAME } from '@/lib/branding';
 
 const CAREMETRIC_WEBSITE = 'www.CareMetric.ai';
 
 /** The source line every export carries (CMS asks that derived data not be presented as CMS data). */
 export function exportAttribution(date = new Date()) {
-  return `Source: CareMetric analytics derived from public CMS, NPPES and U.S. Census data, not CMS publications. Medicare figures are fee-for-service unless noted; counts under 11 are suppressed. Exported ${date.toISOString().slice(0, 10)}.`;
+  return `Source: ${CAREMETRIC_NAME} analytics derived from public CMS, NPPES and U.S. Census data, not CMS publications. Medicare figures are fee-for-service unless noted; counts under 11 are suppressed. Exported ${date.toISOString().slice(0, 10)}.`;
 }
 
 /**
@@ -71,22 +71,32 @@ function addPDFHeader(doc, title, logoBase64) {
   const pageW = doc.internal.pageSize.getWidth();
   
   // Header background bar
-  doc.setFillColor(30, 64, 175); // blue-800
+  doc.setFillColor(15, 23, 42); // slate-900
   doc.rect(0, 0, pageW, 28, 'F');
+  doc.setFillColor(8, 145, 178);
+  doc.rect(0, 28, pageW, 0.8, 'F');
   
   // Logo
+  let brandX = 14;
   if (logoBase64) {
-    try { doc.addImage(logoBase64, 'PNG', 10, 3, 22, 22); } catch {}
+    try {
+      const image = doc.getImageProperties(logoBase64);
+      const scale = Math.min(40 / image.width, 18 / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      doc.addImage(logoBase64, 'PNG', 14, (28 - height) / 2, width, height);
+      brandX += width + 3;
+    } catch { /* Keep the company name when the logo cannot be embedded. */ }
   }
   
   // Brand text
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(14);
+  doc.setFontSize(10);
   doc.setFont(undefined, 'bold');
-  doc.text('CareMetric AI', logoBase64 ? 36 : 14, 14);
+  doc.text(CAREMETRIC_NAME, brandX, 13);
   doc.setFontSize(7);
   doc.setFont(undefined, 'normal');
-  doc.text('Provider Intel', logoBase64 ? 36 : 14, 20);
+  doc.text('Healthcare Provider Intelligence', brandX, 20);
   
   // Website right-aligned
   doc.setFontSize(7);
@@ -116,13 +126,13 @@ function addPDFFooter(doc, pageNum) {
   const pageH = doc.internal.pageSize.getHeight();
   
   doc.setDrawColor(200);
-  doc.line(14, pageH - 16, pageW - 14, pageH - 16);
+  doc.line(14, pageH - 20, pageW - 14, pageH - 20);
   
   doc.setFontSize(6);
-  doc.setTextColor(150);
-  doc.text(`CareMetric AI  •  ${CAREMETRIC_WEBSITE}  •  Confidential`, 14, pageH - 10);
-  doc.text(exportAttribution(), 14, pageH - 6, { maxWidth: pageW - 50 });
-  doc.text(`Page ${pageNum}`, pageW - 14, pageH - 10, { align: 'right' });
+  doc.setTextColor(71, 85, 105);
+  doc.text(`${CAREMETRIC_NAME}  •  ${CAREMETRIC_WEBSITE}  •  Confidential`, 14, pageH - 15);
+  doc.text(doc.splitTextToSize(exportAttribution(), pageW - 28), 14, pageH - 10);
+  doc.text(`Page ${pageNum}`, pageW - 14, pageH - 15, { align: 'right' });
   doc.setTextColor(0);
 }
 
@@ -224,11 +234,13 @@ export async function exportPDF(rows, fields, fileName, title) {
   doc.setFont(undefined, 'normal');
   doc.setFontSize(6.5);
   rows.forEach((row) => {
-    if (y > doc.internal.pageSize.getHeight() - 22) {
+    if (y > doc.internal.pageSize.getHeight() - 26) {
       addPDFFooter(doc, pageNum);
       pageNum++;
       doc.addPage();
-      y = 18;
+      y = addPDFHeader(doc, title || fileName, logoBase64);
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(6.5);
     }
     fields.forEach((f, i) => {
       const val = String(row[f.key] ?? '').substring(0, 22);

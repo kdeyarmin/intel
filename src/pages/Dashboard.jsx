@@ -49,7 +49,7 @@ export default function Dashboard() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6 w-full overflow-hidden">
       <PageHeader
         title="Dashboard"
-        subtitle={profile ? profile.label : 'CareMetric Provider Intelligence — all your data at a glance'}
+        subtitle={profile ? `${profile.label} — provider intelligence and outreach overview` : 'CareMetric Healthcare Advisors — provider data, outreach activity, and data health'}
         icon={LayoutDashboard}
         breadcrumbs={[{ label: 'Dashboard' }]}
       />
@@ -66,7 +66,7 @@ export default function Dashboard() {
           ))}
           <Link to={`${createPageUrl('Facilities')}?type=${profile.facilityTypes[0]}`} className="rounded-lg border border-slate-800 bg-slate-900/40 p-3 hover:border-slate-600">
             <p className="text-[11px] uppercase tracking-wide text-slate-500">Directory</p>
-            <p className="text-sm font-medium text-slate-100">Facilities for this line</p>
+            <p className="text-sm font-medium text-slate-100">Facilities for this business line</p>
           </Link>
           <Link to={createPageUrl('CallSheets')} className="rounded-lg border border-slate-800 bg-slate-900/40 p-3 hover:border-slate-600">
             <p className="text-[11px] uppercase tracking-wide text-slate-500">Sales</p>
@@ -74,7 +74,7 @@ export default function Dashboard() {
           </Link>
           <Link to={createPageUrl('Marketing')} className="rounded-lg border border-slate-800 bg-slate-900/40 p-3 hover:border-slate-600">
             <p className="text-[11px] uppercase tracking-wide text-slate-500">Sales</p>
-            <p className="text-sm font-medium text-slate-100">Marketing book</p>
+            <p className="text-sm font-medium text-slate-100">Marketing accounts</p>
           </Link>
         </div>
       )}

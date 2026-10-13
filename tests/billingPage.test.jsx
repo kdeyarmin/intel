@@ -64,6 +64,16 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('territory editor', () => {
+  it('describes subscription management and territory limits without hiding billing restrictions', async () => {
+    h.status.mockResolvedValue(status({ is_owner: false }));
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Plan & Billing' })).toBeInTheDocument();
+    expect(screen.getByText(/geographic coverage, user seats, and daily usage/)).toBeInTheDocument();
+    expect(await screen.findByText(/views are limited to your selected territory/)).toBeInTheDocument();
+    expect(screen.getByText(/Only an owner of the organization can change the plan or billing/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Choose plan' })).not.toBeInTheDocument();
+  });
+
   it("opens a county pack on the state its counties are in, with them checked (not on Pennsylvania)", async () => {
     h.status.mockResolvedValue(status());
     renderPage();

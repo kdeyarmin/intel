@@ -62,7 +62,7 @@ export function buildManifest(source, sourceCommit) {
 
   return {
     schema_version: 1,
-    product: { slug: 'caremetric-intel', name: 'CareMetric Intel' },
+    product: { slug: 'caremetric-intel', name: 'CareMetric Healthcare Advisors' },
     source: {
       repository: 'kdeyarmin/intel',
       ref: sourceCommit,

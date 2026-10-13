@@ -52,10 +52,11 @@ describe('comprehensive report PDF', () => {
     const output = state.doc.output();
     expect(output).toMatch(/^%PDF-/);
     expect(state.doc.getNumberOfPages()).toBeGreaterThan(1);
-    for (const text of ['CareMetric AI', 'www.CareMetric.ai', 'Example Holding Company 29', '1,234,567', '45.6', 'Data Sources']) {
+    for (const text of ['CareMetric Healthcare Advisors', 'www.CareMetric.ai', 'Example Holding Company 29', '1,234,567', '45.6', 'Data Sources']) {
       expect(output).toContain(text);
     }
-    expect(output.match(/CareMetric AI/g)?.length).toBeGreaterThanOrEqual(state.doc.getNumberOfPages());
+    expect(output.match(/CareMetric Healthcare Advisors/g)?.length).toBeGreaterThanOrEqual(state.doc.getNumberOfPages());
+    expect(output).not.toContain('CareMetric AI');
     expect(output.match(/\(Owner\)/g)?.length).toBeGreaterThan(1);
     expect(state.doc.save).toHaveBeenCalledWith('CareMetric-Example-Hospital-2026-10-01.pdf');
   });

@@ -88,7 +88,7 @@ export default function SecurityAudit() {
       <PageTabs current="SecurityAudit" />
       <PageHeader
         title="Security Audit"
-        subtitle="Full audit trail of all system activity, user access, and data operations"
+        subtitle="Review the 500 most recent recorded events available to your account"
         icon={ShieldCheck}
         breadcrumbs={[{ label: 'Admin', page: 'DataCenter' }, { label: 'Security Audit' }]}
         actions={

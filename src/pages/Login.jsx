@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useSearchParams, useNavigate, Navigate, Link } from 'react-router-dom';
 import { safeReturnUrl } from '@/lib/returnUrl';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_NAME } from '@/lib/branding';
 
 export default function Login() {
   const { login, signup, isAuthenticated, isLoadingAuth, user, authError } = useAuth();
@@ -49,24 +50,27 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/landing" className="inline-block hover:opacity-90 transition-opacity">
-            <h1 className="text-3xl font-bold text-white mb-2">CareMetric AI</h1>
+            <img src={CAREMETRIC_LOGO_URL} alt={CAREMETRIC_NAME} className="w-64 h-20 object-contain bg-white text-slate-900 rounded-lg p-3 mx-auto" />
           </Link>
-          <p className="text-slate-400">Healthcare Provider Intelligence Platform</p>
+          <p className="text-sm text-slate-400 mt-4">Healthcare intelligence for informed decisions</p>
           <div className="mt-2">
             <Link to="/landing" className="text-xs text-cyan-400 hover:text-cyan-300">
-              ← Explore product features &amp; pricing
+              Explore the platform and plans
             </Link>
           </div>
         </div>
 
-        <main className="bg-slate-800 rounded-xl border border-slate-700 p-8">
-          <h2 className="text-xl font-semibold text-white mb-6">
-            {isSignup ? 'Create Account' : 'Sign In'}
-          </h2>
+        <main className="bg-card rounded-xl border border-slate-700/60 p-6 sm:p-8 shadow-xl shadow-black/10">
+          <h1 className="text-2xl font-semibold tracking-tight text-white">
+            {isSignup ? 'Create your account' : 'Sign in to your workspace'}
+          </h1>
+          <p className="text-sm text-slate-400 mt-2 mb-6">
+            {isSignup ? 'Set up your organization to begin evaluating the platform.' : 'Access provider research, market insights, and outreach tools.'}
+          </p>
 
           {accountDisabled && !error && (
             <div className="mb-4 p-3 bg-red-900/30 border border-red-500/30 rounded-lg text-red-400 text-sm" role="alert">
@@ -76,7 +80,7 @@ export default function Login() {
 
           {isSignup && !error && (
             <div className="mb-4 p-3 bg-cyan-900/30 border border-cyan-500/30 rounded-lg text-cyan-300 text-sm" role="status">
-              Your account starts an organization you own, with a free trial. An administrator reviews new accounts before they can sign in; you'll be emailed when yours is approved.
+              Creating an account establishes your organization and starts a free trial. New accounts require administrator approval. You will receive an email when access is approved.
             </div>
           )}
 
@@ -87,7 +91,7 @@ export default function Login() {
           )}
 
           {error && (
-            <div className="mb-4 p-3 bg-red-900/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+            <div className="mb-4 p-3 bg-red-900/10 border border-red-500/20 rounded-lg text-red-400 text-sm" role="alert">
               {error}
             </div>
           )}
@@ -203,7 +207,7 @@ export default function Login() {
               onClick={() => { setIsSignup(!isSignup); setError(''); }}
               className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
             >
-              {isSignup ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
+              {isSignup ? 'Already registered? Sign in' : 'New to the platform? Create an account'}
             </button>
           </div>
         </main>

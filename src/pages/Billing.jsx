@@ -83,7 +83,7 @@ function TerritoryEditor({ scope, maxCounties, territory, onSaved, canEdit }) {
       <div className="space-y-1 max-w-xs">
         <Label htmlFor="territory-state" className="text-slate-300">{scope === 'state' ? 'State' : 'State of the counties'}</Label>
         <Select value={state || ''} onValueChange={(next) => { if (next !== state) { setSelected(new Set()); setState(next); } }} disabled={!canEdit}>
-          <SelectTrigger id="territory-state" className="bg-slate-800 border-slate-700"><SelectValue placeholder="Pick a state" /></SelectTrigger>
+          <SelectTrigger id="territory-state" className="bg-slate-800 border-slate-700"><SelectValue placeholder="Select a state" /></SelectTrigger>
           <SelectContent className="max-h-72">
             {US_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
@@ -124,7 +124,7 @@ export default function Billing() {
     const outcome = searchParams.get('checkout');
     if (!outcome) return;
     if (outcome === 'success') {
-      toast.success('Thanks! Your subscription is being activated.');
+      toast.success('Checkout completed. Your subscription is being activated.');
       refetch();
       checkAppState?.();
     } else if (outcome === 'canceled') {
@@ -167,8 +167,8 @@ export default function Billing() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-6">
       <PageTabs current="Billing" />
       <PageHeader
-        title="Plan & billing"
-        subtitle="Your organization's plan, territory, seats and usage"
+        title="Plan & Billing"
+        subtitle="Manage your organization's subscription, geographic coverage, user seats, and daily usage"
         icon={CreditCard}
         breadcrumbs={[{ label: 'Admin Settings', page: 'AdminSettings' }, { label: 'Billing' }]}
       />
@@ -244,7 +244,7 @@ export default function Billing() {
               </CardTitle>
               <CardDescription>
                 {scope === 'state' ? 'A state plan covers one state.' : scope === 'national' ? 'Every state and county.' : `A county pack covers up to ${plan?.max_counties ?? 5} counties.`}
-                {' '}County, Market, Territory and referral-source views answer only for this territory.
+                {' '}County, Market, Territory, and referral-source views are limited to your selected territory.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -267,7 +267,7 @@ export default function Billing() {
               </CardTitle>
               <CardDescription>
                 Billed monthly through Stripe; change or cancel any time.
-                {!data.stripe_configured && ' Online checkout isn’t set up yet: contact us to subscribe.'}
+                {!data.stripe_configured && ' Online checkout is not configured. Contact us to subscribe.'}
               </CardDescription>
             </CardHeader>
             <CardContent>

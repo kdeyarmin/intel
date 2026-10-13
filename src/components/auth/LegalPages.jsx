@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
+import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
 
-const PRODUCT = 'CareMetric AI Intelligence';
+const PRODUCT = 'CareMetric Healthcare Advisors';
 const EFFECTIVE = 'October 2026';
 
 /** Shared frame for the public legal pages (reachable without signing in). */
@@ -8,8 +9,11 @@ function LegalShell({ title, children }) {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-300">
       <header className="border-b border-slate-800">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/login" className="text-white font-bold">CareMetric AI</Link>
+        <div className="max-w-3xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
+          <Link to="/login" className="text-white font-bold flex items-center gap-3">
+            <img src={CAREMETRIC_LOGO_URL} alt="" className="h-10 w-auto" />
+            {PRODUCT}
+          </Link>
           <nav aria-label="Legal pages" className="flex gap-4 text-sm">
             <Link to="/terms" className="text-cyan-400 hover:text-cyan-300">Terms</Link>
             <Link to="/privacy" className="text-cyan-400 hover:text-cyan-300">Privacy</Link>
@@ -42,7 +46,7 @@ export function TermsPage() {
   return (
     <LegalShell title="Terms of Service">
       <p>
-        These terms are the agreement between your organization and CareMetric for the use of {PRODUCT} (the “Service”).
+        These terms are the agreement between your organization and {PRODUCT} for the use of its platform (the “Service”).
         By creating an account or using the Service you accept them on behalf of the organization you sign up for.
       </p>
       <Section title="1. Accounts and organizations">
@@ -81,7 +85,7 @@ export function TermsPage() {
       <Section title="5. Your data">
         <p>
           Lead lists, campaigns, saved filters, reports and notes you create belong to your organization and are visible only to
-          its members (and to CareMetric staff when supporting you or operating the Service). You may export them at any time.
+          its members (and to {PRODUCT} staff when supporting you or operating the Service). You may export them at any time.
           We keep them for 90 days after a subscription ends, then delete them.
         </p>
       </Section>
@@ -93,7 +97,7 @@ export function TermsPage() {
       </Section>
       <Section title="7. Warranty and liability">
         <p>
-          The Service is provided “as is”. To the fullest extent the law allows, CareMetric disclaims implied warranties and is not
+          The Service is provided “as is”. To the fullest extent the law allows, {PRODUCT} disclaims implied warranties and is not
           liable for indirect or consequential loss, and its total liability for any claim is limited to the fees paid by your
           organization in the twelve months before the claim.
         </p>
@@ -138,7 +142,7 @@ export function PrivacyPage() {
       </Section>
       <Section title="Who sees it">
         <p>
-          Members of your organization, according to their role; CareMetric staff when operating or supporting the Service; and
+          Members of your organization, according to their role; {PRODUCT} staff when operating or supporting the Service; and
           service providers that process data for us (hosting, Stripe for payments, SendGrid for email, and our AI provider for the
           assistant). Each is bound to use the data only to provide its service.
         </p>
@@ -178,7 +182,7 @@ export function DataUsePage() {
       </Section>
       <Section title="What the figures are">
         <ul className="list-disc pl-5 space-y-1">
-          <li>They are <strong className="text-slate-200">CareMetric analytics derived from public data, not CMS publications</strong>. CMS asks that altered data not be presented as CMS data; every figure here carries its source and vintage.</li>
+          <li>They are <strong className="text-slate-200">analytics from {PRODUCT} derived from public data, not CMS publications</strong>. CMS asks that altered data not be presented as CMS data; every figure here carries its source and vintage.</li>
           <li>Medicare figures cover fee-for-service beneficiaries only, plus Medicare Advantage where CMS includes it. CMS suppresses counts under 11 before publishing, and the Service keeps that suppression.</li>
           <li>“Hospital sources” show where a hospital’s inpatients live. The “discharge mix” is post-discharge Medicare spending by setting, a proxy for where patients go next, not a count of transfers.</li>
           <li>Shared-patient and referral-source figures describe which providers serve the same beneficiaries or are eligible to refer; they are not confirmed referrals.</li>

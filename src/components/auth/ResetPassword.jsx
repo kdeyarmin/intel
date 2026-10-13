@@ -50,7 +50,7 @@ export default function ResetPassword() {
       const session = await adoptSession(user);
       navigate((session ?? user).status === 'pending' ? '/pending' : '/', { replace: true });
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.');
+      setError(err.message || 'Unable to save your password. Please try again.');
       setLoading(false);
     }
   };
@@ -58,7 +58,7 @@ export default function ResetPassword() {
   if (lookupFailed) {
     return (
       <AuthShell
-        title="Couldn't check your link"
+        title="Unable to verify your link"
         footer={<Link to="/login" className="text-cyan-400 hover:text-cyan-300">Back to sign in</Link>}
       >
         <Notice tone="error">
@@ -76,7 +76,7 @@ export default function ResetPassword() {
   if (!info.valid) {
     return (
       <AuthShell
-        title="This link doesn't work"
+        title="Link invalid or expired"
         footer={<Link to="/login" className="text-cyan-400 hover:text-cyan-300">Back to sign in</Link>}
       >
         <Notice tone="warn">
@@ -92,7 +92,7 @@ export default function ResetPassword() {
       <p className="text-sm text-slate-400 mb-4">
         {invite ? 'Choose a password for ' : 'Set a new password for '}
         <span className="text-white">{info.email}</span>.
-        {!invite && ' This signs you out everywhere else.'}
+        {!invite && ' This signs you out on all other devices.'}
       </p>
       {error && <Notice tone="error">{error}</Notice>}
       <form onSubmit={submit} className="space-y-4">

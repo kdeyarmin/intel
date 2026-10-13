@@ -10,6 +10,7 @@ import {
   Loader2, Search, CheckSquare, Square, Filter
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { exportAttribution } from '@/components/exports/exportUtils';
 
 // Matches the per-request limit in bulkVerifyEmails (server/functions/verification.ts).
 const VERIFY_CHUNK = 100;
@@ -75,7 +76,8 @@ export default function BulkEmailActions({ providers, onRefresh }) {
       return [p.npi, name, p.email, p.email_validation_status || '', p.email_confidence || '', p.email_source || '', p.email_validation_reason || ''];
     });
 
-    const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(','))].join('\n');
+    const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(',')),
+      `"${exportAttribution().replace(/"/g, '""')}"`].join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

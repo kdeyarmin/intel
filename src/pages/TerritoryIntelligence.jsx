@@ -123,7 +123,7 @@ export default function TerritoryIntelligence() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white tracking-tight">Territory Intelligence</h1>
-            <p className="text-sm text-slate-400">Where providers are, how they score, and how dense each county is</p>
+            <p className="text-sm text-slate-400">Compare provider locations, available lead scores, and provider density by county</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">

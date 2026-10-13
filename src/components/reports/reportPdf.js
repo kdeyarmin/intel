@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { pdfLogo } from '@/components/exports/exportUtils';
 import { reportFileName } from './reportSections';
+import { CAREMETRIC_NAME } from '@/lib/branding';
 
 const MARGIN = 14;
 const HEADER_H = 20;
@@ -32,8 +33,8 @@ function drawPageHeader(doc, model, logo) {
   }
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text('CareMetric AI', x, 10);
+  doc.setFontSize(10);
+  doc.text(CAREMETRIC_NAME, x, 10);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.text('Healthcare Provider Intelligence', x, 15);
@@ -51,7 +52,8 @@ function drawPageFooter(doc, model, page, pages) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(...MUTED);
-  doc.text(`CareMetric AI  •  ${model.title}  •  Generated ${model.generatedLabel}  •  Confidential`, MARGIN, h - FOOTER_H + 7, { maxWidth: w - MARGIN * 2 - 25 });
+  doc.setFontSize(6.5);
+  doc.text(`${CAREMETRIC_NAME}  •  Generated ${model.generatedLabel}  •  Confidential`, MARGIN, h - FOOTER_H + 7, { maxWidth: w - MARGIN * 2 - 25 });
   doc.text(`Page ${page} of ${pages}`, w - MARGIN, h - FOOTER_H + 7, { align: 'right' });
   doc.setFontSize(6);
   doc.text(doc.splitTextToSize(model.attribution, w - MARGIN * 2), MARGIN, h - FOOTER_H + 11);

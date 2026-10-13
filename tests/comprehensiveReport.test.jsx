@@ -180,7 +180,8 @@ describe('ComprehensiveReport', () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => {
       expect(document.body.classList.contains('cm-printing-report')).toBe(true);
       expect(document.querySelector('.cm-print-root .cm-report-doc')).not.toBeNull();
-      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric AI');
+      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric Healthcare Advisors');
+      expect(document.querySelector('.cm-print-root').textContent).not.toContain('CareMetric AI');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Data Sources');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Example Holdings');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Discharge function score');
@@ -188,6 +189,8 @@ describe('ComprehensiveReport', () => {
     wrap(<ComprehensiveReport npi="1234567893" />);
     fireEvent.click(screen.getByRole('button', { name: /Generate Full Report/ }));
     fireEvent.click(await screen.findByRole('button', { name: /Print/ }));
+    expect(screen.getAllByRole('img', { name: 'CareMetric Healthcare Advisors' })
+      .some((image) => image.classList.contains('text-slate-900'))).toBe(true);
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
     expect(quota.count).toHaveBeenCalledTimes(1);
     window.dispatchEvent(new Event('afterprint'));

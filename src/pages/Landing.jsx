@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
-import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_NAME } from '@/lib/branding';
 import {
   ArrowRight,
   Check,
@@ -65,7 +65,7 @@ export default function Landing() {
     e.preventDefault();
     setDemoSubmitted(true);
   };
-  const demoEmail = `mailto:sales@caremetric.ai?subject=${encodeURIComponent('CareMetric Intel demo request')}&body=${encodeURIComponent(
+  const demoEmail = `mailto:sales@caremetric.ai?subject=${encodeURIComponent(`${CAREMETRIC_NAME} demo request`)}&body=${encodeURIComponent(
     `Name: ${demoForm.fullName}\nEmail: ${demoForm.workEmail}\nOrganization: ${demoForm.organization}\nCare setting: ${demoForm.businessLine}\nTerritory: ${demoForm.territory}\nNotes: ${demoForm.notes}`,
   )}`;
 
@@ -91,35 +91,26 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100 selection:bg-cyan-500 selection:text-white font-sans antialiased overflow-x-hidden">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-cyan-950 via-slate-900 to-teal-950 border-b border-cyan-500/20 px-4 py-2 text-center text-xs text-cyan-300">
-        <span className="inline-flex items-center gap-1.5 font-medium">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-400" aria-hidden="true" />
-          <span>New 2026 CMS & NPPES Intelligence Data Release is now live</span>
+      <div className="bg-slate-900 border-b border-slate-800 px-4 py-2 text-center text-xs text-slate-300">
+        <span className="inline-flex flex-wrap justify-center items-center gap-1.5 font-medium">
+          <span>Public healthcare data for informed market planning</span>
           <span className="hidden sm:inline text-slate-400">•</span>
           <a href="#pricing" className="underline hover:text-white font-semibold">
-            Explore 14-day free trial →
+            Explore proposed plans
           </a>
         </span>
       </div>
 
       {/* Navigation Header */}
-      <header className="sticky top-0 z-40 bg-[#07356f]/95 backdrop-blur-md border-b border-blue-400/20 shadow-lg shadow-black/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-20 py-3 flex items-center justify-between gap-4">
           {/* Logo & Brand */}
-          <Link to="/landing" className="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded-lg p-1">
+          <Link to="/landing" className="shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded-lg p-1">
             <img
               src={CAREMETRIC_LOGO_URL}
-              alt="CareMetric Healthcare Advisors"
-              className="w-28 sm:w-36 h-12 rounded-lg object-contain bg-white shadow-md group-hover:scale-105 transition-transform"
+              alt={CAREMETRIC_NAME}
+              className="w-40 sm:w-44 h-12 rounded-md object-contain bg-white text-slate-900"
             />
-            <div className="hidden md:flex flex-col">
-              <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1">
-                CareMetric <span className="text-cyan-400">Intel</span>
-              </span>
-              <span className="text-[10px] tracking-widest text-slate-400 uppercase font-semibold">
-                Provider Intelligence
-              </span>
-            </div>
           </Link>
 
           {/* Desktop Nav Links */}
@@ -129,16 +120,16 @@ export default function Landing() {
             <a href="#how-it-works" className="hover:text-cyan-400 transition-colors">How It Works</a>
             <a href="#comparison" className="hover:text-cyan-400 transition-colors">Comparison</a>
             <a href="#pricing" className="hover:text-cyan-400 transition-colors">Pricing</a>
-            <a href="#testimonials" className="hover:text-cyan-400 transition-colors">Reviews</a>
+            <a href="#testimonials" className="hover:text-cyan-400 transition-colors">Use Cases</a>
             <a href="#faq" className="hover:text-cyan-400 transition-colors">FAQ</a>
           </nav>
 
           {/* Action CTAs */}
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden xl:flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setDemoModalOpen(true)}
-              className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg border border-slate-700/80 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="px-3 py-2 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-lg border border-slate-700/80 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500"
             >
               Request Demo
             </button>
@@ -160,7 +151,7 @@ export default function Landing() {
                 </Link>
                 <Link
                   to="/login?signup=true"
-                  className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 rounded-lg shadow-md shadow-cyan-900/40 transition-all transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  className="px-3 py-2 text-xs font-medium text-white bg-cyan-700 hover:bg-cyan-800 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 >
                   Start Free Trial
                 </Link>
@@ -195,7 +186,7 @@ export default function Landing() {
               <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md hover:bg-slate-800 hover:text-cyan-400">How It Works</a>
               <a href="#comparison" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md hover:bg-slate-800 hover:text-cyan-400">Comparison</a>
               <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md hover:bg-slate-800 hover:text-cyan-400">Pricing</a>
-              <a href="#testimonials" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md hover:bg-slate-800 hover:text-cyan-400">Reviews</a>
+              <a href="#testimonials" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md hover:bg-slate-800 hover:text-cyan-400">Use Cases</a>
               <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md hover:bg-slate-800 hover:text-cyan-400">FAQ</a>
             </nav>
             <div className="pt-4 border-t border-slate-800 flex flex-col gap-2.5">
@@ -236,36 +227,30 @@ export default function Landing() {
 
       {/* Hero Section */}
       <section className="relative pt-12 pb-20 sm:pt-20 sm:pb-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        {/* Glow ambient effects */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-cyan-600/10 blur-[140px] pointer-events-none rounded-full" />
-        <div className="absolute top-1/3 left-1/4 w-[350px] h-[300px] bg-teal-500/10 blur-[120px] pointer-events-none rounded-full" />
-
         <div className="relative text-center max-w-4xl mx-auto">
           {/* Tagline Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 text-xs sm:text-sm font-medium mb-8 shadow-inner">
             <Sparkles className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-            <span>Healthcare Provider Intelligence & Referral Mapping</span>
+            <span>Provider intelligence for healthcare managers</span>
           </div>
 
           {/* Main Headline */}
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.15]">
-            Stop guessing which providers to target.{' '}
-            <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-blue-400 bg-clip-text text-transparent">
-              Turn CMS & NPPES data
-            </span>{' '}
-            into ranked leads, referral maps, and AI insights.
+            Understand your market.{' '}
+            <span className="text-cyan-300">Plan provider outreach</span>{' '}
+            with public healthcare data.
           </h1>
 
           {/* Subheadline */}
           <p className="mt-6 text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
-            CareMetric Intel arms home health, hospice, and post-acute business development teams with deep Medicare claims data, physician certification tracking, and automated AI outreach angles.
+            {CAREMETRIC_NAME} brings provider directories, aggregate Medicare utilization, and county-level context into one workspace for home health, hospice, and post-acute teams.
           </p>
 
           {/* Dual CTAs */}
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               to="/login?signup=true"
-              className="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-white bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 rounded-xl shadow-lg shadow-cyan-900/40 transition-all transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-500 flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-white bg-cyan-700 hover:bg-cyan-800 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 flex items-center justify-center gap-2"
             >
               <span>Start 14-Day Free Trial</span>
               <ArrowRight className="w-4 h-4" aria-hidden="true" />
@@ -289,15 +274,15 @@ export default function Landing() {
             </span>
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-              Instant territory setup
+              Territory-based planning
             </span>
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-              100% verified CMS & NPPES data
+              Public CMS & NPPES sources
             </span>
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-              Zero PHI & HIPAA compliant
+              Aggregate data, not patient records
             </span>
           </div>
         </div>
@@ -306,17 +291,16 @@ export default function Landing() {
         <div className="mt-14 relative max-w-5xl mx-auto">
           <div className="relative rounded-2xl border border-slate-800 bg-[#0e1626]/90 p-4 sm:p-6 shadow-2xl backdrop-blur-xl">
             {/* Window Chrome Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-800 mb-6">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-red-500/80" />
                 <span className="w-3 h-3 rounded-full bg-amber-500/80" />
                 <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
-                <span className="text-xs text-slate-400 ml-2 font-mono">CareMetric Intel • Provider Intelligence & Lead Scoring</span>
+                <span className="text-xs text-slate-400 ml-2">{CAREMETRIC_NAME} • Workspace preview</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-medium bg-emerald-950/70 border border-emerald-500/30 text-emerald-300">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Live Sync
+                  Illustrative sample — not live data
                 </span>
               </div>
             </div>
@@ -325,14 +309,14 @@ export default function Landing() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Left Column: Doctor Profile & Score */}
               <div className="lg:col-span-7 bg-[#131d31] rounded-xl p-5 border border-slate-700/60">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex items-start gap-3.5">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-600 to-teal-700 flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0">
-                      DV
+                    <div className="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                      EP
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-lg font-bold text-white">Dr. Marcus Vance, MD</h2>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-lg font-bold text-white">Example physician profile</h2>
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-950 border border-cyan-500/30 text-cyan-300 uppercase tracking-wide">
                           Individual
                         </span>
@@ -340,7 +324,7 @@ export default function Landing() {
                       <p className="text-xs text-slate-300 font-medium">Cardiovascular Disease & Internal Medicine</p>
                       <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
                         <MapPin className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
-                        <span>Erie, PA 16502 (Erie County) • NPI: 1487293810</span>
+                        <span>Example county and practice location</span>
                       </p>
                     </div>
                   </div>
@@ -355,21 +339,21 @@ export default function Landing() {
                 </div>
 
                 {/* Key Metrics Grid */}
-                <div className="mt-5 grid grid-cols-3 gap-2.5 pt-4 border-t border-slate-700/60">
+                <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-4 border-t border-slate-700/60">
                   <div className="bg-[#0b1220] p-2.5 rounded-lg border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Home Health Certs</span>
+                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Cert. beneficiaries</span>
                     <span className="text-base font-bold text-white">142</span>
-                    <span className="text-[10px] text-emerald-400 block">G0180/G0179 Top 5%</span>
+                    <span className="text-[10px] text-slate-400 block">G0180/G0179 sample</span>
                   </div>
                   <div className="bg-[#0b1220] p-2.5 rounded-lg border border-slate-800">
                     <span className="text-[10px] text-slate-400 block uppercase font-medium">Care Plan Oversight</span>
                     <span className="text-base font-bold text-white">38 Benes</span>
-                    <span className="text-[10px] text-cyan-400 block">Active Chronic Mgmt</span>
+                    <span className="text-[10px] text-slate-400 block">Illustrative total</span>
                   </div>
                   <div className="bg-[#0b1220] p-2.5 rounded-lg border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Top Hospital Source</span>
-                    <span className="text-base font-bold text-white">St. Vincent</span>
-                    <span className="text-[10px] text-slate-400 block">68% Patient Share</span>
+                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Specialty</span>
+                    <span className="text-base font-bold text-white">Cardiology</span>
+                    <span className="text-[10px] text-slate-400 block">Taxonomy context</span>
                   </div>
                 </div>
 
@@ -380,7 +364,7 @@ export default function Landing() {
                     <span>AI Suggested Outreach Angle</span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    "Dr. Vance manages high cardiopulmonary patient volume with a 24% 30-day post-discharge readmission risk. Highlight your agency’s specialized congestive heart failure (CHF) in-home clinical pathways and 48-hour post-acute transition protocols."
+                    Prepare a discussion about your agency’s cardiac care capabilities and service area. Review the source data and confirm current practice needs before contacting the provider.
                   </p>
                 </div>
               </div>
@@ -388,28 +372,29 @@ export default function Landing() {
               {/* Right Column: Mini Referral Network & Quick Actions */}
               <div className="lg:col-span-5 flex flex-col justify-between bg-[#131d31] rounded-xl p-5 border border-slate-700/60">
                 <div>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                     <span className="text-xs font-semibold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                       <Network className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-                      Referral Network & Leakage
+                      Shared-patient patterns
                     </span>
                     <span className="text-[10px] text-cyan-400 font-medium">CMS Shared Patients</span>
                   </div>
 
                   {/* Referral Flow Nodes */}
                   <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between p-2 rounded bg-[#0b1220] border border-slate-800">
-                      <span className="text-slate-300 font-medium">St. Vincent Hospital</span>
-                      <span className="text-emerald-400 font-semibold font-mono">184 Transfers</span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 p-2 rounded bg-[#0b1220] border border-slate-800">
+                      <span className="text-slate-300 font-medium">Example hospital</span>
+                      <span className="text-emerald-400 font-semibold font-mono">184 shared patients</span>
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded bg-[#0b1220] border border-slate-800">
-                      <span className="text-slate-300 font-medium">UPMC Hamot Health</span>
-                      <span className="text-cyan-400 font-semibold font-mono">72 Transfers</span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 p-2 rounded bg-[#0b1220] border border-slate-800">
+                      <span className="text-slate-300 font-medium">Example health system</span>
+                      <span className="text-cyan-400 font-semibold font-mono">72 shared patients</span>
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded bg-[#0b1220] border border-slate-800">
-                      <span className="text-slate-300 font-medium">Local SNF Discharge Pool</span>
-                      <span className="text-amber-400 font-semibold font-mono">41 Shared Benes</span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 p-2 rounded bg-[#0b1220] border border-slate-800">
+                      <span className="text-slate-300 font-medium">Example nursing facility</span>
+                      <span className="text-amber-400 font-semibold font-mono">41 shared patients</span>
                     </div>
+                    <p className="mt-3 text-xs text-slate-400 leading-relaxed">Public aggregate shared-patient patterns are not confirmed referrals or transfers. Sample counts and scores are illustrative.</p>
                   </div>
                 </div>
 
@@ -444,20 +429,20 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="text-3xl sm:text-4xl font-extrabold text-cyan-400">6.2M+</div>
-              <p className="mt-1 text-sm text-slate-400 font-medium">Verified Providers (NPPES)</p>
+              <h2 className="text-lg font-semibold text-slate-200">Provider research</h2>
+              <p className="mt-1 text-sm text-slate-400">NPPES practice and specialty records</p>
             </div>
             <div>
-              <div className="text-3xl sm:text-4xl font-extrabold text-teal-400">46M+</div>
-              <p className="mt-1 text-sm text-slate-400 font-medium">Medicare Facility Claims</p>
+              <h2 className="text-lg font-semibold text-slate-200">Utilization context</h2>
+              <p className="mt-1 text-sm text-slate-400">Public aggregate Medicare summaries</p>
             </div>
             <div>
-              <div className="text-3xl sm:text-4xl font-extrabold text-white">3,140+</div>
-              <p className="mt-1 text-sm text-slate-400 font-medium">US Counties & ACS Demand</p>
+              <h2 className="text-lg font-semibold text-slate-200">Territory planning</h2>
+              <p className="mt-1 text-sm text-slate-400">County geography and ACS demographics</p>
             </div>
             <div>
-              <div className="text-3xl sm:text-4xl font-extrabold text-emerald-400">4.2x</div>
-              <p className="mt-1 text-sm text-slate-400 font-medium">Faster Lead Prioritization</p>
+              <h2 className="text-lg font-semibold text-slate-200">Team coordination</h2>
+              <p className="mt-1 text-sm text-slate-400">Shared lists and outreach preparation</p>
             </div>
           </div>
         </div>
@@ -468,10 +453,10 @@ export default function Landing() {
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">Purpose-Built Intelligence</span>
           <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white">
-            Designed for healthcare growth & business development leaders
+            Designed for healthcare managers and provider relations teams
           </h2>
           <p className="mt-4 text-slate-300 text-base sm:text-lg">
-            Generic B2B contact lists fail in healthcare. CareMetric Intel provides clinical claims context, cert tracking, and referral pathways tailored to your specific care setting.
+            {CAREMETRIC_NAME} supports research and planning with provider records, public utilization summaries, and geographic context relevant to your care setting.
           </p>
         </div>
 
@@ -484,13 +469,13 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Home Health Agencies</h3>
               <p className="text-sm text-slate-300 leading-relaxed mb-4">
-                Stop visiting physicians who never sign home health orders. Find doctors with high G0180/G0179 certification volumes and track hospital discharge destinations.
+                Review publicly reported G0180/G0179 certification activity alongside provider specialties and locations to prepare a focused outreach list.
               </p>
             </div>
             <ul className="space-y-2 text-xs text-slate-400 border-t border-slate-800 pt-4">
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-cyan-400 shrink-0" aria-hidden="true" />
-                <span>Physician certification claim counts</span>
+                <span>Reported certification beneficiaries</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-cyan-400 shrink-0" aria-hidden="true" />
@@ -498,7 +483,7 @@ export default function Landing() {
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-cyan-400 shrink-0" aria-hidden="true" />
-                <span>Hospital discharge source mapping</span>
+                <span>County hospital service area context</span>
               </li>
             </ul>
           </div>
@@ -511,21 +496,21 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Hospice & Palliative Care</h3>
               <p className="text-sm text-slate-300 leading-relaxed mb-4">
-                Identify oncologists, pulmonologists, and geriatric specialists managing advanced illness patients. Build compliant clinical referral relationships earlier.
+                Research oncology, pulmonary, and geriatric practices by specialty and location. Prepare provider discussions without inferring individual patient needs.
               </p>
             </div>
             <ul className="space-y-2 text-xs text-slate-400 border-t border-slate-800 pt-4">
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-teal-400 shrink-0" aria-hidden="true" />
-                <span>High-acuity specialty targeting</span>
+                <span>Specialty-based provider research</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-teal-400 shrink-0" aria-hidden="true" />
-                <span>County chronic disease mortality trends</span>
+                <span>County population and age profiles</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-teal-400 shrink-0" aria-hidden="true" />
-                <span>Long-term care & hospital linkage</span>
+                <span>Local facility context</span>
               </li>
             </ul>
           </div>
@@ -538,21 +523,21 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Skilled Nursing & Rehab (SNF/IRF)</h3>
               <p className="text-sm text-slate-300 leading-relaxed mb-4">
-                Analyze acute care discharge patterns to protect census. Detect referral leakage from key health systems to competing facilities in your county.
+                Compare local facilities, Medicare utilization, and post-discharge spending by setting. Use market context to support service-area planning.
               </p>
             </div>
             <ul className="space-y-2 text-xs text-slate-400 border-t border-slate-800 pt-4">
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
-                <span>Discharge setting mix by county</span>
+                <span>Post-discharge spending mix by county</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
-                <span>Hospital-to-facility patient flow</span>
+                <span>Aggregate shared-patient patterns</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
-                <span>Local bed utilization & saturation</span>
+                <span>Local facility supply and saturation</span>
               </li>
             </ul>
           </div>
@@ -563,9 +548,9 @@ export default function Landing() {
               <div className="w-12 h-12 rounded-xl bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-5">
                 <Users className="w-6 h-6" aria-hidden="true" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">BD, Sales & Marketing Teams</h3>
+              <h3 className="text-xl font-bold text-white mb-2">Provider Relations & Outreach Teams</h3>
               <p className="text-sm text-slate-300 leading-relaxed mb-4">
-                Equip liaisons and sales reps with verified provider lists, collaborative call sheets, and AI-crafted clinical value propositions that get meetings booked.
+                Coordinate provider lists, call sheets, and relationship notes. Use AI-assisted drafts as a starting point for staff-reviewed outreach.
               </p>
             </div>
             <ul className="space-y-2 text-xs text-slate-400 border-t border-slate-800 pt-4">
@@ -575,7 +560,7 @@ export default function Landing() {
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-cyan-400 shrink-0" aria-hidden="true" />
-                <span>AI clinical pitch angle generator</span>
+                <span>AI-assisted discussion preparation</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-cyan-400 shrink-0" aria-hidden="true" />
@@ -592,10 +577,10 @@ export default function Landing() {
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">End-to-End Workflow</span>
             <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white">
-              How CareMetric Intel turns raw healthcare datasets into growth
+              From public data to a coordinated outreach plan
             </h2>
             <p className="mt-4 text-slate-300 text-base sm:text-lg">
-              From continuous CMS data ingestion to closed referral partnerships in four simple steps.
+              A practical workflow for researching providers, organizing priorities, and preparing your team.
             </p>
           </div>
 
@@ -605,9 +590,9 @@ export default function Landing() {
               <div className="w-10 h-10 rounded-lg bg-cyan-950 text-cyan-400 font-bold flex items-center justify-center text-sm border border-cyan-500/30 mb-5">
                 01
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Ingest Fresh Data</h3>
+              <h3 className="text-lg font-bold text-white mb-2">Review Source Data</h3>
               <p className="text-sm text-slate-300 leading-relaxed">
-                Automated background crawlers ingest weekly NPPES updates, CMS Care Compare quality files, Order & Referring catalogs, and Census ACS demographics.
+                Explore imported NPPES, CMS, and Census datasets. Check release years and import status: source publication and successful imports determine freshness.
               </p>
             </div>
 
@@ -618,7 +603,7 @@ export default function Landing() {
               </div>
               <h3 className="text-lg font-bold text-white mb-2">Score & Prioritize</h3>
               <p className="text-sm text-slate-300 leading-relaxed">
-                Our multi-factor scoring engine ranks clinicians based on verified certification volume, specialty taxonomy alignment, patient acuity, and your target geography.
+                Use configured scoring rules to organize provider research. Scores support prioritization; they do not predict referrals or patient outcomes, and unscored records remain visible.
               </p>
             </div>
 
@@ -629,7 +614,7 @@ export default function Landing() {
               </div>
               <h3 className="text-lg font-bold text-white mb-2">Build Target Lists</h3>
               <p className="text-sm text-slate-300 leading-relaxed">
-                Filter millions of records down to high-yield target lists. Segment by county or hospital affiliation, assign to field reps, and organize call sheets.
+                Filter providers by specialty and location, save relevant records, and organize team lists and call sheets.
               </p>
             </div>
 
@@ -640,7 +625,7 @@ export default function Landing() {
               </div>
               <h3 className="text-lg font-bold text-white mb-2">Engage & Outreach</h3>
               <p className="text-sm text-slate-300 leading-relaxed">
-                Generate clinical pitch angles with the built-in AI Assistant. Launch multi-touch outreach sequences and track relationship milestones.
+                Prepare discussion points and outreach drafts with AI assistance. Review accuracy and appropriateness before use, then record relationship notes.
               </p>
             </div>
           </div>
@@ -652,10 +637,10 @@ export default function Landing() {
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">Complete Platform Intelligence</span>
           <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white">
-            Everything your business development team needs to dominate your market
+            A shared workspace for provider research and market planning
           </h2>
           <p className="mt-4 text-slate-300 text-base sm:text-lg">
-            CareMetric Intel combines deep healthcare registry files, interactive network graphs, and intelligent sales tooling in one unified workspace.
+            {CAREMETRIC_NAME} combines public provider records, market summaries, and team planning tools, with source context to guide interpretation.
           </p>
         </div>
 
@@ -667,10 +652,10 @@ export default function Landing() {
             </div>
             <h3 className="text-xl font-bold text-white mb-3">Provider & Facility 360°</h3>
             <p className="text-sm text-slate-300 leading-relaxed mb-4">
-              Access comprehensive dossiers for over 6 million clinicians and facilities. Inspect primary practice vs. mailing addresses, NPI taxonomies, state licenses, and Medicare enrollment status.
+              Review available practice and mailing addresses, specialty taxonomies, license fields, and Medicare enrollment information. Public records may be incomplete or lag current practice details.
             </p>
             <span className="text-xs font-semibold text-cyan-400 flex items-center gap-1">
-              Verified NPPES & CMS Data →
+              Public NPPES & CMS Records →
             </span>
           </div>
 
@@ -679,9 +664,9 @@ export default function Landing() {
             <div className="w-12 h-12 rounded-xl bg-teal-950/80 border border-teal-500/30 flex items-center justify-center text-teal-400 mb-6">
               <Network className="w-6 h-6" aria-hidden="true" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-3">Referral Network Mapping</h3>
+            <h3 className="text-xl font-bold text-white mb-3">Shared-Patient Network Mapping</h3>
             <p className="text-sm text-slate-300 leading-relaxed mb-4">
-              Uncover who actually influences post-acute decisions. Directional network graphs show shared-patient pathways between hospitals, physicians, and PAC providers with leakage alerts.
+              Explore public aggregate shared-patient patterns between providers. These patterns do not establish referral direction, confirmed transfers, or the reason providers share patients.
             </p>
             <span className="text-xs font-semibold text-teal-400 flex items-center gap-1">
               Shared-Patient Volume Analysis →
@@ -693,9 +678,9 @@ export default function Landing() {
             <div className="w-12 h-12 rounded-xl bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-6">
               <MapPin className="w-6 h-6" aria-hidden="true" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-3">County & Territory Intel</h3>
+            <h3 className="text-xl font-bold text-white mb-3">County & Territory Intelligence</h3>
             <p className="text-sm text-slate-300 leading-relaxed mb-4">
-              Evaluate regional post-acute market saturation, Medicare FFS beneficiary density, and Census demographic demand projections across all 3,140+ US counties.
+              Compare available post-acute market saturation, Medicare FFS utilization, and Census demographics within your plan’s territory. Demographic estimates provide context, not forecasts of service demand.
             </p>
             <span className="text-xs font-semibold text-cyan-400 flex items-center gap-1">
               Bundled Census 2020 & ACS 5-Year Data →
@@ -709,10 +694,10 @@ export default function Landing() {
             </div>
             <h3 className="text-xl font-bold text-white mb-3">Lead Scoring & List Builder</h3>
             <p className="text-sm text-slate-300 leading-relaxed mb-4">
-              Never waste time on cold outreach again. Configurable algorithms rank providers by cert volume, geographic proximity, and specialty alignment into organized team lead lists.
+              Apply configured scoring rules and organize providers into team lead lists. Review the underlying records and rule settings before deciding outreach priorities.
             </p>
             <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
-              Automated Weekly Lead Refresh →
+              Configurable Provider Prioritization →
             </span>
           </div>
 
@@ -723,10 +708,10 @@ export default function Landing() {
             </div>
             <h3 className="text-xl font-bold text-white mb-3">Healthcare AI Assistant</h3>
             <p className="text-sm text-slate-300 leading-relaxed mb-4">
-              Ask natural-language questions about your market, draft clinician-specific outreach angles, and generate competitive intelligence briefs in seconds.
+              Ask questions about available market data and prepare outreach drafts. Check AI-generated summaries against their sources before using them in decisions or communications.
             </p>
             <span className="text-xs font-semibold text-cyan-400 flex items-center gap-1">
-              Tuned for Healthcare BD Workflows →
+              Staff-Reviewed Research & Drafts →
             </span>
           </div>
 
@@ -737,7 +722,7 @@ export default function Landing() {
             </div>
             <h3 className="text-xl font-bold text-white mb-3">Call Sheets & Campaigns</h3>
             <p className="text-sm text-slate-300 leading-relaxed mb-4">
-              Equip your field reps with daily call sheets, log meeting notes, launch multi-touch email sequences, and track partner conversion pipelines from first touch to active referrer.
+              Prepare call sheets, log meeting notes, and coordinate outreach campaigns. Keep patient information out of notes and drafts, and follow your organization’s communications policies.
             </p>
             <span className="text-xs font-semibold text-teal-400 flex items-center gap-1">
               Collaborative CRM & Outreach Tools →
@@ -752,10 +737,10 @@ export default function Landing() {
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">Market Comparison</span>
             <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white">
-              Why healthcare teams switch from legacy vendors
+              Questions to ask when evaluating healthcare intelligence
             </h2>
             <p className="mt-4 text-slate-300 text-base sm:text-lg">
-              Enterprise platforms charge tens of thousands for rigid contracts and generic data. CareMetric Intel delivers modern, specialized healthcare intelligence at fair, transparent pricing.
+              Compare sources, interpretation, workflow fit, and commercial terms. Confirm current capabilities and pricing directly with each vendor rather than relying on assumed comparisons.
             </p>
           </div>
 
@@ -764,69 +749,55 @@ export default function Landing() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 bg-[#131d31]">
-                  <th scope="col" className="p-4 sm:p-5 text-sm font-semibold text-slate-300">Feature / Capability</th>
+                  <th scope="col" className="p-4 sm:p-5 text-sm font-semibold text-slate-300">Evaluation area</th>
                   <th scope="col" className="p-4 sm:p-5 text-sm font-bold text-cyan-400 bg-cyan-950/30 border-x border-cyan-500/20">
-                    CareMetric Intel
+                    {CAREMETRIC_NAME}
                   </th>
-                  <th scope="col" className="p-4 sm:p-5 text-sm font-medium text-slate-400">Definitive Healthcare</th>
-                  <th scope="col" className="p-4 sm:p-5 text-sm font-medium text-slate-400">ZoomInfo</th>
-                  <th scope="col" className="p-4 sm:p-5 text-sm font-medium text-slate-400">CarePrecise / CSV Dumps</th>
+                  <th scope="col" className="p-4 sm:p-5 text-sm font-medium text-slate-400">What to confirm</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80 text-sm">
                 <tr>
-                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Annual Pricing & Contracts</th>
+                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Pricing & terms</th>
                   <td className="p-4 sm:p-5 font-bold text-cyan-300 bg-cyan-950/20 border-x border-cyan-500/20">
-                    From $199/mo (Cancel anytime)
+                    Proposed packages below; confirm with sales
                   </td>
-                  <td className="p-4 sm:p-5 text-slate-400">$30,000–$50,000+/year lock-in</td>
-                  <td className="p-4 sm:p-5 text-slate-400">$15,000+/year minimum</td>
-                  <td className="p-4 sm:p-5 text-slate-400">$669–$1,259 one-time per file</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Territory, seats, quotas, renewal, and cancellation terms</td>
                 </tr>
                 <tr>
                   <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Physician Home Health Certs (G0180/G0179)</th>
                   <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">
-                    ✓ Full claim & bene counts
+                    Public aggregate certification beneficiaries
                   </td>
-                  <td className="p-4 sm:p-5 text-slate-400">Add-on module required ($$)</td>
-                  <td className="p-4 sm:p-5 text-red-400">✗ Not available</td>
-                  <td className="p-4 sm:p-5 text-slate-400">Raw claim dumps (unparsed)</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Release year, suppression rules, and availability of completed imports</td>
                 </tr>
                 <tr>
-                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Interactive Referral Network Graphs</th>
+                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Network interpretation</th>
                   <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">
-                    ✓ Built-in directional graphs
+                    Aggregate shared-patient graphs
                   </td>
-                  <td className="p-4 sm:p-5 text-slate-400">Limited tabular reports</td>
-                  <td className="p-4 sm:p-5 text-red-400">✗ Not available</td>
-                  <td className="p-4 sm:p-5 text-red-400">✗ No software interface</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Whether relationships are inferred patterns or confirmed referrals</td>
                 </tr>
                 <tr>
-                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">AI Clinical Outreach Angles</th>
+                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">AI-assisted research</th>
                   <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">
-                    ✓ Built-in Healthcare AI Assistant
+                    Research summaries and outreach drafts
                   </td>
-                  <td className="p-4 sm:p-5 text-red-400">✗ Not available</td>
-                  <td className="p-4 sm:p-5 text-slate-400">Generic sales copilot</td>
-                  <td className="p-4 sm:p-5 text-red-400">✗ No software interface</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Source grounding, access controls, and staff review requirements</td>
                 </tr>
                 <tr>
                   <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Update Frequency</th>
                   <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">
-                    ✓ Continuous weekly sync
+                    Source releases and import status tracked in the platform
                   </td>
-                  <td className="p-4 sm:p-5 text-slate-400">Quarterly releases</td>
-                  <td className="p-4 sm:p-5 text-slate-400">Varies by corporate data</td>
-                  <td className="p-4 sm:p-5 text-amber-400">Static (outdated immediately)</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Published data period versus the date a file was imported</td>
                 </tr>
                 <tr>
                   <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">User Seats & Collaboration</th>
                   <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">
-                    ✓ Multi-seat call sheets & lists
+                    Shared lists and call sheets
                   </td>
-                  <td className="p-4 sm:p-5 text-slate-400">High per-seat pricing</td>
-                  <td className="p-4 sm:p-5 text-slate-400">High per-credit model</td>
-                  <td className="p-4 sm:p-5 text-slate-400">Raw spreadsheets only</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Included seats, role permissions, and export limits</td>
                 </tr>
               </tbody>
             </table>
@@ -839,7 +810,7 @@ export default function Landing() {
         <div className="text-center max-w-3xl mx-auto mb-14">
           <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">Proposed Packages & Pricing</span>
           <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white">
-            High-yield healthcare intelligence without enterprise extortion
+            Plan options for your team and service area
           </h2>
           <p className="mt-4 text-slate-300 text-base sm:text-lg">
             Explore the proposed packages below for your agency. These packages and annual discounts are not available through self-service checkout yet. Contact sales to confirm pricing; current subscription options appear in Billing after signup.
@@ -905,7 +876,7 @@ export default function Landing() {
                 </div>
                 <div className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>Full access to 6.2M+ provider directory</span>
+                  <span>Provider directory access</span>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" aria-hidden="true" />
@@ -933,9 +904,9 @@ export default function Landing() {
           </div>
 
           {/* Tier 2: Professional (Featured) */}
-          <div className="bg-gradient-to-b from-[#132238] to-[#0f172a] rounded-3xl p-8 border-2 border-cyan-500/80 shadow-2xl shadow-cyan-950/60 flex flex-col justify-between relative transform lg:-translate-y-2">
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-cyan-500 to-teal-500 text-white uppercase tracking-wider shadow">
-              Most Popular
+          <div className="bg-[#0f172a] rounded-3xl p-8 border border-cyan-500/40 flex flex-col justify-between relative">
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-semibold bg-slate-800 border border-slate-700 text-slate-200">
+              Regional teams
             </div>
 
             <div>
@@ -944,7 +915,7 @@ export default function Landing() {
                 <span className="text-xs text-cyan-300 font-medium">Growth teams</span>
               </div>
               <p className="text-xs text-slate-300 mb-6 min-h-[36px]">
-                Full state or multi-county intelligence with physician cert tracking, referral networks, and AI outreach angles.
+                Proposed state or multi-county intelligence with certification summaries, shared-patient networks, and AI-assisted research.
               </p>
 
               <div className="mb-6">
@@ -972,7 +943,7 @@ export default function Landing() {
                 </div>
                 <div className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span><strong>Referral Network Graphs</strong> & hospital source mapping</span>
+                  <span><strong>Shared-Patient Network Graphs</strong> & county hospital context</span>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" aria-hidden="true" />
@@ -992,7 +963,7 @@ export default function Landing() {
             <div className="mt-8">
               <Link
                 to="/login?signup=true"
-                className="w-full py-3.5 px-4 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 shadow-lg shadow-cyan-900/50 block text-center transition-all transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                className="w-full py-3.5 px-4 rounded-xl text-sm font-semibold text-white bg-cyan-700 hover:bg-cyan-800 block text-center transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500"
               >
                 Start 14-Day Free Trial
               </Link>
@@ -1007,7 +978,7 @@ export default function Landing() {
                 <span className="text-xs text-slate-400 font-medium">Regional & National</span>
               </div>
               <p className="text-xs text-slate-400 mb-6 min-h-[36px]">
-                National territory coverage, custom scoring algorithms, REST API access, and dedicated account management.
+                Discuss national territory needs, scoring configuration, integration requirements, and support arrangements with sales. Scope and availability require confirmation.
               </p>
 
               <div className="mb-6">
@@ -1030,7 +1001,7 @@ export default function Landing() {
                 </div>
                 <div className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span><strong>Full REST API & CRM Connectors</strong> (Salesforce, HubSpot)</span>
+                  <span><strong>Integration requirements review</strong></span>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" aria-hidden="true" />
@@ -1038,7 +1009,7 @@ export default function Landing() {
                 </div>
                 <div className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>White-label exports & automated scheduled briefs</span>
+                  <span>Attributed exports & scheduled reporting requirements</span>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" aria-hidden="true" />
@@ -1060,64 +1031,64 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Testimonials & Social Proof */}
+      {/* Illustrative Use Cases */}
       <section id="testimonials" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 bg-[#0b101d] border-t border-slate-800">
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">Customer Validation</span>
+            <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">Illustrative Use Cases</span>
             <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white">
-              Trusted by healthcare business development leaders
+              Practical applications for healthcare teams
             </h2>
             <p className="mt-4 text-slate-300 text-base sm:text-lg">
-              Here is what operators in home health, hospice, and skilled nursing say about CareMetric Intel.
+              These examples describe potential workflows, not customer testimonials or measured performance results.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Review 1 */}
+            {/* Use Case 1 */}
             <div className="bg-[#0f172a] rounded-2xl p-7 border border-slate-800 flex flex-col justify-between">
-              <p className="text-sm text-slate-300 leading-relaxed italic mb-6">
-                "Before CareMetric, our liaisons wasted half their time knocking on offices of doctors who hadn't certified a home health patient in years. Now we know the exact G0180 cert volume before setting foot in the clinic. Our conversion rate jumped 40% in quarter one."
+              <p className="text-sm text-slate-300 leading-relaxed mb-6">
+                Review reported certification activity and practice locations before preparing a home health outreach list. Beneficiary totals may count a person more than once across codes or care settings; a missing or suppressed row is not proof of no activity.
               </p>
               <div className="flex items-center gap-3 pt-4 border-t border-slate-800">
                 <div className="w-10 h-10 rounded-full bg-cyan-900/60 border border-cyan-500/30 flex items-center justify-center text-cyan-300 font-bold text-sm">
-                  SJ
+                  01
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Sarah Jenkins</h3>
-                  <p className="text-xs text-slate-400">VP of Business Development, Keystone Health Network</p>
+                  <h3 className="text-sm font-bold text-white">Home health outreach planning</h3>
+                  <p className="text-xs text-slate-400">Illustrative workflow</p>
                 </div>
               </div>
             </div>
 
-            {/* Review 2 */}
+            {/* Use Case 2 */}
             <div className="bg-[#0f172a] rounded-2xl p-7 border border-slate-800 flex flex-col justify-between">
-              <p className="text-sm text-slate-300 leading-relaxed italic mb-6">
-                "We were paying $38,000 annually for Definitive Healthcare and barely using 10% of it. CareMetric gave our 6-person BD team everything we actually need—especially the hospital discharge destination mapping—at a fraction of the cost."
+              <p className="text-sm text-slate-300 leading-relaxed mb-6">
+                Compare county demographics, facility supply, and Medicare utilization when assessing a service area. Review each dataset’s reporting period and coverage before drawing conclusions about local demand.
               </p>
               <div className="flex items-center gap-3 pt-4 border-t border-slate-800">
                 <div className="w-10 h-10 rounded-full bg-teal-900/60 border border-teal-500/30 flex items-center justify-center text-teal-300 font-bold text-sm">
-                  DR
+                  02
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">David Rodriguez</h3>
-                  <p className="text-xs text-slate-400">Chief Growth Officer, Horizon Post-Acute Care</p>
+                  <h3 className="text-sm font-bold text-white">Service-area assessment</h3>
+                  <p className="text-xs text-slate-400">Illustrative workflow</p>
                 </div>
               </div>
             </div>
 
-            {/* Review 3 */}
+            {/* Use Case 3 */}
             <div className="bg-[#0f172a] rounded-2xl p-7 border border-slate-800 flex flex-col justify-between">
-              <p className="text-sm text-slate-300 leading-relaxed italic mb-6">
-                "The AI outreach angles are game-changers. Instead of sending generic brochures, our liaisons walk into oncology and pulmonology practices with tailored clinical discussion points rooted in real patient readmission data."
+              <p className="text-sm text-slate-300 leading-relaxed mb-6">
+                Organize shared provider lists and prepare discussion points relevant to your organization’s services. Staff review AI-assisted drafts and confirm practice details before contacting providers.
               </p>
               <div className="flex items-center gap-3 pt-4 border-t border-slate-800">
                 <div className="w-10 h-10 rounded-full bg-emerald-900/60 border border-emerald-500/30 flex items-center justify-center text-emerald-300 font-bold text-sm">
-                  ER
+                  03
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Elena Rostova</h3>
-                  <p className="text-xs text-slate-400">Director of Provider Relations, St. Jude Hospice Group</p>
+                  <h3 className="text-sm font-bold text-white">Provider relations preparation</h3>
+                  <p className="text-xs text-slate-400">Illustrative workflow</p>
                 </div>
               </div>
             </div>
@@ -1138,28 +1109,28 @@ export default function Landing() {
         <div className="space-y-4">
           {[
             {
-              q: 'Where does CareMetric Intel get its healthcare provider data?',
-              a: 'CareMetric Intel synthesizes official, publicly reported healthcare datasets including the National Plan and Provider Enumeration System (NPPES), Centers for Medicare & Medicaid Services (CMS) Provider of Services, Medicare Physician & Other Practitioners Utilization files, Order & Referring catalogs, and U.S. Census Bureau ACS demographic tables.',
+              q: `Where does ${CAREMETRIC_NAME} get its healthcare provider data?`,
+              a: `${CAREMETRIC_NAME} uses publicly reported NPPES provider records, CMS facility and aggregate Medicare utilization releases, Order & Referring enrollment catalogs, and U.S. Census Bureau ACS demographic tables. Coverage and reporting periods vary by dataset.`,
             },
             {
               q: 'How frequently is the database updated?',
-              a: 'NPPES files are updated weekly and monthly to capture newly registered clinicians and practice location changes. CMS physician certification and post-acute utilization datasets are continuously synchronized against the latest CMS catalog releases.',
+              a: 'NPPES publishes weekly and monthly files; CMS datasets follow their own release schedules. Platform freshness depends on completed imports and configured maintenance. Check source release years and import status in the platform; a recent import does not mean the underlying data describes current activity.',
             },
             {
-              q: 'Does CareMetric store or process any Protected Health Information (PHI)?',
-              a: 'No. CareMetric Intel strictly processes aggregate public provider records, facility profiles, and de-identified Medicare billing summaries. We never handle patient-level clinical records, EHR data, or Protected Health Information (PHI). The platform is 100% compliant with HIPAA public intelligence standards.',
+              q: 'Does the public intelligence data include patient records?',
+              a: 'The intelligence sources are public provider records, facility profiles, and aggregate Medicare summaries, not patient-level clinical records or EHR data. Do not enter PHI in notes, uploads, or AI prompts. Public data use does not establish HIPAA compliance for your organization; follow your privacy and communications policies.',
             },
             {
-              q: 'How does CareMetric differ from Definitive Healthcare or ZoomInfo?',
-              a: 'Definitive Healthcare charges upwards of $30,000 to $50,000+ per year on strict multi-year contracts with heavy enterprise bloat. ZoomInfo is a horizontal sales tool with no concept of physician Medicare certs (G0180) or post-acute referral leakage. CareMetric Intel is built specifically for post-acute BD teams with transparent, accessible pricing starting at $199/mo.',
+              q: 'Do shared-patient patterns prove that a referral occurred?',
+              a: 'No. Public aggregate shared-patient patterns show that providers served overlapping groups of beneficiaries. They do not confirm individual referrals, transfers, referral direction, or causation. Use them as research context and validate relationships independently.',
             },
             {
               q: 'What is included in the 14-day free trial?',
-              a: 'Your free trial includes full access to your selected territory, provider and facility search, lead scoring algorithms, list management, and the AI Assistant. No credit card is required to begin, and you can invite team members to collaborate immediately.',
+              a: 'Signup starts a trial without a credit card. Account approval, territory selection, seat limits, and usage quotas may apply. Review the current account and Billing settings for available features; the proposed packages on this page are not self-service checkout offers.',
             },
             {
               q: 'Can I add additional counties or change my territory later?',
-              a: 'Yes. You can expand from a local County Pack to a multi-county or full-state plan at any time directly through the Billing settings inside your account.',
+              a: 'Review current plan and territory options in Billing, or contact sales for requirements beyond those options. Territory access depends on your plan and selected places; the proposed packages here are subject to confirmation.',
             },
           ].map((item, idx) => (
             <div key={idx} className="rounded-xl border border-slate-800 bg-[#0f172a] overflow-hidden">
@@ -1189,10 +1160,10 @@ export default function Landing() {
 
       {/* Bottom CTA Banner */}
       <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="relative rounded-3xl bg-gradient-to-r from-cyan-950 via-[#0e172a] to-teal-950 p-8 sm:p-14 border border-cyan-500/30 overflow-hidden text-center shadow-2xl">
+        <div className="relative rounded-3xl bg-slate-900 p-8 sm:p-14 border border-slate-700 overflow-hidden text-center">
           <div className="relative z-10 max-w-3xl mx-auto">
             <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-              Ready to transform your healthcare business development?
+              Explore a more informed approach to provider outreach
             </h2>
             <p className="mt-4 text-base sm:text-lg text-slate-300 leading-relaxed">
               Start your 14-day free trial or schedule a 15-minute territory walkthrough with our healthcare intelligence specialists.
@@ -1200,7 +1171,7 @@ export default function Landing() {
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 to="/login?signup=true"
-                className="w-full sm:w-auto px-8 py-3.5 text-base font-bold text-white bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 rounded-xl shadow-lg shadow-cyan-900/50 transition-all transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                className="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-white bg-cyan-700 hover:bg-cyan-800 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500"
               >
                 Start Free Trial
               </Link>
@@ -1225,15 +1196,12 @@ export default function Landing() {
               <div className="flex items-center gap-3">
                 <img
                   src={CAREMETRIC_LOGO_URL}
-                  alt="CareMetric Healthcare Advisors"
-                  className="w-36 h-12 rounded-lg object-contain bg-white"
+                  alt={CAREMETRIC_NAME}
+                  className="w-44 h-12 rounded-md object-contain bg-white text-slate-900"
                 />
-                <span className="text-xl font-bold text-white tracking-tight">
-                  CareMetric <span className="text-cyan-400">Intel</span>
-                </span>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-                Precision provider intelligence, Medicare certification tracking, and referral network analytics for home health, hospice, and post-acute care teams.
+                Public provider intelligence, aggregate Medicare certification summaries, and market context for home health, hospice, and post-acute care teams.
               </p>
               <div className="pt-2 text-xs text-slate-400 space-y-1">
                 <p>Support: <a href="mailto:support@caremetric.ai" className="text-cyan-400 hover:underline">support@caremetric.ai</a></p>
@@ -1246,7 +1214,7 @@ export default function Landing() {
               <h3 className="text-xs font-semibold text-slate-200 uppercase tracking-wider mb-4">Platform</h3>
               <ul className="space-y-2.5 text-xs">
                 <li><a href="#features" className="hover:text-cyan-400 transition-colors">Provider Directory</a></li>
-                <li><a href="#features" className="hover:text-cyan-400 transition-colors">Referral Networks</a></li>
+                <li><a href="#features" className="hover:text-cyan-400 transition-colors">Shared-Patient Networks</a></li>
                 <li><a href="#features" className="hover:text-cyan-400 transition-colors">County Intelligence</a></li>
                 <li><a href="#features" className="hover:text-cyan-400 transition-colors">Lead Scoring</a></li>
                 <li><a href="#features" className="hover:text-cyan-400 transition-colors">AI Assistant</a></li>
@@ -1281,10 +1249,10 @@ export default function Landing() {
           {/* Compliance Disclaimer & Copyright */}
           <div className="pt-8 text-xs text-slate-400 leading-relaxed space-y-3">
             <p className="max-w-4xl">
-              <strong>Data & Compliance Disclaimer:</strong> CareMetric Intel aggregates and synthesizes public data releases published by the Centers for Medicare & Medicaid Services (CMS), the National Plan and Provider Enumeration System (NPPES), and the U.S. Census Bureau under public record provisions and the Freedom of Information Act (FOIA). CareMetric does not store or process Protected Health Information (PHI). All data points represent public provider practice summaries, enrollment statuses, and historical utilization benchmarks.
+              <strong>Data & Use Disclaimer:</strong> {CAREMETRIC_NAME} uses public CMS, NPPES, and U.S. Census Bureau releases. Records describe provider practices, enrollment, and historical aggregate utilization; coverage, suppression, and reporting periods vary. Shared-patient patterns are not confirmed referrals or transfers. Scores and AI summaries support research, not clinical decisions or guaranteed outcomes. Do not enter PHI. Review source freshness and your organization’s privacy and outreach requirements before use.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 text-[11px] text-slate-400">
-              <p>© {new Date().getFullYear()} CareMetric Intel. All rights reserved.</p>
+              <p>© {new Date().getFullYear()} {CAREMETRIC_NAME}. All rights reserved.</p>
               <div className="flex items-center gap-4">
                 <Link to="/terms" className="hover:underline">Terms</Link>
                 <Link to="/privacy" className="hover:underline">Privacy</Link>
@@ -1343,10 +1311,10 @@ export default function Landing() {
                     <span>Personalized 15-Minute Territory Walkthrough</span>
                   </div>
                   <h3 id="demo-modal-title" className="text-2xl font-bold text-white">
-                    Request a CareMetric Intel Demo
+                    Request a {CAREMETRIC_NAME} Demo
                   </h3>
                   <p className="text-xs text-slate-300 mt-1">
-                    See live physician certification volumes, referral pathways, and lead scores for your target county.
+                    Review available provider records, aggregate certification activity, and market context for your selected territory.
                   </p>
                 </div>
 
@@ -1456,7 +1424,7 @@ export default function Landing() {
                   <div className="pt-2">
                     <button
                       type="submit"
-                      className="w-full py-3 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 disabled:opacity-50 text-white font-semibold rounded-lg shadow-md transition-all text-sm flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      className="w-full py-3 bg-cyan-700 hover:bg-cyan-800 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors text-sm flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     >
                       <span>Prepare Demo Request</span>
                     </button>

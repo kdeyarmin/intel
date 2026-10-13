@@ -123,7 +123,7 @@ export function appendComplianceFooter(
   body: { text: string; html: string },
   opts: { physicalAddress: string; unsubscribeUrl: string; senderName?: string },
 ): { text: string; html: string } {
-  const who = opts.senderName || "CareMetric";
+  const who = opts.senderName || "CareMetric Healthcare Advisors";
   const text = `${body.text}\n\n--\nYou're receiving this because ${who} is reaching out to healthcare providers in your area.\nUnsubscribe: ${opts.unsubscribeUrl}\n${opts.physicalAddress}`;
   const html = `${body.html}<br><br><hr style="border:none;border-top:1px solid #ddd">`
     + `<p style="font-size:12px;color:#666">You're receiving this because ${escapeHtml(who)} is reaching out to healthcare providers in your area. `

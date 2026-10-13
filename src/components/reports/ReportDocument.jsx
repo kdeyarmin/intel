@@ -1,5 +1,5 @@
 import React from 'react';
-import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_NAME } from '@/lib/branding';
 
 
 function Block({ block }) {
@@ -56,9 +56,9 @@ export default function ReportDocument({ model }) {
     <article className="cm-report-doc" aria-label={`${model.subtitle}: ${model.title}`}>
       <header className="cm-doc-brand">
         <div className="cm-doc-brand-left">
-          <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="cm-doc-logo" />
+          <img src={CAREMETRIC_LOGO_URL} alt={CAREMETRIC_NAME} className="cm-doc-logo" />
           <div>
-            <div className="cm-doc-brand-name">CareMetric AI</div>
+            <div className="cm-doc-brand-name">{CAREMETRIC_NAME}</div>
             <div className="cm-doc-brand-tag">Healthcare Provider Intelligence</div>
           </div>
         </div>
@@ -115,7 +115,7 @@ export default function ReportDocument({ model }) {
           </>
         )}
         <p className="cm-doc-attrib">{model.attribution}</p>
-        <p className="cm-doc-attrib">Generated {model.generatedLabel} · CareMetric AI · www.CareMetric.ai · Confidential</p>
+        <p className="cm-doc-attrib">Prepared by {CAREMETRIC_NAME} · Generated {model.generatedLabel} · www.CareMetric.ai · Confidential</p>
       </footer>
     </article>
   );

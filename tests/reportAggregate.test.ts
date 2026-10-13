@@ -107,18 +107,28 @@ describe("report email", () => {
 
   it("escapes HTML and explains what the numbers are based on", () => {
     const email = buildReportEmail({ name: "Weekly", datasetLabel: "Utilization", groupLabel: "Service", metrics, rows, sourceRowCount: 500, summary: "Echo leads.", manageUrl: "https://app.example.org/CustomReports" });
-    expect(email.subject).toBe("Weekly: Utilization report");
+    expect(email.subject).toBe("CareMetric Healthcare Advisors | Weekly: Utilization report");
     expect(email.html).toContain("&lt;b&gt;Echo&lt;/b&gt;");
     expect(email.html).not.toContain("<b>Echo</b>");
     expect(email.text).toContain("Based on the latest 500 Utilization records.");
     expect(email.text).toContain("Manage this schedule: https://app.example.org/CustomReports");
+    for (const output of [email.html, email.text]) {
+      expect(output).toContain("CareMetric Healthcare Advisors");
+      expect(output).toContain("not CMS publications");
+      expect(output).toContain("Shared-patient patterns are not confirmed referrals");
+      expect(output).toContain("Confidential");
+      expect(output).not.toContain("CareMetric AI");
+    }
   });
 
   it("writes a CSV that spreadsheets can't execute", () => {
-    expect(buildReportCsv({ groupLabel: "Service", metrics, rows })).toBe("Service,Total Services\r\n<b>Echo</b>,30\r\n'=cmd(),10.25\r\n");
+    const csv = buildReportCsv({ groupLabel: "Service", metrics, rows });
+    expect(csv.startsWith("Service,Total Services\r\n<b>Echo</b>,30\r\n'=cmd(),10.25\r\n")).toBe(true);
+    expect(csv).toContain("CareMetric Healthcare Advisors analytics");
+    expect(csv).toContain("not CMS publications");
     // Text that starts like a formula is escaped even when it starts like a number; numbers stay numbers.
-    expect(buildReportCsv({ groupLabel: "G", metrics, rows: [{ group: "-1+2", total_services: -5 }, { group: "+1", total_services: 1 }] }))
-      .toBe("G,Total Services\r\n'-1+2,-5\r\n'+1,1\r\n");
+    expect(buildReportCsv({ groupLabel: "G", metrics, rows: [{ group: "-1+2", total_services: -5 }, { group: "+1", total_services: 1 }] })
+      .startsWith("G,Total Services\r\n'-1+2,-5\r\n'+1,1\r\n")).toBe(true);
   });
 
   it("summarizes the leading group", () => {

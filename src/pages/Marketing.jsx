@@ -72,7 +72,7 @@ export default function Marketing() {
       <div className="flex items-start justify-between gap-3 print:hidden">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">Marketing</h1>
-          <p className="text-sm text-slate-400 mt-1">Who you visit, who you know there, and which accounts send referrals that become admissions.</p>
+          <p className="text-sm text-slate-400 mt-1">Track account contacts, outreach visits, and recorded referrals through admission.</p>
         </div>
         {url.view === 'month' && !account && (
           <Button type="button" variant="outline" size="sm" onClick={() => window.print()}><Printer className="w-4 h-4 mr-1" aria-hidden="true" /> Print</Button>

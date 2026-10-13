@@ -13,7 +13,7 @@ import {
   FileText, Printer, Download, ChevronDown, ChevronUp, SlidersHorizontal, Database, Loader2,
 } from 'lucide-react';
 import { countExport } from '@/components/exports/exportUtils';
-import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
+import { CAREMETRIC_LOGO_URL, CAREMETRIC_NAME } from '@/lib/branding';
 import ReportDocument from './ReportDocument';
 import { availableSections, buildReportModel, orderedSelection } from './reportSections';
 
@@ -322,11 +322,11 @@ function ReportContent({ npi, providerId, facilityName }) {
       </div>
 
       <div className="rounded-lg border border-slate-700/50 overflow-hidden">
-        <div className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 border-b-2 border-cyan-500/60">
-          <div className="flex items-center gap-2.5">
-            <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="w-32 h-10 object-contain bg-white rounded-md" />
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 px-4 py-3 border-b-2 border-cyan-500/60">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <img src={CAREMETRIC_LOGO_URL} alt={CAREMETRIC_NAME} className="w-32 h-10 object-contain bg-white text-slate-900 rounded-md" />
             <div>
-              <p className="text-sm font-bold text-white leading-tight">CareMetric <span className="text-cyan-400">AI</span></p>
+              <p className="text-sm font-bold text-white leading-tight">{CAREMETRIC_NAME}</p>
               <p className="text-[10px] text-slate-400">Healthcare Provider Intelligence</p>
               <a href="https://www.CareMetric.ai" className="text-[10px] text-cyan-400 hover:underline">www.CareMetric.ai</a>
             </div>

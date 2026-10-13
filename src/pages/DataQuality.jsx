@@ -71,7 +71,7 @@ export default function DataQuality() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
       <PageHeader
         title="Data Quality Center"
-        subtitle="Automated quality monitoring, alerts, and AI-powered corrections"
+        subtitle="Monitor data quality, review alerts, and assess AI-assisted correction suggestions"
         icon={ShieldCheck}
         breadcrumbs={[{ label: 'Admin', page: 'DataCenter' }, { label: 'Data Quality' }]}
         actions={<>

@@ -134,7 +134,7 @@ export default function AdvancedAnalytics() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto space-y-4 sm:space-y-6">
       <PageHeader
         title="Advanced Analytics"
-        subtitle="Deep insights, trend analysis, comparative reports & predictive models"
+        subtitle="Explore trends, comparisons, and projections using loaded data samples"
         icon={BarChart3}
         breadcrumbs={[{ label: 'Analytics', page: 'AdvancedAnalytics' }]}
       />
@@ -146,7 +146,7 @@ export default function AdvancedAnalytics() {
             <div className="space-y-1">
               <h2 className="text-lg font-semibold text-slate-200">National analytics need a national plan</h2>
               <p className="text-sm text-slate-400 max-w-xl mx-auto">
-                Advanced Analytics works across the full national dataset, but your plan covers only the
+                Advanced Analytics uses samples from the national dataset, but your plan covers only the
                 places you chose. Upgrade to a national plan, or use the county and market views for your
                 territory instead.
               </p>

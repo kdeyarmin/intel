@@ -1,10 +1,12 @@
 import React from "react";
+import { CAREMETRIC_LOGO_URL } from "@/lib/branding";
 
 export default function AuthLayout({ icon: Icon, title, subtitle, footer, children }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
+          <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="h-16 w-auto mx-auto mb-4" />
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-4">
             <Icon className="w-7 h-7 text-primary-foreground" aria-hidden="true" />
           </div>

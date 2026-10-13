@@ -171,7 +171,7 @@ export default function CallSheets() {
             <ClipboardList className="w-6 h-6 text-cyan-400" aria-hidden="true" />
             Call sheets
           </h1>
-          <p className="text-sm text-slate-400 mt-1">Pull the providers and facilities in a county, then keep notes, a visit schedule, and the accounts you are working.</p>
+          <p className="text-sm text-slate-400 mt-1">Build county-based provider and facility call sheets, record notes, and schedule account visits.</p>
         </div>
         {sheet && (
           <Button type="button" variant="outline" size="sm" onClick={() => window.print()}>
