@@ -28,7 +28,6 @@ function setWidth(width) {
 }
 
 function renderLayout() {
-  // The sidebar's billing widget reads the plan with react-query.
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
@@ -74,5 +73,14 @@ describe('sidebar footer', () => {
     expect(aside).toHaveTextContent('rep@example.com');
     expect(aside).toHaveTextContent('Member');
     expect(aside).not.toHaveTextContent(/\buser\b/);
+  });
+
+  it('uses the current brand in the shell and does not render the status widget', () => {
+    setWidth(1280);
+    renderLayout();
+    expect(screen.getByRole('img', { name: 'CareMetric Healthcare Advisors' })).toHaveAttribute('src', expect.stringContaining('CareMetric.png'));
+    expect(screen.getByText('CareMetric Intel')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'caremetricintel.com' })).toHaveAttribute('href', 'https://caremetricintel.com');
+    expect(screen.queryByText(/AI requests today|Payment due|Trial ends today/)).toBeNull();
   });
 });

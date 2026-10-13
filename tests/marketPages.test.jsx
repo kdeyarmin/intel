@@ -87,6 +87,15 @@ function countyAnswers(fn, payload) {
 }
 
 describe('CountyIntelligence market tabs', () => {
+  it('shows a county-not-found message instead of dereferencing an incomplete county response', async () => {
+    invoke.mockReset().mockImplementation((fn) => Promise.resolve(fn === 'getCountyIntelligence'
+      ? { state: 'PA', needsCounty: false, summary: {} }
+      : fn === 'getGeoCounties' ? { counties: [] } : MARKET));
+    renderAt('/CountyIntelligence?state=PA&county=42003', CountyIntelligence, '/CountyIntelligence');
+    expect(await screen.findByText('That county wasn’t found. Pick one from the list.')).toBeInTheDocument();
+    expect(screen.queryByText(/ZIP areas/)).toBeNull();
+  });
+
   it('opens the hospital sources tab from the URL and lists hospitals with their discharge mix', async () => {
     invoke.mockReset().mockImplementation((fn, payload) => Promise.resolve(countyAnswers(fn, payload)));
     renderAt('/CountyIntelligence?state=PA&county=42003&tab=hospitals', CountyIntelligence, '/CountyIntelligence');

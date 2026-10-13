@@ -266,7 +266,7 @@ export default function MarketBriefs() {
           {layer && facts.rising.length > 0 && (
             <Section title={`Use rose; billing ${settingDef.noun} did not`}>
               <Table
-                headers={['County', 'Users', 'Vs last year', `Billing ${settingDef.noun}`, 'Their change']}
+                headers={['County', 'Medicare beneficiaries', 'Change in beneficiaries', `Billing ${settingDef.noun}`, 'Change in billing providers']}
                 rows={facts.rising.slice(0, 8).map((r) => [
                   <button key={r.fips} type="button" className="text-cyan-400 hover:underline text-left" onClick={() => setUrl({ report: 'county', county: r.fips, from: spec.id })}>{r.name}</button>,
                   fmtCount(r.users), fmtPct(r.usersChange), fmtCount(r.billing), fmtPct(r.billingChange),
@@ -285,7 +285,7 @@ export default function MarketBriefs() {
                 </Select>
               </div>
               <Table
-                headers={['County', 'Users', 'Share of FFS', 'Vs last year', `Billing ${settingDef.noun}`, 'Users each', 'Spend / beneficiary']}
+                headers={['County', 'Medicare beneficiaries', 'FFS beneficiary share', 'Year-over-year change', `Billing ${settingDef.noun}`, 'Beneficiaries per provider', 'Medicare spend per beneficiary']}
                 rows={ranked.map((r) => [
                   <button key={r.fips} type="button" className="text-cyan-400 hover:underline text-left" onClick={() => setUrl({ report: 'county', county: r.fips, from: spec.id })}>{r.name}</button>,
                   fmtCount(r.users), fmtPct(r.usersPct), fmtPct(r.usersChange), fmtCount(r.billing), fmtCount(r.usersPerProvider), fmtMoney(r.spend),
@@ -311,8 +311,8 @@ export default function MarketBriefs() {
             <Section title="Largest by Medicare beneficiaries">
               <Table
                 headers={settingKey === 'snf'
-                  ? ['Provider', 'Beneficiaries', 'Share', 'Payment', 'Residents', 'Medicare / Medicaid']
-                  : ['Provider', 'Beneficiaries', 'Share', 'Payment', 'Dual %', 'Counties served']}
+                  ? ['Provider', 'Medicare beneficiaries', 'Beneficiary share', 'Medicare payment', 'Residents', 'Medicare / Medicaid payer mix']
+                  : ['Provider', 'Medicare beneficiaries', 'Beneficiary share', 'Medicare payment', 'Dual-eligible share', 'Counties served']}
                 rows={(leaders.rows || []).map((r) => settingKey === 'snf' ? [
                   <span key={r.ccn}>{facilityLink(r.ccn, r.facility_group, r.name)}<span className="block text-slate-500">{[r.city, r.state].filter(Boolean).join(', ')}{r.census?.chain ? ` · ${r.census.chain}` : ''}</span></span>,
                   fmtCount(r.benes), fmtShare(r.share), fmtMoney(r.payment),
@@ -346,7 +346,7 @@ export default function MarketBriefs() {
           </header>
           <Section title="Where to build a hospital relationship">
             <Table
-              headers={['Hospital', 'Cases', 'Share of county', 'Home health', 'State', 'Hospice', 'State', 'SNF', 'State']}
+              headers={['Hospital', 'Medicare episodes', 'County share', 'Home health spend', 'State benchmark', 'Hospice spend', 'State benchmark', 'Skilled nursing spend', 'State benchmark']}
               rows={(market.hospital_sources?.rows || []).slice(0, 10).map((r) => {
                 const m = r.discharge_mix;
                 return [
@@ -373,8 +373,8 @@ export default function MarketBriefs() {
           <Section title="Call list">
             <Table
               headers={sourceSetting === 'hospice'
-                ? ['Clinician', 'Specialty', 'Medicare patients', 'Hospice oversight', 'Heart failure', 'COPD', 'Alzheimer']
-                : ['Clinician', 'Specialty', 'Medicare patients', 'Home health certifications', 'Heart failure', 'COPD', 'Alzheimer']}
+                ? ['Clinician', 'Specialty', 'Medicare beneficiaries', 'Hospice oversight beneficiaries', 'Heart failure', 'COPD', 'Alzheimer’s']
+                : ['Clinician', 'Specialty', 'Medicare beneficiaries', 'Home health certification beneficiaries', 'Heart failure', 'COPD', 'Alzheimer’s']}
               rows={(sources?.rows || []).map((r) => [
                 <Link key={r.npi} to={createPageUrl(`ProviderDetail?npi=${r.npi}`)} className="text-cyan-400 hover:underline">{r.name}</Link>,
                 r.specialty || '—',
@@ -398,7 +398,7 @@ export default function MarketBriefs() {
           {market.profile?.available && (
             <Section title={`${settingDef.label} demand`}>
               <Table
-                headers={['Users', 'Share of FFS', 'Vs last year', 'Billing', 'Located here', 'Spend / beneficiary']}
+                headers={['Medicare beneficiaries', 'FFS beneficiary share', 'Year-over-year change', `Billing ${settingDef.noun}`, `${settingDef.noun} located here`, 'Medicare spend per beneficiary']}
                 rows={[[
                   fmtCount(market.profile[settingKey === 'hospice' ? 'hospice_users' : settingKey === 'snf' ? 'snf_users' : 'hha_users']),
                   fmtPct(market.profile[settingKey === 'hospice' ? 'hospice_users_pct' : settingKey === 'snf' ? 'snf_users_pct' : 'hha_users_pct']),
@@ -413,7 +413,7 @@ export default function MarketBriefs() {
           )}
           <Section title="Hospitals discharging residents">
             <Table
-              headers={['Hospital', 'Cases', 'Share', settingDef.label]}
+              headers={['Hospital', 'Medicare episodes', 'County share', `${settingDef.label} share of hospital spending`]}
               rows={(market.hospital_sources?.rows || []).slice(0, 6).map((r) => [
                 facilityLink(r.ccn, 'hospital', r.name),
                 fmtCount(r.cases), fmtShare(r.share),
@@ -425,7 +425,7 @@ export default function MarketBriefs() {
           {(market.competitors?.[settingKey]?.rows || []).length > 0 && (
             <Section title={`Who already serves ${settingDef.label.toLowerCase()}`}>
               <Table
-                headers={['Provider', 'Beneficiaries', 'Share', 'Payment']}
+                headers={['Provider', 'Medicare beneficiaries', 'Beneficiary share', 'Medicare payment']}
                 rows={market.competitors[settingKey].rows.slice(0, 8).map((r) => [facilityLink(r.ccn, r.facility_group, r.name), fmtCount(r.benes), fmtShare(r.share), fmtMoney(r.payment)])}
               />
               {market.competitors[settingKey].data_year && <p className="text-[11px] text-slate-500">Share of beneficiaries served in this county, {market.competitors[settingKey].data_year}.</p>}
@@ -434,7 +434,7 @@ export default function MarketBriefs() {
           {settingKey !== 'snf' && (
             <Section title="Clinicians to call">
               <Table
-                headers={['Clinician', 'Specialty', 'Medicare patients']}
+                headers={['Clinician', 'Specialty', 'Medicare beneficiaries']}
                 rows={(sources?.rows || []).slice(0, 8).map((r) => [
                   <Link key={r.npi} to={createPageUrl(`ProviderDetail?npi=${r.npi}`)} className="text-cyan-400 hover:underline">{r.name}</Link>,
                   r.specialty || '—', fmtCount(r.benes),

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
+import { CAREMETRIC_ADVISORS_NAME, CAREMETRIC_INTEL_NAME, CAREMETRIC_INTEL_WEBSITE, CAREMETRIC_LOGO_URL } from '@/lib/branding';
 
 
 function Block({ block }) {
@@ -11,7 +11,7 @@ function Block({ block }) {
         {block.kind === 'table' && <span className="cm-doc-count">{block.count} record{block.count === 1 ? '' : 's'}</span>}
       </h3>
       {empty ? (
-        <p className="cm-doc-note">{block.emptyText || 'No data on file.'}</p>
+        <p className="cm-doc-note">{block.emptyText || 'No matching records were returned from the available data sources. The source may have no linked record or may not publish a reportable value.'}</p>
       ) : block.kind === 'table' ? (
         <table className="cm-doc-table">
           <thead>
@@ -56,15 +56,15 @@ export default function ReportDocument({ model }) {
     <article className="cm-report-doc" aria-label={`${model.subtitle}: ${model.title}`}>
       <header className="cm-doc-brand">
         <div className="cm-doc-brand-left">
-          <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="cm-doc-logo" />
+          <img src={CAREMETRIC_LOGO_URL} alt={CAREMETRIC_ADVISORS_NAME} className="cm-doc-logo" />
           <div>
-            <div className="cm-doc-brand-name">CareMetric AI</div>
-            <div className="cm-doc-brand-tag">Healthcare Provider Intelligence</div>
+            <div className="cm-doc-brand-name">{CAREMETRIC_INTEL_NAME}</div>
+            <div className="cm-doc-brand-tag">{CAREMETRIC_ADVISORS_NAME}</div>
           </div>
         </div>
         <div className="cm-doc-brand-right">
           <div>{model.subtitle}</div>
-          <div>www.CareMetric.ai</div>
+          <div>{CAREMETRIC_INTEL_WEBSITE}</div>
         </div>
       </header>
 
@@ -72,6 +72,11 @@ export default function ReportDocument({ model }) {
         <h1 className="cm-doc-title">{model.title}</h1>
         <p className="cm-doc-meta">{model.subtitle} · Generated {model.generatedLabel}</p>
       </div>
+
+      <section className="cm-doc-summary" aria-label="Executive summary">
+        <h2 className="cm-doc-h2">Executive Summary</h2>
+        {model.executiveSummary.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+      </section>
 
       {model.profile && (
         <section className="cm-doc-block">
@@ -115,7 +120,7 @@ export default function ReportDocument({ model }) {
           </>
         )}
         <p className="cm-doc-attrib">{model.attribution}</p>
-        <p className="cm-doc-attrib">Generated {model.generatedLabel} · CareMetric AI · www.CareMetric.ai · Confidential</p>
+        <p className="cm-doc-attrib">Generated {model.generatedLabel} · {CAREMETRIC_INTEL_NAME} · {CAREMETRIC_INTEL_WEBSITE} · Confidential</p>
       </footer>
     </article>
   );

@@ -13,7 +13,7 @@ import {
   FileText, Printer, Download, ChevronDown, ChevronUp, SlidersHorizontal, Database, Loader2,
 } from 'lucide-react';
 import { countExport } from '@/components/exports/exportUtils';
-import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
+import { CAREMETRIC_ADVISORS_NAME, CAREMETRIC_INTEL_NAME, CAREMETRIC_INTEL_WEBSITE, CAREMETRIC_LOGO_URL } from '@/lib/branding';
 import ReportDocument from './ReportDocument';
 import { availableSections, buildReportModel, orderedSelection } from './reportSections';
 
@@ -71,7 +71,7 @@ function KeyValues({ items }) {
 
 function BlockBody({ block }) {
   const empty = block.kind === 'table' ? block.rows.length === 0 : block.items.length === 0;
-  if (empty) return <p className="text-xs text-slate-400 italic">{block.emptyText || 'No data on file.'}</p>;
+  if (empty) return <p className="text-xs text-slate-400 italic">{block.emptyText || 'No matching records were returned from the available data sources. The source may have no linked record or may not publish a reportable value.'}</p>;
   return (
     <>
       {block.kind === 'table' ? (
@@ -324,11 +324,11 @@ function ReportContent({ npi, providerId, facilityName }) {
       <div className="rounded-lg border border-slate-700/50 overflow-hidden">
         <div className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 border-b-2 border-cyan-500/60">
           <div className="flex items-center gap-2.5">
-            <img src={CAREMETRIC_LOGO_URL} alt="CareMetric Healthcare Advisors" className="w-32 h-10 object-contain bg-white rounded-md" />
+            <img src={CAREMETRIC_LOGO_URL} alt={CAREMETRIC_ADVISORS_NAME} className="w-32 h-10 object-contain bg-white rounded-md" />
             <div>
-              <p className="text-sm font-bold text-white leading-tight">CareMetric <span className="text-cyan-400">AI</span></p>
-              <p className="text-[10px] text-slate-400">Healthcare Provider Intelligence</p>
-              <a href="https://www.CareMetric.ai" className="text-[10px] text-cyan-400 hover:underline">www.CareMetric.ai</a>
+              <p className="text-sm font-bold text-white leading-tight">{CAREMETRIC_INTEL_NAME}</p>
+              <p className="text-[10px] text-slate-400">{CAREMETRIC_ADVISORS_NAME}</p>
+              <a href={`https://${CAREMETRIC_INTEL_WEBSITE}`} className="text-[10px] text-cyan-400 hover:underline">{CAREMETRIC_INTEL_WEBSITE}</a>
             </div>
           </div>
           <div className="text-right">
@@ -338,6 +338,12 @@ function ReportContent({ npi, providerId, facilityName }) {
         </div>
         <div className="bg-slate-800/50 px-4 py-4 space-y-4">
           <h2 className="text-xl font-bold text-slate-100">{model.title}</h2>
+          <section className="rounded-md border border-cyan-500/20 bg-slate-900/50 p-4" aria-label="Executive summary">
+            <h3 className="text-sm font-semibold text-slate-100 mb-2">Executive Summary</h3>
+            <div className="space-y-2 text-xs leading-relaxed text-slate-300">
+              {model.executiveSummary.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            </div>
+          </section>
           {model.profile && model.profile.identifiers.length > 0 && <KeyValues items={model.profile.identifiers} />}
           {model.profile && model.profile.metrics.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">

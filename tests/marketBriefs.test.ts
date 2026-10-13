@@ -62,4 +62,10 @@ describe("named reports", () => {
     expect(facts.listedShare).toBeCloseTo(0.3);
     expect(facts.listed).toBe(3);
   });
+
+  it("uses decision-oriented report titles and explanations", () => {
+    expect(REPORT_CATALOG.find((r) => r.id === "expand-hha")!.title).toBe("Home health market expansion opportunities");
+    expect(REPORT_CATALOG.find((r) => r.id === "hospital-partners")!.reason).toMatch(/Medicare episode spending/);
+    expect(REPORT_CATALOG.find((r) => r.id === "calls-hha")!.reason).toMatch(/not confirmed referrals/i);
+  });
 });

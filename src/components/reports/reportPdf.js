@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { pdfLogo } from '@/components/exports/exportUtils';
+import { CAREMETRIC_ADVISORS_NAME, CAREMETRIC_INTEL_NAME, CAREMETRIC_INTEL_WEBSITE } from '@/lib/branding';
 import { reportFileName } from './reportSections';
 
 const MARGIN = 14;
@@ -33,13 +34,13 @@ function drawPageHeader(doc, model, logo) {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text('CareMetric AI', x, 10);
+  doc.text(CAREMETRIC_INTEL_NAME, x, 10);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.text('Healthcare Provider Intelligence', x, 15);
+  doc.text(CAREMETRIC_ADVISORS_NAME, x, 15);
   doc.setFontSize(8);
   doc.text(model.subtitle, w - MARGIN, 10, { align: 'right' });
-  doc.text('www.CareMetric.ai', w - MARGIN, 15, { align: 'right' });
+  doc.text(CAREMETRIC_INTEL_WEBSITE, w - MARGIN, 15, { align: 'right' });
 }
 
 function drawPageFooter(doc, model, page, pages) {
@@ -51,7 +52,7 @@ function drawPageFooter(doc, model, page, pages) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(...MUTED);
-  doc.text(`CareMetric AI  •  ${model.title}  •  Generated ${model.generatedLabel}  •  Confidential`, MARGIN, h - FOOTER_H + 7, { maxWidth: w - MARGIN * 2 - 25 });
+  doc.text(`${CAREMETRIC_INTEL_NAME}  •  ${model.title}  •  Generated ${model.generatedLabel}  •  Confidential`, MARGIN, h - FOOTER_H + 7, { maxWidth: w - MARGIN * 2 - 25 });
   doc.text(`Page ${page} of ${pages}`, w - MARGIN, h - FOOTER_H + 7, { align: 'right' });
   doc.setFontSize(6);
   doc.text(doc.splitTextToSize(model.attribution, w - MARGIN * 2), MARGIN, h - FOOTER_H + 11);
@@ -97,6 +98,24 @@ export async function downloadReportPdf(model) {
   doc.setTextColor(...MUTED);
   doc.text(`${model.subtitle}  •  Generated ${model.generatedLabel}`, MARGIN, y);
   y += 8;
+
+  if (model.executiveSummary?.length) {
+    const summaryLines = model.executiveSummary.flatMap((paragraph) => doc.splitTextToSize(paragraph, contentW - 8));
+    const summaryH = 11 + summaryLines.length * 4;
+    ensure(summaryH + 3);
+    doc.setFillColor(240, 249, 250);
+    doc.setDrawColor(...RULE);
+    doc.roundedRect(MARGIN, y - 3, contentW, summaryH, 1.5, 1.5, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...INK);
+    doc.text('Executive Summary', MARGIN + 4, y + 2);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...MUTED);
+    doc.text(summaryLines, MARGIN + 4, y + 7);
+    y += summaryH + 3;
+  }
 
   if (model.profile) {
     const ids = model.profile.identifiers;

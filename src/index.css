@@ -91,6 +91,17 @@
 .cm-report-doc .cm-doc-titleblock { padding: 14px 0 6px; border-bottom: 1px solid #cbd5e1; margin-bottom: 10px; }
 .cm-report-doc .cm-doc-title { font-size: 20pt; font-weight: 700; margin: 0; color: #0f172a; }
 .cm-report-doc .cm-doc-meta { margin: 2px 0 0; font-size: 9pt; color: #475569; }
+.cm-report-doc .cm-doc-summary {
+  margin: 10px 0;
+  padding: 0 10px 8px;
+  border: 1px solid #cbd5e1;
+  border-left: 4px solid #0891b2;
+  border-radius: 6px;
+  background: #f0f9fa;
+  break-inside: avoid;
+}
+.cm-report-doc .cm-doc-summary .cm-doc-h2 { margin-top: 8px; }
+.cm-report-doc .cm-doc-summary p { margin: 5px 0 0; color: #334155; font-size: 9pt; }
 .cm-report-doc .cm-doc-h2,
 .cm-report-doc .cm-doc-h3 {
   display: flex; justify-content: space-between; align-items: baseline;

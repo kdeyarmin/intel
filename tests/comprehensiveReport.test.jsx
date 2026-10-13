@@ -21,7 +21,7 @@ vi.mock('../src/components/reports/reportPdf', () => ({ downloadReportPdf: (m) =
 
 import ComprehensiveReport from '../src/components/reports/ComprehensiveReport';
 import ReportDocument from '../src/components/reports/ReportDocument';
-import { availableSections, buildReportModel, REPORT_SECTIONS, reportFileName } from '../src/components/reports/reportSections';
+import { availableSections, buildReportModel, formatIdentifier, REPORT_SECTIONS, reportFileName } from '../src/components/reports/reportSections';
 
 afterEach(cleanup);
 beforeEach(() => {
@@ -95,12 +95,29 @@ describe('report sections', () => {
     expect(model.sections[0].blocks[0].rows.map((r) => r.percentage.text)).toEqual(['80%', '—']);
     expect(model.sections[1].blocks[0].rows[0].value.text).toBe('$1,234,567');
     render(<ReportDocument model={model} />);
-    for (const value of ['Example Holdings', '80%', '$1,234,567', 'Discharge function score', '76.2', 'www.CareMetric.ai']) {
+    for (const value of ['Example Holdings', '80%', '$1,234,567', 'Discharge function score', '76.2', 'CareMetric Intel', 'caremetricintel.com', 'Executive Summary']) {
       expect(screen.getByText(value)).toBeInTheDocument();
     }
     expect(model.sources).toHaveLength(3);
     const empty = buildReportModel({}, ['ownership', 'costReports', 'additionalQuality'], { providerId: '390111' });
     empty.sections.forEach((s) => expect(s.blocks[0].emptyText).toMatch(/No .*linked/));
+  });
+
+  it('preserves identifier and year strings without grouping separators and summarizes the selected data', () => {
+    const report = {
+      ...REPORT,
+      provider: { ...REPORT.provider, npi: '123,456,7893' },
+      summary: { ...REPORT.summary, utilizationYears: ['2,023'] },
+      locations: [{ ...REPORT.locations[0], zip: '16,5011234' }],
+      utilization: [{ serviceType: 'Office visit', dataYear: '2,023', totalServices: 5, totalBeneficiaries: 4, totalPayment: 100 }],
+    };
+    const model = buildReportModel(report, ['profile', 'locations', 'utilization'], { npi: '123,456,7893' });
+    expect(formatIdentifier('5,193,632,180')).toBe('5193632180');
+    expect(model.profile.identifiers.find((item) => item.label === 'NPI').value).toBe('1234567893');
+    expect(model.sections[0].blocks[0].rows[0].place.text).toBe('Erie, PA, 16501');
+    expect(model.sections[1].blocks[0].rows[0].year.text).toBe('2023');
+    expect(model.executiveSummary.join(' ')).toContain('Published 2023 Medicare totals');
+    expect(model.executiveSummary.join(' ')).toMatch(/returned records/);
   });
 
   it("titles a facility report with the facility, and shows no Medicare totals without an NPI", () => {
@@ -109,7 +126,7 @@ describe('report sections', () => {
     expect(model.subtitle).toBe('Facility Intelligence Report');
     expect(model.profile.metrics).toEqual([]);
     expect(model.profile.identifiers[0]).toEqual({ label: 'CCN', value: '390111' });
-    expect(reportFileName(model)).toBe('CareMetric-Erie-Manor-2026-10-01');
+    expect(reportFileName(model)).toBe('CareMetric-Intel-Erie-Manor-2026-10-01');
   });
 });
 
@@ -180,7 +197,7 @@ describe('ComprehensiveReport', () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => {
       expect(document.body.classList.contains('cm-printing-report')).toBe(true);
       expect(document.querySelector('.cm-print-root .cm-report-doc')).not.toBeNull();
-      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric AI');
+      expect(document.querySelector('.cm-print-root').textContent).toContain('CareMetric Intel');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Data Sources');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Example Holdings');
       expect(document.querySelector('.cm-print-root').textContent).toContain('Discharge function score');
