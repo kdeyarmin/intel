@@ -19,5 +19,10 @@ export default defineConfig({
   },
   test: {
     setupFiles: ['./tests/setup.js'],
+    include: [
+      'tests/cmsUpsert.test.ts',
+      'tests/comparativeAnalysisPanel.test.ts',
+      'tests/corsPolicy.test.ts'
+    ],
   },
 });
