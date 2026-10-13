@@ -31,7 +31,13 @@ import { resolveImportVersion } from "../lib/datasetRegistry";
 // The alias map and the canonical URL map come from triggerImport so a
 // schedule using `cms_utilization` (without an api_url override) still
 // resolves to the canonical default URL, exactly as an import would.
-import { IMPORT_TYPE_ALIASES, IMPORT_TYPE_URLS, getCMSDatasetCatalog } from "./triggerImport";
+import {
+  IMPORT_TYPE_ALIASES,
+  IMPORT_TYPE_URLS,
+  UPLOAD_CAPABLE_TYPES,
+  getCMSDatasetCatalog,
+} from "./triggerImport";
+import { NPPES_FILE_TYPES } from "./importNPPESFile";
 
 // Last-resort URLs for types this health check owns that have no entry in
 // IMPORT_TYPE_URLS (currently only opt_out_physicians). Everything else
@@ -79,14 +85,37 @@ const CATALOG_TYPE_IDS: ReadonlySet<string> = new Set(
   getCMSDatasetCatalog().datasets.map((d) => d.id),
 );
 
+// getCMSDatasetCatalog() is a UI view: it hides the datasets CMS retired
+// (unavailable flag / "Retired" titles) along with any dataset that has no
+// live endpoint. Those are exactly the types this check must skip rather
+// than flag, so they are also named here from the importer's own registries:
+// the NPPES file types and the upload-capable types, the ZIP-file Medicare
+// imports (ZIP_FUNCTION_MAP in triggerImport, which is not exported), and
+// the CMS-retired datasets.
+const FILE_ONLY_TYPES: ReadonlySet<string> = new Set([
+  ...Object.keys(NPPES_FILE_TYPES),
+  ...UPLOAD_CAPABLE_TYPES,
+  "medicare_hha_stats",
+  "medicare_ma_inpatient",
+  "medicare_snf_stats",
+  "provider_ownership",
+  "home_health_pdgm",
+]);
+
 /**
- * A type with no resolvable URL is not necessarily broken: catalog datasets
- * with no CMS endpoint are imported from files (NPPES files, CSV uploads) or
- * were retired by CMS. Those are skipped, not flagged. Pure — exported for
- * tests.
+ * A type with no resolvable URL is not necessarily broken: known datasets
+ * with no CMS endpoint are imported from files (NPPES files, ZIP files, CSV
+ * uploads) or were retired by CMS. Those are skipped, not flagged; only a
+ * type the app does not know at all is flagged "No URL configured". Pure —
+ * exported for tests.
  */
 export function isKnownCatalogType(importType: string, resolvedType: string): boolean {
-  return CATALOG_TYPE_IDS.has(importType) || CATALOG_TYPE_IDS.has(resolvedType);
+  return (
+    CATALOG_TYPE_IDS.has(importType) ||
+    CATALOG_TYPE_IDS.has(resolvedType) ||
+    FILE_ONLY_TYPES.has(importType) ||
+    FILE_ONLY_TYPES.has(resolvedType)
+  );
 }
 
 const FETCH_TIMEOUT_MS = 10_000;
