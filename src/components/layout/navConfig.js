@@ -167,6 +167,7 @@ const DETAIL_PAGES = {
   LocationDetail: 'Locations',
   FacilityDetail: 'Facilities',
   LeadListBuilder: 'LeadLists',
+  Landing: 'Dashboard',
 };
 
 export const SECONDARY_PAGES = {

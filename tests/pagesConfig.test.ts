@@ -49,6 +49,7 @@ vi.mock('../src/pages/MarketBriefs.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/Marketing.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/MarketIntelligence.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/Help.jsx', () => ({ default: () => null }));
+vi.mock('../src/pages/Landing.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/ImportMonitoring.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/LeadListBuilder.jsx', () => ({ default: () => null }));
 vi.mock('../src/pages/CallSheets.jsx', () => ({ default: () => null }));
@@ -139,6 +140,7 @@ describe('pages.config.js – PAGES registry', () => {
       'FacilityDetail',
       'DMEProviderReport',
       'Help',
+      'Landing',
       'ImportMonitoring',
       'CallSheets',
       'LeadListBuilder',

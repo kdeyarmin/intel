@@ -133,6 +133,9 @@ const AuthenticatedApp = () => {
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/data-use" element={<DataUsePage />} />
+      <Route caseSensitive path="/landing" element={<Suspense fallback={<PageLoadingFallback />}><Pages.Landing /></Suspense>} />
+      <Route caseSensitive path="/Landing" element={<Navigate to="/landing" replace />} />
+      <Route path="/MarketingLanding" element={<Navigate to="/landing" replace />} />
       <Route path="/" element={
         <ProtectedRoute pageName={mainPageKey}>
           <LayoutWrapper currentPageName={mainPageKey}>
@@ -143,7 +146,7 @@ const AuthenticatedApp = () => {
       {Object.keys(LEGACY_REDIRECTS).map((page) => (
         <Route key={`legacy-${page}`} path={`/${page}`} element={<LegacyRedirect page={page} />} />
       ))}
-      {Object.entries(Pages).map(([path, Page]) => (
+      {Object.entries(Pages).filter(([path]) => path !== 'Landing').map(([path, Page]) => (
         <Route
           key={path}
           path={`/${path}`}
