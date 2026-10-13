@@ -27,7 +27,7 @@ const DEFAULT_TYPE = { label: '', icon: Database, iconCls: 'text-slate-400', bad
 
 function formatValue(val, key) {
   if (val == null || val === '') return '—';
-  if (/(^|[_\s])(year|yr)($|[_\s])/i.test(key)) return fmtYear(val);
+  if (/(^|[_\s])(year|yr)$/i.test(key)) return fmtYear(val);
   if (typeof val === 'number') return val.toLocaleString();
   if (typeof val === 'string' && !isNaN(Number(val)) && val.length < 15) {
     const num = Number(val);

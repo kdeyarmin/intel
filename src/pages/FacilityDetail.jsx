@@ -149,7 +149,7 @@ function isCurrencyField(key) {
 
 function formatCellValue(key, val) {
   if (val == null || val === '') return '—';
-  if (/(^|[_\s])(year|yr)($|[_\s])/i.test(key)) return fmtYear(val);
+  if (/(^|[_\s])(year|yr)$/i.test(key)) return fmtYear(val);
   if (isCurrencyField(key) && isNumericish(val)) return formatCurrency(val);
   if (isNumericish(val) && !String(val).includes('-') && String(val).length < 15) {
     const num = Number(String(val).replace(/[$,%]/g, ''));

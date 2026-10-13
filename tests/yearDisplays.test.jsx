@@ -12,12 +12,18 @@ describe('CMS year displays', () => {
       <RawDataTable rows={[{
         data_year: 2026,
         total_days_of_care: 2026,
-        raw_data: { Year: '2026', fiscal_year: 2026, total_patients: 2026 },
+        raw_data: {
+          Year: '2026',
+          fiscal_year: 2026,
+          total_patients: 2026,
+          'Fiscal Year End Date': '2026-12-31',
+          year_total_patients: 2026,
+        },
       }]} />,
     );
     const rows = within(screen.getByRole('table')).getAllByRole('row');
     expect(within(rows[1]).getAllByRole('cell').map((cell) => cell.textContent))
-      .toEqual(['2026', '2,026', '2026', '2026', '2,026']);
+      .toEqual(['2026', '2,026', '2026', '2026', '2,026', '2026-12-31', '2,026']);
     expect(screen.getByText('Summary — latest reporting year 2026')).toBeInTheDocument();
   });
 
@@ -37,6 +43,7 @@ describe('CMS year displays', () => {
                 total_beneficiaries: 2026,
                 total_services: '2026',
                 missing_year: null,
+                'Fiscal Year End Date': '2026-12-31',
               },
             }],
           },
@@ -52,5 +59,6 @@ describe('CMS year displays', () => {
       expect(within(screen.getByText(label).parentElement).getByText('2,026')).toBeInTheDocument();
     }
     expect(within(screen.getByText('missing year').parentElement).getByText('—')).toBeInTheDocument();
+    expect(within(screen.getByText('Fiscal Year End Date').parentElement).getByText('2026-12-31')).toBeInTheDocument();
   });
 });
