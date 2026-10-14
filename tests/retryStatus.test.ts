@@ -7,7 +7,7 @@ import {
   getAutoRetryState,
   isRetryableErrorMessage,
 } from '../src/components/imports/retryStatus.js';
-import { isRetryableErrorMessage as workerIsRetryable } from '../base44/functions/autoRetryFailedImports/helpers';
+import { isRetryableErrorMessage as workerIsRetryable } from '../server/lib/scheduling';
 
 // A retryable error so a fixture passes the non_retryable gate and reaches the
 // timing/attempt states under test.

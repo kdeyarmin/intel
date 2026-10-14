@@ -8,7 +8,7 @@ import {
   FAILURE_BACKOFF_CAP_HOURS,
   NEXT_RUN_MIN_BUFFER_MS,
   SCHEDULE_JITTER_MINUTES,
-} from '../base44/functions/runScheduledImports/helpers';
+} from '../server/lib/scheduling';
 
 describe('getImportFamily', () => {
   it('groups Medicare ZIP imports into the medicare family', () => {
