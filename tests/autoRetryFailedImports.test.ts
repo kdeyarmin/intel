@@ -9,7 +9,7 @@ import {
   backoffHoursForAttempt,
   nextRetryDueAt,
   shouldRetryBatch,
-} from '../base44/functions/autoRetryFailedImports/helpers';
+} from '../server/lib/scheduling';
 import { isErrorRetryable } from '../src/components/imports/errorCategories.jsx';
 
 describe('isRetryableErrorMessage', () => {
