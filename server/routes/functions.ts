@@ -489,14 +489,6 @@ router.post("/:functionName", authMiddleware, rateLimit("functions", 240, 60_000
         const { handleCheckCmsDataApiUrls } = await import("../functions/checkCMSDataApiUrls");
         return res.json(await handleCheckCmsDataApiUrls(req.body, req.user));
       }
-      case "testCMSOffset": {
-        const { handleTestCmsOffset } = await import("../functions/testCMSOffset");
-        return res.json(await handleTestCmsOffset(req.body, req.user));
-      }
-      case "findEmail": {
-        const { handleFindEmail } = await import("../functions/findEmail");
-        return res.json(await handleFindEmail(req.body, req.user));
-      }
       case "aiProjectAnalysis": {
         const { handleAiProjectAnalysis } = await import("../functions/aiProjectAnalysis");
         return res.json(await handleAiProjectAnalysis(req.body, req.user));
