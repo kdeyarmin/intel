@@ -833,12 +833,12 @@ export default function Landing() {
       {/* Pricing Section */}
       <section id="pricing" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="text-center max-w-3xl mx-auto mb-14">
-          <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">Proposed Packages & Pricing</span>
+          <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">Pricing</span>
           <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white">
-            High-yield healthcare intelligence without enterprise extortion
+            Plans for single agencies to regional teams
           </h2>
           <p className="mt-4 text-slate-300 text-base sm:text-lg">
-            Explore the proposed packages below for your agency. These packages and annual discounts are not available through self-service checkout yet. Contact sales to confirm pricing; current subscription options appear in Billing after signup.
+            Every plan starts with a 14-day free trial. Monthly plans are self-serve; annual billing is arranged through our sales team.
           </p>
 
           {/* Billing Interval Toggle */}
@@ -1003,7 +1003,7 @@ export default function Landing() {
                 <span className="text-xs text-slate-400 font-medium">Regional & National</span>
               </div>
               <p className="text-xs text-slate-400 mb-6 min-h-[36px]">
-                National territory coverage, custom scoring algorithms, REST API access, and dedicated account management.
+                National territory coverage, custom scoring rules, and dedicated account management.
               </p>
 
               <div className="mb-6">
@@ -1011,7 +1011,7 @@ export default function Landing() {
                   <span className="text-4xl font-extrabold text-white">Custom</span>
                 </div>
                 <span className="text-xs text-slate-400 block mt-1">
-                  Starting ~$1,500/month or $15k/year
+                  Priced to your territory and team size
                 </span>
               </div>
 
@@ -1026,7 +1026,7 @@ export default function Landing() {
                 </div>
                 <div className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span><strong>Full REST API & CRM Connectors</strong> (Salesforce, HubSpot)</span>
+                  <span><strong>Bulk exports</strong> for your CRM</span>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" aria-hidden="true" />
@@ -1056,71 +1056,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Testimonials & Social Proof */}
-      <section id="testimonials" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 bg-[#0b101d] border-t border-slate-800">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">Customer Validation</span>
-            <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white">
-              Trusted by healthcare business development leaders
-            </h2>
-            <p className="mt-4 text-slate-300 text-base sm:text-lg">
-              Here is what operators in home health, hospice, and skilled nursing say about CareMetric Intel.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Review 1 */}
-            <div className="bg-[#0f172a] rounded-2xl p-7 border border-slate-800 flex flex-col justify-between">
-              <p className="text-sm text-slate-300 leading-relaxed italic mb-6">
-                "Before CareMetric, our liaisons wasted half their time knocking on offices of doctors who hadn't certified a home health patient in years. Now we know the exact G0180 cert volume before setting foot in the clinic. Our conversion rate jumped 40% in quarter one."
-              </p>
-              <div className="flex items-center gap-3 pt-4 border-t border-slate-800">
-                <div className="w-10 h-10 rounded-full bg-cyan-900/60 border border-cyan-500/30 flex items-center justify-center text-cyan-300 font-bold text-sm">
-                  SJ
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Sarah Jenkins</h3>
-                  <p className="text-xs text-slate-400">VP of Business Development, Keystone Health Network</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Review 2 */}
-            <div className="bg-[#0f172a] rounded-2xl p-7 border border-slate-800 flex flex-col justify-between">
-              <p className="text-sm text-slate-300 leading-relaxed italic mb-6">
-                "We were paying $38,000 annually for Definitive Healthcare and barely using 10% of it. CareMetric gave our 6-person BD team everything we actually need—especially the hospital discharge destination mapping—at a fraction of the cost."
-              </p>
-              <div className="flex items-center gap-3 pt-4 border-t border-slate-800">
-                <div className="w-10 h-10 rounded-full bg-teal-900/60 border border-teal-500/30 flex items-center justify-center text-teal-300 font-bold text-sm">
-                  DR
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">David Rodriguez</h3>
-                  <p className="text-xs text-slate-400">Chief Growth Officer, Horizon Post-Acute Care</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Review 3 */}
-            <div className="bg-[#0f172a] rounded-2xl p-7 border border-slate-800 flex flex-col justify-between">
-              <p className="text-sm text-slate-300 leading-relaxed italic mb-6">
-                "The AI outreach angles are game-changers. Instead of sending generic brochures, our liaisons walk into oncology and pulmonology practices with tailored clinical discussion points rooted in real patient readmission data."
-              </p>
-              <div className="flex items-center gap-3 pt-4 border-t border-slate-800">
-                <div className="w-10 h-10 rounded-full bg-emerald-900/60 border border-emerald-500/30 flex items-center justify-center text-emerald-300 font-bold text-sm">
-                  ER
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Elena Rostova</h3>
-                  <p className="text-xs text-slate-400">Director of Provider Relations, St. Jude Hospice Group</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Frequently Asked Questions */}
       <section id="faq" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
         <div className="text-center mb-16">
@@ -1139,15 +1074,15 @@ export default function Landing() {
             },
             {
               q: 'How frequently is the database updated?',
-              a: 'NPPES files are updated weekly and monthly to capture newly registered clinicians and practice location changes. CMS physician certification and post-acute utilization datasets are continuously synchronized against the latest CMS catalog releases.',
+              a: 'NPPES files are updated weekly and monthly to capture newly registered clinicians and practice location changes. CMS publishes most utilization files once a year, usually covering an earlier year; Intel loads each release when it comes out and labels the data year it covers.',
             },
             {
               q: 'Does CareMetric store or process any Protected Health Information (PHI)?',
-              a: 'No. CareMetric Intel strictly processes aggregate public provider records, facility profiles, and de-identified Medicare billing summaries. We never handle patient-level clinical records, EHR data, or Protected Health Information (PHI). The platform is 100% compliant with HIPAA public intelligence standards.',
+              a: 'No. CareMetric Intel uses provider- and facility-level public files only. It holds no patient-level clinical records, EHR data, or Protected Health Information (PHI).',
             },
             {
-              q: 'How does CareMetric differ from Definitive Healthcare or ZoomInfo?',
-              a: 'Definitive Healthcare charges upwards of $30,000 to $50,000+ per year on strict multi-year contracts with heavy enterprise bloat. ZoomInfo is a horizontal sales tool with no concept of physician Medicare certs (G0180) or post-acute referral leakage. CareMetric Intel is built specifically for post-acute BD teams with transparent, accessible pricing starting at $199/mo.',
+              q: 'How is CareMetric Intel different from a general contact database?',
+              a: 'General contact databases are built for any industry. CareMetric Intel is built for post-acute business development: physician home health certification counts (G0180/G0179), facility affiliations, county post-acute utilization, and scoring tuned to your care setting, with published pricing starting at $199/mo.',
             },
             {
               q: 'What is included in the 14-day free trial?',
@@ -1272,10 +1207,10 @@ export default function Landing() {
           {/* Compliance Disclaimer & Copyright */}
           <div className="pt-8 text-xs text-slate-400 leading-relaxed space-y-3">
             <p className="max-w-4xl">
-              <strong>Data & Compliance Disclaimer:</strong> CareMetric Intel aggregates and synthesizes public data releases published by the Centers for Medicare & Medicaid Services (CMS), the National Plan and Provider Enumeration System (NPPES), and the U.S. Census Bureau under public record provisions and the Freedom of Information Act (FOIA). CareMetric does not store or process Protected Health Information (PHI). All data points represent public provider practice summaries, enrollment statuses, and historical utilization benchmarks.
+              <strong>Data & Compliance Disclaimer:</strong> CareMetric Intel aggregates and synthesizes public data releases published by the Centers for Medicare & Medicaid Services (CMS), the National Plan and Provider Enumeration System (NPPES), and the U.S. Census Bureau as public use files. Figures are CareMetric analytics derived from those files, not CMS publications, and each shows its source and data year. CareMetric Intel does not store or process Protected Health Information (PHI).
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 text-[11px] text-slate-400">
-              <p>© {new Date().getFullYear()} CareMetric Intel. All rights reserved.</p>
+              <p>© {new Date().getFullYear()} CareMetric Healthcare Advisors. CareMetric Intel is a <a href="https://caremetricadvisors.com" className="text-cyan-400 hover:underline">CareMetric Healthcare Advisors</a> product.</p>
               <div className="flex items-center gap-4">
                 <Link to="/terms" className="hover:underline">Terms</Link>
                 <Link to="/privacy" className="hover:underline">Privacy</Link>
@@ -1313,11 +1248,10 @@ export default function Landing() {
                 <div className="w-14 h-14 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-4">
                   <CheckCircle2 className="w-8 h-8" aria-hidden="true" />
                 </div>
-                <h3 id="demo-modal-title" className="text-2xl font-bold text-white mb-2">Your demo request is ready</h3>
+                <h3 id="demo-modal-title" className="text-2xl font-bold text-white mb-2">Demo request sent</h3>
                 <p className="text-sm text-slate-300 leading-relaxed max-w-sm mx-auto mb-6">
-                  Open the prepared email and send it to our team to request your walkthrough. Your details have not been submitted yet.
+                  Thanks. Our team will email you to schedule your territory walkthrough.
                 </p>
-                <a href={demoEmail} className="block mb-6 text-blue-400 underline">Email Demo Request</a>
                 <button
                   type="button"
                   onClick={closeDemoModal}
@@ -1444,12 +1378,19 @@ export default function Landing() {
                     />
                   </div>
 
+                  {demoError && (
+                    <p role="alert" className="text-sm text-amber-300 bg-amber-950/40 border border-amber-500/40 rounded-lg p-3">
+                      {demoError}
+                    </p>
+                  )}
+
                   <div className="pt-2">
                     <button
                       type="submit"
+                      disabled={demoSending}
                       className="w-full py-3 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 disabled:opacity-50 text-white font-semibold rounded-lg shadow-md transition-all text-sm flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     >
-                      <span>Prepare Demo Request</span>
+                      <span>{demoSending ? 'Sending...' : 'Send Demo Request'}</span>
                     </button>
                     <p className="text-[11px] text-slate-400 text-center mt-2">
                       Zero spam. We respect your privacy and never sell contact info.
