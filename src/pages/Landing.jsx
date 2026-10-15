@@ -330,13 +330,13 @@ export default function Landing() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Left Column: Doctor Profile & Score */}
               <div className="lg:col-span-7 bg-[#131d31] rounded-xl p-5 border border-slate-700/60">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3.5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex items-start gap-3.5 min-w-0">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-600 to-teal-700 flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0">
                       DV
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h2 className="text-lg font-bold text-white">Dr. Marcus Vance, MD</h2>
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-950 border border-cyan-500/30 text-cyan-300 uppercase tracking-wide">
                           Individual
@@ -360,7 +360,7 @@ export default function Landing() {
                 </div>
 
                 {/* Key Metrics Grid */}
-                <div className="mt-5 grid grid-cols-3 gap-2.5 pt-4 border-t border-slate-700/60">
+                <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-4 border-t border-slate-700/60">
                   <div className="bg-[#0b1220] p-2.5 rounded-lg border border-slate-800">
                     <span className="text-[10px] text-slate-400 block uppercase font-medium">Home Health Certs</span>
                     <span className="text-base font-bold text-white">142</span>
@@ -368,7 +368,7 @@ export default function Landing() {
                   </div>
                   <div className="bg-[#0b1220] p-2.5 rounded-lg border border-slate-800">
                     <span className="text-[10px] text-slate-400 block uppercase font-medium">Care Plan Oversight</span>
-                    <span className="text-base font-bold text-white">38 Benes</span>
+                    <span className="text-base font-bold text-white">38 Patients</span>
                     <span className="text-[10px] text-cyan-400 block">Active Chronic Mgmt</span>
                   </div>
                   <div className="bg-[#0b1220] p-2.5 rounded-lg border border-slate-800">
@@ -413,7 +413,7 @@ export default function Landing() {
                     </div>
                     <div className="flex items-center justify-between p-2 rounded bg-[#0b1220] border border-slate-800">
                       <span className="text-slate-300 font-medium">Local SNF Discharge Pool</span>
-                      <span className="text-amber-400 font-semibold font-mono">41 Shared Benes</span>
+                      <span className="text-amber-400 font-semibold font-mono">41 Shared Patients</span>
                     </div>
                   </div>
                 </div>
