@@ -15,9 +15,9 @@
  * out without a code change.
  */
 export const CLAUDE_MODELS = {
-  SONNET: process.env.CLAUDE_MODEL_SONNET || "claude-sonnet-4-6",
-  HAIKU: process.env.CLAUDE_MODEL_HAIKU || "claude-haiku-4-5-20251001",
-  OPUS: process.env.CLAUDE_MODEL_OPUS || "claude-opus-4-7",
+  SONNET: process.env.CLAUDE_MODEL_SONNET || "claude-sonnet-5-5",
+  HAIKU: process.env.CLAUDE_MODEL_HAIKU || "claude-haiku-5-5",
+  OPUS: process.env.CLAUDE_MODEL_OPUS || "claude-opus-5-5",
   ASSISTANT: process.env.CLAUDE_MODEL_ASSISTANT || "claude-opus-5-5",
 } as const;
 
