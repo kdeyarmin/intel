@@ -298,15 +298,15 @@ export default function Landing() {
             </span>
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-              Instant territory setup
+              Cancel anytime
             </span>
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-              100% verified CMS & NPPES data
+              Built on public CMS & NPPES data
             </span>
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-              Zero PHI & HIPAA compliant
+              No patient-level data
             </span>
           </div>
         </div>
@@ -323,9 +323,8 @@ export default function Landing() {
                 <span className="text-xs text-slate-400 ml-2 font-mono">CareMetric Intel • Provider Intelligence & Lead Scoring</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-medium bg-emerald-950/70 border border-emerald-500/30 text-emerald-300">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Live Sync
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-amber-950/70 border border-amber-500/40 text-amber-300">
+                  Sample data (fictional provider)
                 </span>
               </div>
             </div>
@@ -349,7 +348,7 @@ export default function Landing() {
                       <p className="text-xs text-slate-300 font-medium">Cardiovascular Disease & Internal Medicine</p>
                       <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
                         <MapPin className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
-                        <span>Erie, PA 16502 (Erie County) • NPI: 1487293810</span>
+                        <span>Lakeside, PA • Illustrative record</span>
                       </p>
                     </div>
                   </div>
@@ -376,9 +375,9 @@ export default function Landing() {
                     <span className="text-[10px] text-cyan-400 block">Active Chronic Mgmt</span>
                   </div>
                   <div className="bg-[#0b1220] p-2.5 rounded-lg border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Top Hospital Source</span>
-                    <span className="text-base font-bold text-white">St. Vincent</span>
-                    <span className="text-[10px] text-slate-400 block">68% Patient Share</span>
+                    <span className="text-[10px] text-slate-400 block uppercase font-medium">Hospital Affiliation</span>
+                    <span className="text-base font-bold text-white">Lakeside Regional</span>
+                    <span className="text-[10px] text-slate-400 block">Primary facility</span>
                   </div>
                 </div>
 
@@ -389,7 +388,7 @@ export default function Landing() {
                     <span>AI Suggested Outreach Angle</span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    "Dr. Vance manages high cardiopulmonary patient volume with a 24% 30-day post-discharge readmission risk. Highlight your agency’s specialized congestive heart failure (CHF) in-home clinical pathways and 48-hour post-acute transition protocols."
+                    "Dr. Vance certifies a high volume of home health episodes for cardiopulmonary patients. Lead with your CHF in-home program and how quickly your team starts care after discharge."
                   </p>
                 </div>
               </div>
@@ -408,11 +407,11 @@ export default function Landing() {
                   {/* Referral Flow Nodes */}
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center justify-between p-2 rounded bg-[#0b1220] border border-slate-800">
-                      <span className="text-slate-300 font-medium">St. Vincent Hospital</span>
+                      <span className="text-slate-300 font-medium">Lakeside Regional Hospital</span>
                       <span className="text-emerald-400 font-semibold font-mono">184 Transfers</span>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded bg-[#0b1220] border border-slate-800">
-                      <span className="text-slate-300 font-medium">UPMC Hamot Health</span>
+                      <span className="text-slate-300 font-medium">Bayview Medical Center</span>
                       <span className="text-cyan-400 font-semibold font-mono">72 Transfers</span>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded bg-[#0b1220] border border-slate-800">
