@@ -760,10 +760,10 @@ export default function Landing() {
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">Market Comparison</span>
             <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white">
-              Why healthcare teams switch from legacy vendors
+              How CareMetric Intel compares
             </h2>
             <p className="mt-4 text-slate-300 text-base sm:text-lg">
-              Enterprise platforms charge tens of thousands for rigid contracts and generic data. CareMetric Intel delivers modern, specialized healthcare intelligence at fair, transparent pricing.
+              Built for post-acute business development, with published pricing for single agencies and growth teams.
             </p>
           </div>
 
@@ -776,65 +776,53 @@ export default function Landing() {
                   <th scope="col" className="p-4 sm:p-5 text-sm font-bold text-cyan-400 bg-cyan-950/30 border-x border-cyan-500/20">
                     CareMetric Intel
                   </th>
-                  <th scope="col" className="p-4 sm:p-5 text-sm font-medium text-slate-400">Definitive Healthcare</th>
-                  <th scope="col" className="p-4 sm:p-5 text-sm font-medium text-slate-400">ZoomInfo</th>
-                  <th scope="col" className="p-4 sm:p-5 text-sm font-medium text-slate-400">CarePrecise / CSV Dumps</th>
+                  <th scope="col" className="p-4 sm:p-5 text-sm font-medium text-slate-400">Enterprise healthcare databases</th>
+                  <th scope="col" className="p-4 sm:p-5 text-sm font-medium text-slate-400">General B2B contact databases</th>
+                  <th scope="col" className="p-4 sm:p-5 text-sm font-medium text-slate-400">Raw CMS files</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80 text-sm">
                 <tr>
-                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Annual Pricing & Contracts</th>
-                  <td className="p-4 sm:p-5 font-bold text-cyan-300 bg-cyan-950/20 border-x border-cyan-500/20">
-                    From $199/mo (Cancel anytime)
-                  </td>
-                  <td className="p-4 sm:p-5 text-slate-400">$30,000–$50,000+/year lock-in</td>
-                  <td className="p-4 sm:p-5 text-slate-400">$15,000+/year minimum</td>
-                  <td className="p-4 sm:p-5 text-slate-400">$669–$1,259 one-time per file</td>
+                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Pricing & Contracts</th>
+                  <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">From $199/mo, cancel anytime</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Typically annual contracts</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Typically annual contracts</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Free to download; analyst time to use</td>
                 </tr>
                 <tr>
                   <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Physician Home Health Certs (G0180/G0179)</th>
-                  <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">
-                    ✓ Full claim & bene counts
-                  </td>
-                  <td className="p-4 sm:p-5 text-slate-400">Add-on module required ($$)</td>
-                  <td className="p-4 sm:p-5 text-red-400">✗ Not available</td>
-                  <td className="p-4 sm:p-5 text-slate-400">Raw claim dumps (unparsed)</td>
+                  <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">✓ Counts by physician</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Varies by package</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Usually not included</td>
+                  <td className="p-4 sm:p-5 text-slate-400">In the files, unprocessed</td>
                 </tr>
                 <tr>
-                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Interactive Referral Network Graphs</th>
-                  <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">
-                    ✓ Built-in directional graphs
-                  </td>
-                  <td className="p-4 sm:p-5 text-slate-400">Limited tabular reports</td>
-                  <td className="p-4 sm:p-5 text-red-400">✗ Not available</td>
-                  <td className="p-4 sm:p-5 text-red-400">✗ No software interface</td>
+                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Referral & Affiliation Mapping</th>
+                  <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">✓ Built-in network views</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Varies by package</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Usually not included</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Build it yourself</td>
                 </tr>
                 <tr>
-                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">AI Clinical Outreach Angles</th>
-                  <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">
-                    ✓ Built-in Healthcare AI Assistant
-                  </td>
-                  <td className="p-4 sm:p-5 text-red-400">✗ Not available</td>
-                  <td className="p-4 sm:p-5 text-slate-400">Generic sales copilot</td>
-                  <td className="p-4 sm:p-5 text-red-400">✗ No software interface</td>
+                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">AI Outreach Drafting</th>
+                  <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">✓ Built-in Healthcare AI Assistant</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Varies by package</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Generic sales assistants</td>
+                  <td className="p-4 sm:p-5 text-slate-400">None</td>
                 </tr>
                 <tr>
-                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Update Frequency</th>
-                  <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">
-                    ✓ Continuous weekly sync
-                  </td>
-                  <td className="p-4 sm:p-5 text-slate-400">Quarterly releases</td>
-                  <td className="p-4 sm:p-5 text-slate-400">Varies by corporate data</td>
-                  <td className="p-4 sm:p-5 text-amber-400">Static (outdated immediately)</td>
+                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Data Freshness</th>
+                  <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">✓ NPPES weekly; CMS files as released</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Varies by vendor</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Varies by vendor</td>
+                  <td className="p-4 sm:p-5 text-slate-400">As CMS publishes</td>
                 </tr>
                 <tr>
-                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">User Seats & Collaboration</th>
-                  <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">
-                    ✓ Multi-seat call sheets & lists
-                  </td>
-                  <td className="p-4 sm:p-5 text-slate-400">High per-seat pricing</td>
-                  <td className="p-4 sm:p-5 text-slate-400">High per-credit model</td>
-                  <td className="p-4 sm:p-5 text-slate-400">Raw spreadsheets only</td>
+                  <th scope="row" className="p-4 sm:p-5 font-medium text-slate-200">Lists, Call Sheets & Team Seats</th>
+                  <td className="p-4 sm:p-5 font-semibold text-emerald-400 bg-cyan-950/20 border-x border-cyan-500/20">✓ Multi-seat call sheets & lists</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Varies by package</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Included</td>
+                  <td className="p-4 sm:p-5 text-slate-400">Spreadsheets only</td>
                 </tr>
               </tbody>
             </table>
