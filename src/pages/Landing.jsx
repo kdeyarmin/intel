@@ -119,7 +119,7 @@ export default function Landing() {
       </div>
 
       {/* Navigation Header */}
-      <header className="sticky top-0 z-40 bg-[#07356f]/95 backdrop-blur-md border-b border-blue-400/20 shadow-lg shadow-black/10">
+      <header className="sticky top-0 z-40 bg-[#090d16]/95 backdrop-blur-md border-b border-slate-800 shadow-lg shadow-black/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           {/* Logo & Brand */}
           <Link to="/landing" className="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded-lg p-1">
@@ -317,10 +317,7 @@ export default function Landing() {
             {/* Window Chrome Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-red-500/80" />
-                <span className="w-3 h-3 rounded-full bg-amber-500/80" />
-                <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
-                <span className="text-xs text-slate-400 ml-2 font-mono">CareMetric Intel • Provider Intelligence & Lead Scoring</span>
+                <span className="text-xs text-slate-400 font-mono">CareMetric Intel • Provider Intelligence & Lead Scoring</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-amber-950/70 border border-amber-500/40 text-amber-300">
@@ -675,7 +672,7 @@ export default function Landing() {
             </div>
             <h3 className="text-xl font-bold text-white mb-3">Provider & Facility 360°</h3>
             <p className="text-sm text-slate-300 leading-relaxed mb-4">
-              Access comprehensive dossiers for over 6 million clinicians and facilities. Inspect primary practice vs. mailing addresses, NPI taxonomies, state licenses, and Medicare enrollment status.
+              Look up any clinician or facility in the NPPES registry. Inspect primary practice vs. mailing addresses, NPI taxonomies, state licenses, and Medicare enrollment status.
             </p>
             <span className="text-xs font-semibold text-cyan-400 flex items-center gap-1">
               Verified NPPES & CMS Data →
@@ -901,7 +898,7 @@ export default function Landing() {
                 </div>
                 <div className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>Full access to 6.2M+ provider directory</span>
+                  <span>Full provider and facility directory</span>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <Check className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" aria-hidden="true" />
@@ -1123,7 +1120,7 @@ export default function Landing() {
         <div className="relative rounded-3xl bg-gradient-to-r from-cyan-950 via-[#0e172a] to-teal-950 p-8 sm:p-14 border border-cyan-500/30 overflow-hidden text-center shadow-2xl">
           <div className="relative z-10 max-w-3xl mx-auto">
             <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-              Ready to transform your healthcare business development?
+              See your own territory in CareMetric Intel
             </h2>
             <p className="mt-4 text-base sm:text-lg text-slate-300 leading-relaxed">
               Start your 14-day free trial or schedule a 15-minute territory walkthrough with our healthcare intelligence specialists.
