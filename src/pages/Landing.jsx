@@ -452,20 +452,20 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="text-3xl sm:text-4xl font-extrabold text-cyan-400">6.2M+</div>
-              <p className="mt-1 text-sm text-slate-400 font-medium">Verified Providers (NPPES)</p>
+              <div className="text-3xl sm:text-4xl font-extrabold text-cyan-400">Weekly</div>
+              <p className="mt-1 text-sm text-slate-400 font-medium">NPPES registry refresh</p>
             </div>
             <div>
-              <div className="text-3xl sm:text-4xl font-extrabold text-teal-400">46M+</div>
-              <p className="mt-1 text-sm text-slate-400 font-medium">Medicare Facility Claims</p>
+              <div className="text-3xl sm:text-4xl font-extrabold text-teal-400">CMS</div>
+              <p className="mt-1 text-sm text-slate-400 font-medium">Public use files, loaded as released</p>
             </div>
             <div>
               <div className="text-3xl sm:text-4xl font-extrabold text-white">3,140+</div>
-              <p className="mt-1 text-sm text-slate-400 font-medium">US Counties & ACS Demand</p>
+              <p className="mt-1 text-sm text-slate-400 font-medium">U.S. counties with Census ACS data</p>
             </div>
             <div>
-              <div className="text-3xl sm:text-4xl font-extrabold text-emerald-400">4.2x</div>
-              <p className="mt-1 text-sm text-slate-400 font-medium">Faster Lead Prioritization</p>
+              <div className="text-3xl sm:text-4xl font-extrabold text-emerald-400">Sourced</div>
+              <p className="mt-1 text-sm text-slate-400 font-medium">Source & data year on every figure</p>
             </div>
           </div>
         </div>
@@ -660,7 +660,7 @@ export default function Landing() {
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">Complete Platform Intelligence</span>
           <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-white">
-            Everything your business development team needs to dominate your market
+            Everything your business development team needs in one workspace
           </h2>
           <p className="mt-4 text-slate-300 text-base sm:text-lg">
             CareMetric Intel combines deep healthcare registry files, interactive network graphs, and intelligent sales tooling in one unified workspace.
@@ -717,7 +717,7 @@ export default function Landing() {
             </div>
             <h3 className="text-xl font-bold text-white mb-3">Lead Scoring & List Builder</h3>
             <p className="text-sm text-slate-300 leading-relaxed mb-4">
-              Never waste time on cold outreach again. Configurable algorithms rank providers by cert volume, geographic proximity, and specialty alignment into organized team lead lists.
+              Spend visits on the providers most likely to refer. Configurable algorithms rank providers by cert volume, geographic proximity, and specialty alignment into organized team lead lists.
             </p>
             <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
               Automated Weekly Lead Refresh →
