@@ -2,8 +2,10 @@ import { Router, Request, Response } from "express";
 import { rateLimit } from "../middleware/rateLimit";
 import { handleUnsubscribeToken } from "../functions/outreach";
 import { escapeHtml } from "../functions/outreachHelpers";
+import { sendMail, MailerNotConfiguredError } from "../lib/mailer";
 
-// Unauthenticated endpoints reached from outreach emails.
+// Unauthenticated endpoints: unsubscribe links in outreach emails, and the
+// landing page's demo-request form.
 const router = Router();
 
 function page(title: string, message: string) {
@@ -32,5 +34,69 @@ async function unsubscribe(req: Request, res: Response) {
 // (List-Unsubscribe-Post), which sends the same URL.
 router.get("/unsubscribe", rateLimit("unsubscribe", 60, 60_000), unsubscribe);
 router.post("/unsubscribe", rateLimit("unsubscribe", 60, 60_000), unsubscribe);
+
+const CARE_SETTINGS: Record<string, string> = {
+  home_health: "Home health",
+  hospice: "Hospice",
+  snf: "Skilled nursing",
+  irf: "Inpatient rehab",
+  health_system: "Health system / hospital",
+  marketing_agency: "Healthcare marketing / agency",
+  other: "Other",
+};
+
+function field(value: unknown, max: number): string {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+// Landing-page demo requests are emailed to the sales inbox
+// (DEMO_REQUEST_TO, default sales@caremetricintel.com).
+export async function demoRequest(req: Request, res: Response) {
+  const body = req.body || {};
+  const fullName = field(body.fullName, 120);
+  const workEmail = field(body.workEmail, 200);
+  const organization = field(body.organization, 200);
+  const territory = field(body.territory, 300);
+  const notes = field(body.notes, 2000);
+  const settingKey = field(body.businessLine, 40);
+  const setting = CARE_SETTINGS[settingKey] || settingKey || "Not given";
+
+  if (!fullName || !organization || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(workEmail)) {
+    return res.status(400).json({ message: "Please enter your name, organization, and a valid work email." });
+  }
+
+  const lines: Array<[string, string]> = [
+    ["Name", fullName],
+    ["Work email", workEmail],
+    ["Organization", organization],
+    ["Care setting", setting],
+    ["Territory", territory || "Not given"],
+    ["Notes", notes || "None"],
+  ];
+  const text = lines.map(([k, v]) => `${k}: ${v}`).join("\n");
+  const html = `<h2>New CareMetric Intel demo request</h2><table>${lines
+    .map(([k, v]) => `<tr><th align="left" style="padding:4px 12px 4px 0">${escapeHtml(k)}</th><td style="white-space:pre-wrap">${escapeHtml(v)}</td></tr>`)
+    .join("")}</table>`;
+
+  try {
+    await sendMail({
+      to: process.env.DEMO_REQUEST_TO || "sales@caremetricintel.com",
+      fromName: "CareMetric Intel",
+      subject: `Demo request: ${organization}`,
+      text,
+      html,
+    });
+    return res.json({ ok: true });
+  } catch (e: any) {
+    if (e instanceof MailerNotConfiguredError) {
+      console.error("[demo-request] mailer not configured:", e.missing);
+    } else {
+      console.error("[demo-request] send failed:", e?.message);
+    }
+    return res.status(503).json({ message: "Your request could not be sent right now." });
+  }
+}
+
+router.post("/demo-request", rateLimit("demo_request", 5, 10 * 60_000), demoRequest);
 
 export default router;
