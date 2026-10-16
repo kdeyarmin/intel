@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
-import { CAREMETRIC_LOGO_URL } from '@/lib/branding';
 import {
   ArrowRight,
   Check,
@@ -26,7 +25,7 @@ import {
 export default function Landing() {
   const { isAuthenticated } = useAuth();
 
-  const [annualBilling, setAnnualBilling] = useState(true);
+  const [annualBilling, setAnnualBilling] = useState(false);
   const [demoModalOpen, setDemoModalOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState(null);
@@ -39,6 +38,8 @@ export default function Landing() {
     notes: '',
   });
   const [demoSubmitted, setDemoSubmitted] = useState(false);
+  const [demoSending, setDemoSending] = useState(false);
+  const [demoError, setDemoError] = useState('');
   const demoModalRef = useRef(null);
 
   // Close demo modal on Escape
@@ -61,18 +62,33 @@ export default function Landing() {
     }
   }, [demoModalOpen]);
 
-  const handleDemoSubmit = (e) => {
+  const handleDemoSubmit = async (e) => {
     e.preventDefault();
-    setDemoSubmitted(true);
+    setDemoError('');
+    setDemoSending(true);
+    try {
+      const res = await fetch('/api/public/demo-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(demoForm),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Your request could not be sent.');
+      }
+      setDemoSubmitted(true);
+    } catch (err) {
+      setDemoError(`${err.message} Please email sales@caremetricintel.com and we'll set up your walkthrough.`);
+    } finally {
+      setDemoSending(false);
+    }
   };
-  const demoEmail = `mailto:sales@caremetricintel.com?subject=${encodeURIComponent('CareMetric Intel demo request')}&body=${encodeURIComponent(
-    `Name: ${demoForm.fullName}\nEmail: ${demoForm.workEmail}\nOrganization: ${demoForm.organization}\nCare setting: ${demoForm.businessLine}\nTerritory: ${demoForm.territory}\nNotes: ${demoForm.notes}`,
-  )}`;
 
   const closeDemoModal = () => {
     setDemoModalOpen(false);
     setTimeout(() => {
       setDemoSubmitted(false);
+      setDemoError('');
       setDemoForm({
         fullName: '',
         workEmail: '',
@@ -94,10 +110,10 @@ export default function Landing() {
       <div className="bg-gradient-to-r from-cyan-950 via-slate-900 to-teal-950 border-b border-cyan-500/20 px-4 py-2 text-center text-xs text-cyan-300">
         <span className="inline-flex items-center gap-1.5 font-medium">
           <Sparkles className="w-3.5 h-3.5 text-cyan-400" aria-hidden="true" />
-          <span>New 2026 CMS & NPPES Intelligence Data Release is now live</span>
+          <span>14-day free trial, no credit card required</span>
           <span className="hidden sm:inline text-slate-400">•</span>
           <a href="#pricing" className="underline hover:text-white font-semibold">
-            Explore 14-day free trial →
+            See plans →
           </a>
         </span>
       </div>
@@ -107,12 +123,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           {/* Logo & Brand */}
           <Link to="/landing" className="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded-lg p-1">
-            <img
-              src={CAREMETRIC_LOGO_URL}
-              alt="CareMetric Healthcare Advisors"
-              className="w-28 sm:w-36 h-12 rounded-lg object-contain bg-white shadow-md group-hover:scale-105 transition-transform"
-            />
-            <div className="hidden md:flex flex-col">
+            <div className="flex flex-col">
               <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1">
                 CareMetric <span className="text-cyan-400">Intel</span>
               </span>
@@ -129,7 +140,6 @@ export default function Landing() {
             <a href="#how-it-works" className="hover:text-cyan-400 transition-colors">How It Works</a>
             <a href="#comparison" className="hover:text-cyan-400 transition-colors">Comparison</a>
             <a href="#pricing" className="hover:text-cyan-400 transition-colors">Pricing</a>
-            <a href="#testimonials" className="hover:text-cyan-400 transition-colors">Reviews</a>
             <a href="#faq" className="hover:text-cyan-400 transition-colors">FAQ</a>
           </nav>
 
@@ -195,7 +205,6 @@ export default function Landing() {
               <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md hover:bg-slate-800 hover:text-cyan-400">How It Works</a>
               <a href="#comparison" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md hover:bg-slate-800 hover:text-cyan-400">Comparison</a>
               <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md hover:bg-slate-800 hover:text-cyan-400">Pricing</a>
-              <a href="#testimonials" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md hover:bg-slate-800 hover:text-cyan-400">Reviews</a>
               <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="px-3 py-2 rounded-md hover:bg-slate-800 hover:text-cyan-400">FAQ</a>
             </nav>
             <div className="pt-4 border-t border-slate-800 flex flex-col gap-2.5">
@@ -244,7 +253,7 @@ export default function Landing() {
           {/* Tagline Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-cyan-300 text-xs sm:text-sm font-medium mb-8 shadow-inner">
             <Sparkles className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-            <span>CareMetric Healthcare Advisors & Referral Mapping</span>
+            <span>Provider Intelligence & Referral Mapping</span>
           </div>
 
           {/* Main Headline */}
@@ -258,7 +267,7 @@ export default function Landing() {
 
           {/* Subheadline */}
           <p className="mt-6 text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
-            CareMetric Intel arms home health, hospice, and post-acute business development teams with deep Medicare claims data, physician certification tracking, and automated AI outreach angles.
+            CareMetric Intel turns public NPPES, CMS, and Census files into ranked target lists, referral maps, and outreach plans for home health, hospice, and post-acute business development teams.
           </p>
 
           {/* Dual CTAs */}
@@ -1223,11 +1232,6 @@ export default function Landing() {
             {/* Brand column */}
             <div className="md:col-span-2 space-y-4">
               <div className="flex items-center gap-3">
-                <img
-                  src={CAREMETRIC_LOGO_URL}
-                  alt="CareMetric Healthcare Advisors"
-                  className="w-36 h-12 rounded-lg object-contain bg-white"
-                />
                 <span className="text-xl font-bold text-white tracking-tight">
                   CareMetric <span className="text-cyan-400">Intel</span>
                 </span>
