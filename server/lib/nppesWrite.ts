@@ -4,6 +4,7 @@
 // (stale addresses are removed; rows that are unchanged keep their ids, so
 // provider_location_matches stay valid).
 import { isValidNpi } from "./npiValidation";
+import { normalizePhone } from "../../src/lib/crmQuality.js";
 
 export interface NppesProviderRecord {
   npi: string;
@@ -60,8 +61,12 @@ export function nppesDate(v: unknown): string | null {
 }
 
 function phone(v: unknown): string {
-  const s = t(v, 50);
-  return s.replace(/[^0-9]/g, "").length < 10 ? "" : s;
+  // Practice and mailing rows in the same file often spell one number two
+  // ways ("412-555-1212" and "4125551212"). Store one format. A fragment
+  // shorter than 10 digits (a fax cell of "555") is not a number we can dial.
+  const normalized = normalizePhone(t(v, 50));
+  if (!normalized) return "";
+  return normalized.replace(/\D/g, "").length === 10 ? normalized : "";
 }
 
 /** Pure: one npidata_pfile row → the records to write, or null for an invalid NPI. */

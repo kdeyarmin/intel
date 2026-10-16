@@ -43,8 +43,8 @@ describe("nppesRowToRecords", () => {
     const rec = nppesRowToRecords(rows[0])!;
     expect(rec.provider).toMatchObject({ npi: "1526018159", entity_type: "Individual", first_name: "JANE", last_name: "DOE", credential: "M.D.", gender: "F", status: "Active", enumeration_date: "2006-05-23", last_updated_date: "2026-09-30", sole_proprietor: "N", deactivated_only: false });
     expect(rec.locations).toEqual([
-      { npi: "1526018159", location_type: "Practice", address_1: "100 MAIN ST", address_2: "STE 2", city: "PITTSBURGH", state: "PA", zip: "15213", country: "US", phone: "412-555-1212", fax: "" },
-      { npi: "1526018159", location_type: "Mailing", address_1: "PO BOX 1", address_2: "", city: "PITTSBURGH", state: "PA", zip: "152191234", country: "US", phone: "4125551212", fax: "" },
+      { npi: "1526018159", location_type: "Practice", address_1: "100 MAIN ST", address_2: "STE 2", city: "PITTSBURGH", state: "PA", zip: "15213", country: "US", phone: "(412) 555-1212", fax: "" },
+      { npi: "1526018159", location_type: "Mailing", address_1: "PO BOX 1", address_2: "", city: "PITTSBURGH", state: "PA", zip: "152191234", country: "US", phone: "(412) 555-1212", fax: "" },
     ]);
     expect(rec.taxonomies).toEqual([
       { npi: "1526018159", taxonomy_code: "207Q00000X", is_primary: true, license_number: "MD123", license_state: "PA" },

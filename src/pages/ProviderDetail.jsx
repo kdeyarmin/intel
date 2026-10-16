@@ -29,6 +29,7 @@ import ComplianceDisclaimer from '../components/compliance/ComplianceDisclaimer'
 import UtilizationSummaryCard from '../components/providers/UtilizationSummaryCard';
 import ReferralSummaryCard from '../components/providers/ReferralSummaryCard';
 import { ProviderReferenceCard } from '../components/market/MarketReferenceCards';
+import AddToMarketingBook from '../components/marketing/AddToMarketingBook';
 import ReferralPotentialCard from '../components/market/ReferralPotentialCard';
 import DataQualityInsightsCard from '../components/providers/DataQualityInsightsCard';
 import AIContactEnrichment from '../components/ai/AIContactEnrichment';
@@ -225,6 +226,7 @@ export default function ProviderDetail() {
             Provider intelligence
           </Link>
         </Button>
+        <AddToMarketingBook provider={provider} location={primaryLocation} />
       </div>
 
       {secondaryFailures.length > 0 && (

@@ -6,7 +6,8 @@ import { orgAccessTier } from "../lib/entitlements";
 import { consumeQuota } from "../lib/orgQuota";
 import { onRuleCreated } from "../functions/onRuleCreated";
 import { autoCategorizeProvider } from "../functions/autoCategorizeProvider";
-import { leadLists, callSheets, crmAccounts, users } from "../db/schema";
+import { leadLists, callSheets, crmAccounts, organizationMembers } from "../db/schema";
+import { CrmValidationError, normalizeCrmWrite } from "../lib/crmNormalize";
 import {
   InvalidFieldValueError,
   JSONB_OVERFLOW,
@@ -437,6 +438,7 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     if (split.overflow) data[JSONB_OVERFLOW[entityName]] = split.overflow;
     sendDroppedFields(res, entityName, split.dropped);
     if (!(await stampOrg(entityName, data, req, res))) return;
+    normalizeCrmWrite(entityName, data);
     stampCrmCreate(entityName, data, req);
     if (!(await guardClaimCreate(entityName, data, req, res))) return;
 
@@ -457,7 +459,7 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
 
     res.status(201).json(decorateRow(entityName, row));
   } catch (e: any) {
-    if (e instanceof InvalidFieldValueError) return res.status(400).json({ message: e.message });
+    if (e instanceof InvalidFieldValueError || e instanceof CrmValidationError) return res.status(400).json({ message: e.message });
     return safeError(res, e, `POST /${req.params.entity}`);
   }
 });
@@ -491,6 +493,7 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
     const knownParents = new Map<number, boolean>();
     for (const data of cleaned) {
       if (!(await stampOrg(entityName, data, req, res, knownParents))) return;
+      normalizeCrmWrite(entityName, data);
       stampCrmCreate(entityName, data, req);
       if (!(await guardClaimCreate(entityName, data, req, res))) return;
     }
@@ -498,7 +501,7 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
     const rows = (await db.insert(table).values(cleaned).returning()) as any[];
     res.status(201).json(rows.map((r: any) => decorateRow(entityName, r)));
   } catch (e: any) {
-    if (e instanceof InvalidFieldValueError) return res.status(400).json({ message: e.message });
+    if (e instanceof InvalidFieldValueError || e instanceof CrmValidationError) return res.status(400).json({ message: e.message });
     return safeError(res, e, `POST /${req.params.entity}/bulk`);
   }
 });
@@ -540,6 +543,7 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     // Who did the work and whose book an account sits on: attribution is
     // admin-only, claims follow the transition rules in guardClaimUpdate.
     guardCrmUpdateAttribution(entityName, data, req);
+    normalizeCrmWrite(entityName, data);
     if (!(await guardClaimUpdate(entityName, data, req, res, table, idNum))) return;
     const via = PARENT_SCOPED[String(entityName)];
     if (via && data[via.key] !== undefined) {
@@ -562,7 +566,7 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     }
     res.json(decorateRow(entityName, row));
   } catch (e: any) {
-    if (e instanceof InvalidFieldValueError) return res.status(400).json({ message: e.message });
+    if (e instanceof InvalidFieldValueError || e instanceof CrmValidationError) return res.status(400).json({ message: e.message });
     return safeError(res, e, `PUT /${req.params.entity}/${req.params.id}`);
   }
 });
@@ -649,11 +653,18 @@ function guardCrmUpdateAttribution(entityName: string, data: Record<string, any>
   }
 }
 
-/** True when the user belongs to the organization (for admin claim targets). */
+/**
+ * True when the user is a member of the organization (for admin claim targets).
+ * Membership lives on organization_members; users has no org_id column.
+ */
 async function userInOrg(userId: number, orgId: number | null): Promise<boolean> {
   if (!Number.isInteger(userId) || orgId == null) return false;
-  const [u] = await db.select({ id: users.id }).from(users).where(and(eq(users.id, userId), eq(users.org_id, orgId))).limit(1);
-  return !!u;
+  const [m] = await db
+    .select({ userId: organizationMembers.user_id })
+    .from(organizationMembers)
+    .where(and(eq(organizationMembers.user_id, userId), eq(organizationMembers.org_id, orgId)))
+    .limit(1);
+  return !!m;
 }
 
 /**

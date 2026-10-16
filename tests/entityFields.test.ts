@@ -180,7 +180,8 @@ describe("sanitizeWriteData", () => {
     expect(sanitizeWriteData("LeadList", { name: "x", role: "admin", password_hash: "h" })).toEqual({ name: "x" });
   });
 
-  it("keeps ProviderAffiliation.role, which is a provider's role at an organization", () => {
+  it("keeps a contact's job role and a provider's role at an organization", () => {
+    expect(sanitizeWriteData("CrmContact", { name: "Pat", role: "don", password_hash: "h" })).toEqual({ name: "Pat", role: "don" });
     expect(sanitizeWriteData("ProviderAffiliation", { npi: "1", role: "Medical Director", password_hash: "h" }))
       .toEqual({ npi: "1", role: "Medical Director" });
   });
