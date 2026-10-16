@@ -27,7 +27,7 @@ export class InvalidFilterError extends Error {
 const SENSITIVE_WRITE_FIELDS = ["password_hash", "role"];
 // Entities whose `role` column is ordinary data (a provider's role at an
 // organization), not an account role, so it isn't stripped.
-const ROLE_IS_DATA = new Set(["ProviderAffiliation"]);
+const ROLE_IS_DATA = new Set(["ProviderAffiliation", "CrmContact"]);
 
 /** Drop fields a generic entity write must never set (account roles, password hashes). */
 export function sanitizeWriteData(entityName: string, data: Record<string, any>): Record<string, any> {

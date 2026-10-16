@@ -6,7 +6,7 @@
   },
   "source": {
     "repository": "kdeyarmin/intel",
-    "ref": "af59b9aaec25fc1beb8160040e267313e113a249",
+    "ref": "599509c4a76b072a5ec037f4f584de35626cfd4c",
     "path": "src/pages/Help.jsx",
     "constant": "GUIDE_SECTIONS"
   },
@@ -28,8 +28,8 @@
   "summary": {
     "section_count": 9,
     "topic_count": 37,
-    "text_character_count": 22041,
-    "canonical_sha256": "32b0a4e76c6f43b85fa0673a014190eab508a1f7902631cbf332b1c1ea736285"
+    "text_character_count": 22799,
+    "canonical_sha256": "6daabefe1c49fd09c9a90c52eb2d944b18f3d1ae306641864279d4566c0936dc"
   },
   "sections": [
     {
@@ -173,8 +173,8 @@
         },
         {
           "heading": "Call sheets",
-          "text": "**Lead Lists › Call sheets** is the working list for a county. Create a sheet, then add the hospitals, home health agencies, hospices, nursing homes, clinicians, DME suppliers and licensed homes in that county. Each account keeps a status (Not scheduled, Call, Visit, or Account), a next date and your notes. **Schedule** shows the calls and visits. **Chart of accounts** shows the ones you marked Account. Print the view you are on. Adding the same accounts again does not erase notes.\n\n**Lead Lists › Marketing** is the book you keep month to month. Add an account, then the administrator, director of nursing, business office, social services and the other people you call. Log a visit, a call or a note, schedule the next visit, and log each referral without a patient name. Mark a referral admitted or lost. **Month end** shows sales calls, calls per referral, the share of referrals that became admissions, who referred more or less than the month before, and who to put on next month’s schedule.",
-          "sha256": "ef997615a4725af1c84b46a8b60d1e3d2d192afc21956c042cb8e5a83c3eb1c2"
+          "text": "**Lead Lists › Call sheets** is the working list for a county. Create a sheet, then add the hospitals, home health agencies, hospices, nursing homes, clinicians, DME suppliers and licensed homes in that county. Each account keeps a status (Not scheduled, Call, Visit, or Account), a next date and your notes. **Schedule** shows the calls and visits. **Chart of accounts** shows the ones you marked Account. Print the view you are on. Adding the same accounts again does not erase notes.\n\n**Lead Lists › Marketing** is the book you keep month to month. Add an account (or import a CSV — map the columns and review the preview before anything is saved; a template is on that screen), then the administrator, director of nursing, business office, social services and the other people you call, including their email. Search and filter the book, save a view, and set a stage (Prospect, Working, Customer, Inactive). Tags, phone, website and NPI live on the account; an NPI opens the provider. Log a visit, a call or a note, schedule the next visit, and log each referral without a patient name. Mark a referral admitted or lost. Each row shows engagement from the work you logged (an account with no calls and no referrals stays “No activity”) and a data-quality flag when the phone, a contact, an email, or a recent call is missing. Possible duplicates — the same name with a different legal suffix, or the same NPI — can be merged. Select rows to set their stage together, or export the book. **Month end** shows sales calls, calls per referral, the share of referrals that became admissions, who referred more or less than the month before, and who to put on next month’s schedule. From a provider page, **Add to marketing book** puts that NPI on the book once.",
+          "sha256": "78161467207fffc19e8380af9a46610937fc23abdac2b986588ebb1482ed8abd"
         },
         {
           "heading": "Lead Builder",

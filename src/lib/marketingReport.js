@@ -1,3 +1,5 @@
+import { stableAccountKey } from './crmQuality';
+
 export const CONTACT_ROLES = [
   { id: 'administrator', label: 'Administrator' },
   { id: 'don', label: 'Director of nursing' },
@@ -44,8 +46,7 @@ export function monthLabel(ym) {
 }
 
 export function accountKey(type, name, city) {
-  const slug = `${type}|${name}|${city || ''}`.toLowerCase().replace(/[^a-z0-9|]+/g, ' ').replace(/\s+/g, ' ').trim();
-  return `manual:${slug}`.slice(0, 64);
+  return stableAccountKey(type, name, city);
 }
 
 function inMonth(date, ym) {

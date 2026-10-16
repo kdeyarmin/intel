@@ -1496,6 +1496,13 @@ export const crmAccounts = pgTable("crm_accounts", {
   name: text("name").notNull(),
   city: varchar("city", { length: 100 }),
   phone: varchar("phone", { length: 50 }),
+  // Pipeline stage for the marketing book: prospect, working, customer, inactive.
+  stage: varchar("stage", { length: 20 }).default("prospect"),
+  // How the account arrived: manual, import, directory, or a campaign name.
+  source: varchar("source", { length: 40 }),
+  tags: text("tags"),
+  npi: varchar("npi", { length: 10 }),
+  domain: varchar("domain", { length: 255 }),
   // Whose book of business this account sits on. NULL = unclaimed.
   // Claims define book membership only; reports attribute work by row user_id.
   claimed_by_user_id: integer("claimed_by_user_id").references(() => users.id, { onDelete: "set null" }),
@@ -1506,6 +1513,7 @@ export const crmAccounts = pgTable("crm_accounts", {
   uniqueIndex("crm_accounts_org_key_uq").on(table.org_id, table.account_type, table.account_key),
   index("crm_accounts_org_idx").on(table.org_id),
   index("crm_accounts_claimed_idx").on(table.claimed_by_user_id),
+  index("crm_accounts_npi_idx").on(table.org_id, table.npi),
 ]);
 
 export const crmContacts = pgTable("crm_contacts", {
