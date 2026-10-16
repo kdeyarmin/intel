@@ -15,6 +15,7 @@ import {
   ACCOUNT_STAGES, accountQuality, directoryAccountKey, engagementScore, findDuplicateGroups, identityKey, normalizePhone, planMerge, tagsToStorage,
 } from '@/lib/crmQuality';
 import CrmImportDialog from '@/components/marketing/CrmImportDialog';
+import AccountCampaigns from '@/components/marketing/AccountCampaigns';
 import SavedFilterBar from '@/components/filters/SavedFilterBar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { countExport } from '@/components/exports/exportUtils';
@@ -715,6 +716,8 @@ function Account({ account, contacts, activities, referrals, me, onChange, onFai
           <Button type="button" variant="outline" className="border-slate-700" onClick={() => log('visit', false, when)}>Schedule a visit</Button>
         </div>
       </section>
+
+      <AccountCampaigns account={account} />
 
       <section>
         <h3 className="text-sm font-medium text-slate-200 mb-2">Activity</h3>

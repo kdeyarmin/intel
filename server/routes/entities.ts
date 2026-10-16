@@ -1,12 +1,12 @@
 import { Router, Request, Response } from "express";
-import { db } from "../db";import { tableMap, leadListMembers, outreachMessages, callSheetAccounts, crmContacts, crmActivities, crmReferrals } from "../db/schema";
+import { db } from "../db";import { tableMap, leadListMembers, outreachMessages, callSheetAccounts, crmContacts, crmActivities, crmReferrals, crmCampaignTouches } from "../db/schema";
 import { eq, desc, asc, sql, getTableColumns, and, inArray } from "drizzle-orm";
 import { authMiddleware, AuthRequest, SessionPrincipal, isOrgAdmin, isPlatformAdmin } from "../middleware/auth";
 import { orgAccessTier } from "../lib/entitlements";
 import { consumeQuota } from "../lib/orgQuota";
 import { onRuleCreated } from "../functions/onRuleCreated";
 import { autoCategorizeProvider } from "../functions/autoCategorizeProvider";
-import { leadLists, callSheets, crmAccounts, organizationMembers } from "../db/schema";
+import { leadLists, callSheets, crmAccounts, organizationMembers, outreachCampaigns } from "../db/schema";
 import { CrmValidationError, normalizeCrmWrite } from "../lib/crmNormalize";
 import {
   InvalidFieldValueError,
@@ -72,6 +72,7 @@ export const USER_WRITABLE_ENTITIES = new Set([
   "CrmContact",
   "CrmActivity",
   "CrmReferral",
+  "CrmCampaignTouch",
   "CustomReport",
   "ScheduledReport",
   "ScheduledExport",
@@ -104,6 +105,7 @@ const PARENT_SCOPED: Record<string, { key: string; parent: any; label: string }>
   CrmContact: { key: "account_id", parent: crmAccounts, label: "account" },
   CrmActivity: { key: "account_id", parent: crmAccounts, label: "account" },
   CrmReferral: { key: "account_id", parent: crmAccounts, label: "account" },
+  CrmCampaignTouch: { key: "account_id", parent: crmAccounts, label: "account" },
 };
 
 // Platform administrators read these across every organization, and the platform's own rows (the server writes
@@ -174,10 +176,14 @@ const CASCADE_DELETES: Record<string, Array<{ table: any; column: string }>> = {
     { table: crmContacts, column: "account_id" },
     { table: crmActivities, column: "account_id" },
     { table: crmReferrals, column: "account_id" },
+    { table: crmCampaignTouches, column: "account_id" },
   ],
   // A deleted campaign takes its queued/sent messages with it; without this
   // they were orphaned.
-  OutreachCampaign: [{ table: outreachMessages, column: "campaign_id" }],
+  OutreachCampaign: [
+    { table: outreachMessages, column: "campaign_id" },
+    { table: crmCampaignTouches, column: "campaign_id" },
+  ],
 };
 
 function sendDroppedFields(res: Response, entityName: string, dropped: string[]) {
@@ -441,6 +447,7 @@ router.post("/:entity", authMiddleware, async (req: AuthRequest, res: Response) 
     normalizeCrmWrite(entityName, data);
     stampCrmCreate(entityName, data, req);
     if (!(await guardClaimCreate(entityName, data, req, res))) return;
+    if (!(await guardCampaignTouch(entityName, data, req, res, true))) return;
 
     const [row] = (await db.insert(table).values(data).returning()) as any[];
 
@@ -496,6 +503,7 @@ router.post("/:entity/bulk", authMiddleware, async (req: AuthRequest, res: Respo
       normalizeCrmWrite(entityName, data);
       stampCrmCreate(entityName, data, req);
       if (!(await guardClaimCreate(entityName, data, req, res))) return;
+      if (!(await guardCampaignTouch(entityName, data, req, res, true))) return;
     }
 
     const rows = (await db.insert(table).values(cleaned).returning()) as any[];
@@ -545,6 +553,7 @@ router.put("/:entity/:id", authMiddleware, async (req: AuthRequest, res: Respons
     guardCrmUpdateAttribution(entityName, data, req);
     normalizeCrmWrite(entityName, data);
     if (!(await guardClaimUpdate(entityName, data, req, res, table, idNum))) return;
+    if (!(await guardCampaignTouch(entityName, data, req, res, false))) return;
     const via = PARENT_SCOPED[String(entityName)];
     if (via && data[via.key] !== undefined) {
       const orgId = orgIdOf(req);
@@ -665,6 +674,46 @@ async function userInOrg(userId: number, orgId: number | null): Promise<boolean>
     .where(and(eq(organizationMembers.user_id, userId), eq(organizationMembers.org_id, orgId)))
     .limit(1);
   return !!m;
+}
+
+/**
+ * A campaign touch may only name a campaign in the caller's organization.
+ * Creating the same account/campaign pair twice is refused so the unique
+ * index does not surface as a database error.
+ */
+async function guardCampaignTouch(entityName: string, data: Record<string, any>, req: AuthRequest, res: Response, creating: boolean): Promise<boolean> {
+  if (entityName !== "CrmCampaignTouch" || !("campaign_id" in data)) return true;
+  const orgId = orgIdOf(req);
+  const campaignId = Number(data.campaign_id);
+  if (!Number.isInteger(campaignId) || orgId == null) {
+    res.status(400).json({ message: "Choose a campaign in your organization." });
+    return false;
+  }
+  const [campaign] = await db
+    .select({ id: outreachCampaigns.id })
+    .from(outreachCampaigns)
+    .where(and(eq(outreachCampaigns.id, campaignId), eq(outreachCampaigns.org_id, orgId)))
+    .limit(1);
+  if (!campaign) {
+    res.status(404).json({ message: "Not found", detail: "That campaign isn't in your organization." });
+    return false;
+  }
+  data.campaign_id = campaignId;
+  if (creating) {
+    const accountId = Number(data.account_id);
+    if (Number.isInteger(accountId)) {
+      const [dup] = await db
+        .select({ id: crmCampaignTouches.id })
+        .from(crmCampaignTouches)
+        .where(and(eq(crmCampaignTouches.account_id, accountId), eq(crmCampaignTouches.campaign_id, campaignId)))
+        .limit(1);
+      if (dup) {
+        res.status(400).json({ message: "That campaign is already linked to this account." });
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 /**
