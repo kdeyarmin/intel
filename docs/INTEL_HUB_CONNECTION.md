@@ -1,5 +1,17 @@
 # Intel administration connection
 
+**Current status.** CareMetric Intel runs on Railway (Express + Postgres).
+The Base44 Deno entrypoint for `centralAdminRead` has been removed. The
+protocol handler remains in `server/lib/centralAdminRead.ts` and is covered
+by `tests/intelHubAdmin.test.ts`, but it is not mounted on Express and it
+still speaks the old 24-character Base44 user ids. The Support Hub at
+`support-hub-web-production.up.railway.app` will not be able to list Intel
+users through that bridge after the Base44 app is shut off. Repointing the
+Hub is a separate change. The public Help launcher does not use this bridge.
+
+The notes below record the 2026-09-11 investigation. They are not the
+current deployment.
+
 The repository contains an Express migration, but the verified public Intel
 runtime on 2026-09-11 is Base44 app `6993c62145573ca8a97ad4a9`.
 `/api/health` returned HTML and `/api/auth/me` returned Base44's authentication

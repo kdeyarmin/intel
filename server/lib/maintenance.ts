@@ -1,6 +1,5 @@
-// Server-side maintenance workers, ported from base44/functions/ so they can be
-// invoked from the admin UI (and, eventually, from an in-Express cron driver
-// that replaces base44/functions/runScheduledImports).
+// Server-side maintenance workers. The admin buttons and the maintenance
+// tick call these; there is no Base44 cron driver.
 //
 // Each worker is idempotent and self-throttling — runScheduledImports calls
 // these on every cron tick, and a misclick on the admin UI shouldn't be worse
@@ -64,7 +63,7 @@ function truncErr(e: unknown): string {
 }
 
 // ─── Worker: auto-resume paused imports ──────────────────────────────────────
-// Mirrors base44/functions/autoResumePausedImports/entry.ts. Paused batches
+// Paused batches
 // that carry a saved offset get re-fed to triggerImport, up to MAX_AUTO_RESUMES
 // per batch so a chronically-failing batch can't loop forever.
 
@@ -165,7 +164,7 @@ export async function runAutoResumePausedImports(): Promise<WorkerResult> {
 }
 
 // ─── Worker: auto-retry failed imports ───────────────────────────────────────
-// Mirrors base44/functions/autoRetryFailedImports/entry.ts. Failed batches
+// Failed batches
 // whose error categorization marks them as transient get re-dispatched via
 // triggerImport, bounded by MAX_AUTO_RETRY_ATTEMPTS with exponential backoff.
 
@@ -398,8 +397,7 @@ export async function runCleanupAllImports(): Promise<WorkerResult> {
 
 // ─── Heartbeat ───────────────────────────────────────────────────────────────
 // Writes the maintenance_fanout AuditEvent that MaintenanceHealthPanel polls.
-// Mirrors the payload base44/functions/runScheduledImports writes so the panel
-// renders identically regardless of which side produced the heartbeat.
+// Payload the Import Monitor health panel reads.
 
 export async function writeMaintenanceHeartbeat(
   workers: WorkerResult[],

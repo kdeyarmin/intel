@@ -17,9 +17,3 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx vitest run tests/intelHubAdmin.test.ts
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.5.6
-      - run: deno check --node-modules-dir=none --no-lock --no-config base44/functions/centralAdminRead/entry.ts
-        env:
-          DENO_NO_PACKAGE_JSON: "1"

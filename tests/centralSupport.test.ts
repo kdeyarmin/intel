@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildCareMetricIntelSupportUrl,
-  CAREMETRIC_INTEL_PRODUCTION_APP_ID,
   CENTRAL_SUPPORT_EMAIL,
   CENTRAL_SUPPORT_PHONE,
   isVerifiedCareMetricIntelProduction,
@@ -9,7 +8,6 @@ import {
 } from '../src/lib/centralSupport';
 
 const PRODUCTION_INPUT = {
-  appId: CAREMETRIC_INTEL_PRODUCTION_APP_ID,
   environment: 'production',
   hostname: 'caremetricintel.com',
 };
@@ -43,8 +41,12 @@ describe('CareMetric Intel central support integration', () => {
     expect(resolveCentralSupportActivation({ ...PRODUCTION_INPUT, hostname: 'CAREMetricIntel.com.' })).toBe(true);
   });
 
+  it('ignores a Base44 app id when the host and environment match', () => {
+    expect(isVerifiedCareMetricIntelProduction({ ...PRODUCTION_INPUT, appId: '6993c62145573ca8a97ad4a9' })).toBe(true);
+    expect(isVerifiedCareMetricIntelProduction({ ...PRODUCTION_INPUT, appId: 'another-app' })).toBe(true);
+  });
+
   it.each([
-    { ...PRODUCTION_INPUT, appId: 'another-app' },
     { ...PRODUCTION_INPUT, environment: 'staging' },
     { ...PRODUCTION_INPUT, hostname: 'preview.base44.app' },
     { ...PRODUCTION_INPUT, hostname: 'intel-iota-two.vercel.app' },

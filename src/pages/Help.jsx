@@ -138,7 +138,6 @@ export default function Help() {
   const [expandedSections, setExpandedSections] = useState(new Set(['getting-started']));
   const [generating, setGenerating] = useState(false);
   const centralSupportRuntime = {
-    appId: import.meta.env.VITE_BASE44_APP_ID,
     environment: import.meta.env.VITE_DEPLOY_ENV,
     hostname: typeof window === 'undefined' ? '' : window.location.hostname,
     flag: import.meta.env.VITE_CENTRAL_SUPPORT_HUB_ENABLED,

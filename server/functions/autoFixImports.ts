@@ -18,8 +18,8 @@
 //   the original's `retry_count >= 3` guard.
 // - The Base44 AuditEvent `timestamp` field does not exist on
 //   `audit_events`; the row's `created_date` (defaultNow) records the time.
-//   The bot's identity (`import_bot` / `bot@base44.ai`) and the details payload
-//   are preserved verbatim, with `entity_type`/`entity_id` filled in so the
+//   The bot's identity (`import_bot` / `import-bot@caremetricintel.com`) and the
+//   details payload are written on the audit row, with `entity_type`/`entity_id` filled in so the
 //   event joins back to the batch.
 // - Fan-out calls Base44's `functions.invoke('nppesCrawler' | 'triggerImport')`
 //   are replaced with direct in-process calls to
@@ -279,7 +279,7 @@ export async function runAutoFixImports(): Promise<AutoFixImportsResult> {
 
             await db.insert(auditEvents).values({
               event_type: "import_bot",
-              user_email: "bot@base44.ai",
+              user_email: "import-bot@caremetricintel.com",
               entity_type: "import_batch",
               entity_id: String(batch.id),
               action: "Auto Restart Import",

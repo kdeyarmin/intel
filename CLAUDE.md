@@ -7,15 +7,15 @@ security model, and DB performance notes.
 ## What this is
 
 CareMetric Intel: a healthcare provider intelligence / CRM /
-analytics platform. Three layers:
+analytics platform. Two layers, both hosted on Railway:
 
 1. **`src/`** — React 18 + Vite SPA. Pages are auto-registered in
    `src/pages.config.js`; the frontend talks to the same-origin `/api`.
 2. **`server/`** — Express 5 API (TypeScript via `tsx`, port 3001): generic
-   entity CRUD, a function dispatcher, and integration endpoints.
-3. **`base44/functions/`** — Base44 **Deno** edge functions (cron driver,
-   import lifecycle hooks, maintenance workers). These are NOT Node — they use
-   `npm:`-prefixed imports and run on the Base44 platform.
+   entity CRUD, a function dispatcher, and integration endpoints. Auth,
+   files (`uploads/` via `/api/storage`), and Postgres live here. There is
+   no Base44 runtime. The symbol `base44` in `src/api/client.js` is the
+   same-origin API client, not the Base44 cloud SDK.
 
 ## Commands
 
@@ -142,10 +142,10 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   accounts a payment approved, as user "stripe"). The browser records its own actions with
   `base44.audit.record(type, details)` (`POST /api/audit`, allowlisted types);
   it can't write `AuditEvent` directly.
-- **Edge-function helpers are unit-tested from Node:** pure logic lives in
-  `base44/functions/<fn>/helpers.ts` so it can be imported by `tests/` without
-  booting Deno. The frontend mirrors some of this logic (e.g. `retryStatus.js`
-  mirrors `autoRetryFailedImports/helpers.ts`) — keep the two in sync.
+- **Maintenance helpers are unit-tested from Node:** pure logic lives in
+  `server/lib/scheduling.ts` (re-exported from `server/lib/maintenanceHelpers.ts`).
+  The frontend mirrors the retry policy in `src/components/imports/retryStatus.js`
+  — keep the two in sync.
 - **Analytics over the big tables come from rollups.** `server/lib/rollups`
   scans a source table in primary-key chunks (each its own short query under a
   statement timeout), accumulates small totals in memory and anything that
@@ -251,8 +251,7 @@ build` — that is exactly what CI (`.github/workflows/ci.yml`) gates on.
   surfaces. There is no second copy of the workers: the admin buttons call the
   same functions. Hosts without a cron can set
   `MAINTENANCE_INPROCESS_INTERVAL_MS` (`server/lib/maintenanceTicker.ts`).
-  If neither is wired, the workers don't run (and rollups never refresh). The
-  legacy Deno `base44/functions/runScheduledImports` is not the entrypoint.
+  If neither is wired, the workers don't run (and rollups never refresh).
 - **A schedule is "running" until its batch finishes.** `runOneSchedule`
   records `last_batch_id`; `server/lib/importCompletion.ts` settles the
   schedule (success/failure, backoff, `last_successful_run_at`) from the

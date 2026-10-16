@@ -1,4 +1,9 @@
-// Narrow bridge for the verified hosted Intel runtime. No Express database assumptions.
+// Support Hub admin-read protocol. This module is not mounted on Express.
+// The Base44 Deno entrypoint that used to host it (and the @base44/sdk
+// client it constructed) has been removed. Tests still exercise the protocol
+// with an injected reader. Railway user ids are integers, so this handler
+// cannot be pointed at Postgres without a new identity map.
+
 export const APP_ID='6993c62145573ca8a97ad4a9';
 export const APP_ORIGIN='https://caremetricintel.com';
 export const AUTHORIZATION_URL='https://support-hub-web-production.up.railway.app/api/internal/admin/intel/authorize';

@@ -1,5 +1,5 @@
 import { describe,expect,it,vi } from 'vitest';
-import { APP_ID,APP_ORIGIN,AUTHORIZATION_URL,TOKEN_HEADER,createCentralAdminHandler,readConfig } from '../base44/functions/centralAdminRead/handler';
+import { APP_ID,APP_ORIGIN,AUTHORIZATION_URL,TOKEN_HEADER,createCentralAdminHandler,readConfig } from '../server/lib/centralAdminRead';
 const owner='00000000-0000-4000-8000-000000000001',native='6993c62145573ca8a97ad4aa';
 const id=(value:number)=>value.toString(16).padStart(24,'0');
 const env={CAREMETRIC_ADMIN_ENABLED:'true',CAREMETRIC_ADMIN_IDENTITY_MAP_JSON:JSON.stringify({[owner]:native}),CAREMETRIC_ADMIN_SOURCE_REVISION:'a'.repeat(40)};

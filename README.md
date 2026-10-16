@@ -13,8 +13,8 @@ outreach, and AI-driven insights.
   entity CRUD, a function dispatcher, and integration endpoints.
 - **Database:** PostgreSQL with Drizzle ORM (52 tables). Migrations in
   `./drizzle/`.
-- **Edge functions:** Base44 Deno functions in `base44/functions/` for
-  scheduled imports, maintenance fan-out, and import lifecycle hooks.
+- **Auth and files:** Express sessions (httpOnly JWT cookie) and `uploads/`
+  served at `/api/storage` to signed-in users.
 - **AI:** Anthropic Claude (`@anthropic-ai/sdk`). **Email:** SendGrid.
   **Uploads:** Multer.
 
@@ -22,14 +22,14 @@ outreach, and AI-driven insights.
 
 ```
 src/                 React SPA (pages auto-registered via pages.config.js)
-  api/client.js      Base44-SDK-compatible client → talks to /api (same origin)
+  api/client.js      same-origin /api client (exported as `base44` for call sites)
 server/              Express API (port 3001)
   routes/            auth, entities (generic CRUD), integrations, functions
   functions/         backend function handlers (dispatched by routes/functions.ts)
   db/                Drizzle schema + pool
   middleware/        JWT auth, rate limiting
-base44/functions/    Deno edge functions (cron driver, import hooks, workers)
-drizzle/             generated SQL migrations
+drizzle/             SQL migrations
+scripts/base44/      one-time Base44 export importer (dry-run unless --apply)
 tests/               Vitest suite (node + jsdom)
 ```
 
@@ -170,9 +170,9 @@ room for it.
 
 ### Central CareMetric support
 
-The local `/Help` guide remains the fallback in every environment. On the
-verified production app only (Base44 app `6993c62145573ca8a97ad4a9` at
-`caremetricintel.com`), the page also offers a launcher to CareMetric's
+The local `/Help` guide remains the fallback in every environment. On
+`caremetricintel.com` in a production build (`VITE_DEPLOY_ENV=production`),
+the page also offers a launcher to CareMetric's
 first-party Support Hub at
 `https://support-hub-web-production.up.railway.app/help` for product
 `caremetric-intel`. The launcher accepts no runtime arguments and sends only

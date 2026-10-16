@@ -2,9 +2,8 @@
 //
 // The retry policy (which failures are transient, attempt caps, backoff) is
 // defined once in server/lib/scheduling.ts and re-exported here so the workers
-// and the cron driver can never disagree about it. The base44 copy in
-// base44/functions/autoRetryFailedImports/helpers.ts mirrors it and goes away
-// with the rest of base44/.
+// and the cron driver can never disagree about it. The old Base44 copy of
+// these helpers has been removed; this file is the source of truth.
 
 export {
   MAX_AUTO_RETRY_ATTEMPTS,

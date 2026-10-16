@@ -260,6 +260,13 @@
       "when": 1791613332276,
       "tag": "0037_crm_campaign_touches",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791613333276,
+      "tag": "0038_base44_import_map",
+      "breakpoints": true
     }
   ]
 }
