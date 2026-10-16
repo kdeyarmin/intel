@@ -101,7 +101,7 @@ describe("how the entity sets fit together", () => {
   });
 
   it("scopes every entity members or owners write to their organization (directly or through a parent)", () => {
-    const throughParent = new Set(["LeadListMember", "CallSheetAccount", "CrmContact", "CrmActivity", "CrmReferral"]);
+    const throughParent = new Set(["LeadListMember", "CallSheetAccount", "CrmContact", "CrmActivity", "CrmReferral", "CrmCampaignTouch"]);
     for (const entity of [...USER_WRITABLE_ENTITIES, ...ORG_ADMIN_ENTITIES]) {
       expect(ORG_SCOPED_ENTITIES.has(entity) || throughParent.has(entity), entity).toBe(true);
     }

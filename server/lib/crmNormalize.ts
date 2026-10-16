@@ -98,4 +98,7 @@ export function normalizeCrmWrite(entityName: string, data: Record<string, any>)
     if ("received_on" in data) data.received_on = calendarDay("received_on", data.received_on, true);
     if ("admitted_on" in data) data.admitted_on = calendarDay("admitted_on", data.admitted_on, false);
   }
+  if (entityName === "CrmCampaignTouch") {
+    if ("touched_on" in data) data.touched_on = calendarDay("touched_on", data.touched_on, true);
+  }
 }

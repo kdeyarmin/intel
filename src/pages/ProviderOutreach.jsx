@@ -14,6 +14,7 @@ import { useCampaignSender } from '../components/outreach/useCampaignSender';
 import CampaignBuilder from '../components/outreach/CampaignBuilder';
 import CampaignPerformanceMetrics from '../components/outreach/CampaignPerformanceMetrics';
 import CampaignOutcomesPanel from '../components/outreach/CampaignOutcomesPanel';
+import CampaignAccountResults from '../components/marketing/CampaignAccountResults';
 import PageHeader from '../components/shared/PageHeader';
 
 export default function ProviderOutreach() {
@@ -246,6 +247,8 @@ export default function ProviderOutreach() {
               <CampaignPerformanceMetrics campaign_id={selectedCampaign.id} status={sending ? 'sending' : liveCampaign.status} />
 
               <CampaignOutcomesPanel campaign={selectedCampaign} />
+
+              <CampaignAccountResults campaign={selectedCampaign} />
 
               {/* Recent Messages */}
               <Card className="bg-[#141d30] border-slate-700/50">

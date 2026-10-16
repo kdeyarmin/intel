@@ -48,6 +48,10 @@ describe('CRM write normalization', () => {
     const referral: Record<string, unknown> = { received_on: '2026-10-16', admitted_on: '' };
     normalizeCrmWrite('CrmReferral', referral);
     expect(referral).toMatchObject({ received_on: '2026-10-16', admitted_on: null });
+    expect(() => normalizeCrmWrite('CrmCampaignTouch', { touched_on: '10/16/2026' })).toThrow(/YYYY-MM-DD/);
+    const touch: Record<string, unknown> = { touched_on: '2026-10-16' };
+    normalizeCrmWrite('CrmCampaignTouch', touch);
+    expect(touch.touched_on).toBe('2026-10-16');
   });
 
   it('leaves unrelated entities alone', () => {

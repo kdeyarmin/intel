@@ -253,6 +253,13 @@
       "when": 1791613331276,
       "tag": "0036_crm_account_quality",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1791613332276,
+      "tag": "0037_crm_campaign_touches",
+      "breakpoints": true
     }
   ]
 }

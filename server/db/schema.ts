@@ -1545,6 +1545,19 @@ export const crmActivities = pgTable("crm_activities", {
   index("crm_activities_user_idx").on(table.user_id),
 ]);
 
+// One row per account and campaign. First touch, last touch and influenced
+// are computed from touched_on; they are not columns.
+export const crmCampaignTouches = pgTable("crm_campaign_touches", {
+  id: serial("id").primaryKey(),
+  account_id: integer("account_id").notNull().references(() => crmAccounts.id, { onDelete: "cascade" }),
+  campaign_id: integer("campaign_id").notNull().references(() => outreachCampaigns.id, { onDelete: "cascade" }),
+  touched_on: varchar("touched_on", { length: 10 }).notNull(),
+  created_date: timestamp("created_date").defaultNow(),
+}, (table) => [
+  uniqueIndex("crm_campaign_touches_pair_uq").on(table.account_id, table.campaign_id),
+  index("crm_campaign_touches_campaign_idx").on(table.campaign_id),
+]);
+
 // A referral the account sent. No patient name. outcome: open, admitted, lost.
 // `user_id` is the marketer who logged it (stamped on create); NULL means
 // logged before attribution existed. A referral is an admission only when
@@ -1594,6 +1607,7 @@ export const tableMap: Record<string, any> = {
   CrmContact: crmContacts,
   CrmActivity: crmActivities,
   CrmReferral: crmReferrals,
+  CrmCampaignTouch: crmCampaignTouches,
   CMSUtilization: cmsUtilization,
   CMSReferral: cmsReferrals,
   MedicareFacility: medicareFacilities,
