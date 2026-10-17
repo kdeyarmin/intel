@@ -2344,3 +2344,124 @@ export const dmeSupplierDirectory = pgTable("dme_supplier_directory", {
   index("idx_dme_dir_zip").on(table.zip5),
   index("idx_dme_dir_npi").on(table.npi),
 ]);
+
+/** CMS Provider of Services snapshot, one row per CCN and quarter. */
+export const cmsPosFacility = pgTable("cms_pos_facility", {
+  ccn: varchar("ccn", { length: 10 }).notNull(),
+  period: varchar("period", { length: 7 }).notNull(),
+  name: text("name"),
+  state: varchar("state", { length: 2 }),
+  category_code: varchar("category_code", { length: 8 }),
+  control_type: varchar("control_type", { length: 8 }),
+  certification_date: varchar("certification_date", { length: 10 }),
+  termination_date: varchar("termination_date", { length: 10 }),
+  chow_date: varchar("chow_date", { length: 10 }),
+}, (table) => [
+  primaryKey({ columns: [table.ccn, table.period] }),
+]);
+
+/** Open, close, and change-of-ownership signals between POS quarters. */
+export const cmsPosSignal = pgTable("cms_pos_signal", {
+  ccn: varchar("ccn", { length: 10 }).notNull(),
+  period: varchar("period", { length: 7 }).notNull(),
+  signal: varchar("signal", { length: 24 }).notNull(),
+  prior_period: varchar("prior_period", { length: 7 }),
+  detail: text("detail"),
+}, (table) => [
+  primaryKey({ columns: [table.ccn, table.period, table.signal] }),
+  index("idx_cms_pos_signal_period").on(table.period, table.signal),
+]);
+
+/** Medicare Advantage penetration of county eligibles, one month at a time. */
+export const cmsMaPenetration = pgTable("cms_ma_penetration", {
+  period: varchar("period", { length: 7 }).notNull(),
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  eligibles: integer("eligibles"),
+  enrolled: integer("enrolled"),
+  penetration: numeric("penetration", { precision: 8, scale: 4 }),
+}, (table) => [
+  primaryKey({ columns: [table.period, table.county_fips] }),
+]);
+
+/** State certificate-of-need status, sourced (NCSL), not inferred. */
+export const certificateOfNeed = pgTable("certificate_of_need", {
+  state: varchar("state", { length: 2 }).primaryKey(),
+  con_status: varchar("con_status", { length: 16 }).notNull(),
+  services: text("services"),
+  source_url: text("source_url").notNull(),
+  source_as_of: varchar("source_as_of", { length: 10 }).notNull(),
+  note: text("note"),
+});
+
+/** HUD USPS ZIP-to-county crosswalk. A ZIP can sit in more than one county. */
+export const hudZipCounty = pgTable("hud_zip_county", {
+  zip5: varchar("zip5", { length: 5 }).notNull(),
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  residential_ratio: numeric("residential_ratio", { precision: 8, scale: 6 }),
+  total_ratio: numeric("total_ratio", { precision: 8, scale: 6 }),
+}, (table) => [
+  primaryKey({ columns: [table.zip5, table.county_fips] }),
+]);
+
+/** HCRIS cost-report totals for home health, hospice, and skilled nursing. */
+export const hcrisCostSummary = pgTable("hcris_cost_summary", {
+  setting: varchar("setting", { length: 16 }).notNull(),
+  provider_id: varchar("provider_id", { length: 10 }).notNull(),
+  fiscal_year: varchar("fiscal_year", { length: 4 }).notNull(),
+  total_patient_revenue: numeric("total_patient_revenue", { precision: 16, scale: 2 }),
+  medicare_revenue: numeric("medicare_revenue", { precision: 16, scale: 2 }),
+  medicaid_revenue: numeric("medicaid_revenue", { precision: 16, scale: 2 }),
+  total_cost: numeric("total_cost", { precision: 16, scale: 2 }),
+  net_income: numeric("net_income", { precision: 16, scale: 2 }),
+  medicare_share: numeric("medicare_share", { precision: 8, scale: 4 }),
+  margin: numeric("margin", { precision: 8, scale: 4 }),
+}, (table) => [
+  primaryKey({ columns: [table.setting, table.provider_id, table.fiscal_year] }),
+  index("idx_hcris_cost_provider").on(table.provider_id),
+]);
+
+/** AHRQ Social Determinants of Health county measures. */
+export const countySdoh = pgTable("county_sdoh", {
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  year: varchar("year", { length: 4 }).notNull(),
+  measure_id: varchar("measure_id", { length: 40 }).notNull(),
+  measure: text("measure"),
+  data_value: numeric("data_value", { precision: 12, scale: 4 }),
+  source: text("source"),
+}, (table) => [
+  primaryKey({ columns: [table.county_fips, table.year, table.measure_id] }),
+]);
+
+/** CDC Social Vulnerability Index, county overall and four themes (0–1 ranks). */
+export const cdcSviCounty = pgTable("cdc_svi_county", {
+  county_fips: varchar("county_fips", { length: 5 }).notNull(),
+  year: varchar("year", { length: 4 }).notNull(),
+  rpl_themes: numeric("rpl_themes", { precision: 6, scale: 4 }),
+  rpl_theme1: numeric("rpl_theme1", { precision: 6, scale: 4 }),
+  rpl_theme2: numeric("rpl_theme2", { precision: 6, scale: 4 }),
+  rpl_theme3: numeric("rpl_theme3", { precision: 6, scale: 4 }),
+  rpl_theme4: numeric("rpl_theme4", { precision: 6, scale: 4 }),
+}, (table) => [
+  primaryKey({ columns: [table.county_fips, table.year] }),
+]);
+
+/** BLS wages. `series` is qcew or oews. `area_code` is a county FIPS or state code. */
+export const blsWage = pgTable("bls_wage", {
+  area_code: varchar("area_code", { length: 16 }).notNull(),
+  year: varchar("year", { length: 4 }).notNull(),
+  series: varchar("series", { length: 8 }).notNull(),
+  occupation: text("occupation").notNull(),
+  employment: integer("employment"),
+  avg_wage: numeric("avg_wage", { precision: 12, scale: 2 }),
+}, (table) => [
+  primaryKey({ columns: [table.area_code, table.year, table.series, table.occupation] }),
+]);
+
+/** CMS Acute Hospital Care at Home participants. */
+export const cmsAhcah = pgTable("cms_ahcah", {
+  ccn: varchar("ccn", { length: 6 }).primaryKey(),
+  facility_name: text("facility_name"),
+  state: varchar("state", { length: 2 }),
+  city: text("city"),
+  listed_on: varchar("listed_on", { length: 10 }),
+});

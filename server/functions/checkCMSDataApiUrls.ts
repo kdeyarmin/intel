@@ -4,9 +4,7 @@
 // This function probes the URL an import would actually use. Resolution
 // mirrors triggerImport's scheduled-import path exactly: a schedule's own
 // api_url first, then the dataset_versions registry's current endpoint
-// (resolveImportVersion), then the canonical IMPORT_TYPE_URLS map, with the
-// small HARDCODED_URLS map below kept only as a last resort for checker-only
-// types (opt_out_physicians) that have no importer URL. Each probe is a small
+// (resolveImportVersion), then the canonical IMPORT_TYPE_URLS map. Each probe is a small
 // size=1 / limit=1 query; the outcome is recorded on the matching
 // import_schedule_configs row so the admin UI can flag broken endpoints
 // before the next scheduled run silently fails.
@@ -39,31 +37,11 @@ import {
 } from "./triggerImport";
 import { NPPES_FILE_TYPES } from "./importNPPESFile";
 
-// Last-resort URLs for types this health check owns that have no entry in
-// IMPORT_TYPE_URLS (currently only opt_out_physicians). Everything else
-// resolves through the importer's own chain (see resolveProbeUrl).
-const HARDCODED_URLS: Record<string, string> = {
-  provider_service_utilization: "https://data.cms.gov/data-api/v1/dataset/92396110-2aed-4d63-a6a2-5d6207d46a29/data",
-  cms_order_referring: "https://data.cms.gov/data-api/v1/dataset/c99b5865-1119-4436-bb80-c5af2773ea1f/data",
-  opt_out_physicians: "https://data.cms.gov/data-api/v1/dataset/9887a515-7552-4693-bf58-735c77af46d7/data",
-  home_health_enrollments: "https://data.cms.gov/data-api/v1/dataset/15f64ab4-3172-4a27-b589-ebd67a6d28aa/data",
-  hospice_enrollments: "https://data.cms.gov/data-api/v1/dataset/25704213-e833-4b8b-9dbc-58dd17149209/data",
-  medical_equipment_suppliers: "https://data.cms.gov/provider-data/api/1/datastore/query/ct36-nrcq/0",
-  hospice_provider_measures: "https://data.cms.gov/provider-data/api/1/datastore/query/gxki-hrr8/0",
-  hospice_state_measures: "https://data.cms.gov/provider-data/api/1/datastore/query/eda0-92f0/0",
-  hospice_national_measures: "https://data.cms.gov/provider-data/api/1/datastore/query/7cv8-v37d/0",
-  snf_provider_measures: "https://data.cms.gov/provider-data/api/1/datastore/query/fykj-qjee/0",
-  nursing_home_providers: "https://data.cms.gov/provider-data/api/1/datastore/query/4pq5-n9py/0",
-  nursing_home_deficiencies: "https://data.cms.gov/provider-data/api/1/datastore/query/tbry-pc2d/0",
-  home_health_national_measures: "https://data.cms.gov/provider-data/api/1/datastore/query/97z8-de96/0",
-};
-
 /**
  * The URL a scheduled import of this type would use, in the same precedence
  * triggerImport applies: the schedule's api_url (passed as file_url) beats
  * the dataset registry's current endpoint, which beats the pinned
- * IMPORT_TYPE_URLS entry. HARDCODED_URLS is the final fallback for
- * checker-only types. Pure — exported for tests.
+ * IMPORT_TYPE_URLS entry. Pure — exported for tests.
  */
 export function resolveProbeUrl(args: {
   apiUrl?: string | null;
@@ -75,8 +53,7 @@ export function resolveProbeUrl(args: {
     args.apiUrl ||
     args.registryUrl ||
     IMPORT_TYPE_URLS[args.resolvedType] ||
-    HARDCODED_URLS[args.resolvedType] ||
-    HARDCODED_URLS[args.importType] ||
+    IMPORT_TYPE_URLS[args.importType] ||
     null
   );
 }
@@ -180,7 +157,6 @@ export async function handleCheckCmsDataApiUrls(payload: any, user?: any): Promi
   }
 
   const importTypes = new Set<string>([
-    ...Object.keys(HARDCODED_URLS),
     ...Object.keys(IMPORT_TYPE_URLS),
     ...configs
       .map((c) => c.import_type)

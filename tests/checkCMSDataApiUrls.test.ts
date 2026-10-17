@@ -91,11 +91,11 @@ describe("resolveProbeUrl precedence (mirrors triggerImport)", () => {
     ).toBe(IMPORT_TYPE_URLS.snf_enrollments);
   });
 
-  it("checker-only types fall back to the hardcoded map", () => {
-    expect(IMPORT_TYPE_URLS.opt_out_physicians).toBeUndefined();
+  it("opt-out resolves from the canonical URL map", () => {
+    expect(IMPORT_TYPE_URLS.opt_out_physicians).toContain("9887a515-7552-4693-bf58-735c77af46d7");
     expect(
       resolveProbeUrl({ importType: "opt_out_physicians", resolvedType: "opt_out_physicians" }),
-    ).toContain("9887a515-7552-4693-bf58-735c77af46d7");
+    ).toBe(IMPORT_TYPE_URLS.opt_out_physicians);
   });
 
   it("returns null when nothing resolves", () => {

@@ -35,6 +35,12 @@ function rateLabel(row) {
   return String(n);
 }
 
+function penetrationText(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  return fmtPct(n <= 1 ? n * 100 : n);
+}
+
 function starText(s) {
   const n = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v).toFixed(1));
   if (n(s.overall_rating)) return `${n(s.overall_rating)} overall`;
@@ -58,11 +64,11 @@ function conditionLabel(row) {
 
 /** Sections a business line actually uses. No line means the whole card. */
 const LINE_SECTIONS = {
-  hha: ['plans', 'places', 'shortage', 'medicaid'],
-  hospice: ['plans', 'places', 'shortage', 'medicaid'],
-  snf: ['plans', 'places', 'shortage', 'medicaid', 'phc4'],
-  pch: ['places'],
-  hospital: ['plans', 'shortage', 'phc4'],
+  hha: ['plans', 'places', 'shortage', 'medicaid', 'community'],
+  hospice: ['plans', 'places', 'shortage', 'medicaid', 'community'],
+  snf: ['plans', 'places', 'shortage', 'medicaid', 'phc4', 'community'],
+  pch: ['places', 'community'],
+  hospital: ['plans', 'shortage', 'phc4', 'community'],
   dme: ['drugs', 'services', 'dme'],
 };
 
@@ -88,8 +94,12 @@ export function CountyReferenceCard({ reference, line = null }) {
   const mlr = showSection(line, 'mlr') ? (reference.mlr || []) : [];
   const oep = showSection(line, 'oep') ? reference.oep : null;
   const dme = showSection(line, 'dme') ? reference.dme : null;
+  const sdoh = showSection(line, 'community') ? (reference.sdoh || []) : [];
+  const svi = showSection(line, 'community') ? reference.svi : null;
+  const wages = showSection(line, 'community') ? (reference.wages || []) : [];
+  const hasCommunity = sdoh.length > 0 || svi || wages.length > 0;
   const hasPayers = medicaid.length || marketplace.length || rates.length || mlr.length || oep;
-  if (!plans.length && !stars.length && !places.length && !drugs.length && !services.length && !shortage.length && !hasPhc4 && !hasPayers && !dme) return null;
+  if (!plans.length && !stars.length && !reference.ma_penetration && !places.length && !drugs.length && !services.length && !shortage.length && !hasPhc4 && !hasPayers && !dme && !hasCommunity) return null;
   const show = (id) => showSection(line, id);
   return (
     <div className="space-y-4">
@@ -114,7 +124,10 @@ export function CountyReferenceCard({ reference, line = null }) {
               ))}
             </div>
           )}
-          <p className="text-[11px] text-slate-500 pt-1">Enrollment is {reference.as_of?.ma || 'the latest month on file'}. Cells under 11 are left out by CMS, so the total is a floor. Stars are the 2027 contract ratings published October 8, 2026, for contracts with members in this county. Not a facility score.</p>
+          {reference.ma_penetration && (
+            <p className="text-slate-300 pt-1">Advantage covers {penetrationText(reference.ma_penetration.penetration)} of Medicare eligibles in {reference.as_of?.ma_penetration || 'the latest month on file'}.</p>
+          )}
+          <p className="text-[11px] text-slate-400 pt-1">Enrollment is {reference.as_of?.ma || 'the latest month on file'}. Cells under 11 are left out by CMS, so the total is a floor. Stars are the {reference.as_of?.ma_stars || 'latest'} contract ratings for contracts with members in this county. Not a facility score.</p>
         </CardContent>
       </Card>
       )}
@@ -152,7 +165,7 @@ export function CountyReferenceCard({ reference, line = null }) {
               <span className="text-slate-400 shrink-0">{fmtCount(d.claims)}</span>
             </div>
           ))}
-          <p className="text-[11px] text-slate-500 pt-1">{drugs[0]?.county_fips?.length === 5 ? 'This county' : 'Statewide'}, Part D 2024. Top generics. Counts under 11 are suppressed.</p>
+          <p className="text-[11px] text-slate-400 pt-1">{drugs[0]?.county_fips?.length === 5 ? 'This county' : 'Statewide'}, Part D {drugs[0]?.data_year || 'the latest year on file'}. Top generics. Counts under 11 are suppressed.</p>
         </CardContent>
       </Card>
       )}
@@ -166,7 +179,7 @@ export function CountyReferenceCard({ reference, line = null }) {
               <span className="text-slate-400 shrink-0">{fmtCount(s.services)}</span>
             </div>
           ))}
-          <p className="text-[11px] text-slate-500 pt-1">{services[0]?.county_fips?.length === 5 ? 'This county' : 'Statewide'}, 2024. Office visits, joint replacement, colonoscopy, home health certs. CMS publishes this file by state, not county.</p>
+          <p className="text-[11px] text-slate-400 pt-1">{services[0]?.county_fips?.length === 5 ? 'This county' : 'Statewide'}, {services[0]?.data_year || 'the latest year on file'}. Office visits, joint replacement, colonoscopy, home health certs. CMS publishes this file by state, not county.</p>
         </CardContent>
       </Card>
       )}
@@ -176,7 +189,7 @@ export function CountyReferenceCard({ reference, line = null }) {
         <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-200">Pennsylvania all-payer, PHC4</CardTitle></CardHeader>
         <CardContent className="text-xs space-y-3">
           <p className="text-slate-300">
-            {phc4.inpatient_total != null && <span>{fmtCount(phc4.inpatient_total)} inpatient stays in Q4 2025. </span>}
+            {phc4.inpatient_total != null && <span>{fmtCount(phc4.inpatient_total)} inpatient stays in {phc4.periods?.inpatient || 'the latest period on file'}. </span>}
             {phc4.outpatient_total != null && <span>{fmtCount(phc4.outpatient_total)} outpatient surgery cases. </span>}
             {(phc4.ages || []).map((a) => <span key={a.category}>{a.category} {fmtPct(a.value)}. </span>)}
           </p>
@@ -188,7 +201,7 @@ export function CountyReferenceCard({ reference, line = null }) {
                   <span className="text-slate-400 shrink-0">{fmtPct(p.value)}</span>
                 </div>
               ))}
-              <p className="text-[11px] text-slate-500">Share of this county's residents' inpatient stays, any Pennsylvania hospital. Q4 2025.</p>
+              <p className="text-[11px] text-slate-400">Share of this county's residents' inpatient stays, any Pennsylvania hospital. {phc4.periods?.inpatient || 'Latest period on file'}.</p>
             </div>
           )}
           {phc4.conditions?.length > 0 && (
@@ -199,7 +212,7 @@ export function CountyReferenceCard({ reference, line = null }) {
                   <span className="text-slate-400 shrink-0">{fmtCount(c.cases)}{rateLabel(c) ? ` · ${rateLabel(c)}` : ''}</span>
                 </div>
               ))}
-              <p className="text-[11px] text-slate-500">Calendar 2025. County of residence. Suppressed cells are omitted. Diabetes, sepsis, and C. diff are per 10,000 residents. Breast cancer is surgeries per 10,000 women 18 and older. Opioid rates are per 100,000 people 15 and older. Maternal and newborn rates are per 1,000 stays.</p>
+              <p className="text-[11px] text-slate-400">{phc4.periods?.conditions || 'Latest period on file'}. County of residence. Suppressed cells are omitted. Diabetes, sepsis, and C. diff are per 10,000 residents. Breast cancer is surgeries per 10,000 women 18 and older. Opioid rates are per 100,000 people 15 and older. Maternal and newborn rates are per 1,000 stays.</p>
             </div>
           )}
           {phc4.cardiac?.length > 0 && (
@@ -210,7 +223,7 @@ export function CountyReferenceCard({ reference, line = null }) {
                   <span className="text-slate-400 shrink-0">{fmtCount(c.total_cases)}</span>
                 </div>
               ))}
-              <p className="text-[11px] text-slate-500">Facility case counts, January 2023–December 2024. The name is PHC4's short name, not a Medicare ID. A death rating is only published for bypass, valves, and TAVR.</p>
+              <p className="text-[11px] text-slate-400">Facility case counts, {phc4.periods?.cardiac || 'the latest period on file'}. The name is PHC4's short name, not a Medicare ID. A death rating is only published for bypass, valves, and TAVR.</p>
             </div>
           )}
           {phc4.cancer?.length > 0 && (
@@ -221,19 +234,23 @@ export function CountyReferenceCard({ reference, line = null }) {
                   <span className="text-slate-400 shrink-0">{fmtCount(c.total_cases)}</span>
                 </div>
               ))}
-              <p className="text-[11px] text-slate-500">Cancer surgeries at the facility, July 2024–June 2025. Not where the patient lived.</p>
+              <p className="text-[11px] text-slate-400">Cancer surgeries at the facility, {phc4.periods?.cancer || 'the latest period on file'}. Not where the patient lived.</p>
             </div>
           )}
         </CardContent>
       </Card>
     )}
-    {hasPayers && <PayerCard medicaid={medicaid} marketplace={marketplace} rates={rates} mlr={mlr} oep={oep} />}
+    {show('phc4') && !hasPhc4 && reference.state && reference.state !== 'PA' && (
+      <p className="text-xs text-slate-400">Pennsylvania all-payer reports cover Pennsylvania counties. Community measures use the national files when those are loaded.</p>
+    )}
+    {hasPayers && <PayerCard medicaid={medicaid} marketplace={marketplace} rates={rates} mlr={mlr} oep={oep} asOf={reference.as_of || {}} state={reference.state} />}
+    {hasCommunity && <CommunityCard sdoh={sdoh} svi={svi} wages={wages} asOf={reference.as_of || {}} />}
     {dme && <DmeCountyCard dme={dme} />}
     </div>
   );
 }
 
-function PayerCard({ medicaid, marketplace, rates, mlr, oep }) {
+function PayerCard({ medicaid, marketplace, rates, mlr, oep, asOf, state }) {
   const medTotal = medicaid.reduce((s, r) => s + Number(r.enrollment || 0), 0);
   const individual = rates.filter((r) => r.market === 'individual');
   const small = rates.filter((r) => r.market === 'small_group');
@@ -251,7 +268,7 @@ function PayerCard({ medicaid, marketplace, rates, mlr, oep }) {
                 <span className="text-slate-400 shrink-0">{fmtCount(p.enrollment)}{medTotal ? ` · ${fmtPct((Number(p.enrollment) / medTotal) * 100, 0)}` : ''}</span>
               </div>
             ))}
-            <p className="text-[11px] text-slate-500">HealthChoices physical-health Medicaid, August 2026. Capitation: anyone eligible at any point in the month. Not behavioral health, and not Community HealthChoices. {medicaid[0].zone} zone.</p>
+            <p className="text-[11px] text-slate-400">HealthChoices physical-health Medicaid, {asOf.medicaid || 'the latest month on file'}. Capitation: anyone eligible at any point in the month. Not behavioral health, and not Community HealthChoices. {medicaid[0].zone} zone.</p>
           </div>
         )}
         {marketplace.length > 0 && (
@@ -262,7 +279,7 @@ function PayerCard({ medicaid, marketplace, rates, mlr, oep }) {
                 <span className="text-slate-400 shrink-0">{fmtCount(p.plan_count)} plans{p.state_enrollment ? ` · ${fmtCount(p.state_enrollment)} in PA` : ''}</span>
               </div>
             ))}
-            <p className="text-[11px] text-slate-500">Individual medical plans sold in this county for 2026, from the Pennsylvania marketplace service-area file. Dental plans are left out. Partial-county service areas are counted. The Pennsylvania number is 2025 average monthly enrollment for that issuer statewide, not in this county. A blank means that 2026 issuer id had no 2025 enrollment row.</p>
+            <p className="text-[11px] text-slate-400">Individual medical plans sold in this county for {asOf.marketplace || 'the latest plan year'}. Dental plans are left out. Partial-county service areas are counted. {state === 'PA' ? 'The statewide number is that issuer’s enrollment, not enrollment in this county.' : 'Enrollment figures are statewide for the issuer when the file includes them.'}</p>
           </div>
         )}
         {(individual.length > 0 || small.length > 0) && (
@@ -270,11 +287,11 @@ function PayerCard({ medicaid, marketplace, rates, mlr, oep }) {
             {individual.slice(0, 6).map((r) => (
               <div key={r.company} className="flex justify-between gap-2">
                 <span className="truncate text-slate-200">{r.company}</span>
-                <span className="text-slate-400 shrink-0">{r.approved_pct == null ? '—' : fmtPct(r.approved_pct)}{r.market_share != null ? ` · ${fmtPct(r.market_share, 0)} of 2026` : ''}</span>
+                <span className="text-slate-400 shrink-0">{r.approved_pct == null ? '—' : fmtPct(r.approved_pct)}{r.market_share != null ? ` · ${fmtPct(r.market_share, 0)} of market` : ''}</span>
               </div>
             ))}
             <p className="text-[11px] text-slate-500">
-              Pennsylvania Insurance Department, final 2027 rates. Statewide, not this county.
+              Pennsylvania Insurance Department, final {asOf.aca || 'latest'} rates. Statewide, not this county.
               {indAvg != null && ` Individual market, enrollment-weighted: ${fmtPct(indAvg, 2)}.`}
               {smallAvg != null && ` Small group, enrollment-weighted: ${fmtPct(smallAvg, 2)}.`}
             </p>
@@ -288,12 +305,12 @@ function PayerCard({ medicaid, marketplace, rates, mlr, oep }) {
                 <span className="text-slate-400 shrink-0">{r.mlr == null ? '—' : fmtPct(r.mlr)}{r.rebate > 0 ? ` · rebate ${money(r.rebate)}` : ''}</span>
               </div>
             ))}
-            <p className="text-[11px] text-slate-500">Medical loss ratio, 2024 reporting year, individual market, this state. Credibility-adjusted over three years. The figure is not this county, and it is not a hospital's payer mix.</p>
+            <p className="text-[11px] text-slate-400">Medical loss ratio, {asOf.mlr || 'the latest'} reporting year, individual market, this state. Credibility-adjusted over three years. The figure is not this county, and it is not a hospital's payer mix.</p>
           </div>
         )}
         {oep && (
-          <p className="text-[11px] text-slate-500">
-            {oep.platform === 'SBE' ? 'State marketplace' : 'HealthCare.gov'}, 2026 open enrollment: {fmtCount(oep.plan_selections)} plan selections
+          <p className="text-[11px] text-slate-400">
+            {oep.platform === 'SBE' ? 'State marketplace' : 'HealthCare.gov'}, {asOf.oep || 'the latest'} open enrollment: {fmtCount(oep.plan_selections)} plan selections
             {oep.avg_premium != null ? `, average premium ${money(oep.avg_premium)}` : ''}
             {oep.avg_premium_after_aptc != null ? ` (${money(oep.avg_premium_after_aptc)} after tax credit)` : ''}. Statewide. CMS does not publish Pennsylvania county enrollment.
           </p>
@@ -352,7 +369,7 @@ function DmeLines({ summary, lines, supplier, supplied }) {
   const parts = summary ? [splitLine('Equipment', summary.dme_benes, summary.dme_payment, summary.dme_suppressed), splitLine('Prosthetics and orthotics', summary.pos_benes, summary.pos_payment, summary.pos_suppressed), splitLine('DME drugs', summary.drug_benes, summary.drug_payment, summary.drug_suppressed)].filter(Boolean) : [];
   return (
     <div className="space-y-1 pt-1">
-      {summary && <p className="text-slate-300">Ordered in {summary.data_year || '2024'}: {fmtCount(summary.benes)} patients, {money(summary.medicare_payment)} Medicare payment.</p>}
+      {summary && <p className="text-slate-300">Ordered in {summary.data_year || 'the latest year on file'}: {fmtCount(summary.benes)} patients, {money(summary.medicare_payment)} Medicare payment.</p>}
       {parts.length > 0 && <p className="text-slate-400">{parts.join(' · ')}</p>}
       {(lines || []).map((row) => (
         <div key={`${row.hcpcs}-${row.rental}`} className="flex justify-between gap-2">
@@ -367,8 +384,72 @@ function DmeLines({ summary, lines, supplier, supplied }) {
           <span className="text-slate-400 shrink-0">{fmtCount(row.benes)}</span>
         </div>
       ))}
-      <p className="text-[11px] text-slate-500">Original Medicare DMEPOS, 2024. Not Medicare Advantage. CMS leaves out any product under 11 patients, so a blank is not zero. Prosthetics and orthotics are separate from equipment. DME drugs are not Part D.</p>
+      <p className="text-[11px] text-slate-400">Original Medicare DMEPOS{summary?.data_year ? `, ${summary.data_year}` : ''}. Not Medicare Advantage. CMS leaves out any product under 11 patients, so a blank is not zero. Prosthetics and orthotics are separate from equipment. DME drugs are not Part D.</p>
     </div>
+  );
+}
+
+function rankText(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  const pct = n <= 1 ? n * 100 : n;
+  return `percentile rank ${pct.toFixed(0)}`;
+}
+
+function CommunityCard({ sdoh, svi, wages, asOf }) {
+  return (
+    <Card className="bg-slate-800/50 border-slate-700/50">
+      <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-200">Community</CardTitle></CardHeader>
+      <CardContent className="text-xs space-y-3">
+        {svi && (
+          <p className="text-slate-300">
+            Social vulnerability {rankText(svi.rpl_themes) || 'is loaded'} ({asOf.svi || svi.year}).
+            {rankText(svi.rpl_theme1) ? ` Socioeconomic ${rankText(svi.rpl_theme1)}.` : ''}
+            {rankText(svi.rpl_theme4) ? ` Housing and transport ${rankText(svi.rpl_theme4)}.` : ''}
+          </p>
+        )}
+        {sdoh.length > 0 && (
+          <div className="space-y-1">
+            {sdoh.map((row) => (
+              <div key={row.measure_id} className="flex justify-between gap-2">
+                <span className="truncate text-slate-200">{row.measure || row.measure_id}</span>
+                <span className="text-slate-400 shrink-0">{row.data_value == null ? '—' : String(row.data_value)}</span>
+              </div>
+            ))}
+            <p className="text-[11px] text-slate-400">AHRQ Social Determinants of Health, {asOf.sdoh || 'the latest year on file'}. The same measures are available for every state the file covers.</p>
+          </div>
+        )}
+        {wages.length > 0 && (
+          <div className="space-y-1">
+            {wages.map((row) => (
+              <div key={`${row.series}-${row.occupation}`} className="flex justify-between gap-2">
+                <span className="truncate text-slate-200">{row.occupation}</span>
+                <span className="text-slate-400 shrink-0">{row.avg_wage == null ? fmtCount(row.employment) : money(row.avg_wage)}</span>
+              </div>
+            ))}
+            <p className="text-[11px] text-slate-400">BLS wages, {asOf.wages || 'the latest year on file'}. County figures when the file is published at county level.</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function CostReportCard({ report }) {
+  const lines = report?.lines || [];
+  if (!lines.length) return null;
+  return (
+    <Card className="bg-slate-800/50 border-slate-700/50">
+      <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-200">Cost report, {report.year}</CardTitle></CardHeader>
+      <CardContent className="text-xs space-y-2">
+        {lines.map((row) => (
+          <p key={row.setting} className="text-slate-300">
+            {row.setting.toUpperCase()}: patient revenue {money(row.total_patient_revenue)}, Medicare {row.medicare_share == null ? '—' : fmtPct(Number(row.medicare_share) <= 1 ? Number(row.medicare_share) * 100 : Number(row.medicare_share))}, margin {row.margin == null ? '—' : fmtPct(Number(row.margin) <= 1 ? Number(row.margin) * 100 : Number(row.margin))}.
+          </p>
+        ))}
+        <p className="text-[11px] text-slate-400">HCRIS cost-report totals for the latest fiscal year on file. Margin is net income divided by total patient revenue. Medicare share is Medicare revenue divided by that same total. A blank means the worksheet did not include the figure.</p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -377,7 +458,7 @@ function DmeCountyCard({ dme }) {
   const locations = dme.locations || [];
   return (
     <Card className="bg-slate-800/50 border-slate-700/50">
-      <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-200">Durable medical equipment, {dme.year}</CardTitle></CardHeader>
+      <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-200">Durable medical equipment{dme.year ? `, ${dme.year}` : ''}</CardTitle></CardHeader>
       <CardContent className="text-xs space-y-2">
         {products.length > 0 && (
           <div className="space-y-1">
@@ -394,7 +475,7 @@ function DmeCountyCard({ dme }) {
         {locations.map((loc) => (
           <div key={`${loc.business_name}-${loc.city}`} className="truncate text-slate-400">{loc.business_name}{loc.city ? ` · ${loc.city}` : ''}{loc.supplies ? ` · ${String(loc.supplies).split('|')[0]}` : ''}</div>
         ))}
-        <p className="text-[11px] text-slate-500">Directory as of October 11, 2026. The list is what the location says it carries, not paid volume. A ZIP that sits mostly in the next county is counted there. Counts under 11 are omitted from the payment file.</p>
+        <p className="text-[11px] text-slate-400">Directory {dme.directory_as_of ? `as of ${String(dme.directory_as_of).slice(0, 10)}` : 'on file'}. The list is what the location says it carries, not paid volume. A ZIP that sits mostly in the next county is counted there. Counts under 11 are omitted from the payment file.</p>
       </CardContent>
     </Card>
   );
@@ -449,8 +530,8 @@ export function DmeFacilityCard({ dme }) {
             <span className="text-slate-400 shrink-0">{fmtCount(row.benes)} · {money(row.avg_payment)} avg</span>
           </div>
         ))}
-        {!dme.npi && dir && <p className="text-slate-400">No single 2024 payment NPI matched this name and ZIP, so paid volume is not shown.</p>}
-        <p className="text-[11px] text-slate-500">Directory as of October 11, 2026: what the location says it carries. Paid lines are 2024 Original Medicare, not Medicare Advantage, and only when one supplier NPI has this name and ZIP. Counts under 11 are omitted. Competitive bidding has been in a gap since January 1, 2024, so a contract flag is not a current award.</p>
+        {!dme.npi && dir && <p className="text-slate-400">No single payment NPI matched this name and ZIP, so paid volume is not shown.</p>}
+        <p className="text-[11px] text-slate-400">Directory on file: what the location says it carries. Paid lines are {dme.year || 'the latest year of'} Original Medicare, not Medicare Advantage, and only when one supplier NPI has this name and ZIP. Counts under 11 are omitted. A competitive-bidding flag is the directory's own mark, not a current award.</p>
       </CardContent>
     </Card>
   );
