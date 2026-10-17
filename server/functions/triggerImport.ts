@@ -172,6 +172,7 @@ export const IMPORT_TYPE_URLS: Record<string, string> = {
   // "Medicare Inpatient Hospitals - by Provider and Service" (one row per hospital and DRG). The id this used to
   // share with medicare_inpatient_by_provider, ee6fb1a5, is the by-provider totals file: no DRG code.
   inpatient_drg: "https://data.cms.gov/data-api/v1/dataset/690ddc6c-2767-4618-b277-420ffb2bf27c/data",
+  opt_out_physicians: "https://data.cms.gov/data-api/v1/dataset/9887a515-7552-4693-bf58-735c77af46d7/data",
 };
 
 /** Why an import type cannot be started from a CMS URL, or null when it can (a file_url may still be uploaded). */
