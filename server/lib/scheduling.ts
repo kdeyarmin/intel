@@ -1,10 +1,8 @@
 // Pure scheduling/retry helpers for the Express maintenance layer.
 //
-// Ported from the (unit-tested) Base44 functions
-// base44/functions/runScheduledImports/helpers.ts and
-// base44/functions/autoRetryFailedImports/helpers.ts so the self-hosted server
-// has the same orchestration logic without depending on the legacy Deno
-// functions. Kept free of DB/Express imports so they can be unit-tested directly.
+// Scheduling and retry policy for the Express maintenance workers. The old
+// Base44 copies of these helpers have been removed. Kept free of DB/Express
+// imports so they can be unit-tested directly.
 
 // ─── Scheduling ──────────────────────────────────────────────────────────────
 

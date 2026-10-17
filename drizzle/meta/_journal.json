@@ -264,6 +264,13 @@
     {
       "idx": 38,
       "version": "7",
+      "when": 1791613333276,
+      "tag": "0038_base44_import_map",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
       "when": 1791613334276,
       "tag": "0038_public_reference",
       "breakpoints": true

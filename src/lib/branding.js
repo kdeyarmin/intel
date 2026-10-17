@@ -1,1 +1,3 @@
-export const CAREMETRIC_LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6993c62145573ca8a97ad4a9/d0d5af455_CareMetric.png';
+// Served from public/brand. The previous copies lived in the Base44 storage bucket.
+export const CAREMETRIC_LOGO_URL = '/brand/caremetric-logo.png';
+export const CAREMETRIC_MARK_URL = '/brand/caremetric-mark.png';

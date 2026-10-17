@@ -1583,6 +1583,19 @@ export const emailSuppressions = pgTable("email_suppressions", {
   created_date: timestamp("created_date").defaultNow(),
 });
 
+// One-time Base44 cutover map (migration 0038). Not exposed via tableMap:
+// the import script is the only writer, and a second run updates nothing
+// that this row already names.
+export const base44ImportMap = pgTable("base44_import_map", {
+  entity: varchar("entity", { length: 80 }).notNull(),
+  source_id: varchar("source_id", { length: 80 }).notNull(),
+  target_table: varchar("target_table", { length: 80 }).notNull(),
+  target_id: integer("target_id").notNull(),
+  imported_at: timestamp("imported_at").defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.entity, table.source_id] }),
+]);
+
 export const tableMap: Record<string, any> = {
   User: users,
   Provider: providers,

@@ -4,15 +4,14 @@ export const CENTRAL_SUPPORT_PHONE_DISPLAY = '(877) 521-2890';
 export const CENTRAL_SUPPORT_EMAIL = 'support@caremetricintel.com';
 
 export const CAREMETRIC_INTEL_PRODUCT = 'caremetric-intel';
-export const CAREMETRIC_INTEL_PRODUCTION_APP_ID = '6993c62145573ca8a97ad4a9';
 export const CAREMETRIC_INTEL_PRODUCTION_HOST = 'caremetricintel.com';
 
 /**
- * Match the one verified CareMetric Intel production identity. This controls
- * whether central contact routes are shown at all.
+ * Match the CareMetric Intel production host. The Support Hub launcher is
+ * shown only there, in a production build. It does not depend on a Base44
+ * app id.
  */
 export function isVerifiedCareMetricIntelProduction({
-  appId,
   environment,
   hostname,
   isDevelopment = false,
@@ -23,7 +22,6 @@ export function isVerifiedCareMetricIntelProduction({
 
   return !(
     isDevelopment
-    || appId !== CAREMETRIC_INTEL_PRODUCTION_APP_ID
     || environment !== 'production'
     || normalizedHostname !== CAREMETRIC_INTEL_PRODUCTION_HOST
   );

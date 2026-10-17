@@ -1,4 +1,4 @@
-// Frontend mirror of base44/functions/autoRetryFailedImports/helpers.ts.
+// Frontend mirror of server/lib/scheduling.ts (retry policy).
 //
 // The worker doesn't expose an API surface for "what's the retry state of
 // this batch?", but the data is all already on retry_params. This computes
@@ -12,7 +12,7 @@ export const RETRY_BACKOFF_CAP_HOURS = 24;
 export const RETRY_LOOKBACK_MS = 48 * 60 * 60 * 1000;
 
 // Verbatim copy of the worker's retryable-error classifier
-// (base44/functions/autoRetryFailedImports/helpers.ts). Kept in sync so the
+// (server/lib/scheduling.ts). Kept in sync so the
 // banner agrees with the worker on WHICH failures auto-retry; retryStatus.test.ts
 // asserts this matches the worker's isRetryableErrorMessage.
 export const RETRYABLE_KEYWORDS = [
