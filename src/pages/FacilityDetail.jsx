@@ -14,7 +14,7 @@ import ComprehensiveReport from '../components/reports/ComprehensiveReport';
 import DataSourcesFooter from '../components/compliance/DataSourcesFooter';
 import HospitalCatchmentCard from '../components/market/HospitalCatchmentCard';
 import MarketPositionCard from '../components/market/MarketPositionCard';
-import { DmeFacilityCard, DrgCard } from '../components/market/MarketReferenceCards';
+import { CostReportCard, DmeFacilityCard, DrgCard } from '../components/market/MarketReferenceCards';
 
 // Facility groups with a post-acute market view (getFacilityMarket setting).
 const MARKET_SETTING = { snf: 'snf', home_health: 'hha', hospice: 'hospice', irf: 'irf', ltch: 'ltch' };
@@ -576,6 +576,12 @@ export default function FacilityDetail() {
       {group === 'hospital' && data.drgs && <DrgCard drgs={data.drgs} />}
       {MARKET_SETTING[group] && <MarketPositionCard ccn={providerId} setting={MARKET_SETTING[group]} />}
       {data.dme && <DmeFacilityCard dme={data.dme} />}
+      {data.ahcah && (
+        <div className="rounded-lg border border-cyan-500/30 bg-cyan-900/20 px-4 py-3 text-sm text-cyan-200">
+          Listed for Acute Hospital Care at Home{data.ahcah.listed_on ? ` as of ${data.ahcah.listed_on}` : ''}.
+        </div>
+      )}
+      {data.cost_report && <CostReportCard report={data.cost_report} />}
 
       <LinkedProviderCard linked={linked} navigate={navigate} config={config} />
 

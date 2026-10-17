@@ -1,8 +1,10 @@
 // Market and patient-flow rollups ("who refers, and where do patients go").
 // These are query jobs: each replaces its result table with one SELECT over
 // the typed CMS tables (server/functions/cmsTypedTables.ts), which hold at
-// most a few million rows, joined to the Census geography (geo_zctas gives
-// each ZIP area the county holding most of its land). The 46M-row
+// most a few million rows, joined to county geography. Home health and hospice
+// service areas use the HUD ZIP-county crosswalk when it is loaded (one county
+// per ZIP, the highest residential share) and the Census ZCTA county otherwise.
+// The 46M-row
 // medicare_facilities table is never read here. The county profile runs last
 // because it reads two of the other results.
 //
@@ -10,6 +12,7 @@
 // as published by CMS; counts under 11 are already suppressed in the files.
 
 import { RESIDENTIAL_LICENSE_TYPES } from "../licenseTypes";
+import { ZIP_COUNTY_ASSIGNMENT_SQL } from "../reference/zipCounty";
 
 export interface MarketJob {
   name: string;
@@ -129,13 +132,13 @@ export const MARKET_JOBS: MarketJob[] = [
     resultTable: "rollup_agency_coverage",
     resultColumns: ["setting", "county_fips", "ccn", "zips_served", "county_zips", "share_of_county_zips"],
     sql: `
-      WITH county_zips AS (
-        SELECT primary_county_fips AS county_fips, count(*)::int AS n FROM geo_zctas WHERE primary_county_fips IS NOT NULL GROUP BY 1),
+      WITH ${ZIP_COUNTY_ASSIGNMENT_SQL},
+      county_zips AS (
+        SELECT county_fips, count(*)::int AS n FROM zip_county GROUP BY 1),
       served AS (
-        SELECT s.setting, z.primary_county_fips AS county_fips, s.ccn, count(DISTINCT s.zip5)::int AS zips_served
+        SELECT s.setting, z.county_fips, s.ccn, count(DISTINCT s.zip5)::int AS zips_served
           FROM cms_zip_service_area s
-          JOIN geo_zctas z ON z.zcta = s.zip5
-         WHERE z.primary_county_fips IS NOT NULL
+          JOIN zip_county z ON z.zip5 = s.zip5
          GROUP BY 1, 2, 3)
       SELECT s.setting, s.county_fips, s.ccn, s.zips_served, c.n, s.zips_served::float8 / NULLIF(c.n, 0)
         FROM served s JOIN county_zips c USING (county_fips)`,

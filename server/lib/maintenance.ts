@@ -624,6 +624,17 @@ export async function runOperationsAlerts(): Promise<WorkerResult> {
 // Thin adapter over server/functions/superviseNPPESCrawler so the dead-pool
 // detector also runs on the maintenance fan-out (and shows in the admin UI),
 // in addition to its own 1–2 minute ticker.
+export async function runRefreshReferenceData(): Promise<WorkerResult> {
+  const started = Date.now();
+  try {
+    const { refreshReferenceData } = await import("./reference/refresh");
+    const details = await refreshReferenceData();
+    return { worker: "refreshReferenceData", ok: true, durationMs: Date.now() - started, details };
+  } catch (e) {
+    return { worker: "refreshReferenceData", ok: false, durationMs: Date.now() - started, error: truncErr(e) };
+  }
+}
+
 export async function runSuperviseNppesCrawlerWorker(): Promise<WorkerResult> {
   const started = Date.now();
   try {
@@ -651,6 +662,9 @@ export const FANOUT_WORKERS: Array<{ name: string; run: () => Promise<WorkerResu
   { name: "runDueScheduledReports", run: runDueScheduledReportsWorker },
   { name: "refreshRollups", run: runRefreshRollupsWorker },
   { name: "refreshLeadScores", run: runRefreshLeadScoresWorker },
+  // Reference files are local. This worker records which ones are due and
+  // loads rows only when REFERENCE_LOAD_APPLY=1 and REFERENCE_DATA_DIR is set.
+  { name: "refreshReferenceData", run: runRefreshReferenceData },
   // The fan-out starts every worker at once, so this one doesn't wait for the others: it judges what earlier
   // ticks left, and anything this tick settles shows on the next evaluation. Its thresholds are hours and days
   // and the digest is daily, so that lag costs at most one tick. It is listed last so the heartbeat reports

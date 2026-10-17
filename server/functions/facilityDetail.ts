@@ -1,7 +1,7 @@
 import { db, pool } from "../db";
 import { medicareFacilities, medicareFacilitiesRaw, providers, providerLocations, providerTaxonomies, providerServiceUtilization, cmsReferrals, leadScores, cmsOrderReferring, rollupReferralSources } from "../db/schema";
 import { eq, sql, and, ilike, inArray, desc, asc } from "drizzle-orm";
-import { providerReference, facilityDme, facilityDrgs } from "./marketReference";
+import { providerReference, facilityDme, facilityDrgs, facilityCost, facilityAhcah } from "./marketReference";
 
 const FACILITY_TYPE_GROUPS: Record<string, string[]> = {
   hospital: [
@@ -265,17 +265,23 @@ export async function handleGetFacilityDetail(params: any) {
 
   let dme = null;
   let drgs = null;
+  let costReport = null;
+  let ahcah = null;
   try {
     const client = await pool.connect();
     try {
       dme = await facilityDme(client, String(provider_id));
       drgs = await facilityDrgs(client, String(provider_id));
+      costReport = await facilityCost(client, String(provider_id));
+      ahcah = await facilityAhcah(client, String(provider_id));
     } finally {
       client.release();
     }
   } catch {
     dme = null;
     drgs = null;
+    costReport = null;
+    ahcah = null;
   }
 
   return {
@@ -295,6 +301,8 @@ export async function handleGetFacilityDetail(params: any) {
     linked_provider: linkedProvider,
     dme,
     drgs,
+    cost_report: costReport,
+    ahcah,
   };
 }
 
