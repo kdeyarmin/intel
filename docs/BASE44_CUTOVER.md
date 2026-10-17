@@ -62,10 +62,14 @@ DATABASE_URL="postgresql://..." npm run base44:import -- \
 ```
 
 A non-local host is refused unless `BASE44_IMPORT_ALLOW_REMOTE=1`. The
-script never sends email. `--download-files` copies http(s) file URLs found
-in the exported rows (and in `files.json`) into `uploads/base44-import/`.
-Private Base44 files that are not reachable with the URL in the export stay
-unmigrated; the dry-run lists the URLs it saw.
+script never sends email. An explicit `--export-dir` is what gets imported,
+even when `BASE44_API_KEY` is still set. `--download-files` copies http(s)
+file URLs found in the exported rows (and in `files.json`) into
+`uploads/base44-import/`. After a file saves, stored references to that URL
+are rewritten to `/api/storage/base44-import/<file>`, which signed-in users
+can open. A later run rewrites rows that were already mapped. Private Base44
+files that are not reachable with the URL in the export stay unmigrated; the
+dry-run lists the URLs it saw.
 
 A second run inserts nothing that `base44_import_map` already names
 (migration `0038_base44_import_map`). Existing Railway users are matched on

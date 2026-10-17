@@ -19,11 +19,12 @@ import {
   BULK_ENTITIES,
   DROPPED_ENTITIES,
   IMPORT_ENTITIES,
+  importSource,
   planImport,
   recordsOf,
   summarize,
 } from "./plan";
-import { applyPlan, assertApplyAllowed, saveFiles } from "./apply";
+import { applyPlan, assertApplyAllowed, importedFileUrl, poolApplyDb, rewriteStoredUrls, saveFiles } from "./apply";
 
 const SERVER = process.env.BASE44_SERVER_URL || "https://base44.app";
 
@@ -107,9 +108,12 @@ async function main() {
   const token = process.env.BASE44_API_KEY || "";
   const appId = process.env.BASE44_APP_ID || BASE44_APP_ID;
   const extra = (process.env.BASE44_EXTRA_ENTITIES || "").split(",").map((name) => name.trim()).filter(Boolean);
+  const source = importSource({ exportDir, token });
   let bundle: Record<string, unknown> | null = null;
 
-  if (token) {
+  if (source === "export-dir" && exportDir) {
+    bundle = await readExportDir(exportDir);
+  } else if (source === "api") {
     console.log(`Reading Base44 app ${appId} from ${SERVER}.`);
     bundle = await fetchBundle(token, appId, extra);
     if (saveExport) {
@@ -119,8 +123,6 @@ async function main() {
       }
       console.log(`Saved the export to ${saveExport}.`);
     }
-  } else if (exportDir) {
-    bundle = await readExportDir(exportDir);
   } else {
     console.error(ACCESS_NEEDED);
     process.exitCode = 2;
@@ -144,11 +146,13 @@ async function main() {
   if (plan.orgId == null) throw new Error("--org-id is required for --apply.");
   assertApplyAllowed(databaseUrl, process.env.BASE44_IMPORT_ALLOW_REMOTE === "1");
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 2 });
+  const db = poolApplyDb(pool);
   try {
-    const report = await applyPlan(plan, pool, {
+    const report = await applyPlan(plan, db, {
       orgId: plan.orgId,
       hashPassword: (plain) => bcrypt.hash(plain, 12),
     });
+    let urlsRewritten = 0;
     if (has("--download-files")) {
       const dest = path.resolve("uploads/base44-import");
       await mkdir(dest, { recursive: true });
@@ -159,8 +163,12 @@ async function main() {
         await writeFile(path.join(dest, file.fileName), bytes);
         return true;
       });
+      urlsRewritten = await rewriteStoredUrls(db, plan, report.files.filter((file) => file.saved).map((file) => ({
+        url: file.url,
+        localUrl: importedFileUrl(file.fileName),
+      })));
     }
-    console.log(JSON.stringify(report, null, 2));
+    console.log(JSON.stringify({ ...report, urlsRewritten }, null, 2));
   } finally {
     await pool.end();
   }

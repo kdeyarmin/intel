@@ -196,6 +196,55 @@ function skip(entity: string, sourceIdValue: string, table: string, reason: stri
   return { entity, sourceId: sourceIdValue, table, action: "skip", reason, warnings: [], values: {} };
 }
 
+function htmlToText(html: string): string {
+  return html
+    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replace(/<\/\s*(p|div|li|h[1-6]|tr)\s*>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** Destination messages store one plain-text body. Native exports split HTML and text. */
+function messageBody(row: Row): string | null {
+  const body = pick(row, "body");
+  if (body != null && body !== "") return String(body);
+  const text = pick(row, "body_text");
+  if (text != null && text !== "") return String(text);
+  const html = pick(row, "body_html");
+  if (html != null && html !== "") return htmlToText(String(html));
+  return null;
+}
+
+function timestampValue(value: unknown): string | null {
+  const text = collapse(value);
+  if (!text) return null;
+  const parsed = Date.parse(text);
+  if (Number.isNaN(parsed)) return null;
+  return new Date(parsed).toISOString();
+}
+
+function parentSource(parentEntity: string, row: Row): string {
+  if (parentEntity === "CrmAccount") return collapse(pick(row, "account_id"));
+  if (parentEntity === "LeadList") return collapse(pick(row, "list_id") || pick(row, "lead_list_id"));
+  if (parentEntity === "CallSheet") return collapse(pick(row, "sheet_id"));
+  return collapse(pick(row, "campaign_id"));
+}
+
+/** An explicit export directory wins over a live API key left in the shell. */
+export function importSource(options: { exportDir?: string; token?: string }): "export-dir" | "api" | "none" {
+  if (options.exportDir) return "export-dir";
+  if (options.token) return "api";
+  return "none";
+}
+
 export function planImport(bundle: Record<string, unknown>, options: { existingEmails?: Iterable<string>; orgId?: number | null } = {}): ImportPlan {
   const existing = new Set([...(options.existingEmails ?? [])].map((email) => email.toLowerCase()));
   const rows: PlanRow[] = [];
@@ -305,7 +354,7 @@ export function planImport(bundle: Record<string, unknown>, options: { existingE
     const id = sourceId(row);
     if (!id) return rows.push(skip(entity, "", table, "missing id"));
     if (!remember(entity, id)) return rows.push(skip(entity, id, table, "duplicate source id"));
-    const parentId = collapse(pick(row, parentEntity === "CrmAccount" ? "account_id" : parentEntity === "LeadList" ? "list_id" : parentEntity === "CallSheet" ? "sheet_id" : "campaign_id"));
+    const parentId = parentSource(parentEntity, row);
     if (!parentId) return rows.push(skip(entity, id, table, "missing parent id"));
     const built = build(id);
     if (typeof built === "string") return rows.push(skip(entity, id, table, built));
@@ -358,8 +407,23 @@ export function planImport(bundle: Record<string, unknown>, options: { existingE
     });
   }
 
+  for (const row of take("LeadList")) addLeadList(row);
+
   for (const row of take("OutreachCampaign")) addCampaign("OutreachCampaign", row);
   for (const row of take("Campaign")) addCampaign("Campaign", row);
+
+  function addLeadList(row: Row) {
+    const id = sourceId(row);
+    if (!id) return;
+    const name = clip(pick(row, "name"), 255);
+    if (!name) return rows.push(skip("LeadList", id, "lead_lists", "missing name"));
+    const filters = jsonValue(pick(row, "filters") || pick(row, "filter_criteria"));
+    rows.push({
+      entity: "LeadList", sourceId: id, table: "lead_lists", action: "insert",
+      warnings: pick(row, "filters") && filters == null ? ["filters were not valid JSON"] : [],
+      values: { name, description: clip(pick(row, "description"), 8000), list_type: clip(pick(row, "list_type"), 50), filter_criteria: filters, member_count: Number(pick(row, "provider_count") || pick(row, "member_count")) || 0, created_by: clip(pick(row, "created_by"), 255) },
+    });
+  }
 
   function addCampaign(entity: string, row: Row) {
     const id = sourceId(row);
@@ -368,30 +432,52 @@ export function planImport(bundle: Record<string, unknown>, options: { existingE
     const name = clip(pick(row, "name"), 255);
     if (!name) return rows.push(skip(entity, id, "outreach_campaigns", "missing name"));
     const status = clip(pick(row, "status"), 50) || "draft";
+    const warnings = entity === "Campaign" ? ["imported from the legacy Campaign entity"] : [];
+    const subject = clip(pick(row, "subject") || pick(row, "subject_template"), 4000);
+    const bodyValue = pick(row, "body");
+    const body = bodyValue != null && bodyValue !== "" ? String(bodyValue) : (pick(row, "body_template") == null ? null : String(pick(row, "body_template")));
+    const listId = collapse(pick(row, "lead_list_id") || pick(row, "target_list_id") || pick(row, "list_id"));
     rows.push({
-      entity, sourceId: id, table: "outreach_campaigns", action: "insert", warnings: entity === "Campaign" ? ["imported from the legacy Campaign entity"] : [],
+      entity, sourceId: id, table: "outreach_campaigns", action: "insert", warnings,
       values: {
         name, description: clip(pick(row, "description") || pick(row, "notes"), 8000), status,
-        campaign_type: clip(pick(row, "campaign_type"), 50) || (entity === "Campaign" ? "legacy" : null),
-        subject: clip(pick(row, "subject"), 4000), body: pick(row, "body") == null ? null : String(pick(row, "body")),
+        campaign_type: clip(pick(row, "campaign_type"), 50) || (listId ? "lead_list" : entity === "Campaign" ? "legacy" : null),
+        subject, body,
         sender_email: emailOf(row, "sender_email"), sender_name: clip(pick(row, "sender_name"), 255),
         goal: clip(pick(row, "goal"), 100), created_by: clip(pick(row, "created_by"), 255),
       },
+      ...(listId ? { parent: { entity: "LeadList", sourceId: listId, column: "target_list_id" } } : {}),
     });
   }
 
   for (const row of take("OutreachMessage")) {
-    child("OutreachMessage", "outreach_messages", "OutreachCampaign", row, () => ({
-      warnings: [],
-      values: {
-        npi: clip(pick(row, "npi"), 20),
-        recipient_email: emailOf(row, "recipient_email"),
-        recipient_name: clip(pick(row, "recipient_name"), 255),
-        subject: pick(row, "subject") == null ? null : String(pick(row, "subject")),
-        body: pick(row, "body") == null ? null : String(pick(row, "body")),
-        status: clip(pick(row, "status"), 50) || "pending",
-      },
-    }));
+    child("OutreachMessage", "outreach_messages", "OutreachCampaign", row, () => {
+      const warnings: string[] = [];
+      const sentAt = timestampValue(pick(row, "sent_at"));
+      const openedAt = timestampValue(pick(row, "opened_at"));
+      const clickedAt = timestampValue(pick(row, "clicked_at"));
+      const bouncedAt = timestampValue(pick(row, "bounced_at"));
+      const respondedAt = timestampValue(pick(row, "responded_at"));
+      for (const [key, value] of [["sent_at", sentAt], ["opened_at", openedAt], ["clicked_at", clickedAt], ["bounced_at", bouncedAt], ["responded_at", respondedAt]] as const) {
+        if (pick(row, key) && !value) warnings.push(`invalid ${key} dropped`);
+      }
+      return {
+        warnings,
+        values: {
+          npi: clip(pick(row, "npi"), 20),
+          recipient_email: emailOf(row, "recipient_email"),
+          recipient_name: clip(pick(row, "recipient_name"), 255),
+          subject: pick(row, "subject") == null ? null : String(pick(row, "subject")),
+          body: messageBody(row),
+          status: clip(pick(row, "status"), 50) || "pending",
+          sent_at: sentAt,
+          opened_at: openedAt,
+          clicked_at: clickedAt,
+          bounced_at: bouncedAt,
+          responded_at: respondedAt,
+        },
+      };
+    });
   }
 
   for (const row of take("CrmCampaignTouch")) {
@@ -429,22 +515,6 @@ export function planImport(bundle: Record<string, unknown>, options: { existingE
         body_template: pick(row, "body_template") == null ? null : String(pick(row, "body_template")),
         category: clip(pick(row, "category"), 50),
       },
-    });
-  }
-
-  for (const row of take("LeadList")) {
-    const id = sourceId(row);
-    if (!id) continue;
-    const name = clip(pick(row, "name"), 255);
-    if (!name) {
-      rows.push(skip("LeadList", id, "lead_lists", "missing name"));
-      continue;
-    }
-    const filters = jsonValue(pick(row, "filters") || pick(row, "filter_criteria"));
-    rows.push({
-      entity: "LeadList", sourceId: id, table: "lead_lists", action: "insert",
-      warnings: pick(row, "filters") && filters == null ? ["filters were not valid JSON"] : [],
-      values: { name, description: clip(pick(row, "description"), 8000), list_type: clip(pick(row, "list_type"), 50), filter_criteria: filters, member_count: Number(pick(row, "provider_count") || pick(row, "member_count")) || 0, created_by: clip(pick(row, "created_by"), 255) },
     });
   }
 
@@ -514,6 +584,11 @@ export function planImport(bundle: Record<string, unknown>, options: { existingE
     const parentKey = `${row.parent.entity}:${row.parent.sourceId}`;
     const campaignId = collapse(row.values.campaign_source_id);
     const campaignOk = !campaignId || present.has(`OutreachCampaign:${campaignId}`) || present.has(`Campaign:${campaignId}`);
+    if (row.parent.column === "target_list_id" && !present.has(parentKey)) {
+      row.warnings.push("lead list was not imported");
+      delete row.parent;
+      continue;
+    }
     if (!present.has(parentKey) || !campaignOk) {
       row.action = "skip";
       row.reason = "parent was not imported";
